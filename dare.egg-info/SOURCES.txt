@@ -1,0 +1,6 @@
+README.md
+setup.py
+dare.egg-info/PKG-INFO
+dare.egg-info/SOURCES.txt
+dare.egg-info/dependency_links.txt
+dare.egg-info/top_level.txt
