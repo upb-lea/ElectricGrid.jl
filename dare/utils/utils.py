@@ -364,7 +364,7 @@ class NodeConstructor():
         """Plots a graph according to the CM matrix
         
         Red nodes corresponse to a source.
-        Blue nodes corresponse to a load.
+        Lightblue nodes corresponse to a load.
         """
         
         edges = []
