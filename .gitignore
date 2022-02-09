@@ -1,2 +1,8 @@
 # jupyter notebook
 **/.ipynb_checkpoints/
+
+# package stuff
+**/dare.egg-info/
+
+# vscode
+**_pycache/
