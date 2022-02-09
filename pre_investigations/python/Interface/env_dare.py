@@ -8,17 +8,52 @@ import scipy
 from pre_investigations.python.Interface.util import NodeConstructor
 
 
+class Reward:
+    def __init__(self, params, limits, refs, gamma=0):
+        self.params = params
+        self.limits = limits
+        self.refs = refs
+        self.gamma = gamma
+
+    def rew_function(self, obs):
+        """
+
+        :param obs: (if normalized=True) normalized observations
+        :return: reward to get specific power via load
+        """
+
+        # hard coded!!! toDO make flexible depending on e.g. history
+        #P_load = ((obs[4] + obs[5])**2)*self.params['R_load']
+
+        # denormalize
+        i_T1 = obs[4]*self.limits['i_lim']
+        i_T2 = obs[5]*self.limits['i_lim']
+        P_load = ((i_T1 + i_T2) ** 2) * self.params['R_load']
+
+        # to normalize, we take the Power by i_max through the load
+        P_max = (2*self.limits['i_lim'])**2  * self.params['R_load']
+
+        # if error = P_max -> rew = -1; if error = 0 -> rew = +1
+        # gamma normalization for training
+        rew = (1 - 2*np.sqrt(np.abs(P_load - self.refs)/P_max)) * (1 - self.gamma)
+
+        return rew
+
+
+
+
 class Env_DARE(gym.Env):
 
     TIMEOUT = 300
 
-    def __init__(self, CM, ts, parameter, x0, time_start=0):
+    def __init__(self, CM, ts, parameter, x0, limits=None, refs=None, gamma=0, time_start=0):
 
+        # toDo shift gamma to env wrapper (or kwargs?)
         super(Env_DARE, self).__init__()
 
 
         power_grid = NodeConstructor(2, 1, parameter, CM=CM)  # 2 Source with 2 connections
-        power_grid.draw_graph()
+        #power_grid.draw_graph()
 
         A, B, C, D = power_grid.get_sys()
         # discretize
@@ -34,6 +69,19 @@ class Env_DARE(gym.Env):
         self.sys_d = control.ss(A_d, B_d, C_d, 0, dt=True)
 
         self.number_of_steps = 0
+        self.refs = refs
+
+        if limits is None:
+            self.i_lim = None
+            self.v_lim = None
+        else:
+            self.i_lim = limits['i_lim']
+            self.v_lim = limits['v_lim']
+            # toDo make flexible depening on state
+            self.norm_array = np.array([self.i_lim, self.v_lim, self.i_lim, self.v_lim, self.i_lim, self.i_lim])
+
+        self.rew = Reward(parameter, limits, self.refs, gamma)
+
 
         self.action_space = gym.spaces.Box(
             low=-1,
@@ -73,14 +121,18 @@ class Env_DARE(gym.Env):
         else:
             reward = 0.0
 
-        return self._simulate(action), reward, is_done, {}
+        obs = self._simulate(action)
+
+        reward = self.rew.rew_function(obs)
+
+        return obs, reward, is_done, {}
 
 
     def _simulate(self,action, normalize=True):
         # actions is "doubled" since in sipy ltisys.py L.3505 last is discarded
         # toDo more performant stepwise interaction possible?
         T, yout, xout = control.forced_response(self.sys_d, T=self.sim_time_interval,
-                                                       U=np.array([action.squeeze(),action.squeeze()]),
+                                                       U=np.array([action.squeeze(),action.squeeze()]).T,
                                                        X0=self._state,
                                                        return_x=True, squeeze=True)
 
@@ -89,7 +141,7 @@ class Env_DARE(gym.Env):
 
         if normalize:
             # toDo
-            return (self._state/1)
+            return (self._state/self.norm_array)
         else:
             return self._state
 
