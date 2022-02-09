@@ -1,12 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy
-import control
-import copy
 import networkx as nx
 import random
-
-
 
 
 class NodeConstructor():
