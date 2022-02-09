@@ -67,6 +67,7 @@ class Env_DARE(gym.Env):
         self.time_start = time_start
         self.x0 = x0
         self.sys_d = control.ss(A_d, B_d, C_d, 0, dt=True)
+        self.v_dc = parameter['V_dc']
 
         self.number_of_steps = 0
         self.refs = refs
@@ -121,7 +122,7 @@ class Env_DARE(gym.Env):
         else:
             reward = 0.0
 
-        obs = self._simulate(action)
+        obs = self._simulate(action*self.v_dc)
 
         reward = self.rew.rew_function(obs)
 
