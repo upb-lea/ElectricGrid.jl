@@ -5,7 +5,7 @@ import numpy as np
 import control
 import scipy
 
-from dare.utils.nodeconstructor import NodeConstructor
+from pre_investigations.python.dare.utils.nodeconstructor import NodeConstructor
 
 
 class Reward:
