@@ -1,12 +1,13 @@
-import gym
-import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-
+import numpy as np
 from stable_baselines3 import DDPG
-from stable_baselines3.common.noise import NormalActionNoise, OrnsteinUhlenbeckActionNoise
+from stable_baselines3.common.noise import NormalActionNoise
 
 from pre_investigations.python.Interface.env_dare import Env_DARE
+
+"""
+Quick basic example to interact with dare_env V_0 with and without RL agent
+"""
 
 
 def plt_obs(obs_matrix_denorm, title=""):
@@ -19,7 +20,7 @@ def plt_obs(obs_matrix_denorm, title=""):
     # plt.title('{}'.format())
     ax1[0, 0].legend()
     ax1[0, 0].grid()
-    #plt.title(title)
+    # plt.title(title)
     # ax1[0].set_ylim([0, 340])
 
     ax1[0, 1].step(t, obs_matrix_denorm[:, 0], 'r', label='i1')
@@ -64,9 +65,6 @@ def plt_obs(obs_matrix_denorm, title=""):
     plt.legend()
     plt.grid()
     plt.title(title)
-
-
-
 
     # ax1[0].set_ylim([0, 340])
     plt.show()
@@ -178,6 +176,9 @@ for i in range(num_samples - 1):
 
 obs_matrix_dumm_ddpg_denorm = obs_matrix_dumm_ddpg * env.norm_array
 plt_obs(obs_matrix_dumm_ddpg_denorm, "untrained agent")
+"""
+# From here on training!
+# Uncomment to train, not tested yet, just coded
 
 # train
 model.learn(total_timesteps=100, log_interval=10)
@@ -197,3 +198,4 @@ plt_obs(obs_matrix_ddpg_denorm, "Trained agent 100 steps")
 # env = model.get_env()
 # del model # remove to demonstrate saving and loading
 # model = DDPG.load("ddpg_pendulum")
+"""

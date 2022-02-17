@@ -1,8 +1,8 @@
 import copy
 
+import control
 import gym
 import numpy as np
-import control
 import scipy
 
 from pre_investigations.python.dare.utils.nodeconstructor import NodeConstructor

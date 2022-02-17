@@ -35,13 +35,25 @@ parameter['C_source'] = C
 parameter['L_cabel'] = LT
 parameter['R_cabel'] = R
 parameter['R_load'] = R_load
+parameter['V_dc'] = 300
+
+# limits for normalization
+i_lim = 20
+v_lim = 600
+
+limits = dict()
+limits['i_lim'] = i_lim
+limits['v_lim'] = v_lim
 
 # define CM
 CM = np.array([[0, 0, 1],
                [0, 0, 2],
                [-1, -2, 0]])
 
-env = Env_DARE(CM, ts, parameter, x0)
+# simple ref - TEMPORARY IMPLEMENTATION
+ref = 200  # W
+
+env = Env_DARE(CM, ts, parameter, x0, limits, ref)
 
 v1_list = []
 
