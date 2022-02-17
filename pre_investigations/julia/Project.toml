@@ -1,7 +1,17 @@
 name = "MicroGridSimWithRL"
 authors = ["Jan Stenner"]
-[compat]
-julia = "1.7.1"
-DrWatson = "2.9.1"
+
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+ControlSystems = "a6e380b2-a6ca-5380-bf3e-84a91bcd477e"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+ReinforcementLearning = "158674fc-8238-5cab-b5ba-03dfc80d1318"
+Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
+
+[compat]
+DrWatson = "2.9.1"
+julia = "1.7.1"
