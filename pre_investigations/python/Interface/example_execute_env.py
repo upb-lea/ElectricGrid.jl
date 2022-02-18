@@ -25,8 +25,8 @@ R_load = 14
 # x0 = np.array([i10, v10, iT10, i20, v20, iT20])
 x0 = [0, 0, 0, 0, 0, 0]
 
-vi1 = 230
-vi2 = 230
+vi1 = 0.7
+vi2 = 0.7
 
 parameter = dict()
 parameter['R_source'] = R
@@ -53,7 +53,7 @@ CM = np.array([[0, 0, 1],
 # simple ref - TEMPORARY IMPLEMENTATION
 ref = 200  # W
 
-env = Env_DARE(CM, ts, parameter, x0, limits, ref)
+env = Env_DARE(CM=CM, ts=ts, parameter=parameter, x0=x0, limits=limits, refs=ref)
 
 v1_list = []
 
@@ -63,7 +63,7 @@ for i in range(num_samples - 1):
     action = np.array([[vi1], [vi2]])
     obs, rewards, dones, info = env.step(action)
     # store v1 for comparison
-    v1_list.append(obs[1])
+    v1_list.append(obs[1]*parameter['V_dc'])
 
 plt.figure()
 plt.step(t, v1_list, 'r', label='v1_discret')

@@ -43,12 +43,26 @@ class Reward:
 class Env_DARE(gym.Env):
     TIMEOUT = 300
 
-    def __init__(self, CM, ts, parameter, x0, limits=None, refs=None, gamma=0, time_start=0):
+    def __init__(self, num_sources=2, num_loads=1, CM=None, ts=1e-4, parameter=None, x0=None, limits=None, refs=None, gamma=0, time_start=0):
+        """
+
+        :param num_sources:
+        :param num_loads:
+        :param CM: if set to None, creates random grid
+        :param ts:
+        :param parameter:
+        :param x0: if is None zero array created depending on randomly (?) generated grid
+        :param limits:
+        :param refs:
+        :param gamma:
+        :param time_start:
+        """
+
 
         # toDo shift gamma to env wrapper (or kwargs?)
         super(Env_DARE, self).__init__()
 
-        power_grid = NodeConstructor(2, 1, parameter, CM=CM)  # 2 Source with 2 connections
+        power_grid = NodeConstructor(num_sources, num_loads, parameter, CM=CM)  # 2 Source with 2 connections
         # power_grid.draw_graph()
 
         A, B, C, D = power_grid.get_sys()
@@ -58,10 +72,13 @@ class Env_DARE(gym.Env):
         B_d = A_inv @ (A_d - np.eye(A.shape[0])) @ B
         C_d = copy.copy(C)
 
+        if x0 is None:
+            self.x0 = np.zeros((A_d.shape[0],))
+        else:
+            self.x0 = x0
         self.time_step_size = ts
         self.sim_time_interval = None
         self.time_start = time_start
-        self.x0 = x0
         self.sys_d = control.ss(A_d, B_d, C_d, 0, dt=True)
         self.v_dc = parameter['V_dc']
 
@@ -74,8 +91,11 @@ class Env_DARE(gym.Env):
         else:
             self.i_lim = limits['i_lim']
             self.v_lim = limits['v_lim']
-            # toDo make flexible depening on state
-            self.norm_array = np.array([self.i_lim, self.v_lim, self.i_lim, self.v_lim, self.i_lim, self.i_lim])
+            # HINT: Currently only LC filters are considered! x is sorted depending on node constructor
+            # Therefore, limits are sorted in dependence of power_grid [sources (i, v),..., transitions (i - since
+            # only RL connections are considered jet)]
+            self.norm_array = np.array([self.i_lim, self.v_lim]*power_grid.num_source +
+                                       [self.i_lim]*power_grid.num_connections)
 
         self.rew = Reward(parameter, limits, self.refs, gamma)
 

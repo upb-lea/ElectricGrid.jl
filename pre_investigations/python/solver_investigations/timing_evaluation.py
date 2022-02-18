@@ -6,8 +6,12 @@ import control
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
-from scipy.integrate import ode, odeint
 
+from scipy.integrate import ode, odeint
+from stable_baselines3 import DDPG
+from stable_baselines3.common.noise import NormalActionNoise
+
+from pre_investigations.python.Interface.env_dare import Env_DARE
 from pre_investigations.python.dare.utils.nodeconstructor import NodeConstructor
 
 
@@ -96,18 +100,14 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         parameter['R_load'] = 14
         parameter['V_dc'] = 300
 
-    result_per_execution = []
-    # methode = ['control.py', 'control.py', 'scipy_ode', 'scipy_odeint']
-    # methode_args = ['continuous', 'discrete', 'LSODA', 'LSODA']
-
-    # methode = ['scipy_ode', 'scipy_odeint']
-    # methode_args = ['LSODA', 'LSODA']
+    # define required data for Dare_env
+    limits = dict()
+    limits['i_lim'] = 20
+    limits['v_lim'] = 600
+    ref = 200  # W
 
     t_result_mean = np.zeros([len(methode), len(num_nodes), len(t_end)])
     t_result_std = np.zeros([len(methode), len(num_nodes), len(t_end)])
-
-    res_mean_list = []
-    res_std_list = []
 
     def env_model_ode(t, x):  # , arg):
         u_ode = np.array([230] * power_grid.num_source)
@@ -118,26 +118,50 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         while ode_solver_.successful() and ode_solver_.t <= steps * ts * t_end_ode:
             ode_solver_.integrate(ode_solver_.t + ts)
 
+    def execute_env(env, num_samples):
+        env.reset()
+        for i in range(num_samples - 1):
+            # action = np.array([[0.7], [0.7]])
+            u_random = np.random.uniform(-1, 1, env.action_space.shape[0])
+            _, _, _, _ = env.step(u_random)
+
+    def execute_agent_in_env(agent, env, num_samples):
+        obs = env.reset()
+        for i in range(num_samples - 1):
+            action, _states = agent.predict(obs)
+            obs, _, _, _ = env.step(action)
+
     for n in range(len(methode)):
 
         for k in range(len(num_nodes)):
-            # Define dummy grid
-            power_grid = NodeConstructor(num_nodes[k], num_nodes[k], parameter)
-            A_sys, B_sys, C_sys, D_sys = power_grid.get_sys()
 
-            if methode in ['control.py'] and methode_args == 'discrete':
-                A_d = scipy.linalg.expm(A_sys * ts)
-                A_inv = scipy.linalg.inv(A_sys)
-                B_d = A_inv @ (A_d - np.eye(A_sys.shape[0])) @ B_sys
-                C_d = copy.copy(C_sys)
+            if methode[n] in ['env_standalone', 'env_agent_interaction']:
+                env = Env_DARE(CM=None, ts=ts, parameter=parameter, x0=None, limits=limits, refs=ref)
 
-                sys = control.ss(A_d, B_d, C_d, 0, dt=True)
+                if methode[n] in ['env_agent_interaction']:
+                    n_actions = env.action_space.shape[-1]
+                    action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
+                    agent = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1)
 
             else:
-                sys = control.ss(A_sys, B_sys, C_sys, D_sys)
 
-            # generate init state
-            x0 = np.zeros((A_sys.shape[0],))
+                # Define dummy grid
+                power_grid = NodeConstructor(num_nodes[k], num_nodes[k], parameter)
+                A_sys, B_sys, C_sys, D_sys = power_grid.get_sys()
+
+                if methode[n] in ['control.py'] and methode_args == 'discrete':
+                    A_d = scipy.linalg.expm(A_sys * ts)
+                    A_inv = scipy.linalg.inv(A_sys)
+                    B_d = A_inv @ (A_d - np.eye(A_sys.shape[0])) @ B_sys
+                    C_d = copy.copy(C_sys)
+
+                    sys = control.ss(A_d, B_d, C_d, 0, dt=True)
+
+                else:
+                    sys = control.ss(A_sys, B_sys, C_sys, D_sys)
+
+                # generate init state
+                x0 = np.zeros((A_sys.shape[0],))
 
             if methode[n] in ['scipy_ode']:
                 ode_solver = ode(env_model_ode)
@@ -147,15 +171,11 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                 # define time vector
                 t = np.arange(0, t_end[l] + ts, ts)
 
-                # simple input signal of constant 230V from all sources
-                u_vec = np.array([230]).repeat(power_grid.num_source)[:, None] * np.ones(
-                    (power_grid.num_source, len(t)))
-
-                u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
 
                 if methode[n] in ['control.py']:
+                    u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
                     res_list = timeit.repeat(
-                        lambda: control.forced_response(sys, T=t, U=u_vec, X0=x0, return_x=True, squeeze=True)
+                        lambda: control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
                         , repeat=repeat, number=loops)
 
                 if methode[n] in ['scipy_ode']:
@@ -165,6 +185,15 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                     res_list = timeit.repeat(lambda: odeint(env_model_ode, x0, t, tfirst=True), repeat=repeat,
                                              number=loops)
 
+                if methode[n] in ['env_standalone']:
+                    num_samples = int(t_end[l] / ts)
+                    res_list = timeit.repeat(lambda: execute_env(env, num_samples), repeat=repeat,
+                                             number=loops)
+
+                if methode[n] in ['env_agent_interaction']:
+                    num_samples = int(t_end[l] / ts)
+                    res_list = timeit.repeat(lambda: execute_agent_in_env(agent, env, num_samples), repeat=repeat,
+                                             number=loops)
                 # correct for loops-time execution:
                 result_per_loop = ([x / loops for x in res_list])
 
@@ -184,12 +213,12 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
     # result_dict['repeats'] = repeat
     # result_dict['loops'] = loops
     result_dict['info'] = 'Logs the mean and std of the execution time for all defined methods to simulate the power ' \
-                          'grid for different simulation times (t_end) and grid size (num_grid_nodes). num_grid_nodes '\
+                          'grid for different simulation times (t_end) and grid size (num_grid_nodes). num_grid_nodes ' \
                           'thereby defines the number of sources and the number of loads ' \
-                          '(grid size = 2*num_grid_nodes). '\
+                          '(grid size = 2*num_grid_nodes). ' \
                           'Each experiment is executed loops*repeats-times ' \
                           'while the mean and std is calculated based' \
-                          'on repeats' \
+                          'on repeats'
 
     return result_dict
 
@@ -215,10 +244,16 @@ if __name__ == '__main__':
 
     num_nodes_used = [2, 4, 6, 7, 10]
 
+    # time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used, num_nodes=num_nodes_used,
+    #                                           t_end=t_end_used, ts=t_s_used,
+    #                                           methode=['control.py', 'control.py', 'scipy_ode', 'scipy_odeint'],
+    #                                           methode_args=['continuous', 'discrete', 'LSODA', 'LSODA'],
+    #                                           parameter=parameter_used)
+
     time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used, num_nodes=num_nodes_used,
                                                t_end=t_end_used, ts=t_s_used,
-                                               methode=['control.py', 'control.py', 'scipy_ode', 'scipy_odeint'],
-                                               methode_args=['continuous', 'discrete', 'LSODA', 'LSODA'],
+                                               methode=['scipy_ode'],  # ['env_standalone'],
+                                               methode_args=['discrete'],
                                                parameter=parameter_used)
 
     plot_result(time_result, num_nodes_used, t_end_used)
