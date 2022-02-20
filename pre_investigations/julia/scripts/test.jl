@@ -15,15 +15,35 @@ include(srcdir("variables.jl"))
 include(srcdir("env.jl"))
 
 
-# --- SIM ---
-
-#sys_d = ss(Ad,Bd,C,0, ts)
-#yout_d, tout_d, xout_d, uout_d = lsim(sys_d,u,t,x0=x0)
-
 env = SimEnv(A=A, B=B, C=C)
 
-RLBase.test_runnable!(env)
+# --- Constant Input ---
 
-# --- PLOT ---
+RLBase.reset!(env)
 
-#plot(yout_d'[:,2])
+output = Vector{Float64}()
+for i = 1:50
+    env([230.0, 230.0])
+    append!(output, env.state[2])
+end
+
+plot(output)
+
+
+# --- Sine Input ---
+
+RLBase.reset!(env)
+
+output = Vector{Float64}()
+f0 = 50
+V_eff = 230 * sqrt(2)
+for i = 1:50
+    local v_sin1 = V_eff * sin.(2*pi * f0 * i / 10_000)
+    local v_sin2 = V_eff * sin.(2*pi * f0 * i / 10_000 + 1)
+
+    uuu = [v_sin1, v_sin2]
+    env(u[:,i])
+    append!(output, env.state[2])
+end
+
+plot(output)

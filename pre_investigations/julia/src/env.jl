@@ -27,18 +27,19 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     D = 0
     Ad::AbstractMatrix = exp(A*ts)
     Bd::AbstractMatrix = A \ (Ad - C) * B
-    sys_d::StateSpace = ss(Ad, Bd, C, 0, Float64(ts))
+    sys_d::StateSpace = ss(Ad, Bd, C, D, Float64(ts))
 end
 
 
 RLBase.action_space(env::SimEnv) = env.action_space
 RLBase.state_space(env::SimEnv) = env.observation_space
-RLBase.reward(env::SimEnv) = abs(env.state[2] - 150.0)
+RLBase.reward(env::SimEnv) = max(0, ((-1) * abs(env.state[2] - 150.0)) + 30 )
 RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
 
-function RLBase.reset!(env::SimEnv) where {A,T}
-    env.state = x0
+function RLBase.reset!(env::SimEnv)
+    env.state = env.x0
+    env.x = env.x0
     env.t = 0
     env.steps = 0
     env.done = false
