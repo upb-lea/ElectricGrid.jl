@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 
-from scipy.integrate import ode, odeint
+from scipy.integrate import ode, odeint, solve_ivp
 from stable_baselines3 import DDPG
 from stable_baselines3.common.noise import NormalActionNoise
 
@@ -67,14 +67,18 @@ def plot_result(results: dict, nodes: list, t_end_vec: list):
                 ax[col, row].grid()
 
             col += 1
-        fig.suptitle(results['methode'][m] + " using " + results['methode_args'][m])
+        if isinstance(results['methode_args'][m], dict):
+            fig.suptitle(results['methode'][m] + " using " + results['methode_args'][m]['integrator']+
+                         " with solver  " + results['methode_args'][m]['methode'])
+        else:
+            fig.suptitle(results['methode'][m] + " using " + results['methode_args'][m])
         plt.show()
 
 
 def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: list[int] = np.arange(2, 12, 2).tolist(),
                                  t_end: list[float] = np.arange(2, 12, 2).tolist(), ts: float = 1e-4,
-                                 methode: list[str] = ['control.py', 'control.py', 'scipy_ode', 'scipy_odeint'],
-                                 methode_args: list[str] = ['continuous', 'discrete', 'LSODA', 'LSODA'],
+                                 methode = None,
+                                 methode_args = None,
                                  parameter: dict = None):
     """
 
@@ -110,20 +114,19 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
     t_result_std = np.zeros([len(methode), len(num_nodes), len(t_end)])
 
     def env_model_ode(t, x):  # , arg):
-        u_ode = np.array([230] * power_grid.num_source)
+        #u_ode = np.array([230] * power_grid.num_source)
         u_random = np.random.uniform(-1, 1, power_grid.num_source) * parameter['V_dc']
-        return A_sys @ x + B_sys @ u_ode
+        return A_sys @ x + B_sys @ u_random
 
     def run_scipy_ode(t_end_ode, ode_solver_):
         while ode_solver_.successful() and ode_solver_.t <= steps * ts * t_end_ode:
             ode_solver_.integrate(ode_solver_.t + ts)
 
-    def execute_env(env, num_samples):
+    def execute_env(env, num_samples, u_env):
         env.reset()
         for i in range(num_samples - 1):
-            # action = np.array([[0.7], [0.7]])
-            u_random = np.random.uniform(-1, 1, env.action_space.shape[0])
-            _, _, _, _ = env.step(u_random)
+            #u_random = np.random.uniform(-1, 1, env.action_space.shape[0])
+            _, _, _, _ = env.step(u_env[i])
 
     def execute_agent_in_env(agent, env, num_samples):
         obs = env.reset()
@@ -164,7 +167,12 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                 x0 = np.zeros((A_sys.shape[0],))
 
             if methode[n] in ['scipy_ode']:
-                ode_solver = ode(env_model_ode)
+                if methode_args[n]['integrator'] == 'lsoda':
+                    ode_solver = ode(env_model_ode).set_integrator(methode_args[n]['integrator'], atol=1e-10, rtol=1e-6)
+                else:
+                    ode_solver = ode(env_model_ode).set_integrator(methode_args[n]['integrator'],
+                                                                   methode=methode_args[n]['methode'],
+                                                                   atol=1e-10, rtol=1e-6)
                 ode_solver.set_initial_value(x0, 0)
 
             for l in range(len(t_end)):
@@ -184,10 +192,18 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                 if methode[n] in ['scipy_odeint']:
                     res_list = timeit.repeat(lambda: odeint(env_model_ode, x0, t, tfirst=True), repeat=repeat,
                                              number=loops)
+                if methode[n] in ['scipy_solve_ivp']:
+                    res_list = timeit.repeat(lambda: solve_ivp(env_model_ode, [0, t_end[l]], x0, t_eval=t,
+                                                               method=methode_args[n]['methode']),
+                                             repeat=repeat,
+                                             number=loops)
+
 
                 if methode[n] in ['env_standalone']:
                     num_samples = int(t_end[l] / ts)
-                    res_list = timeit.repeat(lambda: execute_env(env, num_samples), repeat=repeat,
+                    env.reset()
+                    u_vec = np.random.uniform(-1, 1, (num_samples, env.action_space.shape[0]))
+                    res_list = timeit.repeat(lambda: execute_env(env, num_samples, u_vec), repeat=repeat,
                                              number=loops)
 
                 if methode[n] in ['env_agent_interaction']:
@@ -201,6 +217,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                 t_result_mean[n][k][l] = np.mean(result_per_loop)
                 t_result_std[n][k][l] = np.std(result_per_loop)
+
+                # store
 
     result_dict = dict()
     result_dict['methode'] = methode
@@ -242,18 +260,29 @@ if __name__ == '__main__':
     t_s_used = 1e-4
     t_end_used = [0.001, 0.002, 0.004]  # ,0.005, 0.01, 0.05]
 
-    num_nodes_used = [2, 4, 6, 7, 10]
+    num_nodes_used = [2, 4, ]#6, 7, 10]
 
-    # time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used, num_nodes=num_nodes_used,
-    #                                           t_end=t_end_used, ts=t_s_used,
-    #                                           methode=['control.py', 'control.py', 'scipy_ode', 'scipy_odeint'],
-    #                                           methode_args=['continuous', 'discrete', 'LSODA', 'LSODA'],
-    #                                           parameter=parameter_used)
-
+    """
     time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used, num_nodes=num_nodes_used,
                                                t_end=t_end_used, ts=t_s_used,
-                                               methode=['scipy_ode'],  # ['env_standalone'],
-                                               methode_args=['discrete'],
+                                               methode=['control.py', 'control.py', 'scipy_ode', 'scipy_odeint',
+                                                        'env_standalone', 'env_agent_interaction'],
+                                               methode_args=['continuous', 'discrete', 'LSODA', 'LSODA', '', ''],
                                                parameter=parameter_used)
+    """
+    time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used, num_nodes=num_nodes_used,
+                                               t_end=t_end_used, ts=t_s_used,
+                                               methode=['env_standalone'],#['scipy_solve_ivp'],#['scipy_ode'],  #
+                                               methode_args=[''],#[{'integrator': ' ', 'methode': 'LSODA'}],
+                                               #methode_args=[{'integrator': 'lsoda', 'methode': 'bdf'}],
+                                               parameter=parameter_used)
+
+
+    # possible combinations for scipy.ode:
+    #[{'integrator': 'lsoda', 'methode': 1}]
+    #[{'integrator': 'vode', 'methode': 'adam'}]
+    #[{'integrator': 'vode', 'methode': 'bdf'}]
+    #[{'integrator': 'zvode', 'methode': 'bdf'}]
+
 
     plot_result(time_result, num_nodes_used, t_end_used)
