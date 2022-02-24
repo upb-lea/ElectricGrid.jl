@@ -14,14 +14,15 @@ parameter_used['R_load'] = 14
 parameter_used['V_dc'] = 300
 
 # hyperparameters:
-repeat_used = 1
-loops_used = 1
+repeat_used = 3
+loops_used = 5
 t_s_used = 1e-4
 t_end_used = [0.001, 0.01]  # , 0.1]
-num_nodes_used = [2, 4]  # [5, 10, 25 , 50, 100]
-used_methode = ['control.py', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp', 'env_standalone', 'env_agent_interaction']
-used_methode_args = ['discrete', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA', '', '']
-
+num_nodes_used = [2, 4, 6, 8, 10]  # [5, 10, 25 , 50, 100]
+#used_methode = ['control.py', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp', 'env_standalone', 'env_agent_interaction']
+#used_methode_args = ['discrete', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA', '', '']
+used_methode = ['control.py', 'env_standalone', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp']
+used_methode_args = ['discrete', '', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA']
 # store HPs to json
 python_simulation_HPs = {
     't_s_used': t_s_used,
@@ -33,8 +34,8 @@ python_simulation_HPs = {
     'repeat': repeat_used,
     'loops': loops_used
 }
-makedirs('saves_python', exist_ok=True)
-file_name = 'saves_python/sim_setting_python_time_experiment'
+makedirs('saves', exist_ok=True)
+file_name = 'saves/sim_setting_python_time_experiment'
 with open(file_name + '.json', 'w') as outfile: json.dump(python_simulation_HPs, outfile)
 
 time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used, num_nodes=num_nodes_used,
@@ -42,13 +43,13 @@ time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used,
                                            methode=used_methode,
                                            methode_args=used_methode_args,
                                            parameter=parameter_used,
-                                           save_data=True, save_folder_name='saves_python',
+                                           save_data=False, save_folder_name='saves_python',
                                            debug=False)
 
+
+with open('saves/time_result_all_python.json', 'w') as outfile: json.dump(time_result, outfile)
+
 #time_result_df = pd.DataFrame(time_result.items())
-time_result_df = pd.DataFrame(time_result['times_m'].items())
-# time_result_df = pd.DataFrame(time_result['times_mean'])
-# Future: better store
-time_result_df.to_pickle('saves_python/time_result_all.pkl.bz2')
+#time_result_df.to_pickle('saves_python/time_result_all.pkl.bz2')
 
 plot_result(time_result, num_nodes_used, t_end_used)

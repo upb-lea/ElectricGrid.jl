@@ -19,7 +19,7 @@ from pre_investigations.python.dare.utils.nodeconstructor import NodeConstructor
 
 # time measure based on https://note.nkmk.me/en/python-timeit-measure/
 
-def plot_result(results: dict, nodes: list, t_end_vec: list):
+def plot_result(results: dict = None, nodes: list = None, t_end_vec: list = None):
     """
     Function to plot the results of time comparison for scaling issue of the power grid for different number of nodes
     and runtimes.
@@ -32,8 +32,13 @@ def plot_result(results: dict, nodes: list, t_end_vec: list):
     :param t_end_vec: time till simulation is run
     :return:
     """
+    if nodes is None:
+        nodes = results['num_grid_nodes']
+
+    if t_end_vec is None:
+        t_end_vec = results['t_end']
     for m in range(len(results['methode'])):
-        time_result = results['times_mean'][m]
+        time_result = np.array(results['times_mean'])[m]
 
         num_plt_rows = int(math.ceil(len(t_end_vec) / 2))
         fig, ax = plt.subplots(num_plt_rows, 2, figsize=(12, 10))
@@ -197,7 +202,9 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         for k in range(len(num_nodes)):
 
             if methode[n] in ['env_standalone', 'env_agent_interaction']:
-                env = Env_DARE(CM=None, ts=ts, parameter=parameter, x0=None, limits=limits, refs=ref)
+                env = Env_DARE(num_sources=num_nodes[k], num_loads=num_nodes[k],CM=None, ts=ts, parameter=parameter,
+                #env = Env_DARE(CM=None, ts=ts, parameter=parameter, x0=None,
+                               x0=None, limits=limits, refs=ref)
 
                 if methode[n] in ['env_agent_interaction']:
                     n_actions = env.action_space.shape[-1]
@@ -308,8 +315,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
     result_dict = dict()
     result_dict['methode'] = methode
     result_dict['methode_args'] = methode_args
-    result_dict['times_mean'] = t_result_mean
-    result_dict['times_std'] = t_result_std
+    result_dict['times_mean'] = t_result_mean.tolist()
+    result_dict['times_std'] = t_result_std.tolist()
     result_dict['t_end'] = t_end
     result_dict['num_grid_nodes'] = num_nodes
     # result_dict['t_s'] = ts

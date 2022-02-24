@@ -6,7 +6,6 @@ from pre_investigations.python.solver_investigations.timing_evaluation import pl
 
 # JSON file
 f = open('saves_python/sim_setting_python_time_experiment.json', "r")
-
 # Reading from file
 data = json.loads(f.read())
 
