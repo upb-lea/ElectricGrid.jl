@@ -52,13 +52,14 @@ def plot_python_vs_julia(results_python: dict = None, results_julia: dict = None
                 ax[col].title.set_text(f't_end =  {t_end_vec[l]} s')
                 ax[col].grid()
             else:
-                ax[col, row].step(nodes, time_result_python[:, l], label='P')
-                ax[col].step(nodes, time_result_julia[:, l], 'r', label='P')
+                ax[col, row].plot(nodes, time_result_python[:, l], 'o', label='python')
+                ax[col, row].plot(nodes, time_result_julia[:, l], 'or', label='julia')
                 # lt.plot(t,result[:steps,0], label = 'i1')
                 if col == round(len(t_end_vec) / 2) - 1:
                     ax[col, row].set_xlabel('nodes')
                 if row == 0:
                     ax[col, row].set_ylabel('$mean(execution-time)\,/\,\mathrm{s}$')
+                    ax[col, row].legend()
                 ax[col, row].title.set_text(f't_end =  {t_end_vec[l]} s')
                 ax[col, row].grid()
 

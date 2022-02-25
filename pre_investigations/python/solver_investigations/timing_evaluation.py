@@ -1,4 +1,5 @@
 import copy
+import json
 import math
 import time
 import timeit
@@ -83,7 +84,7 @@ def plot_result(results: dict = None, nodes: list = None, t_end_vec: list = None
 
 
 def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: list[int] = np.arange(2, 12, 2).tolist(),
-                                 t_end: list[float] = np.arange(2, 12, 2).tolist(), ts: float = 1e-4,
+                                 t_end: list[float] = np.arange(2, 12, 2).tolist(), num_cm: int = 1,  ts: float = 1e-4,
                                  methode=None,
                                  methode_args=None,
                                  parameter: dict = None,
@@ -131,7 +132,6 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         #u_random = np.random.uniform(-1, 1, power_grid.num_source) * parameter['V_dc']
         return A_sys @ x + B_sys @ u_ode
 
-
     def run_scipy_ode(t_end_ode, ode_solver_):
         ode_solver_.set_initial_value(x0, 0)
         while ode_solver_.successful() and ode_solver_.t <= steps * ts * t_end_ode:
@@ -156,8 +156,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         time.sleep(0.1)
 
     def run_solve_ivp(env_model_ode, t_int, x0, t_eval,
-                  method):
-        result_ivp = solve_ivp(env_model_ode, t_int, x0, t_eval=t_eval,method=method)
+                      method):
+        result_ivp = solve_ivp(env_model_ode, t_int, x0, t_eval=t_eval, method=method)
         plt.plot(result_ivp.y[1], label='v1')
         plt.title('solve_ivp')
         plt.show()
@@ -185,7 +185,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         for i in range(num_samples - 1):
             # u_random = np.random.uniform(-1, 1, env.action_space.shape[0])
             obs, _, _, _ = env.step(u_env[i])
-            v1_list.append(obs[1] * parameter['V_dc'])
+            v1_list.append(obs[1] * limits['v_lim'])
         plt.step(v1_list, 'r', label='v1_discret')
         plt.title('env_standalone')
         plt.show()
@@ -201,116 +201,148 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
         for k in range(len(num_nodes)):
 
-            if methode[n] in ['env_standalone', 'env_agent_interaction']:
-                env = Env_DARE(num_sources=num_nodes[k], num_loads=num_nodes[k],CM=None, ts=ts, parameter=parameter,
-                #env = Env_DARE(CM=None, ts=ts, parameter=parameter, x0=None,
-                               x0=None, limits=limits, refs=ref)
 
-                if methode[n] in ['env_agent_interaction']:
-                    n_actions = env.action_space.shape[-1]
-                    action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
-                    agent = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1)
+            # load Cm (num_nodes[k]) [c]
+            f = open('CM_matrices/CM_nodes' + str(num_nodes[k]) + '.json', "r")
+            # Reading from file
+            CM_list = json.loads(f.read())
 
-            else:
 
-                # Define dummy grid
-                power_grid = NodeConstructor(num_nodes[k], num_nodes[k], parameter)
-                A_sys, B_sys, C_sys, D_sys = power_grid.get_sys()
-
-                if methode[n] in ['control.py'] and methode_args == 'discrete':
-                    A_d = scipy.linalg.expm(A_sys * ts)
-                    A_inv = scipy.linalg.inv(A_sys)
-                    B_d = A_inv @ (A_d - np.eye(A_sys.shape[0])) @ B_sys
-                    C_d = copy.copy(C_sys)
-
-                    sys = control.ss(A_d, B_d, C_d, 0, dt=True)
-
-                else:
-                    sys = control.ss(A_sys, B_sys, C_sys, D_sys)
-
-                # generate init state
-                x0 = np.zeros((A_sys.shape[0],))
-
-            if methode[n] in ['scipy_ode']:
-                if methode_args[n]['integrator'] == 'lsoda':
-                    ode_solver = ode(env_model_ode).set_integrator(methode_args[n]['integrator'], atol=1e-10, rtol=1e-6)
-                else:
-                    ode_solver = ode(env_model_ode).set_integrator(methode_args[n]['integrator'],
-                                                                   methode=methode_args[n]['methode'],
-                                                                   atol=1e-10, rtol=1e-6)
-                ode_solver.set_initial_value(x0, 0)
 
             for l in range(len(t_end)):
                 # define time vector
                 t = np.arange(0, t_end[l] + ts, ts)
 
-                if methode[n] in ['control.py']:
-                    if debug:
-                        u_random = np.array([230]*power_grid.num_source)[:,None] * np.ones((power_grid.num_source,len(t)))
-                        res_list = timeit.repeat(
-                            lambda: run_control(sys, t, u_random, x0)
-                            # lambda: control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
-                            , repeat=repeat, number=loops)
-                    else:
-                        u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
-                        res_list = timeit.repeat(
-                            lambda: lambda: control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
-                            , repeat=repeat, number=loops)
+                time_list = []
 
-                if methode[n] in ['scipy_ode']:
-                    if debug:
-                        res_list = timeit.repeat(lambda: run_scipy_ode_debug(t_end[l], ode_solver), repeat=repeat, number=loops)
-                    else:
-                        res_list = timeit.repeat(lambda: run_scipy_ode(t_end[l], ode_solver), repeat=repeat, number=loops)
+                for c in range(num_cm):
 
-                if methode[n] in ['scipy_odeint']:
-                    if debug:
-                        res_list = timeit.repeat(lambda: run_odeint(env_model_ode, x0, t), repeat=repeat,
+                    CM = np.array(CM_list[c])
+
+                    if methode[n] in ['env_standalone', 'env_agent_interaction']:
+                        env = Env_DARE(num_sources=num_nodes[k], num_loads=num_nodes[k], CM=CM, ts=ts, parameter=parameter,
+                                       # env = Env_DARE(CM=None, ts=ts, parameter=parameter, x0=None,
+                                       x0=None, limits=limits, refs=ref)
+
+                        if methode[n] in ['env_agent_interaction']:
+                            n_actions = env.action_space.shape[-1]
+                            action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
+                            agent = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1)
+
+                    else:
+
+                        # Define dummy grid
+                        power_grid = NodeConstructor(num_nodes[k], num_nodes[k], parameter, CM=CM)
+                        A_sys, B_sys, C_sys, D_sys = power_grid.get_sys()
+
+                        if methode[n] in ['control.py'] and methode_args[n] == 'discrete':
+                            A_d = scipy.linalg.expm(A_sys * ts)
+                            A_inv = scipy.linalg.inv(A_sys)
+                            B_d = A_inv @ (A_d - np.eye(A_sys.shape[0])) @ B_sys
+                            C_d = copy.copy(C_sys)
+
+                            sys = control.ss(A_d, B_d, C_d, 0, dt=True)
+
+                        else:
+                            sys = control.ss(A_sys, B_sys, C_sys, D_sys)
+
+                        # generate init state
+                        x0 = np.zeros((A_sys.shape[0],))
+
+                    if methode[n] in ['scipy_ode']:
+                        if methode_args[n]['integrator'] == 'lsoda':
+                            ode_solver = ode(env_model_ode).set_integrator(methode_args[n]['integrator'], atol=1e-10,
+                                                                           rtol=1e-6)
+                        else:
+                            ode_solver = ode(env_model_ode).set_integrator(methode_args[n]['integrator'],
+                                                                           methode=methode_args[n]['methode'],
+                                                                           atol=1e-10, rtol=1e-6)
+                        ode_solver.set_initial_value(x0, 0)
+                    #######################
+                    # time loop before
+                    ##############################
+                    if methode[n] in ['control.py']:
+                        if debug:
+                            u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
+                                (power_grid.num_source, len(t)))
+                            u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
+                            res_list = timeit.repeat(
+                                lambda: run_control(sys, t, u_fix, x0)
+                                # lambda: control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
+                                , repeat=repeat, number=loops)
+                        else:
+                            u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
+                                (power_grid.num_source, len(t)))
+                            u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
+                            res_list = timeit.repeat(
+                                lambda: control.forced_response(sys, T=t, U=u_fix, X0=x0, return_x=True, squeeze=True)
+                                , repeat=repeat, number=loops)
+
+                    if methode[n] in ['scipy_ode']:
+                        if debug:
+                            res_list = timeit.repeat(lambda: run_scipy_ode_debug(t_end[l], ode_solver), repeat=repeat,
+                                                     number=loops)
+                        else:
+                            res_list = timeit.repeat(lambda: run_scipy_ode(t_end[l], ode_solver), repeat=repeat,
+                                                     number=loops)
+
+                    if methode[n] in ['scipy_odeint']:
+                        if debug:
+                            res_list = timeit.repeat(lambda: run_odeint(env_model_ode, x0, t), repeat=repeat,
+                                                     number=loops)
+                        else:
+                            res_list = timeit.repeat(lambda: odeint(env_model_ode, x0, t, tfirst=True), repeat=repeat,
+                                                     number=loops)
+
+                    if methode[n] in ['scipy_solve_ivp']:
+                        if debug:
+                            res_list = timeit.repeat(lambda: run_solve_ivp(env_model_ode, [0, t_end[l]], x0, t_eval=t,
+                                                                           method=methode_args[n]), repeat=repeat,
+                                                     number=loops)
+                        else:
+                            res_list = timeit.repeat(lambda: solve_ivp(env_model_ode, [0, t_end[l]], x0, t_eval=t,
+                                                                       method=methode_args[n]), repeat=repeat,
+                                                     number=loops)
+
+                    if methode[n] in ['env_standalone']:
+                        num_samples = int(t_end[l] / ts)
+                        env.reset()
+                        if debug:
+                            u_vec = np.ones([num_samples, env.action_space.shape[0]])
+                            u_vec = np.ones([num_samples, env.action_space.shape[0]]) * 1
+                            res_list = timeit.repeat(lambda: execute_env_debug(env, num_samples, u_vec), repeat=repeat,
+                                                     number=loops)
+                        else:
+                            u_vec = np.random.uniform(-1, 1, (num_samples, env.action_space.shape[0]))
+                            u_vec = np.ones([num_samples, env.action_space.shape[0]]) * 0.76666
+                            res_list = timeit.repeat(lambda: execute_env(env, num_samples, u_vec), repeat=repeat,
+                                                     number=loops)
+
+                    if methode[n] in ['env_agent_interaction']:
+                        num_samples = int(t_end[l] / ts)
+                        res_list = timeit.repeat(lambda: execute_agent_in_env(agent, env, num_samples), repeat=repeat,
                                                  number=loops)
-                    else:
-                        res_list = timeit.repeat(lambda: odeint(env_model_ode, x0, t, tfirst=True), repeat=repeat,
-                                                 number=loops)
+                    # correct for loops-time execution:
+                    result_per_loop = ([x / loops for x in res_list])
 
-                if methode[n] in ['scipy_solve_ivp']:
-                    if debug:
-                        res_list = timeit.repeat(lambda: run_solve_ivp(env_model_ode, [0, t_end[l]], x0, t_eval=t,
-                                                               method=methode_args[n]), repeat=repeat, number=loops)
-                    else:
-                        res_list = timeit.repeat(lambda: solve_ivp(env_model_ode, [0, t_end[l]], x0, t_eval=t,
-                                                 method=methode_args[n]), repeat=repeat, number=loops)
+                    time_list.append(result_per_loop)
 
-                if methode[n] in ['env_standalone']:
-                    num_samples = int(t_end[l] / ts)
-                    env.reset()
-                    if debug:
-                        u_vec = np.ones([num_samples, env.action_space.shape[0]])
-                        res_list = timeit.repeat(lambda: execute_env_debug(env, num_samples, u_vec), repeat=repeat,
-                                                 number=loops)
-                    else:
-                        u_vec = np.random.uniform(-1, 1, (num_samples, env.action_space.shape[0]))
-                        res_list = timeit.repeat(lambda: execute_env(env, num_samples, u_vec), repeat=repeat,
-                                             number=loops)
+                t_result_mean[n][k][l] = np.mean(time_list)
+                t_result_std[n][k][l] = np.std(time_list)
 
-                if methode[n] in ['env_agent_interaction']:
-                    num_samples = int(t_end[l] / ts)
-                    res_list = timeit.repeat(lambda: execute_agent_in_env(agent, env, num_samples), repeat=repeat,
-                                             number=loops)
-                # correct for loops-time execution:
-                result_per_loop = ([x / loops for x in res_list])
-
-                t_result_mean[n][k][l] = np.mean(result_per_loop)
-                t_result_std[n][k][l] = np.std(result_per_loop)
+                print("done for " + str(n) + ", " + str(k) + " and " + str(l))
 
                 # save time_array to pkl
         if save_data:
             time_result_df = pd.DataFrame(t_result_mean[n][:][:], index=[str(int) for int in num_nodes],
                                           columns=[str(int) for int in t_end])
             if methode[n] in ['scipy_ode']:
-                time_result_df.to_pickle(save_folder_name+'/sim_time_mean_' + methode[n] + methode_args[n]['methode'] +
-                                             '_repreat' + str(repeat) + '_loops' + str(loops) + '.pkl.bz2')
+                time_result_df.to_pickle(
+                    save_folder_name + '/sim_time_mean_' + methode[n] + methode_args[n]['methode'] +
+                    '_repreat' + str(repeat) + '_loops' + str(loops) + '.pkl.bz2')
             else:
-                time_result_df.to_pickle(save_folder_name+'/sim_time_mean_' + methode[n] + methode_args[n] +
-                                             '_repreat' + str(repeat) + '_loops' + str(loops) + '.pkl.bz2')
+                time_result_df.to_pickle(save_folder_name + '/sim_time_mean_' + methode[n] + methode_args[n] +
+                                         '_repreat' + str(repeat) + '_loops' + str(loops) + '.pkl.bz2')
 
     result_dict = dict()
     result_dict['methode'] = methode
@@ -366,13 +398,13 @@ if __name__ == '__main__':
                                                t_end=t_end_used, ts=t_s_used,
                                                methode=['env_standalone'],
                                                # ['scipy_solve_ivp'],#['scipy_ode'],  #
-                                               methode_args=[''],#{'integrator': 'lsoda', 'methode': 'lsoda'}],
+                                               methode_args=[''],  # {'integrator': 'lsoda', 'methode': 'lsoda'}],
                                                # methode_args=[{'integrator': 'lsoda', 'methode': 'bdf'}],
                                                parameter=parameter_used,
-                                               save_data=True, save_folder_name='saves_python',debug=True)
+                                               save_data=True, save_folder_name='saves_python', debug=True)
 
     used_methode = ['control.py', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp', 'env_standalone',
-                   'env_agent_interaction']
+                    'env_agent_interaction']
     used_methode_args = ['discrete', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA', '', '']
 
     # possible combinations for scipy.ode:
