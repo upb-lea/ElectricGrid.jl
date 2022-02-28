@@ -34,15 +34,15 @@ CM = np.array([[0, 0, 1],
                [-1, -2, 0]])
 
 num_nodes = [2, 4, 6, 8, 10]
-loops = 3
+loops = 30
 for nodes in num_nodes:
     CM_array = []
     for loop in range(loops):
         # grid with 2 sources, 1 load and a total of 2 connections
         power_grid = NodeConstructor(nodes, nodes, parameter=parameter, CM = None)
-        power_grid.draw_graph()
+        #power_grid.draw_graph()
 
-        print(power_grid.CM)
+        #print(power_grid.CM)
 
         CM_array.append(power_grid.CM.tolist())
 

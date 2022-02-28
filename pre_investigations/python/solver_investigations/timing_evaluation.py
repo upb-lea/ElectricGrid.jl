@@ -1,6 +1,6 @@
 import copy
 import json
-import math
+
 import time
 import timeit
 from os import makedirs
@@ -19,118 +19,34 @@ from pre_investigations.python.dare.utils.nodeconstructor import NodeConstructor
 
 
 # time measure based on https://note.nkmk.me/en/python-timeit-measure/
-
-def plot_result(results: dict = None, nodes: list = None, t_end_vec: list = None):
-    """
-    Function to plot the results of time comparison for scaling issue of the power grid for different number of nodes
-    and runtimes.
-    :param results: Includes measured data:
-            results['methode'] -> Used methode (e.g. control.py; scipy;... - more to be defined)
-            results['methode_args'] -> Additional arguments of the methode: e.g. control.py -> continuous/discrete
-                                                                                     scipy -> solver like LSODA,...
-            results['times'] -> list of time results of the experiments in numpy.array(len(nodes),len(t_end_vec))
-    :param nodes: Number of grid nodes (doubles, if =5 -> 5 loads and 5 sources) - multiplied by 2 for plotting
-    :param t_end_vec: time till simulation is run
-    :return:
-    """
-    if nodes is None:
-        nodes = results['num_grid_nodes']
-
-    if t_end_vec is None:
-        t_end_vec = results['t_end']
-    for m in range(len(results['methode'])):
-        time_result = np.array(results['times_mean'])[m]
-
-        num_plt_rows = int(math.ceil(len(t_end_vec) / 2))
-        fig, ax = plt.subplots(num_plt_rows, 2, figsize=(12, 10))
-
-        col = 0
-        row = 0
-
-        jump = False
-
-        for l in range(len(t_end_vec)):
-
-            if l >= round(len(t_end_vec) / 2) and not jump and not num_plt_rows == 1:
-                row += 1
-                col = 0
-                jump = True
-            if num_plt_rows == 1:
-                ax[col].step(nodes, time_result[:, l])
-                # lt.plot(t,result[:steps,0], label = 'i1')
-                if col == round(len(t_end_vec) / 2) - 1:
-                    ax[col].set_xlabel('nodes')
-                if row == 0:
-                    ax[col].set_ylabel('$mean(execution-time)\,/\,\mathrm{s}$')
-                ax[col].title.set_text(f't_end =  {t_end_vec[l]} s')
-                ax[col].grid()
-            else:
-                ax[col, row].step(nodes, time_result[:, l])
-                # lt.plot(t,result[:steps,0], label = 'i1')
-                if col == round(len(t_end_vec) / 2) - 1:
-                    ax[col, row].set_xlabel('nodes')
-                if row == 0:
-                    ax[col, row].set_ylabel('$mean(execution-time)\,/\,\mathrm{s}$')
-                ax[col, row].title.set_text(f't_end =  {t_end_vec[l]} s')
-                ax[col, row].grid()
-
-            col += 1
-        if isinstance(results['methode_args'][m], dict):
-            fig.suptitle(results['methode'][m] + " using " + results['methode_args'][m]['integrator'] +
-                         " with solver  " + results['methode_args'][m]['methode'])
-        else:
-            fig.suptitle(results['methode'][m] + " using " + results['methode_args'][m])
-        plt.show()
+from pre_investigations.python.solver_investigations.visualize import plot_result
 
 
 def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: list[int] = np.arange(2, 12, 2).tolist(),
-                                 t_end: list[float] = np.arange(2, 12, 2).tolist(), num_cm: int = 1,  ts: float = 1e-4,
+                                 t_end: list[float] = np.arange(2, 12, 2).tolist(), num_cm: int = 1, ts: float = 1e-4,
                                  methode=None,
                                  methode_args=None,
                                  parameter: dict = None,
+                                 limits: dict = None,
                                  save_data: bool = False,
                                  save_folder_name='saves',
                                  debug=False):
-    """
 
-    :param repeat:
-    :param loops:
-    :param num_nodes:
-    :param t_end:
-    :param ts:
-    :param methode:
-    :param methode_args:
-    :param parameter:
-    :param save_data:
-    :return:
-    """
     steps = int(1 / ts)
     makedirs(save_folder_name, exist_ok=True)
     # pathlib.Path(self.save_folder.mkdir(exist_ok=True))
 
-    if parameter is None:
-        parameter = dict()
-        parameter['R_source'] = 0.4
-        parameter['L_source'] = 2.3e-3
-        parameter['C_source'] = 10e-6
-        parameter['L_cabel'] = 2.3e-3
-        parameter['R_cabel'] = 0.4
-        parameter['R_load'] = 14
-        parameter['V_dc'] = 300
-
-    # define required data for Dare_env
-    limits = dict()
-    limits['i_lim'] = 20
-    limits['v_lim'] = 600
-    ref = 200  # W
-
     t_result_mean = np.zeros([len(methode), len(num_nodes), len(t_end)])
     t_result_std = np.zeros([len(methode), len(num_nodes), len(t_end)])
 
-    def env_model_ode(t, x):  # , arg):
-        u_ode = np.array([230] * power_grid.num_source)
-        #u_random = np.random.uniform(-1, 1, power_grid.num_source) * parameter['V_dc']
-        return A_sys @ x + B_sys @ u_ode
+    ####################################################################################################################
+    # Define different functions for time-meas/debug
+
+    def env_model_ode(t, x):
+        #u_ode = np.array([230] * power_grid.num_source)   # use this for debug in case of consant input
+        return A_sys @ x + B_sys @ u_ode_constant
+        # for random action:
+        #return A_sys @ x + B_sys @ u_random_vec[:, int(t / ts)]
 
     def run_scipy_ode(t_end_ode, ode_solver_):
         ode_solver_.set_initial_value(x0, 0)
@@ -146,34 +62,33 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         plt.plot(res_list)
         plt.title('ODE')
         plt.show()
-        time.sleep(0.1)
+        time.sleep(0.5)
 
-    def run_odeint(env_model_ode, x0, t):
+    def run_odeint_debug(env_model_ode, x0, t):
         res_list = odeint(env_model_ode, x0, t, tfirst=True)
         plt.plot(t, res_list[:steps, 1], label='v1')
         plt.title('odeint')
         plt.show()
-        time.sleep(0.1)
+        time.sleep(0.5)
 
-    def run_solve_ivp(env_model_ode, t_int, x0, t_eval,
+    def run_solve_ivp_debug(env_model_ode, t_int, x0, t_eval,
                       method):
         result_ivp = solve_ivp(env_model_ode, t_int, x0, t_eval=t_eval, method=method)
         plt.plot(result_ivp.y[1], label='v1')
         plt.title('solve_ivp')
         plt.show()
-        time.sleep(0.1)
+        time.sleep(0.5)
 
-    def run_control(sys, t, u_random, x0):
+    def run_control_debug(sys, t, u_random, x0):
         T, yout_d, xout_d = control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
         plt.step(t, xout_d[1], 'r', label='v1_discret')
         plt.title('Control')
         plt.show()
-        time.sleep(0.1)
+        time.sleep(0.5)
 
     def execute_env(env, num_samples, u_env):
         # env.reset()
         for i in range(num_samples - 1):
-            # u_random = np.random.uniform(-1, 1, env.action_space.shape[0])
             _, _, _, _ = env.step(u_env[i])
 
     def execute_env_debug(env, num_samples, u_env):
@@ -189,7 +104,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         plt.step(v1_list, 'r', label='v1_discret')
         plt.title('env_standalone')
         plt.show()
-        time.sleep(0.1)
+        time.sleep(0.5)
 
     def execute_agent_in_env(agent, env, num_samples):
         obs = env.reset()
@@ -197,22 +112,30 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
             action, _states = agent.predict(obs)
             obs, _, _, _ = env.step(action)
 
+    def execute_agent_in_env_debug(agent, env, num_samples):
+        v1_list = []
+        obs = env.reset()
+        v1_list.append(obs[1])
+        for i in range(num_samples - 1):
+            action, _states = agent.predict(obs)
+            obs, _, _, _ = env.step(action)
+            v1_list.append(obs[1] * limits['v_lim'])
+        plt.step(v1_list, 'r', label='v1_discret')
+        plt.title('env_agent_interaction')
+        plt.show()
+        time.sleep(0.5)
+
     for n in range(len(methode)):
 
         for k in range(len(num_nodes)):
 
-
             # load Cm (num_nodes[k]) [c]
             f = open('CM_matrices/CM_nodes' + str(num_nodes[k]) + '.json', "r")
-            # Reading from file
             CM_list = json.loads(f.read())
-
-
 
             for l in range(len(t_end)):
                 # define time vector
                 t = np.arange(0, t_end[l] + ts, ts)
-
                 time_list = []
 
                 for c in range(num_cm):
@@ -220,9 +143,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                     CM = np.array(CM_list[c])
 
                     if methode[n] in ['env_standalone', 'env_agent_interaction']:
-                        env = Env_DARE(num_sources=num_nodes[k], num_loads=num_nodes[k], CM=CM, ts=ts, parameter=parameter,
-                                       # env = Env_DARE(CM=None, ts=ts, parameter=parameter, x0=None,
-                                       x0=None, limits=limits, refs=ref)
+                        env = Env_DARE(num_sources=num_nodes[k], num_loads=num_nodes[k], CM=CM, ts=ts,
+                                       parameter=parameter, x0=None, limits=limits, refs=200)
 
                         if methode[n] in ['env_agent_interaction']:
                             n_actions = env.action_space.shape[-1]
@@ -231,7 +153,6 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                     else:
 
-                        # Define dummy grid
                         power_grid = NodeConstructor(num_nodes[k], num_nodes[k], parameter, CM=CM)
                         A_sys, B_sys, C_sys, D_sys = power_grid.get_sys()
 
@@ -249,6 +170,11 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                         # generate init state
                         x0 = np.zeros((A_sys.shape[0],))
 
+                    ############################################################################
+                    # predefine actions to not measure the time for that
+                    u_random_vec = np.random.uniform(-1, 1, (power_grid.num_source, len(t) + 1)) * parameter['V_dc']
+                    u_ode_constant = np.array([230] * power_grid.num_source)
+
                     if methode[n] in ['scipy_ode']:
                         if methode_args[n]['integrator'] == 'lsoda':
                             ode_solver = ode(env_model_ode).set_integrator(methode_args[n]['integrator'], atol=1e-10,
@@ -258,22 +184,18 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                                                                            methode=methode_args[n]['methode'],
                                                                            atol=1e-10, rtol=1e-6)
                         ode_solver.set_initial_value(x0, 0)
-                    #######################
-                    # time loop before
-                    ##############################
+
                     if methode[n] in ['control.py']:
                         if debug:
                             u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
                                 (power_grid.num_source, len(t)))
-                            u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
+                            #u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
                             res_list = timeit.repeat(
-                                lambda: run_control(sys, t, u_fix, x0)
-                                # lambda: control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
-                                , repeat=repeat, number=loops)
+                                lambda: run_control_debug(sys, t, u_fix, x0), repeat=repeat, number=loops)
                         else:
                             u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
                                 (power_grid.num_source, len(t)))
-                            u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
+                            #u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
                             res_list = timeit.repeat(
                                 lambda: control.forced_response(sys, T=t, U=u_fix, X0=x0, return_x=True, squeeze=True)
                                 , repeat=repeat, number=loops)
@@ -288,7 +210,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                     if methode[n] in ['scipy_odeint']:
                         if debug:
-                            res_list = timeit.repeat(lambda: run_odeint(env_model_ode, x0, t), repeat=repeat,
+                            res_list = timeit.repeat(lambda: run_odeint_debug(env_model_ode, x0, t), repeat=repeat,
                                                      number=loops)
                         else:
                             res_list = timeit.repeat(lambda: odeint(env_model_ode, x0, t, tfirst=True), repeat=repeat,
@@ -296,7 +218,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                     if methode[n] in ['scipy_solve_ivp']:
                         if debug:
-                            res_list = timeit.repeat(lambda: run_solve_ivp(env_model_ode, [0, t_end[l]], x0, t_eval=t,
+                            res_list = timeit.repeat(lambda: run_solve_ivp_debug(env_model_ode, [0, t_end[l]], x0, t_eval=t,
                                                                            method=methode_args[n]), repeat=repeat,
                                                      number=loops)
                         else:
@@ -308,20 +230,24 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                         num_samples = int(t_end[l] / ts)
                         env.reset()
                         if debug:
-                            u_vec = np.ones([num_samples, env.action_space.shape[0]])
-                            u_vec = np.ones([num_samples, env.action_space.shape[0]]) * 1
+                            u_vec = np.ones([num_samples, env.action_space.shape[0]]) * 0.76666
                             res_list = timeit.repeat(lambda: execute_env_debug(env, num_samples, u_vec), repeat=repeat,
                                                      number=loops)
                         else:
-                            u_vec = np.random.uniform(-1, 1, (num_samples, env.action_space.shape[0]))
+                            # u_vec = np.random.uniform(-1, 1, (num_samples, env.action_space.shape[0]))
                             u_vec = np.ones([num_samples, env.action_space.shape[0]]) * 0.76666
                             res_list = timeit.repeat(lambda: execute_env(env, num_samples, u_vec), repeat=repeat,
                                                      number=loops)
 
                     if methode[n] in ['env_agent_interaction']:
                         num_samples = int(t_end[l] / ts)
-                        res_list = timeit.repeat(lambda: execute_agent_in_env(agent, env, num_samples), repeat=repeat,
-                                                 number=loops)
+                        if debug:
+                            res_list = timeit.repeat(lambda: execute_agent_in_env_debug(agent, env, num_samples),
+                                                     repeat=repeat,
+                                                     number=loops)
+                        else:
+                            res_list = timeit.repeat(lambda: execute_agent_in_env(agent, env, num_samples), repeat=repeat,
+                                                     number=loops)
                     # correct for loops-time execution:
                     result_per_loop = ([x / loops for x in res_list])
 

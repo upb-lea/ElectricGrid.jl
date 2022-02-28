@@ -1,8 +1,7 @@
 import json
 from os import makedirs
-import pandas as pd
 
-from pre_investigations.python.solver_investigations.timing_evaluation import plot_result, timing_experiment_simulation
+from pre_investigations.python.solver_investigations.timing_evaluation import timing_experiment_simulation
 
 parameter_used = dict()
 parameter_used['R_source'] = 0.4
@@ -13,17 +12,23 @@ parameter_used['R_cabel'] = 0.4
 parameter_used['R_load'] = 14
 parameter_used['V_dc'] = 300
 
+# define required data for Dare_env
+limits = dict()
+limits['i_lim'] = 20
+limits['v_lim'] = 600
+
 # hyperparameters:
 repeat_used = 1
 loops_used = 1
-num_cm = 3
+num_cm = 1
 t_s_used = 1e-4
-t_end_used = [0.03]  # , 0.1]
-num_nodes_used = [6, 8, 10]
-#used_methode = ['control.py', 'env_standalone', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp']
-#used_methode_args = ['discrete', '', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA']
-used_methode = [ 'env_standalone'] #, 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp']
-used_methode_args = [ ''] #, {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA']
+t_end_used = [0.5]  # , 0.1]
+num_nodes_used = [10]
+used_methode = ['control.py', 'env_standalone', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp', 'env_agent_interaction']
+used_methode_args = ['discrete', '', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA', '']
+#used_methode = ['scipy_ode']
+#used_methode_args = [{'integrator': 'lsoda', 'methode': 'bdf'}]
+
 # store HPs to json
 python_simulation_HPs = {
     't_s_used': t_s_used,
@@ -44,13 +49,10 @@ time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used,
                                            methode=used_methode,
                                            methode_args=used_methode_args,
                                            parameter=parameter_used,
+                                           limits=limits,
                                            save_data=False, save_folder_name='saves_python',
                                            debug=True)
 
 
 with open('saves/time_result_all_python.json', 'w') as outfile: json.dump(time_result, outfile)
 
-#time_result_df = pd.DataFrame(time_result.items())
-#time_result_df.to_pickle('saves_python/time_result_all.pkl.bz2')
-
-plot_result(time_result, num_nodes_used, t_end_used)
