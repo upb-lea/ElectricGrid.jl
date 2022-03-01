@@ -56,7 +56,7 @@ class NodeConstructor():
         if isinstance(CM, np.ndarray):
             assert CM.shape[0] == self.tot_ele, "Expect CM to have the same number of elements as tot_ele."
             self.CM = CM
-            self.num_connections=np.amax(CM)
+            self.num_connections = int(np.amax(CM))
         elif CM == None:
             self.generate_CM()
         else:

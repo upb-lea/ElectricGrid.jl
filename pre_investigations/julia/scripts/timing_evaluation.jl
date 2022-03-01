@@ -10,22 +10,28 @@ using DifferentialEquations
 using LSODA
 using ControlSystems
 using JSON
+using Plots
 
 include(srcdir("env.jl"))
 
 global yout
 
-function execute_env(env::SimEnv, actions::Matrix{Float64})
+function execute_env(env::SimEnv, actions::Matrix{Float64}, debug::Bool)
+    output = Vector{Float64}()
+
     RLBase.reset!(env)
     for i = 1:length(actions[1,:])
         env(actions[:,i])
+        if debug append!(output, env.state[2]*600) end
     end
+
+    return output
 end
 
 function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_nodes::Vector{Int64}=[5,10,25,50,100],
-                                        t_end::Vector{Float64}=[0.001,0.01,0.1], ts::Float64=1e-4,
+                                        t_end::Vector{Float64}=[0.001,0.01,0.1], num_cm::Int64=1, ts::Float64=1e-4,
                                         methods::Vector{String}=["control", "env_without_agent", "lsoda"],
-                                        parameter::Dict=Dict())
+                                        parameter::Dict=Dict(), debug::Bool=false)
     
     if isempty(parameter)
         parameter["R_source"] = 0.4
@@ -44,61 +50,96 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
     t_result_std = zeros(length(methods), length(num_nodes), length(t_end))
     t_num_samples = zeros(Int64, length(methods), length(num_nodes), length(t_end))
 
-    timer = nothing
 
     for n = 1:length(methods)
         for k = 1:length(num_nodes)
-            nc = py"NodeConstructor"(num_nodes[k], num_nodes[k], parameter)
-            A, B, C, D = nc.get_sys()
 
-            #println("Size of x: $(length(A[1,:]))")
-            #println("Size of u: $(length(B[1,:]))")
-
-            if methods[n] == "env_without_agent"
-                norm_array = vcat( [limits[i] for j = 1:nc.num_source for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
-                global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=parameter["V_dc"], ts=rationalize(ts))
-            elseif methods[n] == "lsoda"
-                function f!(du, u, p, t)
-                    du[:] = A * u + B * p
-                end
-            elseif methods[n] == "control"
-                Ad = exp(A*ts)
-                Bd = A \ (Ad - C) * B
-                global sys_d = ss(Ad, Bd, C, D, ts)
-            end
+            CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(num_nodes[k]) * ".json"))
 
             for l = 1:length(t_end)
                 timer = nothing
                 t = collect(0:ts:t_end[l])
-                
-                if methods[n] == "env_without_agent"
-                    RLBase.reset!(env)
-                    #global actions = rand(Float64, ( length(B[1,:]), length(t)-1 )) .*2 .-1
-                    global u = [0.7 for i = 1:length(t)]
-                    global uu = [u for i = 1:length(B[1,:]) ]
-                    global actions = mapreduce(permutedims, vcat, uu)
-                    timer = @benchmark execute_env(env, actions) samples = repeat evals = loops seconds = 1000
-                elseif methods[n] == "lsoda"
-                    p = [230.0 for i = 1:length(B[1,:])]
-                    tspan = (0.0,t_end[l])
-                    u0 = [0.0 for i = 1:length(A[1,:])]
-                    global problem = ODEProblem(f!,u0,tspan,p)
-                    timer = @benchmark solve(problem,lsoda(), reltol=1e-6, abstol=1e-6) samples = repeat evals = loops seconds = 1000
-                elseif methods[n] == "control"
-                    global x0 = [0.0 for i = 1:length(A[1,:])]
-                    #global u = rand(Float64, ( length(t) )) .*2 .-1
-                    global u = [230.0 for i = 1:length(t)]
-                    global uu = [u for i = 1:length(B[1,:]) ]
-                    global uuu = mapreduce(permutedims, vcat, uu)
-                    global ttt = t
-                    #yout = lsim(sys,uuu,ttt,x0=x0)
-                    timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
+                time_list = []
+
+                for c = 1:num_cm
+                    CM = reduce(hcat, CM_list[c])'
+                    CM = convert(Matrix{Float64}, CM)
+
+                    #nc = py"NodeConstructor"(num_nodes[k], num_nodes[k], parameter)
+                    nc = py"NodeConstructor"(num_nodes[k], num_nodes[k], parameter, CM=CM)
+                    A, B, C, D = nc.get_sys()
+
+                    #println("Size of x: $(length(A[1,:]))")
+                    #println("Size of u: $(length(B[1,:]))")
+
+                    if debug
+                        result = nothing
+                    end
+
+                    if methods[n] == "env_without_agent"
+                        norm_array = vcat( [limits[i] for j = 1:nc.num_source for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
+                        global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=parameter["V_dc"], ts=rationalize(ts))
+                    elseif methods[n] == "lsoda"
+                        function f!(du, u, p, t)
+                            du[:] = A * u + B * p
+                        end
+                    elseif methods[n] == "control"
+                        Ad = exp(A*ts)
+                        Bd = A \ (Ad - C) * B
+                        global sys_d = ss(Ad, Bd, C, D, ts)
+                    end
+                    
+                    # --- #
+
+                    if methods[n] == "env_without_agent"
+                        RLBase.reset!(env)
+                        #global actions = rand(Float64, ( length(B[1,:]), length(t)-1 )) .*2 .-1
+                        global u = [0.76666 for i = 1:length(t)]
+                        global uu = [u for i = 1:length(B[1,:]) ]
+                        global actions = mapreduce(permutedims, vcat, uu)
+                        timer = @benchmark execute_env(env, actions, false) samples = repeat evals = loops seconds = 1000
+                        if debug
+                            result = execute_env(env, actions, true)
+                        end
+                    elseif methods[n] == "lsoda"
+                        p = [230.0 for i = 1:length(B[1,:])]
+                        tspan = (0.0,t_end[l])
+                        u0 = [0.0 for i = 1:length(A[1,:])]
+                        global problem = ODEProblem(f!,u0,tspan,p)
+                        timer = @benchmark solve(problem,lsoda(), reltol=1e-6, abstol=1e-6) samples = repeat evals = loops seconds = 1000
+                        if debug
+                            result = solve(problem,lsoda(), reltol=1e-6, abstol=1e-6)
+                            result = [result.u[h][2] for h = 1:length(result)]
+                        end
+                    elseif methods[n] == "control"
+                        global x0 = [0.0 for i = 1:length(A[1,:])]
+                        #global u = rand(Float64, ( length(t) )) .*2 .-1
+                        global u = [230.0 for i = 1:length(t)]
+                        global uu = [u for i = 1:length(B[1,:]) ]
+                        global uuu = mapreduce(permutedims, vcat, uu)
+                        global ttt = t
+                        #yout = lsim(sys,uuu,ttt,x0=x0)
+                        timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
+                        if debug
+                            result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
+                            result = result'[:,2]
+                        end
+                    end
+
+                    append!(time_list, timer.times)
+                    #println("done for c=$(c) with time_list $(time_list)")
+
+                    if debug
+                        display(plot(result, title="$(methods[n]), $(num_nodes[k]), $(t_end[l]), $(c)"))
+                    end
                 end
 
+                
+
                 if timer !== nothing
-                    t_result_mean[n,k,l] = mean(timer).time / 1_000_000_000
-                    t_result_std[n,k,l] = std(timer).time / 1_000_000_000
-                    t_num_samples[n,k,l] = length(timer.times)
+                    t_result_mean[n,k,l] = mean(time_list) / 1_000_000_000
+                    t_result_std[n,k,l] = std(time_list) / 1_000_000_000
+                    t_num_samples[n,k,l] = length(time_list)
                 end
 
                 println("done for $(methods[n]) with $(num_nodes[k]) nodes and $(t_end[l]) steps")
@@ -122,7 +163,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
     result_dict
 end
 
-r = timing_experiment_simulation(5, 5, [5,10,20], [0.001,0.01,0.03])
+r = timing_experiment_simulation(5, 5, [2,4,6,8,10], [0.001,0.01,0.03], 3, 1e-4, ["control", "env_without_agent", "lsoda"], Dict(), false)
 
 open(datadir("juliaresults.json"),"w") do f 
     write(f, JSON.json(r)) 
