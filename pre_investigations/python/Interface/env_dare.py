@@ -41,14 +41,28 @@ class Reward:
 
 
 class Env_DARE(gym.Env):
-    TIMEOUT = 300
+    TIMEOUT = 1000
 
-    def __init__(self, CM, ts, parameter, x0, limits=None, refs=None, gamma=0, time_start=0):
+    def __init__(self, num_sources=2, num_loads=1, CM=None, ts=1e-4, parameter=None, x0=None, limits=None, refs=None,
+                 gamma=0, time_start=0):
+        """
+
+        :param num_sources:
+        :param num_loads:
+        :param CM: if set to None, creates random grid
+        :param ts:
+        :param parameter:
+        :param x0: if is None zero array created depending on randomly (?) generated grid
+        :param limits:
+        :param refs:
+        :param gamma:
+        :param time_start:
+        """
 
         # toDo shift gamma to env wrapper (or kwargs?)
         super(Env_DARE, self).__init__()
 
-        power_grid = NodeConstructor(2, 1, parameter, CM=CM)  # 2 Source with 2 connections
+        power_grid = NodeConstructor(num_sources, num_loads, parameter, CM=CM)  # 2 Source with 2 connections
         # power_grid.draw_graph()
 
         A, B, C, D = power_grid.get_sys()
@@ -58,15 +72,20 @@ class Env_DARE(gym.Env):
         B_d = A_inv @ (A_d - np.eye(A.shape[0])) @ B
         C_d = copy.copy(C)
 
+        if x0 is None:
+            self.x0 = np.zeros((A_d.shape[0],))
+        else:
+            self.x0 = x0
         self.time_step_size = ts
         self.sim_time_interval = None
         self.time_start = time_start
-        self.x0 = x0
         self.sys_d = control.ss(A_d, B_d, C_d, 0, dt=True)
         self.v_dc = parameter['V_dc']
 
         self.number_of_steps = 0
         self.refs = refs
+        self.done = False
+        self.normalize = True
 
         if limits is None:
             self.i_lim = None
@@ -74,8 +93,11 @@ class Env_DARE(gym.Env):
         else:
             self.i_lim = limits['i_lim']
             self.v_lim = limits['v_lim']
-            # toDo make flexible depening on state
-            self.norm_array = np.array([self.i_lim, self.v_lim, self.i_lim, self.v_lim, self.i_lim, self.i_lim])
+            # HINT: Currently only LC filters are considered! x is sorted depending on node constructor
+            # Therefore, limits are sorted in dependence of power_grid [sources (i, v),..., transitions (i - since
+            # only RL connections are considered jet)]
+            self.norm_array = np.array([self.i_lim, self.v_lim] * power_grid.num_source +
+                                       [self.i_lim] * power_grid.num_connections)
 
         self.rew = Reward(parameter, limits, self.refs, gamma)
 
@@ -103,40 +125,31 @@ class Env_DARE(gym.Env):
 
         self.current_timestep += self.time_step_size
 
-        is_done = False  # bool(
-        # limit_crashed and self._state[self.V_INDEX] < 0 and self._h_max > self._r.H0
-        # ) or self.number_of_steps >= self.TIMEOUT
-
         # todo reward design
-        if is_done:
-            reward = 1
-            if self.number_of_steps >= self.TIMEOUT:
-                reward = -1
-        else:
-            reward = 0.0
 
-        obs = self._simulate(action * self.v_dc)
+        if self.number_of_steps >= self.TIMEOUT:
+            self.done = True
 
-        reward = self.rew.rew_function(obs)
-
-        return obs, reward, is_done, {}
-
-    def _simulate(self, action, normalize=True):
+        act = action * self.v_dc
         # actions is "doubled" since in sipy ltisys.py L.3505 last is discarded
         # toDo more performant stepwise interaction possible?
         T, yout, xout = control.forced_response(self.sys_d, T=self.sim_time_interval,
-                                                U=np.array([action.squeeze(), action.squeeze()]).T,
+                                                U=np.array([act.squeeze(), act.squeeze()]).T,
                                                 X0=self._state,
                                                 return_x=True, squeeze=True)
 
         # get the last solution of the solver (2 are given)
         self._state = xout[:, -1]
 
-        if normalize:
+        if self.normalize:
             # toDo
-            return (self._state / self.norm_array)
+            obs = (yout[:, -1] / self.norm_array)
         else:
-            return self._state
+            obs = yout[:, -1]
+
+        reward = 5.0  # self.rew.rew_function(obs)
+
+        return obs, reward, self.done, {}
 
     def reset(self):
         """
@@ -146,6 +159,6 @@ class Env_DARE(gym.Env):
 
         self._state = self.x0
         self.current_timestep = self.time_start
-
+        self.done = False
         self.number_of_steps = 0
         return self._state

@@ -114,7 +114,7 @@ CM = np.array([[0, 0, 1],
 
 ref = 200  # W
 
-env = Env_DARE(CM, ts, parameter, x0, limits, ref)
+env = Env_DARE(CM=CM, ts=ts, parameter=parameter, x0=x0, limits=limits, refs=ref)
 
 v1_list = []
 
