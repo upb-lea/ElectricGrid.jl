@@ -49,14 +49,15 @@ class NodeConstructor():
         self.R_source = parameter['R_source']
         self.L_source = parameter['L_source']
         self.C_source = parameter['C_source']
-        self.R_cabel = parameter['R_cabel']
-        self.L_cabel = parameter['L_cabel']
+        self.R_cable = parameter['R_cable']
+        self.L_cable = parameter['L_cable']
         self.R_load = parameter['R_load']
         
         if isinstance(CM, np.ndarray):
             assert CM.shape[0] == self.tot_ele, "Expect CM to have the same number of elements as tot_ele."
-            self.CM = CM
-            self.num_connections = int(np.amax(CM))
+            assert CM.dtype == int, f"Expect CM to be of type int, but the dytpe is {CM.dtype}."
+            self.CM = CM.astype(int)
+            self.num_connections = np.amax(CM)
         elif CM == None:
             self.generate_CM()
         else:
@@ -66,7 +67,7 @@ class NodeConstructor():
         """Sets x based on p to zero or to the value of the counter and increments it."""
 
         # To count up the connection, cntr is returned.
-        # If only one type of cabel is used this is not necessary an can be replaced by 1
+        # If only one type of cable is used this is not necessary an can be replaced by 1
         
         if x < p:
             self.cntr += 1  
@@ -148,7 +149,7 @@ class NodeConstructor():
         CM = CM - CM.T # copy with negative sign to lower triangle
         
         # save CM
-        self.CM = CM
+        self.CM = CM.astype(int)
         
         # save number of connections
         self.num_connections = self.cntr
@@ -222,7 +223,7 @@ class NodeConstructor():
         
         for i, (idx, sign) in enumerate(zip(indizes_, signs)):
             idx = int(idx)
-            A_row[1,idx-1] = sign *1/self.L_cabel 
+            A_row[1,idx-1] = sign *1/self.L_cable 
         
         return A_row.T
     
@@ -240,12 +241,12 @@ class NodeConstructor():
             # check if its a S2S connection
             if col_idx < self.num_source: # row_idx < self.num_source and 
                 
-                A_transitions[i-1,i-1] = -self.R_cabel/self.L_cabel # self.R_cabel[i] and self.L_cabel[i]
+                A_transitions[i-1,i-1] = -self.R_cable/self.L_cable # self.R_cable[i] and self.L_cable[i]
                 
             # Then it has to be S2L
             else:
                 # easy diagonal entry
-                A_transitions[i-1,i-1] = -(self.R_cabel + self.R_load)/self.L_cabel # (self.R_cabel[i] + self.R_load[col_idx])/self.L_cabel[i] -> self.R_load[col_idx]? not sure
+                A_transitions[i-1,i-1] = -(self.R_cable + self.R_load)/self.L_cable # (self.R_cable[i] + self.R_load[col_idx])/self.L_cable[i] -> self.R_load[col_idx]? not sure
                 
                 # search for other connections to this specific load in the colum
                 CM_col = self.CM[:,col_idx]
@@ -256,7 +257,7 @@ class NodeConstructor():
                 # cross entries for the other connections to this load
                 for j, idx in enumerate(indizes):
                     idx = int(idx)
-                    A_transitions[i-1, idx-1] = -self.R_load/self.L_cabel # self.L_cabel[i] if LT is an arry with diffrent values and self.R_load[col_idx]?
+                    A_transitions[i-1, idx-1] = -self.R_load/self.L_cable # self.L_cable[i] if LT is an arry with diffrent values and self.R_load[col_idx]?
         
         return A_transitions
     
