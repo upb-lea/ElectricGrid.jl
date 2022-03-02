@@ -53,36 +53,36 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         while ode_solver_.successful() and ode_solver_.t <= steps * ts * t_end_ode:
             ode_solver_.integrate(ode_solver_.t + ts)
 
-    def run_scipy_ode_debug(t_end_ode, ode_solver_):
+    def run_scipy_ode_debug(t_end_ode, ode_solver_, num_nodes, t_end, c):
         res_list = []
         ode_solver_.set_initial_value(x0, 0)
         while ode_solver_.successful() and ode_solver_.t <= steps * ts * t_end_ode:
             result = ode_solver_.integrate(ode_solver_.t + ts)
             res_list.append(result[1])
         plt.plot(res_list)
-        plt.title('ODE')
+        plt.title('ODE, nodes:'+ str(num_nodes) + ', t_end: ' + str(t_end) + ', cm: ' + str(c+1))
         plt.show()
         time.sleep(0.5)
 
-    def run_odeint_debug(env_model_ode, x0, t):
+    def run_odeint_debug(env_model_ode, x0, t, num_nodes, t_end, c):
         res_list = odeint(env_model_ode, x0, t, tfirst=True)
         plt.plot(t, res_list[:steps, 1], label='v1')
-        plt.title('odeint')
+        plt.title('odeint, nodes:'+ str(num_nodes) + ', t_end: ' + str(t_end) + ', cm: ' + str(c+1))
         plt.show()
         time.sleep(0.5)
 
     def run_solve_ivp_debug(env_model_ode, t_int, x0, t_eval,
-                      method):
+                      method, num_nodes, t_end, c):
         result_ivp = solve_ivp(env_model_ode, t_int, x0, t_eval=t_eval, method=method)
         plt.plot(result_ivp.y[1], label='v1')
-        plt.title('solve_ivp')
+        plt.title('solve_ivp, nodes:'+ str(num_nodes) + ', t_end: ' + str(t_end) + ', cm: ' + str(c+1))
         plt.show()
         time.sleep(0.5)
 
-    def run_control_debug(sys, t, u_random, x0):
+    def run_control_debug(sys, t, u_random, x0, num_nodes, t_end, c):
         T, yout_d, xout_d = control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
         plt.step(t, xout_d[1], 'r', label='v1_discret')
-        plt.title('Control')
+        plt.title('Control, nodes:'+ str(num_nodes) + ', t_end: ' + str(t_end) + ', cm: ' + str(c+1))
         plt.show()
         time.sleep(0.5)
 
@@ -91,7 +91,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         for i in range(num_samples - 1):
             _, _, _, _ = env.step(u_env[i])
 
-    def execute_env_debug(env, num_samples, u_env):
+    def execute_env_debug(env, num_samples, u_env, num_nodes, t_end, c):
         v1_list = []
 
         obs = env.reset()
@@ -102,7 +102,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
             obs, _, _, _ = env.step(u_env[i])
             v1_list.append(obs[1] * limits['v_lim'])
         plt.step(v1_list, 'r', label='v1_discret')
-        plt.title('env_standalone')
+        plt.title('env_standalone, nodes:'+ str(num_nodes) + ', t_end: ' + str(t_end) + ', cm: ' + str(c+1))
         plt.show()
         time.sleep(0.5)
 
@@ -112,7 +112,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
             action, _states = agent.predict(obs)
             obs, _, _, _ = env.step(action)
 
-    def execute_agent_in_env_debug(agent, env, num_samples):
+    def execute_agent_in_env_debug(agent, env, num_samples, num_nodes, t_end, c):
         v1_list = []
         obs = env.reset()
         v1_list.append(obs[1])
@@ -121,7 +121,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
             obs, _, _, _ = env.step(action)
             v1_list.append(obs[1] * limits['v_lim'])
         plt.step(v1_list, 'r', label='v1_discret')
-        plt.title('env_agent_interaction')
+        plt.title('env_agent_interaction, nodes:'+ str(num_nodes) + ', t_end: ' + str(t_end) + ', cm: ' + str(c+1))
         plt.show()
         time.sleep(0.5)
 
@@ -191,7 +191,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                                 (power_grid.num_source, len(t)))
                             #u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
                             res_list = timeit.repeat(
-                                lambda: run_control_debug(sys, t, u_fix, x0), repeat=repeat, number=loops)
+                                lambda: run_control_debug(sys, t, u_fix, x0, num_nodes[k], t_end[l], c), repeat=repeat, number=loops)
                         else:
                             u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
                                 (power_grid.num_source, len(t)))
@@ -202,7 +202,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                     if methode[n] in ['scipy_ode']:
                         if debug:
-                            res_list = timeit.repeat(lambda: run_scipy_ode_debug(t_end[l], ode_solver), repeat=repeat,
+                            res_list = timeit.repeat(lambda: run_scipy_ode_debug(t_end[l], ode_solver, num_nodes[k],
+                                                                                 t_end[l], c), repeat=repeat,
                                                      number=loops)
                         else:
                             res_list = timeit.repeat(lambda: run_scipy_ode(t_end[l], ode_solver), repeat=repeat,
@@ -210,7 +211,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                     if methode[n] in ['scipy_odeint']:
                         if debug:
-                            res_list = timeit.repeat(lambda: run_odeint_debug(env_model_ode, x0, t), repeat=repeat,
+                            res_list = timeit.repeat(lambda: run_odeint_debug(env_model_ode, x0, t, num_nodes[k],
+                                                     t_end[l], c), repeat=repeat,
                                                      number=loops)
                         else:
                             res_list = timeit.repeat(lambda: odeint(env_model_ode, x0, t, tfirst=True), repeat=repeat,
@@ -218,8 +220,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                     if methode[n] in ['scipy_solve_ivp']:
                         if debug:
-                            res_list = timeit.repeat(lambda: run_solve_ivp_debug(env_model_ode, [0, t_end[l]], x0, t_eval=t,
-                                                                           method=methode_args[n]), repeat=repeat,
+                            res_list = timeit.repeat(lambda: run_solve_ivp_debug(env_model_ode, [0, t_end[l]], x0, t,
+                                                                           methode_args[n], num_nodes[k], t_end[l], c), repeat=repeat,
                                                      number=loops)
                         else:
                             res_list = timeit.repeat(lambda: solve_ivp(env_model_ode, [0, t_end[l]], x0, t_eval=t,
@@ -231,7 +233,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                         env.reset()
                         if debug:
                             u_vec = np.ones([num_samples, env.action_space.shape[0]]) * 0.76666
-                            res_list = timeit.repeat(lambda: execute_env_debug(env, num_samples, u_vec), repeat=repeat,
+                            res_list = timeit.repeat(lambda: execute_env_debug(env, num_samples, u_vec,num_nodes[k],
+                                                                               t_end[l], c), repeat=repeat,
                                                      number=loops)
                         else:
                             # u_vec = np.random.uniform(-1, 1, (num_samples, env.action_space.shape[0]))
@@ -242,7 +245,8 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                     if methode[n] in ['env_agent_interaction']:
                         num_samples = int(t_end[l] / ts)
                         if debug:
-                            res_list = timeit.repeat(lambda: execute_agent_in_env_debug(agent, env, num_samples),
+                            res_list = timeit.repeat(lambda: execute_agent_in_env_debug(agent, env, num_samples,
+                                                                                        num_nodes[k], t_end[l], c),
                                                      repeat=repeat,
                                                      number=loops)
                         else:
