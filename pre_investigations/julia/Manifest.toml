@@ -1378,6 +1378,12 @@ git-tree-sha1 = "8d0c8e3d0ff211d9ff4a0c2307d876c99d10bdf1"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
 version = "2.1.2"
 
+[[deps.StableRNGs]]
+deps = ["Random", "Test"]
+git-tree-sha1 = "3be7d49667040add7ee151fefaf1f8c04c8c8276"
+uuid = "860ef19b-820b-49d6-a774-d7a799459cd3"
+version = "1.0.0"
+
 [[deps.Static]]
 deps = ["IfElse"]
 git-tree-sha1 = "7f5a513baec6f122401abfc8e9c074fdac54f6c1"
