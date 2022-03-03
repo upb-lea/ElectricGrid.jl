@@ -6,6 +6,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def run_plt(x_py, mean_py, std_py, x_jl, mean_jl, std_jl, x_label, title):
+    plt.plot(x_py, mean_py, 'xb', label='python_mean')
+    plt.plot(x_py, mean_py, 'b')
+
+    plt.plot(x_py, (mean_py + std_py), '--b', linewidth=0.5, label='python_std')
+    plt.plot(x_py, (mean_py - std_py), '--b', linewidth=0.5)
+    plt.xticks(x_py)
+    plt.fill_between(x_py, (mean_py + std_py), (mean_py - std_py), facecolor='b', alpha=0.25)
+
+    plt.plot(x_jl, mean_jl, 'r')
+    plt.plot(x_jl, mean_jl, 'xr', label='julia_mean')
+    plt.plot(x_jl, (mean_jl + std_jl), '--r', linewidth=0.5, label='julia_std')
+    plt.plot(x_jl, (mean_jl - std_jl), '--r', linewidth=0.5)
+
+    plt.fill_between(x_jl, (mean_jl + std_jl), (mean_jl - std_jl), facecolor='r', alpha=0.25)
+    plt.xlabel(x_label)
+    plt.ylabel('$execution time\,/\,\mathrm{s}$')
+    plt.legend()
+    plt.grid()
+    plt.title(title)
+    plt.show()
+    time.sleep(1)
+
+
 def plot_python_vs_julia(results_python: dict = None, results_julia: dict = None, plt_settings: dict = None):
     """
     Function to plot the results of time comparison for scaling issue of the power grid for different number of nodes
@@ -52,73 +76,62 @@ def plot_python_vs_julia(results_python: dict = None, results_julia: dict = None
             results_python['methode'].index(plt_setting['methods_python'][m])]
         time_result_julia = np.array(results_julia['times_mean'])[
             results_julia['methods'].index(plt_setting['methods_julia'][m])]
+        sdt_result_python = np.array(results_python['times_std'])[
+            results_python['methode'].index(plt_setting['methods_python'][m])]
+        std_result_julia = np.array(results_julia['times_std'])[
+            results_julia['methods'].index(plt_setting['methods_julia'][m])]
         # iterates different methode pairs
         for x in range(len(plt_setting['x_axis'])):
             if plt_setting['x_axis'][x] == 'num_grid_nodes':
                 if plt_settings['t_end_show'] is None:
                     for l in range(len(results_python['t_end'])):
-                        plt.plot(results_python[plt_setting['x_axis'][x]], time_result_python[:, l], 'o',
-                                 label='python')
-                        plt.plot(results_julia[plt_setting['x_axis'][x]], time_result_julia[:, l], 'or', label='julia')
-                        plt.xlabel(plt_setting['x_axis'][x])
-                        plt.ylabel('$mean(execution-time)\,/\,\mathrm{s}$')
-                        plt.legend()
-                        plt.grid()
-                        plt.title(
-                            'python:' + plt_setting['methods_python'][m] + ';  julia:' + plt_setting['methods_julia'][
-                                m] +
-                            ';  t_end:' + str(results_python['t_end'][l]))
-                        plt.show()
-                        time.sleep(0.5)
+                        title = 'python:' + plt_setting['methods_python'][m] + ';  julia:' + \
+                                plt_setting['methods_julia'][
+                                    m] + ';  t_end:' + str(results_python['t_end'][l])
+
+                        run_plt(results_python[plt_setting['x_axis'][x]], time_result_python[:, l],
+                                sdt_result_python[:, l], results_julia[plt_setting['x_axis'][x]],
+                                time_result_julia[:, l], std_result_julia[:, l],
+                                plt_setting['x_axis'][x], title)
+
                 else:
                     for s in range(len(plt_settings['t_end_show'])):
                         l = results_python['t_end'].index(plt_settings['t_end_show'][s])
-                        plt.plot(results_python[plt_setting['x_axis'][x]], time_result_python[:, l], 'o',
-                                 label='python')
-                        plt.plot(results_julia[plt_setting['x_axis'][x]], time_result_julia[:, l], 'or', label='julia')
-                        plt.xlabel(plt_setting['x_axis'][x])
-                        plt.ylabel('$mean(execution-time)\,/\,\mathrm{s}$')
-                        plt.legend()
-                        plt.grid()
-                        plt.title(
-                            'python:' + plt_setting['methods_python'][m] + ';  julia:' + plt_setting['methods_julia'][
-                                m] +
-                            ';  t_end:' + str(results_python['t_end'][l]))
-                        plt.show()
-                        time.sleep(0.5)
+
+                        title = 'python:' + plt_setting['methods_python'][m] + ';  julia:' + \
+                                plt_setting['methods_julia'][
+                                    m] + ';  t_end:' + str(results_python['t_end'][l])
+
+                        run_plt(results_python[plt_setting['x_axis'][x]], time_result_python[:, l],
+                                sdt_result_python[:, l], results_julia[plt_setting['x_axis'][x]],
+                                time_result_julia[:, l], std_result_julia[:, l],
+                                plt_setting['x_axis'][x], title)
 
             if plt_setting['x_axis'][x] == 't_end':
                 if plt_settings['num_grid_nodes_show'] is None:
                     for l in range(len(results_python['num_grid_nodes'])):
-                        plt.plot(results_python[plt_setting['x_axis'][x]], time_result_python[l, :], 'o',
-                                 label='python')
-                        plt.plot(results_julia[plt_setting['x_axis'][x]], time_result_julia[l, :], 'or', label='julia')
-                        plt.xlabel(plt_setting['x_axis'][x])
-                        plt.ylabel('$mean(execution-time)\,/\,\mathrm{s}$')
-                        plt.legend()
-                        plt.grid()
-                        plt.title(
-                            'python:' + plt_setting['methods_python'][m] + ';  julia:' + plt_setting['methods_julia'][
-                                m] +
-                            ';  grid_nodes:' + str(results_python['num_grid_nodes'][l]))
-                        plt.show()
-                        time.sleep(0.5)
+                        title = 'python:' + plt_setting['methods_python'][m] + ';  julia:' + \
+                                plt_setting['methods_julia'][m] + ';  grid_nodes:' + \
+                                str(results_python['num_grid_nodes'][l])
+
+                        run_plt(results_python[plt_setting['x_axis'][x]], time_result_python[l, :],
+                                sdt_result_python[l, :], results_julia[plt_setting['x_axis'][x]],
+                                time_result_julia[l, :], std_result_julia[l, :],
+                                plt_setting['x_axis'][x], title)
+
+
                 else:
-                    for s in range(len(plt_settings['t_end_show'])):
-                        l = results_python['t_end'].index(plt_settings['t_end_show'][s])
-                        plt.plot(results_python[plt_setting['x_axis'][x]], time_result_python[:, l], 'o',
-                                 label='python')
-                        plt.plot(results_julia[plt_setting['x_axis'][x]], time_result_julia[:, l], 'or', label='julia')
-                        plt.xlabel(plt_setting['x_axis'][x])
-                        plt.ylabel('$mean(execution-time)\,/\,\mathrm{s}$')
-                        plt.legend()
-                        plt.grid()
-                        plt.title(
-                            'python:' + plt_setting['methods_python'][m] + ';  julia:' + plt_setting['methods_julia'][
-                                m] +
-                            ';  grid_nodes:' + str(results_python['num_grid_nodes'][l]))
-                        plt.show()
-                        time.sleep(0.5)
+                    for s in range(len(plt_settings['num_grid_nodes_show'])):
+                        l = results_python['num_grid_nodes'].index(plt_settings['num_grid_nodes_show'][s])
+
+                        title = 'python:' + plt_setting['methods_python'][m] + ';  julia:' + \
+                                plt_setting['methods_julia'][m] + ';  grid_nodes:' + \
+                                str(results_python['num_grid_nodes'][l])
+
+                        run_plt(results_python[plt_setting['x_axis'][x]], time_result_python[l, :],
+                                sdt_result_python[l, :], results_julia[plt_setting['x_axis'][x]],
+                                time_result_julia[l, :], std_result_julia[l, :],
+                                plt_setting['x_axis'][x], title)
 
 
 if __name__ == '__main__':
@@ -130,10 +143,15 @@ if __name__ == '__main__':
     # Reading from file
     time_result_julia = json.loads(f.read())
 
-    plt_setting = dict({'x_axis': ['num_grid_nodes', 't_end'],  # alternative: 't_End'
-                        'methods_python': ['control.py', 'env_standalone'],
-                        'methods_julia': ['control', 'lsoda'],
-                        't_end_show': [0.01],
-                        'num_grid_nodes_show': [10]})
+    plt_setting = dict({'x_axis': ['num_grid_nodes', 't_end'],  # alternative: 't_end'
+                        'methods_python': ['control.py', 'env_standalone', 'env_agent_interaction',
+                                           'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp'],
+                        'methods_julia': ['control', 'env_without_agent', 'env_with_agent',
+                                          'lsoda', 'lsoda', 'lsoda'],
+                        #'methods_python': ['control.py'],
+                        #'methods_julia': ['control'],
+                        't_end_show': None,  # [0.03],
+                        'num_grid_nodes_show': None#[18, 20]
+                         })
 
     plot_python_vs_julia(time_result_python, time_result_julia, plt_setting)
