@@ -17,17 +17,19 @@ limits = dict()
 limits['i_lim'] = 20
 limits['v_lim'] = 600
 
+debug = False
+
 # hyperparameters:
 repeat_used = 1
 loops_used = 1
-num_cm = 1
+num_cm = 30
 t_s_used = 1e-4
-t_end_used = [0.01, 0.1]  # , 0.1]
-num_nodes_used = [4, 6, 8]
-used_methode = ['control.py', 'env_standalone', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp', 'env_agent_interaction']
-used_methode_args = ['discrete', '', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA', '']
-#used_methode = ['scipy_ode']
-#used_methode_args = [{'integrator': 'lsoda', 'methode': 'bdf'}]
+t_end_used = [0.03]  # , 0.1]
+num_nodes_used = [8]
+#used_methode = ['control.py', 'env_standalone', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp', 'env_agent_interaction']
+#used_methode_args = ['discrete', '', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA', '']
+used_methode = ['control.py']#, 'env_standalone', 'scipy_solve_ivp']
+used_methode_args = ['discrete']#, '', 'LSODA']
 
 # store HPs to json
 python_simulation_HPs = {
@@ -51,8 +53,11 @@ time_result = timing_experiment_simulation(repeat=repeat_used, loops=loops_used,
                                            parameter=parameter_used,
                                            limits=limits,
                                            save_data=False, save_folder_name='saves_python',
-                                           debug=True)
+                                           debug=debug)
 
-
-with open('saves/time_result_all_python.json', 'w') as outfile: json.dump(time_result, outfile)
+if debug:
+    with open('saves/AAAAtime_result_all_python_debug_nodes'+str(num_nodes_used[0])+'t_end'
+              +str(t_end_used[0])+'.json', 'w') as outfile: json.dump(time_result, outfile)
+else:
+    with open('saves/time_result_all_python.json', 'w') as outfile: json.dump(time_result, outfile)
 

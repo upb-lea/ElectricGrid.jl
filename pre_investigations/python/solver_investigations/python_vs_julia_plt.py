@@ -7,12 +7,14 @@ import numpy as np
 
 
 def run_plt(x_py, mean_py, std_py, x_jl, mean_jl, std_jl, x_label, title):
+
+    #plt.figure(dpi=200, figsize=(15,9))
     plt.plot(x_py, mean_py, 'xb', label='python_mean')
     plt.plot(x_py, mean_py, 'b')
 
     plt.plot(x_py, (mean_py + std_py), '--b', linewidth=0.5, label='python_std')
     plt.plot(x_py, (mean_py - std_py), '--b', linewidth=0.5)
-    plt.xticks(x_py)
+    #plt.xticks(x_py)
     plt.fill_between(x_py, (mean_py + std_py), (mean_py - std_py), facecolor='b', alpha=0.25)
 
     plt.plot(x_jl, mean_jl, 'r')
@@ -135,22 +137,22 @@ def plot_python_vs_julia(results_python: dict = None, results_julia: dict = None
 
 
 if __name__ == '__main__':
-    f = open('saves/time_result_all_python.json', "r")
+    f = open('saves/time_result_all_python_1cm.json', "r")
     # Reading from file
     time_result_python = json.loads(f.read())
 
-    f = open('saves/time_result_all_julia.json', "r")
+    f = open('saves/time_results_all_julia_1cm.json', "r")
     # Reading from file
     time_result_julia = json.loads(f.read())
 
-    plt_setting = dict({'x_axis': ['num_grid_nodes', 't_end'],  # alternative: 't_end'
-                        'methods_python': ['control.py', 'env_standalone', 'env_agent_interaction',
-                                           'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp'],
-                        'methods_julia': ['control', 'env_without_agent', 'env_with_agent',
-                                          'lsoda', 'lsoda', 'lsoda'],
-                        #'methods_python': ['control.py'],
-                        #'methods_julia': ['control'],
-                        't_end_show': None,  # [0.03],
+    plt_setting = dict({'x_axis': ['num_grid_nodes'],  # alternative: 't_end'
+                        'methods_python': ['scipy_odeint'],#, 'env_standalone'],#, 'scipy_odeint'],
+                        #                   'scipy_ode', 'scipy_solve_ivp'],
+                        'methods_julia': ['lsoda'],#, 'env_without_agent'],#, 'lsoda'],
+                        #                  'lsoda', 'lsoda', 'lsoda'],
+                        #'methods_python': ['scipy_solve_ivp'],
+                        #'methods_julia': ['lsoda'],
+                        't_end_show': [0.03],  # ,
                         'num_grid_nodes_show': None#[18, 20]
                          })
 
