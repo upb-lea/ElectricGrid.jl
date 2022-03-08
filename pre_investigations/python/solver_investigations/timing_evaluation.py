@@ -84,9 +84,9 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
     def run_solve_ivp_debug(env_model_ode, t_int, x0, t_eval,
                       method, k, l, c, n):
-        result_ivp = solve_ivp(env_model_ode, t_int, x0, method=method, rtol=1e-6, atol=1e-6)
+        result_ivp = solve_ivp(env_model_ode, t_int, x0, method=method,t_eval=t_eval, rtol=1e-6, atol=1e-6)
         plt.plot(result_ivp.y[1], label='v1')
-        plt.title('solve_ivp, nodes:'+ str(num_nodes[k]) + ', t_end: ' + str(t_end[l]) + ', cm: ' + str(c+1))
+        plt.title('solve_ivp (' +methode_args[n]+'), nodes:'+ str(num_nodes[k]) + ', t_end: ' + str(t_end[l]) + ', cm: ' + str(c+1))
         plt.show()
         time.sleep(0.5)
         y_debug[methode[n]+'_c'+str(c)+'_nodes'+str(num_nodes[k])+'_tend'+str(t_end[l])] = result_ivp.y.tolist()
