@@ -70,25 +70,33 @@ function create_agent(na, ns)
 end
 
 function execute_env(env::SimEnv, actions::Matrix{Float64}, debug::Bool)
-    output = Vector{Float64}()
+    if debug
+        output = zeros(length(env.A[1,:]),length(actions[1,:])+1)
+    else
+        output = 0.0
+    end
 
     RLBase.reset!(env)
     for i = 1:length(actions[1,:])
         env(actions[:,i])
-        if debug append!(output, env.state[2]*600) end
+        if debug output[:,i+1] = env.state.*env.norm_array end
     end
 
     return output
 end
 
 function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
-    output = Vector{Float64}()
+    if debug
+        output = zeros(length(env.A[1,:]),length(actions[1,:])+1)
+    else
+        output = 0.0
+    end
 
     RLBase.reset!(env)
     for i = 1:t_len
         action = agent(env)
         env(action)
-        if debug append!(output, env.state[2]*600) end
+        if debug output[:,i+1] = env.state.*env.norm_array end
     end
 
     return output
@@ -103,8 +111,8 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
         parameter["R_source"] = 0.4
         parameter["L_source"] = 2.3e-3
         parameter["C_source"] = 10e-6
-        parameter["L_cabel"] = 2.3e-3
-        parameter["R_cabel"] = 0.4
+        parameter["L_cable"] = 2.3e-3
+        parameter["R_cable"] = 0.4
         parameter["R_load"] = 14
         parameter["V_dc"] = 300
     end
@@ -112,9 +120,17 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
     limits = Dict("i_lim" => 20, "v_lim" => 600)
     ref = 200
 
-    t_result_mean = zeros(length(t_end), length(num_nodes), length(methods))
-    t_result_std = zeros(length(t_end), length(num_nodes), length(methods))
-    t_num_samples = zeros(Int64, length(t_end), length(num_nodes), length(methods))
+    if debug
+        t_result_mean = zeros(num_cm, length(t_end), length(num_nodes), length(methods))
+        t_result_std = zeros(num_cm, length(t_end), length(num_nodes), length(methods))
+        t_num_samples = zeros(Int64, num_cm, length(t_end), length(num_nodes), length(methods))
+        #results = Array{Matrix}(undef, num_cm, length(t_end), length(num_nodes), length(methods))
+        results = Dict()
+    else
+        t_result_mean = zeros(length(t_end), length(num_nodes), length(methods))
+        t_result_std = zeros(length(t_end), length(num_nodes), length(methods))
+        t_num_samples = zeros(Int64, length(t_end), length(num_nodes), length(methods))
+    end
 
 
     for n = 1:length(methods)
@@ -129,7 +145,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
 
                 for c = 1:num_cm
                     CM = reduce(hcat, CM_list[c])'
-                    CM = convert(Matrix{Int64}, CM)
+                    CM = convert(Matrix{Int}, CM)
 
                     #nc = py"NodeConstructor"(num_nodes[k], num_nodes[k], parameter)
                     nc = py"NodeConstructor"(num_nodes[k], num_nodes[k], parameter, CM=CM)
@@ -142,6 +158,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
 
                     if debug
                         result = nothing
+                        resulttoplot = nothing
                     end
 
                     if methods[n] == "env_without_agent"
@@ -172,12 +189,15 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         timer = @benchmark execute_env(env, actions, false) samples = repeat evals = loops seconds = 1000
                         if debug
                             result = execute_env(env, actions, true)
+                            resulttoplot = result[2,:]
                         end
                     elseif methods[n] == "env_with_agent"
                         RLBase.reset!(env)
-                        timer = @benchmark execute_env(env, agent, length(t), false) samples = repeat evals = loops seconds = 1000
+                        global tt = t
+                        timer = @benchmark execute_env(env, agent, length(tt), false) samples = repeat evals = loops seconds = 1000
                         if debug
-                            result = execute_env(env, agent, length(t), true)
+                            result = execute_env(env, agent, length(tt), true)
+                            resulttoplot = result[2,:]
                         end
                     elseif methods[n] == "lsoda"
                         p = [230.0 for i = 1:na]
@@ -187,7 +207,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         timer = @benchmark solve(problem,lsoda(), reltol=1e-6, abstol=1e-6) samples = repeat evals = loops seconds = 1000
                         if debug
                             result = solve(problem,lsoda(), reltol=1e-6, abstol=1e-6)
-                            result = [result.u[h][2] for h = 1:length(result)]
+                            resulttoplot = [result.u[h][2] for h = 1:length(result)]
                         end
                     elseif methods[n] == "control"
                         global x0 = [0.0 for i = 1:ns]
@@ -200,21 +220,28 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
                         if debug
                             result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
-                            result = result'[:,2]
+                            resulttoplot = result'[:,2]
                         end
                     end
 
-                    append!(time_list, timer.times)
-                    #println("done for c=$(c) with time_list $(time_list)")
+                    if debug
+                        t_result_mean[c,l,k,n] = mean(timer.times) / 1_000_000_000
+                        t_result_std[c,l,k,n] = std(timer.times) / 1_000_000_000
+                        t_num_samples[c,l,k,n] = length(timer.times)
+                    else
+                        append!(time_list, timer.times)
+                        #println("done for c=$(c) with time_list $(time_list)")
+                    end
 
                     if debug
-                        display(plot(result, title="$(methods[n]), $(num_nodes[k]), $(t_end[l]), $(c)"))
+                        results["$(methods[n])_c$(c)_nodes$(num_nodes[k])_tend$(t_end[l])"] = result'
+                        display(plot(resulttoplot, title="$(methods[n]), $(num_nodes[k]), $(t_end[l]), $(c)"))
                     end
                 end
 
                 
 
-                if timer !== nothing
+                if timer !== nothing && !debug
                     t_result_mean[l,k,n] = mean(time_list) / 1_000_000_000
                     t_result_std[l,k,n] = std(time_list) / 1_000_000_000
                     t_num_samples[l,k,n] = length(time_list)
@@ -237,6 +264,10 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                             "(grid size = 2*num_grid_nodes). " *
                             "Each experiment is executed loops*repeats-times " *
                             "while the mean and std is calculated based on repeats"
+    result_dict["name"] = "julia_"
+    if debug result_dict["name"] *= "debug_" end
+    result_dict["name"] *= "$(join(methods,","))_$(join(num_nodes,","))_$(join(t_end,","))_cm=$(num_cm)_loops=$(loops)_repeat=$(repeat)"
+    if debug result_dict["y_debug"] = results end
     
     result_dict
 end

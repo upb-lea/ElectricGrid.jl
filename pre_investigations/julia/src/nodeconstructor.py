@@ -55,7 +55,7 @@ class NodeConstructor():
         
         if isinstance(CM, np.ndarray):
             assert CM.shape[0] == self.tot_ele, "Expect CM to have the same number of elements as tot_ele."
-            assert CM.dtype == int, f"Expect CM to be of type int, but the dytpe is {CM.dtype}."
+            #assert CM.dtype == int64, f"Expect CM to be of type int, but the dytpe is {CM.dtype}."
             self.CM = CM.astype(int)
             self.num_connections = np.amax(CM)
         elif CM == None:
