@@ -168,7 +168,8 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         norm_array = vcat( [limits[i] for j = 1:nc.num_source for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
                         global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=parameter["V_dc"], ts=rationalize(ts))
                         global agent = create_agent(na, ns)
-                    elseif methods[n] == "lsoda"
+                    elseif methods[n] == "lsoda" || methods[n] == "DP5" || methods[n] == "BS3"
+                        global tss = ts
                         function f!(du, u, p, t)
                             du[:] = A * u + B * p
                         end
@@ -199,14 +200,26 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                             result = execute_env(env, agent, length(tt), true)
                             resulttoplot = result[2,:]
                         end
-                    elseif methods[n] == "lsoda"
+                    elseif methods[n] == "lsoda" || methods[n] == "DP5" || methods[n] == "BS3"
                         p = [230.0 for i = 1:na]
                         tspan = (0.0,t_end[l])
                         u0 = [0.0 for i = 1:ns]
                         global problem = ODEProblem(f!,u0,tspan,p)
-                        timer = @benchmark solve(problem,lsoda(), reltol=1e-6, abstol=1e-6) samples = repeat evals = loops seconds = 1000
+                        if methods[n] == "lsoda"
+                            timer = @benchmark solve(problem,lsoda(), reltol=1e-6, abstol=1e-6, saveat=tss) samples = repeat evals = loops seconds = 1000
+                        elseif methods[n] == "DP5"
+                            timer = @benchmark solve(problem,DP5(), reltol=1e-6, abstol=1e-6, saveat=tss) samples = repeat evals = loops seconds = 1000
+                        else
+                            timer = @benchmark solve(problem,BS3(), reltol=1e-6, abstol=1e-6, saveat=tss) samples = repeat evals = loops seconds = 1000
+                        end
                         if debug
-                            result = solve(problem,lsoda(), reltol=1e-6, abstol=1e-6)
+                            if methods[n] == "lsoda"
+                                result = solve(problem,lsoda(), reltol=1e-6, abstol=1e-6, saveat=tss)
+                            elseif methods[n] == "DP5"
+                                result = solve(problem,DP5(), reltol=1e-6, abstol=1e-6, saveat=tss)
+                            else
+                                result = solve(problem,BS3(), reltol=1e-6, abstol=1e-6, saveat=tss)
+                            end
                             resulttoplot = [result.u[h][2] for h = 1:length(result)]
                         end
                     elseif methods[n] == "control"
