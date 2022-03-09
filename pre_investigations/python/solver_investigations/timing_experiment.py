@@ -1,6 +1,8 @@
 import json
 from os import makedirs
+import numpy as np
 
+a = np.dot()
 from pre_investigations.python.solver_investigations.timing_evaluation import timing_experiment_simulation
 
 parameter_used = dict()
@@ -26,7 +28,7 @@ num_cm = 3
 t_s_used = 1e-4
 t_end_used = [0.03]  # , 0.1]
 num_nodes_used = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ,15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-                  29, 30, 35, 40, 45, 50, 55, 60]#, 65, 70, 75, 80, 85, 90, 95, 100]#, 105, 110, 115, 120, 125, 130]
+                  29, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]#, 105, 110, 115, 120, 125, 130]
 #used_methode = ['control.py', 'env_standalone', 'scipy_ode', 'scipy_odeint', 'scipy_solve_ivp', 'env_agent_interaction']
 #used_methode_args = ['discrete', '', {'integrator': 'lsoda', 'methode': 'bdf'}, 'LSODA', 'LSODA', '']
 used_methode = ['control.py', 'scipy_solve_ivp', 'scipy_solve_ivp']#, 'scipy_solve_ivp']#, 'env_standalone', 'scipy_solve_ivp']
@@ -60,5 +62,5 @@ if debug:
     with open('saves/time_result_all_python_debug_nodes'+str(num_nodes_used[0])+'t_end'
               +str(t_end_used[0])+'.json', 'w') as outfile: json.dump(time_result, outfile)
 else:
-    with open('saves/time_result_all_python.json', 'w') as outfile: json.dump(time_result, outfile)
+    with open('saves/time_result_all_python_control.json', 'w') as outfile: json.dump(time_result, outfile)
 
