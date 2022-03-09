@@ -12,8 +12,11 @@ using LinearAlgebra
 printit = false
 discrete = false
 num_cm = 1
-num_mat_start = 110
+num_mat_start = 2
 num_mat_end = num_mat_start
+use_cm = false
+num_nodes = 1
+num_loads = 1
 
 ts=1e-4
 
@@ -37,13 +40,18 @@ for n=num_mat_start:num_mat_end
 
     global results[n] = Dict()
 
-    CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(n) * ".json"))
+    if use_cm
+        CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(n) * ".json"))
+    end
 
     for i=1:num_cm
-        CM = reduce(hcat, CM_list[i])'
-        CM = convert(Matrix{Int}, CM)
-
-        nc = py"NodeConstructor"(n, n, parameter, CM=CM)
+        if use_cm
+            CM = reduce(hcat, CM_list[i])'
+            CM = convert(Matrix{Int}, CM)
+            nc = py"NodeConstructor"(n, n, parameter, CM=CM)
+        else
+            nc = py"NodeConstructor"(num_nodes, num_loads, parameter)
+        end
 
         global A, B, C, D = nc.get_sys()
         if discrete A = exp(A*ts) end
