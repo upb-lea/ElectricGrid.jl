@@ -137,7 +137,7 @@ def plot_python_vs_julia(results_python: dict = None, results_julia: dict = None
 
 
 if __name__ == '__main__':
-    f = open('saves/time_result_all_python.json', "r")
+    f = open('saves/time_result_all_pythoncontrol_RK45_RK23.json', "r")
     # Reading from file
     time_result_python = json.loads(f.read())
 

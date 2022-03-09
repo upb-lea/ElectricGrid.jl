@@ -2,7 +2,7 @@ import json
 from os import makedirs
 import numpy as np
 
-a = np.dot()
+
 from pre_investigations.python.solver_investigations.timing_evaluation import timing_experiment_simulation
 
 parameter_used = dict()
