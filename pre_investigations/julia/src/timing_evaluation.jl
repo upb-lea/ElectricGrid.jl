@@ -235,6 +235,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         global uuu = mapreduce(permutedims, vcat, uu)
                         global ttt = t
                         #yout = lsim(sys,uuu,ttt,x0=x0)
+                        lsim(sys_d,uuu,ttt,x0=x0)
                         timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
                         if debug
                             result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)

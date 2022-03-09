@@ -15,7 +15,7 @@ num_cm = 1
 num_mat_start = 2
 num_mat_end = num_mat_start
 use_cm = false
-num_nodes = 1
+num_nodes = 2
 num_loads = 1
 
 ts=1e-4
