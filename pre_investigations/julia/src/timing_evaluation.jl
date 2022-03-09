@@ -187,6 +187,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         global u = [0.76666 for i = 1:length(t)]
                         global uu = [u for i = 1:na ]
                         global actions = mapreduce(permutedims, vcat, uu)
+                        execute_env(env, actions, false)
                         timer = @benchmark execute_env(env, actions, false) samples = repeat evals = loops seconds = 1000
                         if debug
                             result = execute_env(env, actions, true)
@@ -195,6 +196,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                     elseif methods[n] == "env_with_agent"
                         RLBase.reset!(env)
                         global tt = t
+                        execute_env(env, agent, length(tt), false)
                         timer = @benchmark execute_env(env, agent, length(tt), false) samples = repeat evals = loops seconds = 1000
                         if debug
                             result = execute_env(env, agent, length(tt), true)
@@ -206,10 +208,13 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         u0 = [0.0 for i = 1:ns]
                         global problem = ODEProblem(f!,u0,tspan,p)
                         if methods[n] == "lsoda"
+                            solve(problem,lsoda(), reltol=1e-6, abstol=1e-6, saveat=tss)
                             timer = @benchmark solve(problem,lsoda(), reltol=1e-6, abstol=1e-6, saveat=tss) samples = repeat evals = loops seconds = 1000
                         elseif methods[n] == "DP5"
+                            solve(problem,DP5(), reltol=1e-6, abstol=1e-6, saveat=tss)
                             timer = @benchmark solve(problem,DP5(), reltol=1e-6, abstol=1e-6, saveat=tss) samples = repeat evals = loops seconds = 1000
                         else
+                            solve(problem,BS3(), reltol=1e-6, abstol=1e-6, saveat=tss)
                             timer = @benchmark solve(problem,BS3(), reltol=1e-6, abstol=1e-6, saveat=tss) samples = repeat evals = loops seconds = 1000
                         end
                         if debug
