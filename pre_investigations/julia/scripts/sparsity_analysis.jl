@@ -10,10 +10,10 @@ using Plots
 using LinearAlgebra
 
 printit = true
-discrete = true
-num_cm = 30
-num_mat_start = 8
-num_mat_end = 8
+discrete = false
+num_cm = 1
+num_mat_start = 2
+num_mat_end = 30
 
 ts=1e-4
 
@@ -27,6 +27,7 @@ parameter["R_load"] = 14
 parameter["V_dc"] = 300
 
 results = Dict()
+results[num_mat_start - 1] = 0.0
 
 for n=num_mat_start:num_mat_end
     if printit
@@ -83,8 +84,8 @@ for n=num_mat_start:num_mat_end
         if printit
             println("A: $(ns)x$(ns)")
             println("Anzahl Nullen: $(null),   Anzahl Nicht-Null: $(notnull)")
-            println("Ratio Nicht-Null/Null: $(round(notnull/null, digits=4))")
-            println("Anteil Nullen: $(round((1-(notnull/null))*100, digits=2))%")
+            #println("Ratio Nicht-Null/Null: $(round(notnull/null, digits=4))")
+            println("Anteil Nullen: $(round((null/(null + notnull))*100, digits=2))%")
             if discrete
                 println("Eigenwerte abs >= 1: $(evg1)")
                 println("Größter abs EW: $(ev_gr)")
@@ -95,10 +96,10 @@ for n=num_mat_start:num_mat_end
             println(" ")
         end
 
-        global results[n][i] = round((1-(notnull/null))*100, digits=2)
+        global results[n][i] = round((null/(null + notnull))*100, digits=2)
     end
 end
 
-arraytoplot = [results[n][1] for n=num_mat_start:num_mat_end]
+arraytoplot = [results[n][1] for n=num_mat_start-1:num_mat_end]
 
 plot(arraytoplot)
