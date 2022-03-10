@@ -22,6 +22,9 @@ def run_plt(x_py, mean_py, std_py, x_jl, mean_jl, std_jl, x_label, title):
     plt.plot(x_jl, (mean_jl + std_jl), '--r', linewidth=0.5, label='julia_std')
     plt.plot(x_jl, (mean_jl - std_jl), '--r', linewidth=0.5)
 
+    #plt.ylim([0, 10])
+    #plt.xlim([2, 50])
+
     plt.fill_between(x_jl, (mean_jl + std_jl), (mean_jl - std_jl), facecolor='r', alpha=0.25)
     plt.xlabel(x_label)
     plt.ylabel('$execution time\,/\,\mathrm{s}$')
@@ -100,7 +103,8 @@ def plot_python_vs_julia(results_python: dict = None, results_julia: dict = None
                     for s in range(len(plt_settings['t_end_show'])):
                         l = results_python['t_end'].index(plt_settings['t_end_show'][s])
 
-                        title = 'python:' + plt_setting['methods_python'][m] + ';  julia:' + \
+                        title = 'python:' + plt_setting['methods_python'][m]+ '_'+results_python['methode_args'][m] \
+                                + ';  julia:' + \
                                 plt_setting['methods_julia'][
                                     m] + ';  t_end:' + str(results_python['t_end'][l])
 
@@ -146,9 +150,9 @@ if __name__ == '__main__':
     time_result_julia = json.loads(f.read())
 
     plt_setting = dict({'x_axis': ['num_grid_nodes'],  # alternative: 't_end'
-                        'methods_python': ["control.py", "scipy_solve_ivp", "scipy_solve_ivp"],#, 'env_standalone'],#, 'scipy_odeint'],
+                        'methods_python': ["scipy_solve_ivp"],#, 'env_standalone'],#, 'scipy_odeint'],
                         #                   'scipy_ode', 'scipy_solve_ivp'],
-                        'methods_julia': ["control","DP5","BS3"],#, 'env_without_agent'],#, 'lsoda'],
+                        'methods_julia': ["BS3"],#, 'env_without_agent'],#, 'lsoda'],
                         #                  'lsoda', 'lsoda', 'lsoda'],
                         #'methods_python': ['scipy_solve_ivp'],
                         #'methods_julia': ['lsoda'],

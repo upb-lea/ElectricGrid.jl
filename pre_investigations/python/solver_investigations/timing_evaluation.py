@@ -1,12 +1,22 @@
 import copy
 import json
+import os
 
 import time
 import timeit
 from os import makedirs
+from pprint import pprint
 
 import control
 import matplotlib.pyplot as plt
+
+#num = 16
+#os.system("export OMP_NUM_THREADS="+str(num))
+#os.system("exportMKL_NUM_THREADS="+str(num))
+#os.system("exportNUMEXPR_NUM_THREADS="+str(num))
+
+from threadpoolctl import threadpool_limits, threadpool_info
+
 import numpy as np
 import pandas as pd
 import scipy
@@ -219,7 +229,9 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                             u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
                                 (power_grid.num_source, len(t)))
                             #u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
-                            res_list = timeit.repeat(
+                            with threadpool_limits(limits=methode_args[n]):
+                                #pprint(threadpool_info())
+                                res_list = timeit.repeat(
                                 lambda: control.forced_response(sys, T=t, U=u_fix, X0=x0, return_x=True, squeeze=True)
                                 , repeat=repeat, number=loops)
 
