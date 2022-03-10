@@ -10,10 +10,18 @@ using Profile
 using PProf
 using LinearAlgebra
 using BenchmarkTools
+using CUDA
 
 ts=1e-4
+node = 8
+cm = 1
+num_threads = 8
+useCUDA = true
 
-BLAS.set_num_threads(1)
+if !useCUDA
+    ccall((:openblas_get_num_threads64_, Base.libblas_name), Cint, ())
+    BLAS.set_num_threads(num_threads)
+end
 
 parameter=Dict()
 parameter["R_source"] = 0.4
@@ -26,38 +34,21 @@ parameter["V_dc"] = 300
 
 results = Dict()
 
-CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes8.json"))
-
-CM = reduce(hcat, CM_list[1])'
-CM = convert(Matrix{Int}, CM)
-nc = py"NodeConstructor"(8, 8, parameter, CM=CM)
-
-A, B, C, D = nc.get_sys()
-ns = length(A[1,:])
-na = length(B[1,:])
-
-t = collect(0:ts:0.03)
-
-Ad = exp(A*ts)
-Bd = A \ (Ad - C) * B
-sys_d = ss(Ad, Bd, C, D, ts)
-
-x0 = [0.0 for i = 1:ns]
-u = [230.0 for i = 1:length(t)]
-uu = [u for i = 1:na ]
-uuu = mapreduce(permutedims, vcat, uu)
-ttt = t
+CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(node) * ".json"))
 
 function prepareCM(n)
     global CM = reduce(hcat, CM_list[n])'
     global CM = convert(Matrix{Int}, CM)
-    global nc = py"NodeConstructor"(8, 8, parameter, CM=CM)
+    global nc = py"NodeConstructor"(node, node, parameter, CM=CM)
 
     global A, B, C, D = nc.get_sys()
     global ns = length(A[1,:])
     global na = length(B[1,:])
 
     global t = collect(0:ts:0.03)
+
+    global hallo = CuArray{Float32}(undef, (1,2));
+    global hallo .= 5
 
     global Ad = exp(A*ts)
     global Bd = A \ (Ad - C) * B
@@ -68,6 +59,30 @@ function prepareCM(n)
     global uu = [u for i = 1:na ]
     global uuu = mapreduce(permutedims, vcat, uu)
     global ttt = t
+
+    if useCUDA
+        #=
+        global Ad = CuArray(Ad)
+        global Bd = CuArray(Bd)
+        global C = CuArray(C)
+        global D = CUDA.zeros(Float64, size(Bd))
+        global sys_d = HeteroStateSpace(Ad, Bd, C, D, ts)
+
+        global x0 = CuArray(x0)
+        global uuu = CuArray(uuu)
+        global ttt = CuArray(ttt)
+        =#
+        
+        global Ad = CuArray(Float32.(Ad))
+        global Bd = CuArray(Float32.(Bd))
+        global C = CuArray(Float32.(C))
+        global D = CUDA.zeros(Float32, size(Bd))
+        global sys_d = HeteroStateSpace(Ad, Bd, C, D, ts)
+
+        global x0 = CuArray(Float32.(x0))
+        global uuu = CuArray(Float32.(uuu))
+        #global ttt = CuArray(Float32.(ttt))
+    end
     return nothing
 end
 
@@ -98,7 +113,7 @@ end
 end
 
 function investigate(sys_d,uuu,ttt,x0)
-    result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0);
+    global result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0);
     return nothing
 end
 
@@ -107,4 +122,7 @@ end
 #pprof(;webport=58699)
 #mul!(x0,B,uuu[:,1])
 
-@benchmark ltitr2(Ad,Bd,uuu,x0)
+prepareCM(cm)
+
+#@benchmark ltitr2(Ad,Bd,uuu,x0)
+@benchmark investigate(sys_d,uuu,ttt,x0)

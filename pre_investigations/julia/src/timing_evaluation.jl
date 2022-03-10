@@ -10,6 +10,7 @@ using JSON
 using Plots
 using Flux
 using StableRNGs
+using CUDA
 
 include(srcdir("env.jl"))
 
@@ -173,10 +174,25 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         function f!(du, u, p, t)
                             du[:] = A * u + B * p
                         end
-                    elseif methods[n] == "control"
+                    elseif methods[n] == "control" || methods[n] == "control1" || methods[n] == "control16"
                         Ad = exp(A*ts)
                         Bd = A \ (Ad - C) * B
                         global sys_d = ss(Ad, Bd, C, D, ts)
+                        if methods[n] == "control"
+                            BLAS.set_num_threads(8)
+                        elseif methods[n] == "control1"
+                            BLAS.set_num_threads(1)
+                        else
+                            BLAS.set_num_threads(16)
+                        end
+                    elseif methods[n] == "controlCUDA"
+                        Ad = exp(A*ts)
+                        Bd = A \ (Ad - C) * B
+                        Ad = CuArray(Ad)
+                        Bd = CuArray(Bd)
+                        C = CuArray(C)
+                        D = CUDA.zeros(Float64, size(Bd))
+                        global sys_d = HeteroStateSpace(Ad, Bd, C, D, ts)
                     end
                     
                     # --- #
@@ -227,7 +243,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                             end
                             resulttoplot = [result.u[h][2] for h = 1:length(result)]
                         end
-                    elseif methods[n] == "control"
+                    elseif methods[n] == "control" || methods[n] == "control1" || methods[n] == "control16"
                         global x0 = [0.0 for i = 1:ns]
                         #global u = rand(Float64, ( length(t) )) .*2 .-1
                         global u = [230.0 for i = 1:length(t)]
@@ -239,6 +255,24 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
                         if debug
                             result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
+                            resulttoplot = result'[:,2]
+                        end
+                    elseif methods[n] == "controlCUDA"
+                        global x0 = [0.0 for i = 1:ns]
+                        global u = [230.0 for i = 1:length(t)]
+                        global uu = [u for i = 1:na ]
+                        global uuu = mapreduce(permutedims, vcat, uu)
+                        global ttt = t
+
+                        global x0 = CuArray(x0)
+                        global uuu = CuArray(uuu)
+                        global ttt = CuArray(ttt)
+                        
+                        lsim(sys_d,uuu,ttt,x0=x0)
+                        timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
+                        if debug
+                            result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
+                            result = Matrix(result)
                             resulttoplot = result'[:,2]
                         end
                     end
