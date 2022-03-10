@@ -175,6 +175,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                 for c in range(num_cm):
 
                     CM = np.array(CM_list[c])
+                    power_grid = NodeConstructor(num_nodes[k], num_nodes[k], parameter, CM=CM)
 
                     if methode[n] in ['env_standalone', 'env_agent_interaction']:
                         env = Env_DARE(num_sources=num_nodes[k], num_loads=num_nodes[k], CM=CM, ts=ts,
@@ -187,7 +188,6 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                     else:
 
-                        power_grid = NodeConstructor(num_nodes[k], num_nodes[k], parameter, CM=CM)
                         A_sys, B_sys, C_sys, D_sys = power_grid.get_sys()
 
                         if methode[n] in ['control.py'] and methode_args[n] == 'discrete':
