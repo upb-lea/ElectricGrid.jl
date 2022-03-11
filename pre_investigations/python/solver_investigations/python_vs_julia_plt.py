@@ -141,18 +141,20 @@ def plot_python_vs_julia(results_python: dict = None, results_julia: dict = None
 
 
 if __name__ == '__main__':
-    f = open('saves/time_result_all_pythoncontrol_RK45_RK23.json', "r")
+    #f = open('saves/time_result_all_pythoncontrol_RK45_RK23.json', "r")
+    f = open('saves/VM/time_result_all_python_control.json')
     # Reading from file
     time_result_python = json.loads(f.read())
 
-    f = open('saves/julia_control,DP5,BS3_2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,35,40,45,50,55,60_0.03_cm=3_loops=3_repeat=3.json', "r")
+    #f = open('saves/julia_control,DP5,BS3_2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,35,40,45,50,55,60_0.03_cm=3_loops=3_repeat=3.json', "r")
+    f = open('saves/VM/julia_control_2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100_0.03_cm=3_loops=3_repeat=3.json', "r")
     # Reading from file
     time_result_julia = json.loads(f.read())
 
     plt_setting = dict({'x_axis': ['num_grid_nodes'],  # alternative: 't_end'
-                        'methods_python': ["scipy_solve_ivp"],#, 'env_standalone'],#, 'scipy_odeint'],
+                        'methods_python': ["control.py"],#, 'env_standalone'],#, 'scipy_odeint'],
                         #                   'scipy_ode', 'scipy_solve_ivp'],
-                        'methods_julia': ["BS3"],#, 'env_without_agent'],#, 'lsoda'],
+                        'methods_julia': ["control"],#, 'env_without_agent'],#, 'lsoda'],
                         #                  'lsoda', 'lsoda', 'lsoda'],
                         #'methods_python': ['scipy_solve_ivp'],
                         #'methods_julia': ['lsoda'],
