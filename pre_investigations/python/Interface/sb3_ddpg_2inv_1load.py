@@ -102,8 +102,8 @@ parameter = dict()
 parameter['R_source'] = R
 parameter['L_source'] = L
 parameter['C_source'] = C
-parameter['L_cabel'] = LT
-parameter['R_cabel'] = R
+parameter['L_cable'] = LT
+parameter['R_cable'] = R
 parameter['R_load'] = R_load
 parameter['V_dc'] = 300
 
