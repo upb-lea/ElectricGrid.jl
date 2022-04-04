@@ -27,7 +27,10 @@ parameter["R_load"] = 14
 parameter["V_dc"] = 300
 
 results = Dict()
-results[num_mat_start - 1] = 0.0
+
+global evI_list = []
+global evR_list = []
+global all_ev = Dict()
 
 for n=num_mat_start:num_mat_end
     if printit
@@ -46,7 +49,7 @@ for n=num_mat_start:num_mat_end
 
         nc = py"NodeConstructor"(n, n, parameter, CM=CM)
 
-        A, B, C, D = nc.get_sys()
+        global A, B, C, D = nc.get_sys()
         if discrete A = exp(A*ts) end
 
         ns = length(A[1,:])
@@ -54,7 +57,7 @@ for n=num_mat_start:num_mat_end
 
         notnull = count(i->(i!= 0), A)
         null = count(i->(i== 0), A)
-        ev = eigvals(A)
+        global ev = eigvals(A)
 
         if discrete
             evg1 = 0
@@ -68,16 +71,23 @@ for n=num_mat_start:num_mat_end
                 end
             end
         else
-            evs_ge_zero = 0
-            ev_gr = -999999.0
+            evR_ge_zero = 0
+            evR_gr = -999999.0
+            evI_gr = -999999.0
+            all_ev[n] = Dict()
+            all_ev[n]["re"] = []
+            all_ev[n]["im"] = []
             
             for e in ev
                 if real(e) >= 0.0
-                    evs_ge_zero += 1
+                    evR_ge_zero += 1
                 end
-                if real(e) >= ev_gr
-                    ev_gr = real(e)
+                if abs(imag(e)) >= evI_gr
+                    evR_gr = real(e)
+                    evI_gr = abs(imag(e))
                 end
+                append!(all_ev[n]["re"], abs(real(e)))
+                append!(all_ev[n]["im"], abs(imag(e))/(2*pi))
             end
         end
 
@@ -90,16 +100,25 @@ for n=num_mat_start:num_mat_end
                 println("Eigenwerte abs >= 1: $(evg1)")
                 println("Größter abs EW: $(ev_gr)")
             else
-                println("Eigenwerte >= 0: $(evs_ge_zero)")
-                println("Größter EW: $(ev_gr)")
+                println("Eigenwerte mit Realteil >= 0: $(evR_ge_zero)")
+                println("Größter EW-Realteil: $(evR_gr)")
+                println("Größter absoluter EW-Imaginärteil: $(evI_gr)")
             end
             println(" ")
         end
 
+        if !discrete
+            append!(evI_list, evI_gr/(2*pi))
+            append!(evR_list, evR_gr)
+        end
         global results[n][i] = round((null/(null + notnull))*100, digits=2)
     end
 end
 
-arraytoplot = [results[n][1] for n=num_mat_start-1:num_mat_end]
+arraytoplot = [results[n][1] for n=num_mat_start:num_mat_end]
 
-plot(arraytoplot)
+#plot(arraytoplot)
+evI_list = Float64.(evI_list)
+#histogram(evI_list)
+plot(num_mat_start:num_mat_end, evI_list)
+plot(num_mat_start:num_mat_end, evR_list)
