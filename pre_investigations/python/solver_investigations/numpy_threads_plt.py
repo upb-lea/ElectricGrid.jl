@@ -7,45 +7,87 @@ import numpy as np
 
 if __name__ == '__main__':
 
-    num = [1, 8, 16]
-    f = open(
-        'saves/time_result_all_python_nodes[2-60]t_end0.03control.py[1,8,16].json', #Jan
-        #'saves/time_result_all_python_nodes[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 35, 40]t_end0.03control.py[1, 4, 8, 16].json', #DW
-        #'saves/julia_control,control1,control16,controlCUDA_2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,35,40,45,50,55,60_0.03_cm=3_loops=3_repeat=3.json',
-        #'saves/julia_control,control1,control16_80,85,90,95,100,105,110_0.03_cm=3_loops=3_repeat=3.json',
-        "r")
+    filenames = [  # 'time_result_python_nodes[2-70]_ts1e-5_control_stepwise.json',
+        # 'time_result_python_nodes[2-24]_ts1e-5_RK45,RK23.json',
+        # 'time_result_python_nodes[2-24]_ts1e-5_RK45,RK23_fixedstepsize.json',
+        # 'time_result_python_nodes[2-40]_expm.json',
+        # 'time_result_python_nodes[2-70]_ts1e-5_control.json'
+        # 'time_result_python_nodes[2-70]_ts1e-5_controlCUDA_stepwise.json',
+        #'time_result_python_nodes[2-70]_ts1e-5_env_agent.json'
+    ]
 
-    # Reading from file
-    time_result_python = json.loads(f.read())
-    #time_result_julia = json.loads(f.read())
+    for filename in filenames:
+        f = open(
+            'saves/Jan_officePC/' + filename, "r")
 
-    for cc in range(len(time_result_python['methode_args'])):
-    #for cc in range(len(time_result_julia['methods'])):
-        y_debug_python = np.array(time_result_python['times_mean'][cc])
-        #y_debug_julia = np.array(time_result_julia['times_mean'][cc])
+        # Reading from file
+        time_result_python = json.loads(f.read())
+        # time_result_julia = json.loads(f.read())
 
-        #plt.plot(time_result_python['num_grid_nodes'], y_debug_python, label=str(num[cc]) + 'threads')
-        if cc == 2:
-            plt.plot(time_result_python['num_grid_nodes'], y_debug_python,'--', label=str(num[cc]) + 'threads')
-        else:
-            plt.plot(time_result_python['num_grid_nodes'], y_debug_python, label=str(num[cc]) + 'threads')
-        #plt.plot(time_result_julia['num_grid_nodes'], y_debug_julia, label=time_result_julia['methods'][cc]+'.jl')
+        for cc in range(len(time_result_python['methode_args'])):
+            # for cc in range(len(time_result_julia['methods'])):
+            y_debug_python = np.array(time_result_python['times_mean'][cc])
+            # y_debug_julia = np.array(time_result_julia['times_mean'][cc])
 
-    """
-    f = open('saves/julia_controlCUDA,controlCUDA32_2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,35,40,45,50,55,60_0.03_cm=3_loops=3_repeat=3.json',
-        "r")
-    time_result_julia = json.loads(f.read())
+            # plt.plot(time_result_python['num_grid_nodes'], y_debug_python, label=str(num[cc]) + 'threads')
+            # if cc == 200:
+            # if time_result_python['methode_args'][cc] == 'cuda' and filename == 'time_result_python_nodes[2-70]_ts1e-5_control_stepwise.json':
+            #    #plt.plot(time_result_python['num_grid_nodes'], y_debug_python, label='control')
+            #    asd = 1
+            # else:
+            plt.plot(time_result_python['num_grid_nodes'], y_debug_python,
+                     label=str(time_result_python['methode_args'][cc]) + '')
+        # plt.plot(time_result_julia['num_grid_nodes'], y_debug_julia, label=time_result_julia['methods'][cc]+'.jl')
 
-    y_debug_julia = np.array(time_result_julia['times_mean'][0])
-    plt.plot(time_result_julia['num_grid_nodes'], y_debug_julia, label='CUDA64.jl')
-    y_debug_julia = np.array(time_result_julia['times_mean'][1])
-    plt.plot(time_result_julia['num_grid_nodes'], y_debug_julia, label='CUDA32.jl')
-    """
     plt.legend()
-    plt.ylim([0, 2])
+    plt.ylim([0, 0.7])
+    # plt.xlim([2, 35])
+    plt.grid()
+    plt.ylabel('time mean')
+    plt.xlabel('nodes')
+    plt.title(filename)
+    plt.show()
+    asd = 1
+
+    """
+    filenames = [#'julia_control_2-70_stepwise_neu.json',
+       #'julia_control_2-70_stepwise.json',
+                    #'julia_BS3,DP5_2-24.json',
+                    #'julia_BS3,DP5_2-24_fixedstepsize.json',
+                    #'julia_expm_2-40.json',
+                    'julia_control_2-70.json',
+       'julia_controlCUDA_2-70.json',
+       #'julia_env_agent_2-70.json',
+               ]
+    
+    for filename in filenames:
+       f = open(
+           'saves/Jan_officePC/' + filename, "r")
+    
+       # Reading from file
+       # time_result_python = json.loads(f.read())
+       time_result_julia = json.loads(f.read())
+    
+       # for cc in range(len(time_result_python['methode_args'])):
+       for cc in range(len(time_result_julia['methods'])):
+           # y_debug_python = np.array(time_result_python['times_mean'][cc])
+    
+           if time_result_julia['methods'][cc] == 'controlCUDA' and filename == 'julia_control_2-70.json':
+               asd = 1
+           else:
+               y_debug_julia = np.array(time_result_julia['times_mean'][cc])
+    
+           # plt.plot(time_result_python['num_grid_nodes'], y_debug_python, label=str(num[cc]) + 'threads')
+    
+           plt.plot(time_result_julia['num_grid_nodes'], y_debug_julia, label=time_result_julia['methods'][cc] + '.jl')
+    
+    plt.legend()
+    plt.ylim([0, 0.3])
     plt.xlim([2, 35])
     plt.grid()
     plt.ylabel('time mean')
     plt.xlabel('nodes')
+    plt.title(filename)
     plt.show()
     asd = 1
+"""
