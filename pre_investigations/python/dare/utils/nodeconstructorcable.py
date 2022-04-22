@@ -80,8 +80,18 @@ class NodeConstructorCable():
         cable_list = list()
         load_list = list()
 
-        for s in range(self.num_source):
-            sample = self.sample_source_para()
+        (self.num_LCL, self.num_LC, self.num_L) = self.get_filter_distribution()
+
+        for s in range(self.num_LCL):
+            sample = self.sample_LCL_para()
+            source_list.append(sample)
+        
+        for s in range(self.num_LC):
+            sample = self.sample_LC_para()
+            source_list.append(sample)
+        
+        for s in range(self.num_L):
+            sample = self.sample_L_para()
             source_list.append(sample)
 
         for c in range(self.num_connections):
@@ -98,14 +108,60 @@ class NodeConstructorCable():
         parameter['load'] = load_list
     
         return parameter
+
+    def get_filter_distribution(self, num_LC=None):
+        
+        if num_LC == None:
+            sample = 0.1 * self.num_source * np.random.normal(0,1)
+            num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
+
+        num_LCL = self.num_source - num_LC
+
+        num_L = 0
+
+        return (num_LCL, num_LC, num_L)
     
-    def sample_source_para(self):
+    def sample_LCL_para(self):
         """Sample source parameter"""      
-          
+
         source = dict()
+        source['fltr'] = 'LCL'
         source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
-        source['L'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        source['L2'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
         source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
+
+        # source['R'] = 10
+        # source['L1'] = 5
+        # source['L2'] = 10
+        # source['C'] = 2
+        
+        
+        return source
+    
+    def sample_LC_para(self):
+        """Sample source parameter"""      
+
+        source = dict()
+        source['fltr'] = 'LC'
+        source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
+        source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
+
+        # source['R'] = 10
+        # source['L1'] = 5
+        # source['C'] = 2
+        
+        return source
+
+    
+    def sample_L_para(self):
+        """Sample source parameter"""      
+
+        source = dict()
+        source['fltr'] = 'L'
+        source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
+        source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
         
         return source
     
@@ -231,26 +287,60 @@ class NodeConstructorCable():
         
         Returns:
             A_source: Matrix with values belonging to corresponding source (2, 2)
-        """        
+        """
         parameter_i = self.source[source_i-1]
+
+        if parameter_i['fltr'] == 'LCL':
+
+            A_source = np.zeros((4,4))
+            A_source[0,0] = -parameter_i['R']/parameter_i['L1']
+            A_source[0,1] = -1/parameter_i['L1']
+            A_source[1,0] = 1/parameter_i['C']
+            A_source[1,2] = -1/parameter_i['C']
+            A_source[2,1] = 1/parameter_i['L2']
+            A_source[2,3] = -1/parameter_i['L2']
+            
+            C_sum =  0
+            
+            CM_row = self.CM[source_i-1]
+            
+            indizes = list(CM_row[CM_row != 0])
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            indizes_.astype(dtype=np.int32)
+            
+            for _, idx in enumerate(indizes_):
+                idx = int(idx)
+                C_sum += self.parameter['cable'][idx-1]['C']
+            
+            A_source[3,2] = C_sum**-1
+
+        elif parameter_i['fltr'] == 'LC':
         
-        A_source = np.zeros((2,2))
-        A_source[0,0] = -parameter_i['R']/parameter_i['L']
-        A_source[0,1] = -1/parameter_i['L']
+            A_source = np.zeros((2,2))
+            A_source[0,0] = -parameter_i['R']/parameter_i['L1']
+            A_source[0,1] = -1/parameter_i['L1']
+            
+            C_sum =  parameter_i['C']
+            
+            CM_row = self.CM[source_i-1]
+            
+            indizes = list(CM_row[CM_row != 0])
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            
+            for _, idx in enumerate(indizes_):
+                idx = int(idx)
+                C_sum += self.parameter['cable'][idx-1]['C']
+            
+            A_source[1,0] = C_sum**-1
+
+        elif parameter_i['fltr'] == 'L':
+            raise NotImplementedError
         
-        C_sum =  parameter_i['C']
-        
-        CM_row = self.CM[source_i-1]
-        
-        indizes = list(CM_row[CM_row != 0])
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
-        
-        for _, idx in enumerate(indizes_):
-            C_sum += self.parameter['cable'][idx-1]['C'] # self.C_cable[idx] if diffrent parameters
-        
-        A_source[1,0] = C_sum**-1
-        
+        else:
+            raise f"Expect filter to be 'LCL', 'LC' or 'L', not {parameter_i['fltr']}."
+
         return A_source
     
     def get_B_source(self, source_i):
@@ -261,8 +351,19 @@ class NodeConstructorCable():
         """
         parameter_i = self.source[source_i-1]
         
-        B_source = np.zeros((2,1))
-        B_source[0,0] =  1/parameter_i['L']
+        if parameter_i['fltr'] == 'LCL':
+
+            B_source = np.zeros((4,1))
+            B_source[0,0] =  1/parameter_i['L1']
+
+        elif parameter_i['fltr'] == 'LC':
+
+            B_source = np.zeros((2,1))
+            B_source[0,0] =  1/parameter_i['L1']
+
+        elif parameter_i['fltr'] == 'L':
+            raise NotImplementedError
+
         return B_source
     
     def get_A_col(self, source_i):
@@ -273,24 +374,48 @@ class NodeConstructorCable():
         """
         
         parameter_i = self.source[source_i-1]
-        
-        A_col = np.zeros((2, self.num_connections))
 
-        CM_row = self.CM[source_i-1]
+        if parameter_i['fltr'] == 'LCL':
 
-        indizes = list(CM_row[CM_row != 0]) # get entries unequal 0
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
-        indizes_.astype(dtype=np.int32)
+            A_col = np.zeros((4, self.num_connections))
 
-        C_sum = parameter_i['C'] # C[idx] for diffrent values
+            CM_row = self.CM[source_i-1]
 
-        for _, (idx, sign) in enumerate(zip(indizes_, signs)):
-            idx = int(idx)
-            C_sum += self.parameter['cable'][idx-1]['C']
+            indizes = list(CM_row[CM_row != 0]) # get entries unequal 0
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            indizes_.astype(dtype=np.int32)
 
-        A_col[1,idx-1] = sign * -(C_sum**-1)
-        
+            C_sum = 0 
+
+            for _, (idx, sign) in enumerate(zip(indizes_, signs)):
+                idx = int(idx)
+                C_sum += self.parameter['cable'][idx-1]['C']
+
+                A_col[3,idx-1] = sign * -(C_sum**-1)
+
+        elif parameter_i['fltr'] == 'LC':
+
+            A_col = np.zeros((2, self.num_connections))
+
+            CM_row = self.CM[source_i-1]
+
+            indizes = list(CM_row[CM_row != 0]) # get entries unequal 0
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            indizes_.astype(dtype=np.int32)
+
+            C_sum = parameter_i['C']
+
+            for _, (idx, sign) in enumerate(zip(indizes_, signs)):
+                idx = int(idx)
+                C_sum += self.parameter['cable'][idx-1]['C']
+
+                A_col[1,idx-1] = sign * -(C_sum**-1)
+
+        elif parameter_i['fltr'] == 'L':
+            raise NotImplementedError
+
         return A_col
     
     def get_A_row(self, source_i):
@@ -299,20 +424,39 @@ class NodeConstructorCable():
         Return:
             A_row: Matrix with the row entries for A (num_connections, 2)
         """
-        # parameter_i = self.source[source_i-1]
+        parameter_i = self.source[source_i-1]
+
+        if parameter_i['fltr'] == 'LCL':
+
+            A_row = np.zeros((4, self.num_connections))
+            CM_col = self.CM[source_i-1]
+            
+            indizes = list(CM_col[CM_col != 0]) # get entries unequal 0
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            indizes_.astype(dtype=np.int32)
+            
+            for _, (idx, sign) in enumerate(zip(indizes_, signs)):
+                idx = int(idx)
+                A_row[3,idx-1] = sign * 1/self.parameter['cable'][idx-1]['L']
+
+        elif parameter_i['fltr'] == 'LC':
         
-        A_row = np.zeros((2, self.num_connections))
-        
-        CM_col = self.CM[source_i-1]
-        
-        indizes = list(CM_col[CM_col != 0]) # get entries unequal 0
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
-        
-        for _, (idx, sign) in enumerate(zip(indizes_, signs)):
-            idx = int(idx)
-            A_row[1,idx-1] = sign * 1/self.parameter['cable'][idx-1]['L']  
-        
+            A_row = np.zeros((2, self.num_connections))
+            
+            CM_col = self.CM[source_i-1]
+            
+            indizes = list(CM_col[CM_col != 0]) # get entries unequal 0
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            
+            for _, (idx, sign) in enumerate(zip(indizes_, signs)):
+                idx = int(idx)
+                A_row[1,idx-1] = sign * 1/self.parameter['cable'][idx-1]['L']
+
+        elif parameter_i['fltr'] == 'L':
+            raise NotImplementedError
+
         return A_row.T
 
     def generate_A_tran_diag(self):
@@ -397,38 +541,78 @@ class NodeConstructorCable():
              [A_row,    A_tran_diag, A_load_row ],
              [0,        A_load_col,  A_load_diag]]
 
+        with A_source:
+
+             [[LCL, 0 , 0]
+              [0,   LC, 0]
+              [0,   0,  L]]
+
         Returns:
             A: A matrix for state space ((2*num_source+num_connections),(2*num_source+num_connections))
         """
         # get A_source
-        A_source = np.zeros((2*self.num_source,2*self.num_source)) # construct matrix of zeros
+        self.num_fltr = 4*self.num_LCL + 2*self.num_LC + 2*self.num_L
+        A_source = np.zeros((self.num_fltr, self.num_fltr)) # construct matrix of zeros
         A_source_list = [self.get_A_source(i) for i in range(1,self.num_source+1)]
                 
         for i, ele in enumerate(A_source_list):
-            start = 2*i
-            stop = 2*i+2
-            A_source[start:stop,start:stop] = ele
+            if i < self.num_LCL:
+                start = 4*i
+                stop = 4*i+4
+                A_source[start:stop,start:stop] = ele
+
+            elif i < self.num_LCL+self.num_LC:
+                start = 2*i + 2*self.num_LCL
+                stop = 2*i+2 + 2*self.num_LCL
+                A_source[start:stop,start:stop] = ele
+
+            elif i < self.num_LCL+self.num_LC+self.num_L:
+                start = 2*i + 2*self.num_LCL 
+                stop = 2*i+2 + 2*self.num_LCL
+                A_source[start:stop,start:stop] = ele
+
         
         # get A_col
-        A_col = np.zeros((2*self.num_source, self.num_connections))
+        A_col = np.zeros((self.num_fltr, self.num_connections))
         A_col_list = [self.get_A_col(i) for i in range(1,self.num_source+1)] # start at 1 bc Source 1 ...
         
         for i, ele in enumerate(A_col_list):
-            start = 2*i
-            stop = 2*i+2
-            A_col[start:stop,:] = ele
+            if i < self.num_LCL:
+                start = 4*i
+                stop = 4*i+4
+                A_col[start:stop,:] = ele
+
+            elif i < self.num_LCL+self.num_LC:
+                start = 2*i + 2*self.num_LCL
+                stop = 2*i+2 + 2*self.num_LCL
+                A_col[start:stop,:] = ele
+
+            elif i < self.num_LCL+self.num_LC+self.num_L:
+                start = 2*i + 2*self.num_LCL 
+                stop = 2*i+2 + 2*self.num_LCL
+                A_col[start:stop,:] = ele
         
         # get A_row
-        A_row = np.zeros((self.num_connections, 2*self.num_source))
+        A_row = np.zeros((self.num_connections, self.num_fltr))
         A_row_list = [self.get_A_row(i) for i in range(1,self.num_source+1)] # start at 1 bc Source 1 ...
         
         for i, ele in enumerate(A_row_list):
-            start = 2*i
-            stop = 2*i+2
-            A_row[:,start:stop] = ele
+            if i < self.num_LCL:
+                start = 4*i
+                stop = 4*i+4
+                A_row[:,start:stop] = ele
+
+            elif i < self.num_LCL+self.num_LC:
+                start = 2*i + 2*self.num_LCL
+                stop = 2*i+2 + 2*self.num_LCL
+                A_row[:,start:stop] = ele
+
+            elif i < self.num_LCL+self.num_LC+self.num_L:
+                start = 2*i + 2*self.num_LCL 
+                stop = 2*i+2 + 2*self.num_LCL
+                A_row[:,start:stop] = ele
 
         A_tran_diag = self.generate_A_tran_diag()
-    
         
         A_load_row_list = list()
         for i in range(self.num_loads):
@@ -445,7 +629,7 @@ class NodeConstructorCable():
 #         A_transition = np.block([A_tran_diag, A_load_col],
 #                                 [A_load_col, A_load_diag])
         
-        A_load_zeros = np.zeros((2*self.num_source, self.num_loads))
+        A_load_zeros = np.zeros((self.num_fltr, self.num_loads))
         
         A_load_zeros_t = A_load_zeros.transpose()
         
@@ -469,14 +653,26 @@ class NodeConstructorCable():
             B: B matrix for state space (2*num_source+num_connections,num_source)
 
         """
-        B = np.zeros((2*self.num_source + self.num_connections + self.num_loads,self.num_source))
+        B = np.zeros((self.num_fltr + self.num_connections + self.num_loads,self.num_source))
         
         B_source_list = [self.get_B_source(i) for i in range(1,self.num_source+1)] # start at 1 bc Source 1 ...
         
         for i, ele in enumerate(B_source_list):
-            start_r = 2*i
-            stop_r = 2*i+2
-            B[start_r:stop_r,i:i+1] = ele
+            if i < self.num_LCL:
+                start = 4*i
+                stop = 4*i+4
+                B[start:stop,i:i+1] = ele
+
+            elif i < self.num_LCL+self.num_LC:
+                start = 2*i + 2*self.num_LCL
+                stop = 2*i+2 + 2*self.num_LCL
+                B[start:stop,i:i+1] = ele
+
+            elif i < self.num_LCL+self.num_LC+self.num_L:
+                start = 2*i
+                stop = 2*i+2
+                B[start:stop,i:i+1] = ele
+
         return B
     
     def generate_C(self):
@@ -485,7 +681,7 @@ class NodeConstructorCable():
         Retruns:
             C: Identity matrix (2*num_source+num_connections)
         """
-        return np.eye(2*self.num_source + self.num_connections + self.num_loads)
+        return np.eye(self.num_fltr + self.num_connections + self.num_loads)
     
     def generate_D(self):
         """Generate the D vector
@@ -507,8 +703,15 @@ class NodeConstructorCable():
     def get_states(self):
         states = list()
         for s in range(1, self.num_source+1):
-            states.append(f'i_{s}')
-            states.append(f'u_{s}')
+            if s < self.num_LCL:
+                states.append(f'i_f{s}')
+                states.append(f'u_f{s}')
+                states.append(f'i_{s}')
+                states.append(f'u_{s}')
+
+            elif s < self.num_LCL+self.num_LC+self.num_L:
+                states.append(f'i_{s}')
+                states.append(f'u_{s}')
         
         for c in range(1, self.num_connections+1):
             states.append(f'i_c{c}')
