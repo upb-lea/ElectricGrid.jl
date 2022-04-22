@@ -23,7 +23,7 @@ class NodeConstructorCable():
         get_states: Function which returns a list of strings with all states for the given system
         draw_graph: Function which plots a graph based on the CM
     """
-    def __init__(self, num_source, num_loads, parameter=None, S2S_p=0.1, S2L_p=0.8, CM=None):
+    def __init__(self, num_source, num_loads, parameter=None, num_LCL=None, num_LC=None, num_L=None, S2S_p=0.1, S2L_p=0.8, CM=None):
         """Creates and initialize a nodeconstructor class instance.
 
         First the parameters are unpacked and then a CM is created, if not passed.
@@ -40,6 +40,9 @@ class NodeConstructorCable():
         self.num_source = num_source
         self.num_loads = num_loads
         self.tot_ele = num_source + num_loads
+        self.num_LCL = num_LCL
+        self.num_LC = num_LC
+        self.num_L = num_L
         self.S2S_p = S2S_p
         self.S2L_p = S2L_p
         self.cntr = 0
@@ -58,11 +61,15 @@ class NodeConstructorCable():
         # unpack parameters
         if isinstance(parameter, dict):
             assert len(list(parameter.keys())) == 3, f"Expect parameter to have three entries but got {len(list(parameter.keys()))}"
+
             assert sorted(list(parameter.keys())) == sorted(['cable', 'source', 'load']), (
                 f"Expect parameter to have the three entries 'cable', 'load' and 'source' but got {sorted(list(parameter.keys()))}.")
+
+            assert self.num_LCL == None or self.num_LC == None or self.num_L == None, (
+                "Expect the number of filter types to be defined, therefore not of type None")
         
             self.parameter = parameter
-            
+        
         elif parameter == None:
             self.parameter = self.generate_parameter()
 
@@ -79,8 +86,8 @@ class NodeConstructorCable():
         source_list = list()
         cable_list = list()
         load_list = list()
-
-        (self.num_LCL, self.num_LC, self.num_L) = self.get_filter_distribution()
+        
+        self.get_filter_distribution()
 
         for s in range(self.num_LCL):
             sample = self.sample_LCL_para()
@@ -109,17 +116,15 @@ class NodeConstructorCable():
     
         return parameter
 
-    def get_filter_distribution(self, num_LC=None):
+    def get_filter_distribution(self):
         
-        if num_LC == None:
+        if self.num_LC == None:
             sample = 0.1 * self.num_source * np.random.normal(0,1)
-            num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
+            self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
 
-        num_LCL = self.num_source - num_LC
-
-        num_L = 0
-
-        return (num_LCL, num_LC, num_L)
+        self.num_LCL = self.num_source - self.num_LC
+        self.num_L = 0
+        pass
     
     def sample_LCL_para(self):
         """Sample source parameter"""      
