@@ -12,16 +12,19 @@ using LinearAlgebra
 using BenchmarkTools
 using CUDA
 
-ts=1e-4
-node = 20
+ts=1e-5
+t_end=0.003
+node = 16
 cm = 1
-num_threads = 8
-useCUDA = true
+num_threads = 1
+useCUDA = false
 
 if !useCUDA
     ccall((:openblas_get_num_threads64_, Base.libblas_name), Cint, ())
     BLAS.set_num_threads(num_threads)
 end
+
+Profile.clear()
 
 parameter=Dict()
 parameter["R_source"] = 0.4
@@ -45,7 +48,7 @@ function prepareCM(n)
     global ns = length(A[1,:])
     global na = length(B[1,:])
 
-    global t = collect(0:ts:0.03)
+    global t = collect(0:ts:t_end)
 
     global hallo = CuArray{Float32}(undef, (1,2));
     global hallo .= 5
@@ -90,7 +93,7 @@ end
     x0::AbstractVecOrMat=zeros(eltype(A), size(A, 1)))
 
     x = nothing
-    for i = 1:1
+    for i = 1:100
         T = promote_type(LinearAlgebra.promote_op(LinearAlgebra.matprod, eltype(A), eltype(x0)),
                         LinearAlgebra.promote_op(LinearAlgebra.matprod, eltype(B), eltype(u)))
 
@@ -126,14 +129,16 @@ function investigate2(Ad,Bd,uuu,x0)
     return nothing
 end
 
-#investigate(sys_d,uuu,ttt,x0)
-#@profile investigate(sys_d,uuu,ttt,x0)
-#pprof(;webport=58699)
-#mul!(x0,B,uuu[:,1])
 
 prepareCM(cm)
 
 #@benchmark investigate2(Ad,Bd,uuu,x0)
 CUDA.allowscalar(false)
+
 investigate(sys_d,uuu,ttt,x0)
-@benchmark investigate(sys_d,uuu,ttt,x0)
+investigate2(Ad,Bd,uuu,x0)
+
+@benchmark investigate2(Ad,Bd,uuu,x0)
+
+#@profile investigate2(Ad,Bd,uuu,x0)
+#pprof(;webport=58699)
