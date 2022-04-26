@@ -93,7 +93,7 @@ end
     x0::AbstractVecOrMat=zeros(eltype(A), size(A, 1)))
 
     x = nothing
-    for i = 1:100
+    for i = 1:1
         T = promote_type(LinearAlgebra.promote_op(LinearAlgebra.matprod, eltype(A), eltype(x0)),
                         LinearAlgebra.promote_op(LinearAlgebra.matprod, eltype(B), eltype(u)))
 
