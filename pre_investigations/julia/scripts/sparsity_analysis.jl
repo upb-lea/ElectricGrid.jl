@@ -3,6 +3,7 @@ using DrWatson
 
 using PyCall
 @pyinclude(srcdir("nodeconstructor.py"))
+@pyinclude(srcdir("nodeconstructorcable.py"))
 
 using ControlSystems
 using JSON
@@ -11,9 +12,11 @@ using LinearAlgebra
 
 printit = true
 discrete = false
+cable = true
 num_cm = 1
 num_mat_start = 2
 num_mat_end = 30
+
 
 ts=1e-4
 
@@ -41,13 +44,21 @@ for n=num_mat_start:num_mat_end
 
     global results[n] = Dict()
 
-    CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(n) * ".json"))
+    if cable
+        global num_cm = 1
+    else
+        CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(n) * ".json"))
+    end
 
     for i=1:num_cm
-        CM = reduce(hcat, CM_list[i])'
-        CM = convert(Matrix{Int}, CM)
+        if cable
+            nc = py"NodeConstructorCable"(n, n)
+        else
+            CM = reduce(hcat, CM_list[i])'
+            CM = convert(Matrix{Int}, CM)
 
-        nc = py"NodeConstructor"(n, n, parameter, CM=CM)
+            nc = py"NodeConstructor"(n, n, parameter, CM=CM)
+        end
 
         global A, B, C, D = nc.get_sys()
         if discrete A = exp(A*ts) end
@@ -121,4 +132,5 @@ arraytoplot = [results[n][1] for n=num_mat_start:num_mat_end]
 evI_list = Float64.(evI_list)
 #histogram(evI_list)
 plot(num_mat_start:num_mat_end, evI_list)
-plot(num_mat_start:num_mat_end, evR_list)
+#ylims!((2000,6000))
+#plot(num_mat_start:num_mat_end, evR_list)
