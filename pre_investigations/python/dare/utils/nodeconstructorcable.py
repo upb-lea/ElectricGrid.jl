@@ -51,7 +51,8 @@ class NodeConstructorCable():
 
         # check CM
         if isinstance(CM, np.ndarray):
-            assert CM.shape[0] == self.tot_ele, "Expect CM to have the same number of elements as tot_ele."
+            assert self.tot_ele == CM.shape[0], (
+                f"Expect the number of elements in the node to match the specified structure in the CM, but got {self.tot_ele} and {CM.shape[0]}")
             self.CM = CM
             self.num_connections = int(np.amax(CM))
         elif CM == None:
