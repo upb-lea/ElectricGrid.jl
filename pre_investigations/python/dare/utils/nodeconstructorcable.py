@@ -23,7 +23,7 @@ class NodeConstructorCable():
         get_states: Function which returns a list of strings with all states for the given system
         draw_graph: Function which plots a graph based on the CM
     """
-    def __init__(self, num_source, num_loads, parameter=None, num_LCL=None, num_LC=None, num_L=None, S2S_p=0.1, S2L_p=0.8, CM=None):
+    def __init__(self, num_source, num_load, parameter=None, CM=None, num_LCL=None, num_LC=None, num_L=None, S2S_p=0.1, S2L_p=0.8):
         """Creates and initialize a nodeconstructor class instance.
 
         First the parameters are unpacked and then a CM is created, if not passed.
@@ -38,8 +38,9 @@ class NodeConstructorCable():
         
         """
         self.num_source = num_source
-        self.num_loads = num_loads
-        self.tot_ele = num_source + num_loads
+        self.num_load = num_load
+        self.tot_ele = num_source + num_load
+        
         self.num_LCL = num_LCL
         self.num_LC = num_LC
         self.num_L = num_L
@@ -64,11 +65,17 @@ class NodeConstructorCable():
 
             assert sorted(list(parameter.keys())) == sorted(['cable', 'source', 'load']), (
                 f"Expect parameter to have the three entries 'cable', 'load' and 'source' but got {sorted(list(parameter.keys()))}.")
-
-            # assert self.num_LCL == None or self.num_LC == None or self.num_L == None, (
-            #     "Expect the number of filter types to be defined, therefore not of type None")
         
             self.parameter = parameter
+
+            assert self.num_source == len(self.parameter['source']), (
+                f"Expect the number of sources to match the number of sources in the parameters, but got {self.num_source} and {len(self.parameter['source'])}.")
+            
+            assert self.num_load == len(self.parameter['load']), (
+                f"Expect the number of loads to match the number of loads in the parameters, but got {self.num_load} and {len(self.parameter['load'])}.")
+
+            assert self.num_connections == len(self.parameter['cable']), (
+                f"Expect the number of connections to match the number of cables in the parameters, but got {self.num_connections} and {len(self.parameter['cable'])}.")
 
             self.num_LCL, self.num_LC, self.num_L = self.cntr_fltr(self.parameter['source'])
 
@@ -110,7 +117,7 @@ class NodeConstructorCable():
             sample = self.sample_cable_para()
             cable_list.append(sample)
 
-        for l in range(self.num_loads):
+        for l in range(self.num_load):
             sample = self.sample_load_para()
             load_list.append(sample)
 
@@ -537,8 +544,8 @@ class NodeConstructorCable():
         return A_load_row
     
     def generate_A_load_diag(self):
-        diag = np.eye(self.num_loads)
-        vec = np.zeros(self.num_loads)
+        diag = np.eye(self.num_load)
+        vec = np.zeros(self.num_load)
 
         for i, ele in enumerate(self.parameter['load']):
             CM_row = self.CM[(self.num_source)+i]
@@ -641,12 +648,12 @@ class NodeConstructorCable():
         A_tran_diag = self.generate_A_tran_diag()
         
         A_load_row_list = list()
-        for i in range(self.num_loads):
+        for i in range(self.num_load):
             A_load_row_list.append(self.generate_A_load_row(i+1))
         A_load_row = np.vstack(A_load_row_list).transpose() # i-> idx // i+1 -> num of load
         
         A_load_col_list = list()
-        for i in range(self.num_loads):
+        for i in range(self.num_load):
             A_load_col_list.append(self.generate_A_load_col(i+1))
         A_load_col = np.vstack(A_load_col_list)
         
@@ -655,7 +662,7 @@ class NodeConstructorCable():
 #         A_transition = np.block([A_tran_diag, A_load_col],
 #                                 [A_load_col, A_load_diag])
         
-        A_load_zeros = np.zeros((self.num_fltr, self.num_loads))
+        A_load_zeros = np.zeros((self.num_fltr, self.num_load))
         
         A_load_zeros_t = A_load_zeros.transpose()
         
@@ -679,7 +686,7 @@ class NodeConstructorCable():
             B: B matrix for state space (2*num_source+num_connections,num_source)
 
         """
-        B = np.zeros((self.num_fltr + self.num_connections + self.num_loads,self.num_source))
+        B = np.zeros((self.num_fltr + self.num_connections + self.num_load,self.num_source))
         
         B_source_list = [self.get_B_source(i) for i in range(1,self.num_source+1)] # start at 1 bc Source 1 ...
         
@@ -707,7 +714,7 @@ class NodeConstructorCable():
         Retruns:
             C: Identity matrix (2*num_source+num_connections)
         """
-        return np.eye(self.num_fltr + self.num_connections + self.num_loads)
+        return np.eye(self.num_fltr + self.num_connections + self.num_load)
     
     def generate_D(self):
         """Generate the D vector
@@ -742,7 +749,7 @@ class NodeConstructorCable():
         for c in range(1, self.num_connections+1):
             states.append(f'i_c{c}')
         
-        for l in range(1, self.num_loads+1):
+        for l in range(1, self.num_load+1):
             states.append(f'u_l{l}')
         return states
     
