@@ -65,10 +65,15 @@ class NodeConstructorCable():
             assert sorted(list(parameter.keys())) == sorted(['cable', 'source', 'load']), (
                 f"Expect parameter to have the three entries 'cable', 'load' and 'source' but got {sorted(list(parameter.keys()))}.")
 
-            assert self.num_LCL == None or self.num_LC == None or self.num_L == None, (
-                "Expect the number of filter types to be defined, therefore not of type None")
+            # assert self.num_LCL == None or self.num_LC == None or self.num_L == None, (
+            #     "Expect the number of filter types to be defined, therefore not of type None")
         
             self.parameter = parameter
+
+            self.num_LCL, self.num_LC, self.num_L = self.cntr_fltr(self.parameter['source'])
+
+            assert self.num_source == (self.num_LCL + self.num_LC + self.num_L), (
+                f"Expect the number of sources to be identical to the sum of the filter types, but the number of sources is {self.num_source} and the sum of the filters is {(self.num_LCL + self.num_LC + self.num_L)} .")
         
         elif parameter == None:
             self.parameter = self.generate_parameter()
@@ -125,6 +130,22 @@ class NodeConstructorCable():
         self.num_LCL = self.num_source - self.num_LC
         self.num_L = 0
         pass
+
+    def cntr_fltr(self, source_list):
+    
+        cntr_LCL=0
+        cntr_LC=0
+        cntr_L=0
+        
+        for _, source in enumerate(source_list):
+            if source['fltr'] == 'LCL':
+                cntr_LCL+=1
+            elif source['fltr'] == 'LC':
+                cntr_LC+=1
+            elif source['fltr'] == 'L':
+                cntr_L+=1
+
+        return (cntr_LCL, cntr_LC, cntr_L)
     
     def sample_LCL_para(self):
         """Sample source parameter"""      
