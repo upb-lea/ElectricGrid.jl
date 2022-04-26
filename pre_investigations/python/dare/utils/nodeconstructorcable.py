@@ -23,7 +23,7 @@ class NodeConstructorCable():
         get_states: Function which returns a list of strings with all states for the given system
         draw_graph: Function which plots a graph based on the CM
     """
-    def __init__(self, num_source, num_load, parameter=None, CM=None, num_LCL=None, num_LC=None, num_L=None, S2S_p=0.1, S2L_p=0.8):
+    def __init__(self, num_source, num_load, CM=None, parameter=None, S2S_p=0.1, S2L_p=0.8):
         """Creates and initialize a nodeconstructor class instance.
 
         First the parameters are unpacked and then a CM is created, if not passed.
@@ -40,10 +40,7 @@ class NodeConstructorCable():
         self.num_source = num_source
         self.num_load = num_load
         self.tot_ele = num_source + num_load
-        
-        self.num_LCL = num_LCL
-        self.num_LC = num_LC
-        self.num_L = num_L
+
         self.S2S_p = S2S_p
         self.S2L_p = S2L_p
         self.cntr = 0
@@ -131,9 +128,8 @@ class NodeConstructorCable():
 
     def get_filter_distribution(self):
         
-        if self.num_LC == None:
-            sample = 0.1 * self.num_source * np.random.normal(0,1)
-            self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
+        sample = 0.1 * self.num_source * np.random.normal(0,1)
+        self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
 
         self.num_LCL = self.num_source - self.num_LC
         self.num_L = 0
