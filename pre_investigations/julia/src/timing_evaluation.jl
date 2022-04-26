@@ -13,6 +13,7 @@ using StableRNGs
 using CUDA
 
 include(srcdir("env.jl"))
+include(srcdir("custom_control.jl"))
 
 global yout
 
@@ -88,7 +89,7 @@ end
 
 function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     if debug
-        output = zeros(length(env.A[1,:]),length(actions[1,:])+1)
+        output = zeros(length(env.Ad[1,:]),t_len+1)
     else
         output = 0.0
     end
@@ -103,9 +104,46 @@ function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     return output
 end
 
-function cudalsim(sys_d,uuu,ttt,x0)
+function execute_env_cuda(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     CUDA.@sync begin
-        lsim(sys_d,uuu,ttt,x0)
+        println("ho")
+        if debug
+            output = zeros(length(env.Ad[1,:]),t_len+1)
+        else
+            output = 0.0
+        end
+
+        RLBase.reset!(env)
+        for i = 1:t_len
+            action = CuArray(agent(env))
+            env(action)
+            if debug
+                output[:,i+1] = Array(env.state).*env.norm_array
+            end
+        end
+    end
+    return output
+end
+
+function control_stepwise(sys_d,uuu,ttt,x0)
+    tempx = x0
+    for i = 1:length(uuu[1,:])-1
+        xout = custom_lsim(sys_d,uuu[:,i:i+1],ttt[i:i+1],x0=tempx)
+        tempx = xout[:,2]
+    end
+end
+
+function cudalsim(sys_d,uuu,ttt,x0,stepwise)
+    CUDA.@sync begin
+        if stepwise
+            tempx = x0
+            for i = 1:length(uuu[1,:])-1
+                xout = custom_lsim(sys_d,uuu[:,i:i+1],ttt[i:i+1],x0=tempx)
+                tempx = xout[:,2]
+            end
+        else
+            custom_lsim(sys_d,uuu,ttt,x0=x0)
+        end
     end
 end
 
@@ -118,7 +156,7 @@ end
 function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_nodes::Vector{Int64}=[5,10,25,50,100],
                                         t_end::Vector{Float64}=[0.001,0.01,0.1], num_cm::Int64=1, ts::Float64=1e-4,
                                         methods::Vector{String}=["control", "env_without_agent", "env_with_agent", "lsoda"],
-                                        parameter::Dict=Dict(), debug::Bool=false)
+                                        parameter::Dict=Dict(), debug::Bool=false, stepwise::Bool=true, fixed_stepsize::Bool=false)
     
     if isempty(parameter)
         parameter["R_source"] = 0.4
@@ -177,10 +215,38 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                     if methods[n] == "env_without_agent"
                         norm_array = vcat( [limits[i] for j = 1:nc.num_source for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
                         global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=parameter["V_dc"], ts=rationalize(ts))
-                    elseif methods[n] == "env_with_agent"
+                    elseif methods[n] == "env_with_agent" || methods[n] == "env_with_agent_cuda"
                         norm_array = vcat( [limits[i] for j = 1:nc.num_source for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
-                        global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=parameter["V_dc"], ts=rationalize(ts))
+                        if methods[n] == "env_with_agent_cuda"
+                            Ad = exp(A*ts)
+                            Bd = A \ (Ad - C) * B
+                            Ad = CuArray(Ad)
+                            Bd = CuArray(Bd)
+                            C = CuArray(C)
+                            D = CUDA.zeros(Float64, size(Bd))
+                            x0 = CuArray([ 0.0 for i = 1:length(A[1,:]) ])
+                            global env = SimEnv(Ad=Ad, Bd=Bd, C=C, D=D, x0=x0, norm_array=norm_array, v_dc=parameter["V_dc"], ts=rationalize(ts))
+                        else
+                            global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=parameter["V_dc"], ts=rationalize(ts))
+                        end
                         global agent = create_agent(na, ns)
+                    elseif methods[n] == "expm1" || methods[n] == "expm2" || methods[n] == "expm4" || methods[n] == "expm8" || methods[n] == "expm16" || methods[n] == "expm32"
+                        global tss = ts
+                        global AA = A
+
+                        if methods[n] == "expm1"
+                            BLAS.set_num_threads(1)
+                        elseif methods[n] == "expm2"
+                            BLAS.set_num_threads(2)
+                        elseif methods[n] == "expm4"
+                            BLAS.set_num_threads(4)
+                        elseif methods[n] == "expm8"
+                            BLAS.set_num_threads(8)
+                        elseif methods[n] == "expm16"
+                            BLAS.set_num_threads(16)
+                        else
+                            BLAS.set_num_threads(32)
+                        end
                     elseif methods[n] == "lsoda" || methods[n] == "DP5" || methods[n] == "BS3" || methods[n] == "BS3_32" || methods[n] == "BS3_CUDA" || methods[n] == "BS3_CUDA32"
                         global tss = ts
 
@@ -198,7 +264,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         function f!(du, u, p, t)
                             du[:] = A * u + B * p
                         end
-                    elseif methods[n] == "control" || methods[n] == "control1" || methods[n] == "control16"
+                    elseif methods[n] == "control" || methods[n] == "control1" || methods[n] == "control16" || methods[n] == "control2" || methods[n] == "control4"
                         Ad = exp(A*ts)
                         Bd = A \ (Ad - C) * B
                         global sys_d = ss(Ad, Bd, C, D, ts)
@@ -206,19 +272,24 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                             BLAS.set_num_threads(8)
                         elseif methods[n] == "control1"
                             BLAS.set_num_threads(1)
+                        elseif methods[n] == "control2"
+                            BLAS.set_num_threads(2)
+                        elseif methods[n] == "control4"
+                            BLAS.set_num_threads(4)
                         else
                             BLAS.set_num_threads(16)
                         end
                     elseif methods[n] == "control32bit"
+                        BLAS.set_num_threads(8)
                         Ad = exp(A*ts)
                         Bd = A \ (Ad - C) * B
-                        BLAS.set_num_threads(8)
                         Ad = Float32.(Ad)
                         Bd = Float32.(Bd)
                         C = Float32.(C)
                         D = zeros(Float32, size(Bd))
                         global sys_d = HeteroStateSpace(Ad, Bd, C, D, ts)
                     elseif methods[n] == "controlCUDA"
+                        print("a")
                         Ad = exp(A*ts)
                         Bd = A \ (Ad - C) * B
                         Ad = CuArray(Ad)
@@ -259,6 +330,18 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                             result = execute_env(env, agent, length(tt), true)
                             resulttoplot = result[2,:]
                         end
+                    elseif methods[n] == "env_with_agent_cuda"
+                        RLBase.reset!(env)
+                        global tt = t
+                        execute_env_cuda(env, agent, length(tt), false)
+                        timer = @benchmark execute_env_cuda(env, agent, length(tt), false) samples = repeat evals = loops seconds = 1000
+                        if debug
+                            result = execute_env_cuda(env, agent, length(tt), true)
+                            resulttoplot = result[2,:]
+                        end
+                    elseif methods[n] == "expm1" || methods[n] == "expm2" || methods[n] == "expm4" || methods[n] == "expm8" || methods[n] == "expm16" || methods[n] == "expm32"
+                        exp(AA*tss)
+                        timer = @benchmark exp(AA*tss) samples = repeat evals = loops seconds = 1000
                     elseif methods[n] == "lsoda" || methods[n] == "DP5" || methods[n] == "BS3" || methods[n] == "BS3_32" || methods[n] == "BS3_CUDA" || methods[n] == "BS3_CUDA32"
                         p = [230.0 for i = 1:na]
                         tspan = (0.0,t_end[l])
@@ -280,25 +363,52 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
 
                         global problem = ODEProblem(f!,u0,tspan,p)
                         if methods[n] == "lsoda"
-                            solve(problem, lsoda(), reltol=tol, abstol=tol, saveat=tss)
-                            timer = @benchmark solve(problem, lsoda(), reltol=tol, abstol=tol, saveat=tss) samples = repeat evals = loops seconds = 1000
+                            if fixed_stepsize
+                                solve(problem, lsoda(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss)
+                                timer = @benchmark solve(problem, lsoda(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss) samples = repeat evals = loops seconds = 1000
+                            else
+                                solve(problem, lsoda(), reltol=tol, abstol=tol, saveat=tss)
+                                timer = @benchmark solve(problem, lsoda(), reltol=tol, abstol=tol, saveat=tss) samples = repeat evals = loops seconds = 1000
+                            end
                         elseif methods[n] == "DP5"
-                            solve(problem, DP5(), reltol=tol, abstol=tol, saveat=tss)
-                            timer = @benchmark solve(problem, DP5(), reltol=tol, abstol=tol, saveat=tss) samples = repeat evals = loops seconds = 1000
+                            if fixed_stepsize
+                                solve(problem, DP5(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss)
+                                timer = @benchmark solve(problem, DP5(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss) samples = repeat evals = loops seconds = 1000
+                            else
+                                solve(problem, DP5(), reltol=tol, abstol=tol, saveat=tss)
+                                timer = @benchmark solve(problem, DP5(), reltol=tol, abstol=tol, saveat=tss) samples = repeat evals = loops seconds = 1000
+                            end
                         elseif methods[n] == "BS3" || methods[n] == "BS3_32"
-                            solve(problem, BS3(), reltol=tol, abstol=tol, saveat=tss)
-                            timer = @benchmark solve(problem, BS3(), reltol=tol, abstol=tol, saveat=tss) samples = repeat evals = loops seconds = 1000
+                            if fixed_stepsize
+                                solve(problem, BS3(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss)
+                                timer = @benchmark solve(problem, BS3(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss) samples = repeat evals = loops seconds = 1000
+                            else
+                                solve(problem, BS3(), reltol=tol, abstol=tol, saveat=tss)
+                                timer = @benchmark solve(problem, BS3(), reltol=tol, abstol=tol, saveat=tss) samples = repeat evals = loops seconds = 1000
+                            end
                         else
                             cudasolve(problem, tol, tss)
                             timer = @benchmark cudasolve(problem, tol, tss) samples = repeat evals = loops seconds = 1000
                         end
                         if debug
                             if methods[n] == "lsoda"
-                                result = solve(problem, lsoda(), reltol=tol, abstol=tol, saveat=tss)
+                                if fixed_stepsize
+                                    result = solve(problem, lsoda(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss)
+                                else
+                                    result = solve(problem, lsoda(), reltol=tol, abstol=tol, saveat=tss)
+                                end
                             elseif methods[n] == "DP5"
-                                result = solve(problem, DP5(), reltol=tol, abstol=tol, saveat=tss)
+                                if fixed_stepsize
+                                    result = solve(problem, DP5(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss)
+                                else
+                                    result = solve(problem, DP5(), reltol=tol, abstol=tol, saveat=tss)
+                                end
                             else
-                                result = solve(problem, BS3(), reltol=tol, abstol=tol, saveat=tss)
+                                if fixed_stepsize
+                                    result = solve(problem, BS3(), adaptive=false, dt=tss, dtmin=tss, dtmax=tss)
+                                else
+                                    result = solve(problem, BS3(), reltol=tol, abstol=tol, saveat=tss)
+                                end
                             end
                             if methods[n] == "BS3_CUDA" || methods[n] == "BS3_CUDA32"
                                 u_temp = []
@@ -310,7 +420,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                                 resulttoplot = [result.u[h][2] for h = 1:length(result)]
                             end
                         end
-                    elseif methods[n] == "control" || methods[n] == "control1" || methods[n] == "control16"
+                    elseif methods[n] == "control" || methods[n] == "control1" || methods[n] == "control16" || methods[n] == "control2" || methods[n] == "control4"
                         global x0 = [0.0 for i = 1:ns]
                         #global u = rand(Float64, ( length(t) )) .*2 .-1
                         global u = [230.0 for i = 1:length(t)]
@@ -318,8 +428,13 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         global uuu = mapreduce(permutedims, vcat, uu)
                         global ttt = t
                         #yout = lsim(sys,uuu,ttt,x0=x0)
-                        lsim(sys_d,uuu,ttt,x0=x0)
-                        timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
+                        if stepwise
+                            control_stepwise(sys_d,uuu,ttt,x0)
+                            timer = @benchmark control_stepwise(sys_d,uuu,ttt,x0) samples = repeat evals = loops seconds = 1000
+                        else
+                            custom_lsim(sys_d,uuu,ttt,x0=x0)
+                            timer = @benchmark custom_lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
+                        end
                         if debug
                             result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
                             resulttoplot = result'[:,2]
@@ -333,8 +448,13 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                         global x0 = Float32.(x0)
                         global uuu = Float32.(uuu)
 
-                        lsim(sys_d,uuu,ttt,x0=x0)
-                        timer = @benchmark lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
+                        if stepwise
+                            control_stepwise(sys_d,uuu,ttt,x0)
+                            timer = @benchmark control_stepwise(sys_d,uuu,ttt,x0) samples = repeat evals = loops seconds = 1000
+                        else
+                            custom_lsim(sys_d,uuu,ttt,x0=x0)
+                            timer = @benchmark custom_lsim(sys_d,uuu,ttt,x0=x0) samples = repeat evals = loops seconds = 1000
+                        end
                         if debug
                             result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
                             resulttoplot = result'[:,2]
@@ -355,8 +475,9 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                             global uuu = CuArray(Float32.(uuu))
                         end
                         
-                        cudalsim(sys_d,uuu,ttt,x0)
-                        timer = @benchmark cudalsim(sys_d,uuu,ttt,x0) samples = repeat evals = loops seconds = 1000
+                        cudalsim(sys_d,uuu,ttt,x0,stepwise)
+                        global stepwise_g = stepwise
+                        timer = @benchmark cudalsim(sys_d,uuu,ttt,x0,stepwise_g) samples = repeat evals = loops seconds = 1000
                         if debug
                             result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
                             result = Matrix(result)

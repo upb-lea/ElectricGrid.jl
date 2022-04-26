@@ -53,6 +53,8 @@ class NodeConstructor():
         self.L_cable = parameter['L_cable']
         self.R_load = parameter['R_load']
         
+        CM = np.array(CM)
+        print(type(CM))
         if isinstance(CM, np.ndarray):
             assert CM.shape[0] == self.tot_ele, "Expect CM to have the same number of elements as tot_ele."
             #assert CM.dtype == int64, f"Expect CM to be of type int, but the dytpe is {CM.dtype}."
@@ -61,7 +63,8 @@ class NodeConstructor():
         elif CM == None:
             self.generate_CM()
         else:
-            raise f"Expect CM to be an np.ndarray or None not {type(CM)}."
+            #raise f"Expect CM to be an np.ndarray or None not {type(CM)}."
+            print(type(CM))
     
     def tobe_or_n2b(self, x, p):
         """Sets x based on p to zero or to the value of the counter and increments it."""

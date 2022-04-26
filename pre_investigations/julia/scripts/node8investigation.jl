@@ -13,7 +13,7 @@ using BenchmarkTools
 using CUDA
 
 ts=1e-4
-node = 8
+node = 20
 cm = 1
 num_threads = 8
 useCUDA = true
@@ -113,7 +113,16 @@ end
 end
 
 function investigate(sys_d,uuu,ttt,x0)
-    global result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0);
+    CUDA.@sync begin
+        result, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0);
+    end
+    return nothing
+end
+
+function investigate2(Ad,Bd,uuu,x0)
+    CUDA.@sync begin
+        result = ltitr2(Ad,Bd,uuu,x0)
+    end
     return nothing
 end
 
@@ -124,5 +133,7 @@ end
 
 prepareCM(cm)
 
-#@benchmark ltitr2(Ad,Bd,uuu,x0)
+#@benchmark investigate2(Ad,Bd,uuu,x0)
+CUDA.allowscalar(false)
+investigate(sys_d,uuu,ttt,x0)
 @benchmark investigate(sys_d,uuu,ttt,x0)

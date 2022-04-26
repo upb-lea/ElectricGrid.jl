@@ -2,6 +2,9 @@ using ReinforcementLearning
 using IntervalSets
 using LinearAlgebra
 using ControlSystems
+using CUDA
+
+include(srcdir("custom_control.jl"))
 
 # --- RL ENV ---
 
@@ -13,8 +16,8 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(B[1,:]) ], )
     observation_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(A[1,:]) ], )
     done::Bool = false
-    x0::Vector{Float64} = [ 0.0 for i = 1:length(A[1,:]) ]
-    x::Vector{Float64} = x0
+    x0 = [ 0.0 for i = 1:length(A[1,:]) ]
+    x = x0
     state::Vector{Float64} = x0
     maxsteps::Int = 1000
     steps::Int = 0
@@ -22,7 +25,7 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     ts::Rational = 1//10_000
     Ad::AbstractMatrix = exp(A*ts)
     Bd::AbstractMatrix = A \ (Ad - C) * B
-    sys_d::StateSpace = ss(Ad, Bd, C, D, Float64(ts))
+    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
     v_dc::Float64 = 300
 end
@@ -53,10 +56,12 @@ function (env::SimEnv)(action)
     action *= env.v_dc
     u = [action action]
 
-    yout_d, tout_d, xout_d, uout_d = lsim(env.sys_d, u, tt, x0=env.x)
+    xout_d = custom_lsim(env.sys_d, u, tt, x0=env.x)
+    #xout_d = [env.x env.x]
 
-    env.x = xout_d'[2,:]
-    env.state = yout_d'[2,:] ./ env.norm_array
+    env.x = xout_d[:,2]
+    #env.x = xout_d'[2,:]
+    env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
 
     env.done = env.steps >= env.maxsteps
 end
