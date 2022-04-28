@@ -13,7 +13,7 @@ include(srcdir("custom_control.jl"))
 
 ts = 1e-5
 t_end = 0.003
-cable = false
+cable = true
 
 p = Dict()
 p["R_source"] = 0.4

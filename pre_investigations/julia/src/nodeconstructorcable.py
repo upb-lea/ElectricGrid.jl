@@ -135,7 +135,7 @@ class NodeConstructorCable():
         self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
 
         #TODO
-        self.num_LC = self.num_source - 1
+        self.num_LC = 1
 
         self.num_LCL = self.num_source - self.num_LC
         self.num_L = 0

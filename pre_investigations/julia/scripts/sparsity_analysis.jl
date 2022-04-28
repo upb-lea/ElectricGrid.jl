@@ -12,7 +12,8 @@ using LinearAlgebra
 
 printit = true
 discrete = false
-cable = true
+cable = false
+cut_outliers = true
 num_cm = 1
 num_mat_start = 2
 num_mat_end = 30
@@ -100,8 +101,15 @@ for n=num_mat_start:num_mat_end
                     evR_ge_zero += 1
                 end
                 if abs(imag(e)) >= evI_gr
-                    evR_gr = real(e)
-                    evI_gr = abs(imag(e))
+                    if cut_outliers
+                        if abs(imag(e)) <= 1000000
+                            evR_gr = real(e)
+                            evI_gr = abs(imag(e))
+                        end
+                    else
+                        evR_gr = real(e)
+                        evI_gr = abs(imag(e))
+                    end
                 end
                 append!(all_ev[n]["re"], abs(real(e)))
                 append!(all_ev[n]["im"], abs(imag(e))/(2*pi))
