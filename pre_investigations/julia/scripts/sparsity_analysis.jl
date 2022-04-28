@@ -45,14 +45,20 @@ for n=num_mat_start:num_mat_end
     global results[n] = Dict()
 
     if cable
-        global num_cm = 1
+        CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(n) * ".json"))
+        #global num_cm = 1
     else
         CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(n) * ".json"))
     end
 
     for i=1:num_cm
         if cable
-            nc = py"NodeConstructorCable"(n, n)
+            CM = reduce(hcat, CM_list[i])'
+            CM = convert(Matrix{Int}, CM)
+
+            nc = py"NodeConstructorCable"(n, n, CM=CM)
+            params = nc.parameter
+            #nc = py"NodeConstructorCable"(n, n)
         else
             CM = reduce(hcat, CM_list[i])'
             CM = convert(Matrix{Int}, CM)

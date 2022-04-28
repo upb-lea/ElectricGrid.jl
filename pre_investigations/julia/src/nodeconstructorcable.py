@@ -47,7 +47,7 @@ class NodeConstructorCable():
         self.num_connections = 0
 
         # check CM
-        if CM != None:
+        if isinstance(CM, list):
             CM = np.array(CM)
         
         if isinstance(CM, np.ndarray):
@@ -133,6 +133,9 @@ class NodeConstructorCable():
         
         sample = 0.1 * self.num_source * np.random.normal(0,1)
         self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
+
+        #TODO
+        self.num_LC = self.num_source - 1
 
         self.num_LCL = self.num_source - self.num_LC
         self.num_L = 0
@@ -226,14 +229,10 @@ class NodeConstructorCable():
         cable['C'] = l * Cb
 
         #TODO
-        Rb = 0.4
-        Cb = 10e-7
-        Lb = 2.3e-3
-
         cable = dict()
-        cable['R'] = l * Rb
-        cable['L'] = l * Lb
-        cable['C'] = l * Cb
+        cable['R'] = 0.4
+        cable['L'] = 2.3e-3
+        cable['C'] = 1e-20
 
         return cable
     
