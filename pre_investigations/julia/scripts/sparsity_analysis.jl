@@ -12,8 +12,8 @@ using LinearAlgebra
 
 printit = true
 discrete = false
-cable = false
-cut_outliers = true
+cable = true
+cut_outliers = false
 num_cm = 1
 num_mat_start = 2
 num_mat_end = 30
@@ -99,6 +99,7 @@ for n=num_mat_start:num_mat_end
             for e in ev
                 if real(e) >= 0.0
                     evR_ge_zero += 1
+                    println(" EW gr 0 RE: $(e)")
                 end
                 if abs(imag(e)) >= evI_gr
                     if cut_outliers
@@ -145,6 +146,11 @@ arraytoplot = [results[n][1] for n=num_mat_start:num_mat_end]
 #plot(arraytoplot)
 evI_list = Float64.(evI_list)
 #histogram(evI_list)
-plot(num_mat_start:num_mat_end, evI_list)
+p1 = plot(num_mat_start:num_mat_end, evI_list,  ylabel="Im{EW_max_imag}")
 #ylims!((2000,6000))
 #plot(num_mat_start:num_mat_end, evR_list)
+
+evR_list = Float64.(evR_list)
+p2 = plot(num_mat_start:num_mat_end, evR_list, xlabel="Nodes", ylabel="Re{EW_max_imag}")
+
+plot(p1,p2,layout=(2,1))
