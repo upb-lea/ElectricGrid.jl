@@ -40,7 +40,7 @@ function NodeConstructor(;num_source, num_load, CM, parameter=nothing, S2S_p=0.1
 
     num_fltr = 4 * num_LCL + 2 * num_LC + 2 * num_L
 
-    NodeConstructor(num_connections, num_source, num_load, num_LCL, num_LC, num_L, num_fltr
+    NodeConstructor(num_connections, num_source, num_load, num_LCL, num_LC, num_L, num_fltr,
                 cntr, tot_ele, CM, parameter, S2S_p, S2L_p)
 end
 

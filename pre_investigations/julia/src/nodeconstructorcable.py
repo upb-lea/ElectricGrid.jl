@@ -43,10 +43,6 @@ class NodeConstructorCable():
         self.num_connections = 0
 
         # check CM
-        if isinstance(CM, list):
-            CM = np.array(CM)
-            
-        # check CM
         if isinstance(CM, np.ndarray):
             assert self.tot_ele == CM.shape[0], (
                 f"Expect the number of elements in the node to match the specified structure in the CM, but got {self.tot_ele} and {CM.shape[0]}")
@@ -129,12 +125,11 @@ class NodeConstructorCable():
     def get_filter_distribution(self):
         
         sample = 0.1 * self.num_source * np.random.normal(0,1)
-        self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
-
-        #TODO
-        self.num_LC = 1
+        # self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
+        self.num_LC = 1 # self.num_source 
 
         self.num_LCL = self.num_source - self.num_LC
+        # self.num_LCL = 0
         self.num_L = 0
         pass
 
@@ -159,16 +154,20 @@ class NodeConstructorCable():
 
         source = dict()
         source['fltr'] = 'LCL'
-        source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
-        source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
-        source['L2'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
-        source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
+        # source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
+        # source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        # source['L2'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        # source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
 
-        #TODO
         source['R'] = 0.4
         source['L1'] = 2.3e-3
         source['L2'] = 2.3e-3
         source['C'] = 10e-6
+
+        # source['R'] = 10
+        # source['L1'] = 5
+        # source['L2'] = 5
+        # source['C'] = 2
         
         
         return source
@@ -178,14 +177,17 @@ class NodeConstructorCable():
 
         source = dict()
         source['fltr'] = 'LC'
-        source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
-        source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
-        source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
+        # source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
+        # source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        # source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
 
-        #TODO
         source['R'] = 0.4
         source['L1'] = 2.3e-3
         source['C'] = 10e-6
+
+        # source['R'] = 10
+        # source['L1'] = 5
+        # source['C'] = 2
         
         return source
 
@@ -204,9 +206,7 @@ class NodeConstructorCable():
         """Sample load parameter"""
         
         load = dict()
-        load['R'] = np.round_(np.random.uniform(10, 10000), 3)
-
-        #TODO
+        # load['R'] = np.round_(np.random.uniform(10, 10000), 3)
         load['R'] = 14
         
         return load
@@ -215,21 +215,20 @@ class NodeConstructorCable():
         """Sample cable parameter"""
     
         l = np.random.randint(1, 100)
+        l=50
 
         Rb = 0.722
-        Cb = 8*10**-9
+        Cb = 8*10**-9 # too small?
         Lb = 0.955*10**-3
+
+        # Rb = 10
+        # Cb = 2
+        # Lb = 5
 
         cable = dict()
         cable['R'] = l * Rb
         cable['L'] = l * Lb
         cable['C'] = l * Cb
-
-        #TODO
-        # cable = dict()
-        cable['R'] = 0.4
-        cable['L'] = 2.3e-3
-        cable['C'] = 1e-20
 
         return cable
     
@@ -435,7 +434,10 @@ class NodeConstructorCable():
                 idx = int(idx)
                 C_sum += self.parameter['cable'][idx-1]['C']
 
+            for _, (idx, sign) in enumerate(zip(indizes_, signs)):
+                idx = int(idx)
                 A_col[3,idx-1] = sign * -(C_sum**-1)
+            
 
         elif parameter_i['fltr'] == 'LC':
 
@@ -454,6 +456,8 @@ class NodeConstructorCable():
                 idx = int(idx)
                 C_sum += self.parameter['cable'][idx-1]['C']
 
+            for _, (idx, sign) in enumerate(zip(indizes_, signs)):
+                idx = int(idx)
                 A_col[1,idx-1] = sign * -(C_sum**-1)
 
         elif parameter_i['fltr'] == 'L':
@@ -524,14 +528,16 @@ class NodeConstructorCable():
         indizes_ = indizes*signs # delet signs from indices
         indizes_.astype(dtype=np.int32)
         
+
+        C_sum = 0
+
+        for _, ele in enumerate(self.parameter['cable']):
+            C_sum += ele['C']
+
         for _, (idx, sign) in enumerate(zip(indizes_, signs)):
             idx = int(idx)
-            C_sum = 0
-
-            for j, ele in enumerate(self.parameter['cable']):
-                C_sum += ele['C']
-        
             A_load_col[idx-1] = sign * -(C_sum**-1)
+
         return A_load_col
         
     def generate_A_load_row(self, load_i):
@@ -565,9 +571,9 @@ class NodeConstructorCable():
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
                 
-                C_sum += self.parameter['cable'][idx-1]['C']  # Cb[idx]
+                C_sum += self.parameter['cable'][idx-1]['C']
 
-            vec[i] = - (ele['R'] * (C_sum))**-1 # Rload[i]
+            vec[i] = - (ele['R'] * (C_sum))**-1 
 
         A_load_diag = vec*diag
         
@@ -787,3 +793,6 @@ class NodeConstructorCable():
         plt.show()
         
         pass
+
+ 
+
