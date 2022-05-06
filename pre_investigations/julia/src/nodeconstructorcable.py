@@ -126,7 +126,7 @@ class NodeConstructorCable():
         
         sample = 0.1 * self.num_source * np.random.normal(0,1)
         # self.num_LC = int(np.ceil(np.clip(sample, 1, self.num_source-1)))
-        self.num_LC = 1 # self.num_source 
+        self.num_LC =  self.num_source 
 
         self.num_LCL = self.num_source - self.num_LC
         # self.num_LCL = 0
