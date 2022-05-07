@@ -1,4 +1,6 @@
 using Distributions
+using LinearAlgebra
+using StatsBase
 mutable struct NodeConstructor
     num_connections
     num_source
@@ -35,7 +37,7 @@ function NodeConstructor(;num_source, num_load, CM, parameter=nothing, S2S_p=0.1
 
         parameter = generate_parameter(num_LC, num_LCL, num_L)
     else
-
+        #TODO constructor
     end
 
     num_fltr = 4 * num_LCL + 2 * num_LC + 2 * num_L
@@ -45,39 +47,39 @@ function NodeConstructor(;num_source, num_load, CM, parameter=nothing, S2S_p=0.1
 end
 
 
-function generate_parameter(num_LC, num_LCL, num_L)
+function generate_parameter(self::NodeConstructor)
     """Create parameter dict"""
 
-        source_list = list()
-        cable_list = list()
-        load_list = list()
+        source_list = []
+        cable_list = []
+        load_list = []
 
-        for s in range(self.num_LCL):
-            sample = self.sample_LCL_para()
-            source_list.append(sample)
+        for s in 1:self.num_LCL
+            append!(source_list, sample_LCL_para())
+        end
         
-        for s in range(self.num_LC):
-            sample = self.sample_LC_para()
-            source_list.append(sample)
+        for s in 1:self.num_LC
+            append!(source_list, sample_LC_para())
+        end
         
-        for s in range(self.num_L):
-            sample = self.sample_L_para()
-            source_list.append(sample)
+        for s in 1:self.num_L
+            append!(source_list, sample_L_para())
+        end
 
-        for c in range(self.num_connections):
-            sample = self.sample_cable_para()
-            cable_list.append(sample)
+        for c in 1:self.num_connections
+            append!(cable_list, sample_cable_para())
+        end
 
-        for l in range(self.num_load):
-            sample = self.sample_load_para()
-            load_list.append(sample)
+        for l in 1:self.num_load
+            append!(load_list, sample_load_para())
+        end
 
         parameter = Dict()
-        parameter['source'] = source_list
-        parameter['cable'] = cable_list
-        parameter['load'] = load_list
+        parameter["source"] = source_list
+        parameter["cable"] = cable_list
+        parameter["load"] = load_list
     
-        return parameter
+        parameter
 end
 
 
@@ -86,22 +88,31 @@ function cntr_fltr(source_list)
     cntr_LC = 0
     cntr_L = 0
     
-    for _, source in enumerate(source_list):
-        if source['fltr'] == 'LCL':
-            cntr_LCL+=1
-        elif source['fltr'] == 'LC':
-            cntr_LC+=1
-        elif source['fltr'] == 'L':
-            cntr_L+=1
+    for (i, source) in enumerate(source_list)
+        if source["fltr"] == "LCL"
+            cntr_LCL += 1
+        elseif source["fltr"] == "LC"
+            cntr_LC += 1
+        elseif source["fltr"] == "L"
+            cntr_L += 1
+        end
+    end
 
     return (cntr_LCL, cntr_LC, cntr_L)
 end
 
 function sample_LCL_para()
+    """Sample source parameter""" 
 
-    #TODO randomize
     source = Dict()
     source["fltr"] = "LCL"
+
+    #source["R"] = round(rand(Uniform(0.1, 1)), digits=3)
+    #source["L1"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
+    #source["L2"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
+    #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
+
+    #TODO
     source["R"] = 0.4
     source["L1"] = 2.3e-3
     source["L2"] = 2.3e-3
@@ -115,9 +126,10 @@ function sample_LC_para()
 
     source = Dict()
     source["fltr"] = "LC"
-    #source["R"] = np.round_(np.random.uniform(0.1, 1), 3)
-    #source["L1"] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
-    #source["C"] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
+
+    #source["R"] = round(rand(Uniform(0.1, 1)), digits=3)
+    #source["L1"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
+    #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
 
     #TODO
     source["R"] = 0.4
@@ -143,10 +155,10 @@ function sample_load_para()
     """Sample load parameter"""
 
     load = Dict()
-    load['R'] = round(rand(Uniform(10, 10000)), digits=3)
+    #load["R"] = round(rand(Uniform(10, 10000)), digits=3)
 
     #TODO
-    load['R'] = 14
+    load["R"] = 14
 
     load
 end
@@ -157,25 +169,24 @@ function sample_cable_para()
     l = rand(1:1:100)
 
     Rb = 0.722
-    Cb = 8*10**-9
-    Lb = 0.955*10**-3
+    Cb = 8*10e-9 # too small?
+    Lb = 0.955*10e-3
 
     cable = Dict()
-    cable['R'] = l * Rb
-    cable['L'] = l * Lb
-    cable['C'] = l * Cb
+    cable["R"] = l * Rb
+    cable["L"] = l * Lb
+    cable["C"] = l * Cb
 
     #TODO
-    # cable = dict()
-    cable['R'] = 0.4
-    cable['L'] = 2.3e-3
-    cable['C'] = 1e-20
+    cable["R"] = 0.4
+    cable["L"] = 2.3e-3
+    cable["C"] = 1e-20
 
     cable
 end
 
 
-function tobe_or_n2b(self::NodeConstructor, x, p):
+function tobe_or_n2b(self::NodeConstructor, x, p)
     """Sets x based on p to zero or to the value of the counter and increments it."""
 
     # To count up the connection, cntr is returned.
@@ -200,68 +211,57 @@ function generate_CM(self::NodeConstructor)
     self.cntr = 0
 
     # get a upper triangular matrix
-    mask = np.tri(self.tot_ele).T
-    CM = np.random.rand(self.tot_ele,self.tot_ele) * mask # fill matrix with random entries between [0,1]
-    CM = CM - np.eye(CM.shape[0]) * np.diag(CM) # delet diagonal bc no connection with itself
+    mask = UpperTriangular(ones(self.tot_ele, self.tot_ele))
+    CM = rand(self.tot_ele,self.tot_ele) .* mask # fill matrix with random entries between [0,1]
+    CM = CM - Diagonal(CM) # delet diagonal bc no connection with itself
 
     # go through the matrix
     # -1 bc last entry is 0 anyway
-    for i in range(self.tot_ele-1):
-
+    for i in 1:self.tot_ele-1
         # start at i, bc we need to check only upper triangle
-        for j in range(i, self.tot_ele-1):
-            if j >= self.num_source-1: # select propability according to column
+        for j in 1:self.tot_ele-1
+            if j >= self.num_source-1 # select propability according to column
                 CM[i, j+1] = self.tobe_or_n2b(CM[i, j+1], self.S2L_p)
-            else:
+            else
                 CM[i, j+1] = self.tobe_or_n2b(CM[i, j+1], self.S2S_p)
             end
         end
     end
 
     # make sure that no objects disappear or subnets are formed
-    for i in range(self.tot_ele):
-        entries = list()
-        
+    for i in 1:self.tot_ele
         # save rows and columns entries
-        Col = CM[:i,i]
-        Row = CM[i,i+1:]
+        Col = CM[1:i-1, i]
+        Row = CM[i, i+1:self.tot_ele]
         
         # get one list in the form of: [column, row]-entries
-        entries.append(CM[:i,i].tolist())
-        entries.append(CM[i,i+1:].tolist())
-        entries = [item for sublist in entries for item in sublist]
+        entries = vcat(Col, Row)
 
-        non_zero = np.sum([entries[i] != 0 for i in range(len(entries))]) # number of non_zero entries
-        zero = np.sum([entries[i] == 0 for i in range(len(entries))]) # number of zero entries
+        non_zero = count(i->(i != 0), entries) # number of non_zero entries
+        zero = count(i->(i == 0), entries) # number of zero entries
 
         val_to_set = min(2, zero) # minimum of connections is 2
         
-        if non_zero <= 2: # we need to set values if there are less then 2 entries
-            idx_list = list() # create list to store indexes
-            idx_row_entries = np.where(0==Col) # Get rows of the entries = 0
-            idx_col_entries = np.where(0==Row) # Get col of the entries = 0
+        if non_zero <= 2 # we need to set values if there are less then 2 entries
+            idx_row_entries = findall(x->x==0, Col) # Get rows of the entries = 0
+            idx_col_entries = findall(x->x==0, Row) # Get col of the entries = 0
 
-            idx_row_entries = idx_row_entries[0].tolist()
-            idx_col_entries = idx_col_entries[0].tolist()
-
-            idx_list.append([(j,i) for _,j in enumerate(idx_row_entries)]) 
-            idx_list.append([(i,i+j+1) for _,j in enumerate(idx_col_entries)])
-            idx_list = [item for sublist in idx_list for item in sublist]
+            idx_list = vcat([(j,i) for j in idx_row_entries], [(i,i+j) for j in idx_col_entries])
             
-            samples = np.array(val_to_set).clip(0, len(idx_list)) 
-            idx_rnd = random.sample(range(0,len(idx_list)), samples) # draw samples from the list
-            idx_rnd = np.array(idx_rnd) 
+            samples = min(val_to_set, length(idx_list))
+            idx_rnd = sample(1:length(idx_list), samples) # draw samples from the list
             
-            for _, ix in enumerate(idx_rnd):
+            for (a, ix) in enumerate(idx_rnd)
                 # Based on the random sample, select an indize
                 # from the list and write into the corresponding CM cell.
-                CM[idx_list[ix]] = self.count_up() 
+                self.cntr += 1
+                CM[idx_list[ix][1], idx_list[ix][2]] = self.cntr
             end
         end
     end
 
     
-    CM = CM - CM.T # copy with negative sign to lower triangle
+    CM = CM - CM' # copy with negative sign to lower triangle
 
     # save CM
     self.CM = CM
@@ -271,7 +271,7 @@ function generate_CM(self::NodeConstructor)
 
 end
 
-
+#TODO continue here
 function get_A_source(self::NodeConstructor, source_i):
     """Create the A_source entry for a source in the A matrix
 
