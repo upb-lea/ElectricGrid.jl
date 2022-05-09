@@ -35,7 +35,7 @@ function NodeConstructor(;num_source, num_load, CM, parameter=nothing, S2S_p=0.1
         num_LCL = num_source - num_LC
         num_L = 0
 
-        parameter = generate_parameter(num_LC, num_LCL, num_L)
+        parameter = generate_parameter(num_LC, num_LCL, num_L, num_connections, num_load)
     else
         #TODO constructor
     end
@@ -47,30 +47,30 @@ function NodeConstructor(;num_source, num_load, CM, parameter=nothing, S2S_p=0.1
 end
 
 
-function generate_parameter(self::NodeConstructor)
+function generate_parameter(num_LC, num_LCL, num_L, num_connections, num_load)
     """Create parameter dict"""
 
         source_list = []
         cable_list = []
         load_list = []
 
-        for s in 1:self.num_LCL
+        for s in 1:num_LCL
             append!(source_list, sample_LCL_para())
         end
         
-        for s in 1:self.num_LC
+        for s in 1:num_LC
             append!(source_list, sample_LC_para())
         end
         
-        for s in 1:self.num_L
+        for s in 1:num_L
             append!(source_list, sample_L_para())
         end
 
-        for c in 1:self.num_connections
+        for c in 1:num_connections
             append!(cable_list, sample_cable_para())
         end
 
-        for l in 1:self.num_load
+        for l in 1:num_load
             append!(load_list, sample_load_para())
         end
 
@@ -272,282 +272,269 @@ function generate_CM(self::NodeConstructor)
 end
 
 #TODO continue here
-function get_A_source(self::NodeConstructor, source_i):
+function get_A_source(self::NodeConstructor, source_i)
     """Create the A_source entry for a source in the A matrix
 
     Returns:
         A_source: Matrix with values belonging to corresponding source (2, 2)
     """
-    parameter_i = self.source[source_i-1]
+    parameter_i = self.parameter["source"][source_i]
 
-    if parameter_i['fltr'] == 'LCL':
-
-        A_source = np.zeros((4,4))
-        A_source[0,0] = -parameter_i['R']/parameter_i['L1']
-        A_source[0,1] = -1/parameter_i['L1']
-        A_source[1,0] = 1/parameter_i['C']
-        A_source[1,2] = -1/parameter_i['C']
-        A_source[2,1] = 1/parameter_i['L2']
-        A_source[2,3] = -1/parameter_i['L2']
+    if parameter_i["fltr"] == "LCL"
+        A_source = zeros(4,4)
+        A_source[0,0] = -parameter_i["R"]/parameter_i["L1"]
+        A_source[0,1] = -1/parameter_i["L1"]
+        A_source[1,0] = 1/parameter_i["C"]
+        A_source[1,2] = -1/parameter_i["C"]
+        A_source[2,1] = 1/parameter_i["L2"]
+        A_source[2,3] = -1/parameter_i["L2"]
         
         C_sum =  0
         
-        CM_row = self.CM[source_i-1]
+        CM_row = self.CM[source_i,:]
         
-        indizes = list(CM_row[CM_row != 0])
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
-        indizes_.astype(dtype=np.int32)
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
         
-        for _, idx in enumerate(indizes_):
-            idx = int(idx)
-            C_sum += self.parameter['cable'][idx-1]['C']
+        for idx in indizes_
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"]
         end
         
-        A_source[3,2] = C_sum**-1
+        A_source[3,2] = C_sum^(-1)
 
-    elseif parameter_i['fltr'] == 'LC':
+    elseif parameter_i["fltr"] == "LC"
 
-        A_source = np.zeros((2,2))
-        A_source[0,0] = -parameter_i['R']/parameter_i['L1']
-        A_source[0,1] = -1/parameter_i['L1']
+        A_source = zeros(2,2)
+        A_source[0,0] = -parameter_i["R"]/parameter_i["L1"]
+        A_source[0,1] = -1/parameter_i["L1"]
         
-        C_sum =  parameter_i['C']
+        C_sum =  parameter_i["C"]
         
-        CM_row = self.CM[source_i-1]
+        CM_row = self.CM[source_i, :]
         
-        indizes = list(CM_row[CM_row != 0])
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
         
-        for _, idx in enumerate(indizes_):
-            idx = int(idx)
-            C_sum += self.parameter['cable'][idx-1]['C']
+        for idx in indizes_
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"]
         end
         
-        A_source[1,0] = C_sum**-1
+        A_source[1,0] = C_sum^(-1)
 
-    elseif parameter_i['fltr'] == 'L':
-        raise NotImplementedError
-
-    else:
-        raise f"Expect filter to be 'LCL', 'LC' or 'L', not {parameter_i['fltr']}."
+    elseif parameter_i["fltr"] == "L"
+        throw("unimplemented")
+    else
+        throw("Expect filter to be \"LCL\", \"LC\" or \"L\", not $(parameter_i["fltr"]).")
     end
 
     return A_source
 
 end
 
-function get_B_source(self::NodeConstructor, source_i):
+function get_B_source(self::NodeConstructor, source_i)
     """Create the B_source entry for a source in the B matrix
 
     Return:
         B_source: Matrix with values belonging to corresponding source (2, 1)
     """
-    parameter_i = self.source[source_i-1]
+    parameter_i = self.parameter["source"][source_i]
 
-    if parameter_i['fltr'] == 'LCL':
+    if parameter_i["fltr"] == "LCL"
+        B_source = zeros(4,1)
+        B_source[0,0] =  1/parameter_i["L1"]
 
-        B_source = np.zeros((4,1))
-        B_source[0,0] =  1/parameter_i['L1']
+    elseif parameter_i["fltr"] == "LC"
+        B_source = zeros(2,1)
+        B_source[0,0] =  1/parameter_i["L1"]
 
-    elseif parameter_i['fltr'] == 'LC':
-
-        B_source = np.zeros((2,1))
-        B_source[0,0] =  1/parameter_i['L1']
-
-    elseif parameter_i['fltr'] == 'L':
-        raise NotImplementedError
+    elseif parameter_i["fltr"] == "L"
+        throw("unimplemented")
     end
 
     return B_source
 end
 
-function get_A_col(self::NodeConstructor, source_i):
+function get_A_col(self::NodeConstructor, source_i)
     """Create the A_col entry in the A matrix
     Return:
         A_col: Matrix with the column entries for A (2, num_connections)
     """
 
-    parameter_i = self.source[source_i-1]
+    parameter_i = self.parameter["source"][source_i]
 
-    if parameter_i['fltr'] == 'LCL':
+    if parameter_i["fltr"] == "LCL"
+        A_col = zeros(4, self.num_connections)
 
-        A_col = np.zeros((4, self.num_connections))
+        CM_row = self.CM[source_i,:]
 
-        CM_row = self.CM[source_i-1]
-
-        indizes = list(CM_row[CM_row != 0]) # get entries unequal 0
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
-        indizes_.astype(dtype=np.int32)
+        indizes = CM_row[CM_row .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
 
         C_sum = 0 
 
-        for _, (idx, sign) in enumerate(zip(indizes_, signs)):
-            idx = int(idx)
-            C_sum += self.parameter['cable'][idx-1]['C']
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"]
 
-            A_col[3,idx-1] = sign * -(C_sum**-1)
+            A_col[3,idx] = sign * -(C_sum^(-1))
         end
 
-    elseif parameter_i['fltr'] == 'LC':
+    elseif parameter_i["fltr"] == "LC"
 
-        A_col = np.zeros((2, self.num_connections))
+        A_col = zeros(2, self.num_connections)
 
-        CM_row = self.CM[source_i-1]
+        CM_row = self.CM[source_i,:]
 
-        indizes = list(CM_row[CM_row != 0]) # get entries unequal 0
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
-        indizes_.astype(dtype=np.int32)
+        indizes = CM_row[CM_row .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
 
-        C_sum = parameter_i['C']
+        C_sum = parameter_i["C"]
 
-        for _, (idx, sign) in enumerate(zip(indizes_, signs)):
-            idx = int(idx)
-            C_sum += self.parameter['cable'][idx-1]['C']
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"]
 
-            A_col[1,idx-1] = sign * -(C_sum**-1)
+            A_col[1,idx] = sign * -(C_sum^(-1))
         end
 
-    elseif parameter_i['fltr'] == 'L':
-        raise NotImplementedError
+    elseif parameter_i["fltr"] == "L"
+        throw("unimplemented")
     end
 
     return A_col
 end
 
-function get_A_row(self::NodeConstructor, source_i):
+function get_A_row(self::NodeConstructor, source_i)
     """Create the A_row entry in the A matrix
     Return:
         A_row: Matrix with the row entries for A (num_connections, 2)
     """
-    parameter_i = self.source[source_i-1]
+    parameter_i = self.parameter["source"][source_i]
 
-    if parameter_i['fltr'] == 'LCL':
-
-        A_row = np.zeros((4, self.num_connections))
-        CM_col = self.CM[source_i-1]
+    if parameter_i["fltr"] == "LCL"
+        A_row = zeros(4, self.num_connections)
+        CM_col = self.CM[source_i,:]
         
-        indizes = list(CM_col[CM_col != 0]) # get entries unequal 0
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
-        indizes_.astype(dtype=np.int32)
+        indizes = CM_col[CM_col .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
         
-        for _, (idx, sign) in enumerate(zip(indizes_, signs)):
-            idx = int(idx)
-            A_row[3,idx-1] = sign * 1/self.parameter['cable'][idx-1]['L']
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            A_row[3,idx] = sign * 1/self.parameter["cable"][idx]["L"]
         end
 
-    elseif parameter_i['fltr'] == 'LC':
-
-        A_row = np.zeros((2, self.num_connections))
+    elseif parameter_i["fltr"] == "LC"
+        A_row = zeros(2, self.num_connections)
         
-        CM_col = self.CM[source_i-1]
+        CM_col = self.CM[source_i,:]
         
-        indizes = list(CM_col[CM_col != 0]) # get entries unequal 0
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
+        indizes = CM_col[CM_col .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
         
-        for _, (idx, sign) in enumerate(zip(indizes_, signs)):
-            idx = int(idx)
-            A_row[1,idx-1] = sign * 1/self.parameter['cable'][idx-1]['L']
+        for (idx, sign) in (indizes_, signs)
+            idx = Int(idx)
+            A_row[1,idx] = sign * 1/self.parameter["cable"][idx]["L"]
         end
 
-    elseif parameter_i['fltr'] == 'L':
-        raise NotImplementedError
+    elseif parameter_i["fltr"] == "L"
+        throw("unimplemented")
     end
 
     return A_row.T
 end
 
-function generate_A_tran_diag(self::NodeConstructor):
+function generate_A_tran_diag(self::NodeConstructor)
     """Create A_tran_diag"""
 
-    diag = np.eye(self.num_connections)
-    vec = np.zeros(self.num_connections)[:, None]
-    for i, ele in enumerate(self.parameter['cable']):
-        vec[i] = -ele['R']/ele['L']
+    vec = zeros(self.num_connections)
+    for (i, ele) in enumerate(self.parameter["cable"])
+        vec[i] = -ele["R"]/ele["L"]
     end
-    A_tran_diag = vec*diag
+    A_tran_diag = Diagonal(vec)
 
     return A_tran_diag
 end
 
-function generate_A_load_col(self::NodeConstructor, load_i):
+function generate_A_load_col(self::NodeConstructor, load_i)
         
-    A_load_col = np.zeros(self.num_connections)
+    A_load_col = zeros(self.num_connections)
 
-    CM_row = self.CM[(self.num_source-1)+load_i]
+    CM_row = self.CM[self.num_source + load_i, :]
 
-    indizes = list(CM_row[CM_row != 0]) # get entries unequal 0
-    signs = np.sign(indizes) # get signs
+    indizes = CM_row[CM_row .!= 0] # get entries unequal 0
+    signs = [sign(x) for x in indizes] # get signs
 
-    indizes_ = indizes*signs # delet signs from indices
-    indizes_.astype(dtype=np.int32)
+    indizes_ = indizes .* signs # delet signs from indices
 
-    for _, (idx, sign) in enumerate(zip(indizes_, signs)):
-        idx = int(idx)
-        C_sum = 0
+    C_sum = 0
 
-        for j, ele in enumerate(self.parameter['cable']):
-            C_sum += ele['C']
-        end
+    for ele in self.parameter["cable"]
+        C_sum += ele["C"]
     end
 
-        A_load_col[idx-1] = sign * -(C_sum**-1)
+    for (idx, sign) in zip(indizes_, signs)
+        idx = Int(idx)
+        A_load_col[idx] = sign * -(C_sum^(-1))
+    end
+
     return A_load_col
 end
 
 
-function generate_A_load_row(self::NodeConstructor, load_i):
+function generate_A_load_row(self::NodeConstructor, load_i)
             
-    A_load_row = np.zeros(self.num_connections)
+    A_load_row = zeros(self.num_connections)
 
-    CM_col = self.CM[(self.num_source-1)+load_i]
+    CM_col = self.CM[self.num_source + load_i, :]
 
-    indizes = list(CM_col[CM_col != 0]) # get entries unequal 0
+    indizes = CM_col[CM_col .!= 0] # get entries unequal 0
+    signs = [sign(x) for x in indizes] # get signs
+    indizes_ = indizes .* signs # delet signs from indices
 
-    signs = np.sign(indizes) # get signs
-    indizes_ = indizes*signs # delet signs from indices
+    for (idx, sign) in zip(indizes_, signs)
+        idx = Int(idx)
 
-    for i, (idx, sign) in enumerate(zip(indizes_, signs)):
-        idx = int(idx)
-
-        A_load_row[idx-1] = sign *1/self.parameter['cable'][idx-1]['L'] 
+        A_load_row[idx] = sign * 1/self.parameter["cable"][idx]["L"] 
     end 
 
     return A_load_row
 end
 
 
-function generate_A_load_diag(self::NodeConstructor):
-    diag = np.eye(self.num_load)
-    vec = np.zeros(self.num_load)
+function generate_A_load_diag(self::NodeConstructor)
+    vec = zeros(self.num_load)
 
-    for i, ele in enumerate(self.parameter['load']):
-        CM_row = self.CM[(self.num_source)+i]
-        indizes = list(CM_row[CM_row != 0])
-        signs = np.sign(indizes) # get signs
-        indizes_ = indizes*signs # delet signs from indices
+    for (i, ele) in enumerate(self.parameter["load"])
+        CM_row = self.CM[self.num_source + i, :]
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
         C_sum = 0
-        for _, idx in enumerate(indizes_):
-            idx = int(idx)
+
+        for idx in indizes_
+            idx = Int(idx)
             
-            C_sum += self.parameter['cable'][idx-1]['C']  # Cb[idx]
+            C_sum += self.parameter["cable"][idx]["C"]  # Cb[idx]
         end
 
-        vec[i] = - (ele['R'] * (C_sum))**-1 # Rload[i]
+        vec[i] = - (ele["R"] * (C_sum))^(-1) # Rload[i]
     end
 
-    A_load_diag = vec*diag
+    A_load_diag = Diagonal(vec)
 
     return A_load_diag
 end
 
 
-function generate_A(self::NodeConstructor):
+function generate_A(self::NodeConstructor)
     """Generate the A matrix
 
     The previously constructed matrices are now plugged together in the form:
@@ -562,28 +549,28 @@ function generate_A(self::NodeConstructor):
         A: A matrix for state space ((2*num_source+num_connections),(2*num_source+num_connections))
     """
     # get A_source
-    self.num_fltr = 4*self.num_LCL + 2*self.num_LC + 2*self.num_L
-    A_source = np.zeros((self.num_fltr, self.num_fltr)) # construct matrix of zeros
-    A_source_list = [self.get_A_source(i) for i in range(1,self.num_source+1)]
+    self.num_fltr = 4 * self.num_LCL + 2 * self.num_LC + 2 * self.num_L
+    A_source = zeros(self.num_fltr, self.num_fltr) # construct matrix of zeros
+    A_source_list = [get_A_source(self, i) for i in 1:self.num_source]
             
-    for i, ele in enumerate(A_source_list):
-        if i < self.num_LCL:
-            start = 4*i
-            stop = 4*i+4
-            A_source[start:stop,start:stop] = ele
+    for (i, ele) in enumerate(A_source_list)
+        if i <= self.num_LCL
+            start = 4 * (i - 1) + 1
+            stop = 4 * i
+            A_source[start:stop, start:stop] = ele
 
-        elseif i < self.num_LCL+self.num_LC:
-            start = 2*i + 2*self.num_LCL
-            stop = 2*i+2 + 2*self.num_LCL
-            A_source[start:stop,start:stop] = ele
+        elseif i <= self.num_LCL + self.num_LC
+            start = 2 * i + 2 * self.num_LCL - 1
+            #TODO hier gehts weiter
+            stop = 2 * i + 2 * self.num_LCL
+            A_source[start:stop, start:stop] = ele
 
-        elseif i < self.num_LCL+self.num_LC+self.num_L:
+        elseif i <= self.num_LCL + self.num_LC + self.num_L
             start = 2*i + 2*self.num_LCL 
             stop = 2*i+2 + 2*self.num_LCL
             A_source[start:stop,start:stop] = ele
         end
     end
-
 
     # get A_col
     A_col = np.zeros((self.num_fltr, self.num_connections))
