@@ -86,7 +86,7 @@ class NodeConstructorCableLoads():
 
             self.num_LCL, self.num_LC, self.num_L = self.cntr_fltr(self.parameter['source'])
             
-            self.num_RLC_load, self.num_RL_load, self.num_RC_load, self.num_R_load = self.cntr_loadtypes(self.parameter['load'])
+            self.num_RLC_load, self.num_LC_load, self.num_RL_load, self.num_RC_load, self.num_L_load, self.num_C_load,self.num_R_load = self.cntr_loadtypes(self.parameter['load'])
 
             assert self.num_source == (self.num_LCL + self.num_LC + self.num_L), (
                 f"Expect the number of sources to be identical to the sum of the filter types, but the number of sources is {self.num_source} and the sum of the filters is {(self.num_LCL + self.num_LC + self.num_L)} .")
@@ -137,15 +137,27 @@ class NodeConstructorCableLoads():
         for l in range(self.num_RLC_load):
             sample = self.sample_RLC_load_para()
             load_list.append(sample)
+        
+        for l in range(self.num_LC_load):
+            sample = self.sample_LC_load_para()
+            load_list.append(sample)
             
         for l in range(self.num_RL_load):
             sample = self.sample_RL_load_para()
+            load_list.append(sample)
+            
+        for l in range(self.num_L_load):
+            sample = self.sample_L_load_para()
             load_list.append(sample)
             
         for l in range(self.num_RC_load):
             sample = self.sample_RC_load_para()
             load_list.append(sample)
             
+        for l in range(self.num_C_load):
+            sample = self.sample_C_load_para()
+            load_list.append(sample)
+                    
         for l in range(self.num_R_load):
             sample = self.sample_R_load_para()
             load_list.append(sample)
@@ -169,12 +181,15 @@ class NodeConstructorCableLoads():
     def get_load_distribution(self):
         """Create a distribution for the load types"""
         
-        sample = np.random.dirichlet(np.ones(4)) * self.num_load
+        sample = np.random.dirichlet(np.ones(7))* self.num_load
 
         self.num_R_load = int(np.floor(sample[0]))
-        self.num_RL_load = int(np.floor(sample[1]))
-        self.num_RC_load = int(np.floor(sample[2]))
-        self.num_RLC_load = self.num_load - (self.num_R_load + self.num_RL_load + self.num_RC_load)
+        self.num_C_load = int(np.floor(sample[1]))
+        self.num_L_load = int(np.floor(sample[2]))
+        self.num_RL_load = int(np.floor(sample[3]))
+        self.num_RC_load = int(np.floor(sample[4]))
+        self.num_LC_load = int(np.floor(sample[5]))
+        self.num_RLC_load = self.num_load - (self.num_R_load + self.num_C_load + self.num_L_load +self.num_RL_load + self.num_RC_load + self.num_LC_load)
         pass
 
     def cntr_fltr(self, source_list):
@@ -210,21 +225,30 @@ class NodeConstructorCableLoads():
         """
     
         cntr_RLC=0
+        cntr_LC=0
         cntr_RL=0
         cntr_RC=0
+        cntr_L=0
+        cntr_C=0
         cntr_R=0
         
         for _, load in enumerate(load_list):
             if load['impedance'] == 'RLC':
                 cntr_RLC+=1
+            elif load['impedance'] == 'LC':
+                cntr_LC+=1
             elif load['impedance'] == 'RL':
                 cntr_RL+=1
             elif load['impedance'] == 'RC':
                 cntr_RC+=1
+            elif load['impedance'] == 'L':
+                cntr_L+=1
+            elif load['impedance'] == 'C':
+                cntr_C+=1
             elif load['impedance'] == 'R':
                 cntr_R+=1
 
-        return (cntr_RLC, cntr_RL, cntr_RC, cntr_R)
+        return (cntr_RLC, cntr_LC, cntr_RL, cntr_RC, cntr_L, cntr_C, cntr_R)
     
     def sample_LCL_para(self):
         """Sample source parameter for LCL 
@@ -295,6 +319,30 @@ class NodeConstructorCableLoads():
         
         return load
     
+    def sample_C_load_para(self):
+        """Sample source parameter for C
+        
+        Returns:
+            source: Dict with sampled parameters (dict)
+        """
+        
+        load = dict()
+        load['impedance']= 'C'
+        load['C'] = np.round_(np.random.uniform(1, 10), 3)
+        return load
+    
+    def sample_L_load_para(self):
+        """Sample source parameter for L
+        
+        Returns:
+            source: Dict with sampled parameters (dict)
+        """
+        
+        load = dict()
+        load['impedance']= 'L'
+        load['L'] = np.round_(np.random.uniform(1, 10), 3)
+        return load
+    
     def sample_RL_load_para(self):
         """Sample source parameter for RL
         
@@ -321,6 +369,18 @@ class NodeConstructorCableLoads():
         load['C'] = np.round_(np.random.uniform(1, 10), 3)
         return load
     
+    def sample_LC_load_para(self):
+        """Sample source parameter for LC
+        
+        Returns:
+            source: Dict with sampled parameters (dict)
+        """
+        
+        load = dict()
+        load['impedance']= 'LC'
+        load['L'] = np.round_(np.random.uniform(1, 10), 3)
+        load['C'] = np.round_(np.random.uniform(1, 10), 3)
+        return load
     
     def sample_RLC_load_para(self):
         """Sample source parameter for RLC
@@ -335,7 +395,7 @@ class NodeConstructorCableLoads():
         load['L'] = np.round_(np.random.uniform(1, 10), 3)
         load['C'] = np.round_(np.random.uniform(1, 10), 3)
         return load
-    
+
     def sample_cable_para(self):
         """Sample cable parameter
         
@@ -645,7 +705,7 @@ class NodeConstructorCableLoads():
         
         parameter_i = self.load[load_i-1]
         
-        if parameter_i['impedance'] == 'RLC':
+        if parameter_i['impedance'] == 'RLC' or parameter_i['impedance'] == 'LC':
         
             A_load_col = np.zeros((2,self.num_connections))
 
@@ -667,7 +727,7 @@ class NodeConstructorCableLoads():
                 A_load_col[0,idx-1] = sign * -(C_sum**-1)
                 
                 
-        elif parameter_i['impedance'] == 'RL':
+        elif parameter_i['impedance'] == 'RL' or parameter_i['impedance'] == 'L':
         
             A_load_col = np.zeros((2,self.num_connections))
 
@@ -688,7 +748,7 @@ class NodeConstructorCableLoads():
                 idx = int(idx)
                 A_load_col[0,idx-1] = sign * -(C_sum**-1)
                 
-        elif parameter_i['impedance'] == 'RC' :
+        elif parameter_i['impedance'] == 'RC' or parameter_i['impedance'] == 'C':
             
             A_load_col = np.zeros((1,self.num_connections))
 
@@ -736,7 +796,7 @@ class NodeConstructorCableLoads():
         
         parameter_i = self.load[load_i-1]
         
-        if parameter_i['impedance'] == 'RLC' or parameter_i['impedance'] == 'RL':
+        if parameter_i['impedance'] == 'RLC' or parameter_i['impedance'] == 'LC' or parameter_i['impedance'] == 'RL' or parameter_i['impedance'] == 'L':
         
             A_load_row = np.zeros((self.num_connections,2))
 
@@ -752,7 +812,7 @@ class NodeConstructorCableLoads():
 
                 A_load_row[idx-1,0] = sign *1/self.parameter['cable'][idx-1]['L']  
                 
-        elif parameter_i['impedance'] == 'RC' or parameter_i['impedance'] == 'R':
+        elif parameter_i['impedance'] == 'RC' or parameter_i['impedance'] == 'C' or parameter_i['impedance'] == 'R':
         
             A_load_row = np.zeros((self.num_connections,1))
 
@@ -796,6 +856,27 @@ class NodeConstructorCableLoads():
             
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
             A_load[0,1] = - (C_sum)**-1
+            
+        
+        elif parameter_i['impedance'] == 'LC':
+        
+            A_load = np.zeros((2,2))
+            A_load[1,0] = 1/parameter_i['L']
+            
+            C_sum =  parameter_i['C']
+            
+            CM_row = self.CM[(self.num_source-1)+load_i]
+            
+            indizes = list(CM_row[CM_row != 0])
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            
+            for _, idx in enumerate(indizes_):
+                idx = int(idx)
+                C_sum += self.parameter['cable'][idx-1]['C']
+            
+            A_load[0,1] = - (C_sum)**-1
+
 
         elif parameter_i['impedance'] == 'RL':
         
@@ -815,7 +896,28 @@ class NodeConstructorCableLoads():
                 C_sum += self.parameter['cable'][idx-1]['C']
             
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
+            
             A_load[0,1] = - (C_sum)**-1
+            
+        elif parameter_i['impedance'] == 'L':
+        
+            A_load = np.zeros((2,2))
+            A_load[1,0] = 1/parameter_i['L']
+            
+            C_sum =  0
+            
+            CM_row = self.CM[(self.num_source-1)+load_i]
+            
+            indizes = list(CM_row[CM_row != 0])
+            signs = np.sign(indizes) # get signs
+            indizes_ = indizes*signs # delet signs from indices
+            
+            for _, idx in enumerate(indizes_):
+                idx = int(idx)
+                C_sum += self.parameter['cable'][idx-1]['C']
+            
+            A_load[0,1] = - (C_sum)**-1
+
 
         elif parameter_i['impedance'] == 'RC':
         
@@ -835,6 +937,12 @@ class NodeConstructorCableLoads():
             
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
             
+        
+        elif parameter_i['impedance'] == 'C':
+        
+            A_load = np.zeros((1,1))
+
+        
         elif parameter_i['impedance'] == 'R':
         
             A_load = np.zeros((1,1))
@@ -854,10 +962,9 @@ class NodeConstructorCableLoads():
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
         
         else:
-            raise f"Expect Impedance to be 'RLC', 'RL', 'RC' or 'R' , not {parameter_i['Impedance']}."
+            raise f"Expect Impedance to be 'RLC', 'LC', 'RL', 'RC', 'L', ''or 'R' , not {parameter_i['Impedance']}."
 
         return A_load
-
 
     def generate_A(self):
         """Generate the A matrix
@@ -876,10 +983,13 @@ class NodeConstructorCableLoads():
               
         with A_load_diag:
         
-             [[RLC, 0 , 0,  0]
-              [0,   RL, 0,  0]
-              [0,   0,  RC, 0]
-              [0,   0,   0, R]]
+             [[RLC, 0 , 0,  0,  0, 0, 0]
+              [0,   LC, 0,  0,  0, 0, 0]
+              [0,   0,  RL, 0,  0, 0, 0]
+              [0,   0,  0,  L,  0, 0, 0]
+              [0,   0 , 0,  0, RC, 0, 0]
+              [0,   0 , 0,  0,  0, C, 0]
+              [0,   0 , 0,  0,  0, 0, R]]
         
         Returns:
             A: A matrix for state space ((2*num_source+num_connections),(2*num_source+num_connections))
@@ -963,30 +1073,21 @@ class NodeConstructorCableLoads():
 
 
         # get A_load_diag
-        self.num_impedance = 2* (self.num_RLC_load+self.num_RL_load) + self.num_RC_load + self.num_R_load
+        self.num_impedance = 2* (self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load) + self.num_RC_load + self.num_C_load +self.num_R_load
         A_load_diag = np.zeros((self.num_impedance, self.num_impedance)) # construct matrix of zeros
         A_load_list = [self.get_A_load(i) for i in range(1,self.num_load+1)]
                 
         for i, ele in enumerate(A_load_list):
-            if i < self.num_RLC_load:
-                start = 2*i
-                stop = 2*i+2
-                A_load_diag[start:stop,start:stop] = ele
-
-            elif i < self.num_RLC_load+self.num_RL_load:
+            if i < self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load:
                 start = 2*i 
                 stop = 2*i+2 
                 A_load_diag[start:stop,start:stop] = ele
 
-            elif i < self.num_RLC_load+self.num_RL_load+self.num_RC_load:
-                start = i + self.num_RLC_load+self.num_RL_load
-                stop = i+1 + self.num_RLC_load+self.num_RL_load
+            elif i < self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load+self.num_RC_load+self.num_C_load+self.num_R_load:
+                start = i + self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load
+                stop = i+1 + self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load
                 A_load_diag[start:stop,start:stop] = ele
-                
-            elif i < self.num_RLC_load+self.num_RL_load+self.num_RC_load+self.num_R_load:
-                start = i + self.num_RLC_load+self.num_RL_load
-                stop = i+1 + self.num_RLC_load+self.num_RL_load
-                A_load_diag[start:stop,start:stop] = ele
+
         
 #         A_transition = np.block([A_tran_diag, A_load_row],
 #                                 [A_load_col, A_load_diag])
@@ -1080,10 +1181,10 @@ class NodeConstructorCableLoads():
             states.append(f'i_c{c}')
         
         for l in range(1, self.num_load+1):
-            if l <= self.num_RLC_load+self.num_RL_load:
+            if l <= self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load:
                 states.append(f'u_l{l}')
                 states.append(f'i_l{l}')
-            elif l <= self.num_RLC_load+self.num_RL_load+self.num_RC_load+self.num_R_load:
+            elif l <= self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load+self.num_RC_load+self.num_C_load+self.num_R_load:
                 states.append(f'u_l{l}')
         return states
     
