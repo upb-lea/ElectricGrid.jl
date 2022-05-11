@@ -15,10 +15,13 @@ class NodeConstructorCableLoads():
         num_LCL: Number of filters from type LCL (1,)
 
         num_loads: Total number of loads in the grid (1,)
-        num_R_load: Number of loads from type R (1,)
-        num_RC_load: Number of loads from type RC (1,)
-        num_RL_load: Number of loads from type RL (1,)
-        num_RLC_load: Number of loads from type RLC (1,)
+        num_loads_R: Number of loads from type R (1,)
+        num_loads_L: Number of loads from type L (1,)
+        num_loads_C: Number of loads from type C (1,)
+        num_loads_LC: Number of loads from type LC (1,)
+        num_loads_RC: Number of loads from type RC (1,)
+        num_loads_RL: Number of loads from type RL (1,)
+        num_loads_RLC: Number of loads from type RLC (1,)
 
         tot_ele: Total number of objects (loads + filters) in the grid (1,)
         
@@ -32,7 +35,7 @@ class NodeConstructorCableLoads():
         get_states: Function which returns a list of strings with all states for the given system
         draw_graph: Function which plots a graph based on the CM
     """
-    def __init__(self, num_source, num_load, CM=None, parameter=None, S2S_p=0.1, S2L_p=0.8):
+    def __init__(self, num_source, num_loads, CM=None, parameter=None, S2S_p=0.1, S2L_p=0.8):
         """Creates and initialize a nodeconstructor class instance.
 
         First the parameters are unpacked and then a CM is created, if not passed.
@@ -47,8 +50,8 @@ class NodeConstructorCableLoads():
         
         """
         self.num_source = num_source
-        self.num_load = num_load
-        self.tot_ele = num_source + num_load
+        self.num_loads = num_loads
+        self.tot_ele = num_source + num_loads
 
         self.S2S_p = S2S_p
         self.S2L_p = S2L_p
@@ -78,20 +81,20 @@ class NodeConstructorCableLoads():
             assert self.num_source == len(self.parameter['source']), (
                 f"Expect the number of sources to match the number of sources in the parameters, but got {self.num_source} and {len(self.parameter['source'])}.")
             
-            assert self.num_load == len(self.parameter['load']), (
-                f"Expect the number of loads to match the number of loads in the parameters, but got {self.num_load} and {len(self.parameter['load'])}.")
+            assert self.num_loads == len(self.parameter['load']), (
+                f"Expect the number of loads to match the number of loads in the parameters, but got {self.num_loads} and {len(self.parameter['load'])}.")
 
             assert self.num_connections == len(self.parameter['cable']), (
                 f"Expect the number of connections to match the number of cables in the parameters, but got {self.num_connections} and {len(self.parameter['cable'])}.")
 
-            self.num_LCL, self.num_LC, self.num_L = self.cntr_fltr(self.parameter['source'])
+            self.num_LCL, self.num_LC, self.num_L = self._cntr_fltr(self.parameter['source'])
             
-            self.num_RLC_load, self.num_LC_load, self.num_RL_load, self.num_RC_load, self.num_L_load, self.num_C_load,self.num_R_load = self.cntr_loadtypes(self.parameter['load'])
+            self.num_loads_RLC, self.num_loads_LC, self.num_loads_RL, self.num_loads_RC, self.num_loadss_L, self.num_loads_C,self.num_loads_R = self._cntr_loads(self.parameter['load'])
 
             assert self.num_source == (self.num_LCL + self.num_LC + self.num_L), (
                 f"Expect the number of sources to be identical to the sum of the filter types, but the number of sources is {self.num_source} and the sum of the filters is {(self.num_LCL + self.num_LC + self.num_L)} .")
-            assert self.num_load == (self.num_RLC_load + self.num_RL_load + self.num_RC_load+ self.num_R_load), (
-                f"Expect the number of loads to be identical to the sum of the load types, but the number of loads is {self.num_load} and the sum of the loads is {(self.num_RLC_load + self.num_RL_load + self.num_RC_load+ self.num_R_load)} .")
+            assert self.num_loads == (self.num_loads_RLC + self.num_loads_RL + self.num_loads_RC+ self.num_loads_R), (
+                f"Expect the number of loads to be identical to the sum of the load types, but the number of loads is {self.num_loads} and the sum of the loads is {(self.num_loads_RLC + self.num_loads_RL + self.num_loads_RC+ self.num_loads_R)} .")
         elif parameter == None:
             self.parameter = self.generate_parameter()
 
@@ -115,51 +118,51 @@ class NodeConstructorCableLoads():
         cable_list = list()
         load_list = list()
         
-        self.get_filter_distribution()
-        self.get_load_distribution()
+        self._get_filter_distribution()
+        self._get_load_distribution()
 
         for s in range(self.num_LCL):
-            sample = self.sample_LCL_para()
+            sample = self._sample_fltr_LCL()
             source_list.append(sample)
         
         for s in range(self.num_LC):
-            sample = self.sample_LC_para()
+            sample = self._sample_fltr_LC()
             source_list.append(sample)
         
         for s in range(self.num_L):
-            sample = self.sample_L_para()
+            sample = self._sample_fltr_L()
             source_list.append(sample)
 
         for c in range(self.num_connections):
-            sample = self.sample_cable_para()
+            sample = self._sample_cable()
             cable_list.append(sample)
 
-        for l in range(self.num_RLC_load):
-            sample = self.sample_RLC_load_para()
+        for l in range(self.num_loads_RLC):
+            sample = self._sample_load_RLC()
             load_list.append(sample)
         
-        for l in range(self.num_LC_load):
-            sample = self.sample_LC_load_para()
+        for l in range(self.num_loads_LC):
+            sample = self._sample_load_LC()
             load_list.append(sample)
             
-        for l in range(self.num_RL_load):
-            sample = self.sample_RL_load_para()
+        for l in range(self.num_loads_RL):
+            sample = self._sample_load_RL()
             load_list.append(sample)
             
-        for l in range(self.num_L_load):
-            sample = self.sample_L_load_para()
+        for l in range(self.num_loadss_L):
+            sample = self._sample_load_L()
             load_list.append(sample)
             
-        for l in range(self.num_RC_load):
-            sample = self.sample_RC_load_para()
+        for l in range(self.num_loads_RC):
+            sample = self._sample_load_RC()
             load_list.append(sample)
             
-        for l in range(self.num_C_load):
-            sample = self.sample_C_load_para()
+        for l in range(self.num_loads_C):
+            sample = self._sample_load_C()
             load_list.append(sample)
                     
-        for l in range(self.num_R_load):
-            sample = self.sample_R_load_para()
+        for l in range(self.num_loads_R):
+            sample = self._sample_load_R()
             load_list.append(sample)
 
         parameter = dict()
@@ -169,7 +172,7 @@ class NodeConstructorCableLoads():
     
         return parameter
 
-    def get_filter_distribution(self):
+    def _get_filter_distribution(self):
         """Create a distribution for the filter types"""
         
         sample = 0.1 * self.num_source * np.random.normal(0,1)
@@ -178,21 +181,21 @@ class NodeConstructorCableLoads():
         self.num_L = 0
         pass
     
-    def get_load_distribution(self):
+    def _get_load_distribution(self):
         """Create a distribution for the load types"""
         
-        sample = np.random.dirichlet(np.ones(7))* self.num_load
+        sample = np.random.dirichlet(np.ones(7))* self.num_loads
 
-        self.num_R_load = int(np.floor(sample[0]))
-        self.num_C_load = int(np.floor(sample[1]))
-        self.num_L_load = int(np.floor(sample[2]))
-        self.num_RL_load = int(np.floor(sample[3]))
-        self.num_RC_load = int(np.floor(sample[4]))
-        self.num_LC_load = int(np.floor(sample[5]))
-        self.num_RLC_load = self.num_load - (self.num_R_load + self.num_C_load + self.num_L_load +self.num_RL_load + self.num_RC_load + self.num_LC_load)
+        self.num_loads_R = int(np.floor(sample[0]))
+        self.num_loads_C = int(np.floor(sample[1]))
+        self.num_loadss_L = int(np.floor(sample[2]))
+        self.num_loads_RL = int(np.floor(sample[3]))
+        self.num_loads_RC = int(np.floor(sample[4]))
+        self.num_loads_LC = int(np.floor(sample[5]))
+        self.num_loads_RLC = self.num_loads - (self.num_loads_R + self.num_loads_C + self.num_loadss_L +self.num_loads_RL + self.num_loads_RC + self.num_loads_LC)
         pass
 
-    def cntr_fltr(self, source_list):
+    def _cntr_fltr(self, source_list):
         """Count the filter types
         
         Count the filter types if the parameter dict is predefined.
@@ -215,7 +218,7 @@ class NodeConstructorCableLoads():
 
         return (cntr_LCL, cntr_LC, cntr_L)
     
-    def cntr_loadtypes(self, load_list):
+    def _cntr_loads(self, load_list):
         """Count the load types
         
         Count the load types if the parameter dict is predefined.
@@ -250,7 +253,7 @@ class NodeConstructorCableLoads():
 
         return (cntr_RLC, cntr_LC, cntr_RL, cntr_RC, cntr_L, cntr_C, cntr_R)
     
-    def sample_LCL_para(self):
+    def _sample_fltr_LCL(self):
         """Sample source parameter for LCL 
         
         Returns:
@@ -272,7 +275,7 @@ class NodeConstructorCableLoads():
         
         return source
     
-    def sample_LC_para(self):
+    def _sample_fltr_LC(self):
         """Sample source parameter for LC
         
         Returns:
@@ -292,7 +295,7 @@ class NodeConstructorCableLoads():
         return source
 
     
-    def sample_L_para(self):
+    def _sample_fltr_L(self):
         """Sample source parameter for L
         
         Returns:
@@ -306,7 +309,7 @@ class NodeConstructorCableLoads():
         
         return source
     
-    def sample_R_load_para(self):
+    def _sample_load_R(self):
         """Sample source parameter for R
         
         Returns:
@@ -319,7 +322,7 @@ class NodeConstructorCableLoads():
         
         return load
     
-    def sample_C_load_para(self):
+    def _sample_load_C(self):
         """Sample source parameter for C
         
         Returns:
@@ -331,7 +334,7 @@ class NodeConstructorCableLoads():
         load['C'] = np.round_(np.random.uniform(1, 10), 3)
         return load
     
-    def sample_L_load_para(self):
+    def _sample_load_L(self):
         """Sample source parameter for L
         
         Returns:
@@ -343,7 +346,7 @@ class NodeConstructorCableLoads():
         load['L'] = np.round_(np.random.uniform(1, 10), 3)
         return load
     
-    def sample_RL_load_para(self):
+    def _sample_load_RL(self):
         """Sample source parameter for RL
         
         Returns:
@@ -356,7 +359,7 @@ class NodeConstructorCableLoads():
         load['L'] = np.round_(np.random.uniform(1, 10), 3)
         return load
     
-    def sample_RC_load_para(self):
+    def _sample_load_RC(self):
         """Sample source parameter for RC
         
         Returns:
@@ -369,7 +372,7 @@ class NodeConstructorCableLoads():
         load['C'] = np.round_(np.random.uniform(1, 10), 3)
         return load
     
-    def sample_LC_load_para(self):
+    def _sample_load_LC(self):
         """Sample source parameter for LC
         
         Returns:
@@ -382,7 +385,7 @@ class NodeConstructorCableLoads():
         load['C'] = np.round_(np.random.uniform(1, 10), 3)
         return load
     
-    def sample_RLC_load_para(self):
+    def _sample_load_RLC(self):
         """Sample source parameter for RLC
         
         Returns:
@@ -396,7 +399,7 @@ class NodeConstructorCableLoads():
         load['C'] = np.round_(np.random.uniform(1, 10), 3)
         return load
 
-    def sample_cable_para(self):
+    def _sample_cable(self):
         """Sample cable parameter
         
         Returns:
@@ -1062,30 +1065,30 @@ class NodeConstructorCableLoads():
         
         
         A_load_row_list = list()
-        for i in range(self.num_load):
+        for i in range(self.num_loads):
             A_load_row_list.append(self.generate_A_load_row(i+1))
         A_load_row = np.concatenate((A_load_row_list), axis=1) # i-> idx // i+1 -> num of load
 
         A_load_col_list = list()
-        for i in range(self.num_load):
+        for i in range(self.num_loads):
             A_load_col_list.append(self.generate_A_load_col(i+1))
         A_load_col = np.concatenate((A_load_col_list), axis=0)
 
 
         # get A_load_diag
-        self.num_impedance = 2* (self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load) + self.num_RC_load + self.num_C_load +self.num_R_load
+        self.num_impedance = 2* (self.num_loads_RLC+self.num_loads_LC+self.num_loads_RL+self.num_loadss_L) + self.num_loads_RC + self.num_loads_C +self.num_loads_R
         A_load_diag = np.zeros((self.num_impedance, self.num_impedance)) # construct matrix of zeros
-        A_load_list = [self.get_A_load(i) for i in range(1,self.num_load+1)]
+        A_load_list = [self.get_A_load(i) for i in range(1,self.num_loads+1)]
                 
         for i, ele in enumerate(A_load_list):
-            if i < self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load:
+            if i < self.num_loads_RLC+self.num_loads_LC+self.num_loads_RL+self.num_loadss_L:
                 start = 2*i 
                 stop = 2*i+2 
                 A_load_diag[start:stop,start:stop] = ele
 
-            elif i < self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load+self.num_RC_load+self.num_C_load+self.num_R_load:
-                start = i + self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load
-                stop = i+1 + self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load
+            elif i < self.num_loads_RLC+self.num_loads_LC+self.num_loads_RL+self.num_loadss_L+self.num_loads_RC+self.num_loads_C+self.num_loads_R:
+                start = i + self.num_loads_RLC+self.num_loads_LC+self.num_loads_RL+self.num_loadss_L
+                stop = i+1 + self.num_loads_RLC+self.num_loads_LC+self.num_loads_RL+self.num_loadss_L
                 A_load_diag[start:stop,start:stop] = ele
 
         
@@ -1180,11 +1183,11 @@ class NodeConstructorCableLoads():
         for c in range(1, self.num_connections+1):
             states.append(f'i_c{c}')
         
-        for l in range(1, self.num_load+1):
-            if l <= self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load:
+        for l in range(1, self.num_loads+1):
+            if l <= self.num_loads_RLC+self.num_loads_LC+self.num_loads_RL+self.num_loadss_L:
                 states.append(f'u_l{l}')
                 states.append(f'i_l{l}')
-            elif l <= self.num_RLC_load+self.num_LC_load+self.num_RL_load+self.num_L_load+self.num_RC_load+self.num_C_load+self.num_R_load:
+            elif l <= self.num_loads_RLC+self.num_loads_LC+self.num_loads_RL+self.num_loadss_L+self.num_loads_RC+self.num_loads_C+self.num_loads_R:
                 states.append(f'u_l{l}')
         return states
     
