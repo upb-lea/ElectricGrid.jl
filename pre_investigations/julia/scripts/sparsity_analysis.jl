@@ -4,6 +4,7 @@ using DrWatson
 using PyCall
 @pyinclude(srcdir("nodeconstructor.py"))
 @pyinclude(srcdir("nodeconstructorcable.py"))
+include(srcdir("nodeconstructor.jl"))
 
 using ControlSystems
 using JSON
@@ -13,6 +14,7 @@ using LinearAlgebra
 printit = true
 discrete = false
 cable = true
+julia = true
 cut_outliers = false
 num_cm = 1
 num_mat_start = 2
@@ -36,6 +38,8 @@ global evI_list = []
 global evR_list = []
 global all_ev = Dict()
 
+global nc = nothing
+
 for n=num_mat_start:num_mat_end
     if printit
         println(" ")
@@ -53,21 +57,32 @@ for n=num_mat_start:num_mat_end
     end
 
     for i=1:num_cm
-        if cable
+        if julia
             CM = reduce(hcat, CM_list[i])'
             CM = convert(Matrix{Int}, CM)
 
-            nc = py"NodeConstructorCable"(n, n, CM=CM)
-            params = nc.parameter
+            global nc = NodeConstructor(num_source=n, num_load=n, CM=CM)
+            global parameter = nc.parameter
+        elseif cable
+            CM = reduce(hcat, CM_list[i])'
+            CM = convert(Matrix{Int}, CM)
+
+            global nc = py"NodeConstructorCable"(n, n, CM=CM)
+            global parameter = nc.parameter
             #nc = py"NodeConstructorCable"(n, n)
         else
             CM = reduce(hcat, CM_list[i])'
             CM = convert(Matrix{Int}, CM)
 
-            nc = py"NodeConstructor"(n, n, parameter, CM=CM)
+            global nc = py"NodeConstructor"(n, n, parameter, CM=CM)
         end
 
-        global A, B, C, D = nc.get_sys()
+        if julia
+            global A, B, C, D = get_sys(nc)
+        else
+            global A, B, C, D = nc.get_sys()
+        end
+
         if discrete A = exp(A*ts) end
 
         ns = length(A[1,:])

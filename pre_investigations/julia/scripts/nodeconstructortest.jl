@@ -10,10 +10,12 @@ using PyCall
 @pyinclude(srcdir("nodeconstructorcable.py"))
 
 include(srcdir("custom_control.jl"))
+include(srcdir("nodeconstructor.jl"))
 
 ts = 1e-5
 t_end = 0.003
 cable = true
+julia = true
 
 p = Dict()
 p["R_source"] = 0.4
@@ -28,13 +30,19 @@ CM = [0 0 1
     0 0 2
     -1 -2 0]
 
-if cable
+if julia
+    n = NodeConstructor(num_source=2, num_load=1, CM=CM)
+elseif cable
     n = py"NodeConstructorCable"(2, 1, CM=CM)
 else
     n = py"NodeConstructor"(2, 1, CM=CM, p)
 end
 
-A, B, C, D = n.get_sys()
+if julia
+    A, B, C, D = get_sys(n)
+else
+    A, B, C, D = n.get_sys()
+end
 
 ns = length(A[1,:])
 na = length(B[1,:])
