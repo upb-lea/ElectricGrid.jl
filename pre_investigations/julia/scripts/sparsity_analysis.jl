@@ -4,6 +4,7 @@ using DrWatson
 using PyCall
 @pyinclude(srcdir("nodeconstructor.py"))
 @pyinclude(srcdir("nodeconstructorcable.py"))
+@pyinclude(srcdir("nodeconstructorcableloads.py"))
 
 using ControlSystems
 using JSON
@@ -15,7 +16,7 @@ discrete = false
 cable = true
 cut_outliers = false
 num_cm = 1
-num_mat_start = 2
+num_mat_start = 2  # hier auf 1 und dann num_LC = 0 ?!
 num_mat_end = 30
 
 
@@ -57,8 +58,10 @@ for n=num_mat_start:num_mat_end
             CM = reduce(hcat, CM_list[i])'
             CM = convert(Matrix{Int}, CM)
 
-            nc = py"NodeConstructorCable"(n, n, CM=CM)
+            #nc = py"NodeConstructorCable"(n, n, CM=CM)
+            nc = py"NodeConstructorCableLoads"(n, n, CM=CM)
             params = nc.parameter
+            # print(params)
             #nc = py"NodeConstructorCable"(n, n)
         else
             CM = reduce(hcat, CM_list[i])'
@@ -153,4 +156,29 @@ p1 = plot(num_mat_start:num_mat_end, evI_list,  ylabel="Im{EW_max_imag}")
 evR_list = Float64.(evR_list)
 p2 = plot(num_mat_start:num_mat_end, evR_list, xlabel="Nodes", ylabel="Re{EW_max_imag}")
 
-plot(p1,p2,layout=(2,1))
+display(plot(p1,p2,layout=(2,1)))
+
+print(all_ev)
+println(" ")
+println(" ")
+println(all_ev[2]["im"])
+#print(all_ev[2]["im"])
+
+x_ax = []
+y_ax = []
+for n=num_mat_start:num_mat_end
+    global x_ax = vcat(x_ax, repeat([n], length(all_ev[n]["im"])))
+    global y_ax = vcat(y_ax, all_ev[n]["im"])
+
+end
+
+
+#x = length(all_ev[3]["im"])
+#x_ax = repeat([3], x)
+
+print(x_ax)
+print(y_ax)
+
+p3 = scatter(x_ax, y_ax, xlabel="Nodes", ylabel="Im{EWs(A)}")
+
+display(plot(p3))
