@@ -215,7 +215,7 @@ class NodeConstructorCable():
         """Sample cable parameter"""
     
         l = np.random.randint(1, 100)
-        l=50
+        l=1
 
         Rb = 0.722
         Cb = 8*10**-9 # too small?
@@ -230,9 +230,9 @@ class NodeConstructorCable():
         cable['L'] = l * Lb
         cable['C'] = l * Cb
 
-        cable["R"] = 0.4
-        cable["L"] = 2.3e-3
-        cable["C"] = 1e-20
+        #cable["R"] = 0.4
+        #cable["L"] = 2.3e-3
+        #cable["C"] = 1e-20
 
         return cable
     
