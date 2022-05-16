@@ -259,18 +259,18 @@ class NodeConstructorCableLoads():
         Returns:
             source: Dict with sampled parameters (dict)
         """      
-
+        
         source = dict()
         source['fltr'] = 'LCL'
-        source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
-        source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
-        source['L2'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
-        source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
+        # source['R'] = np.round_(np.random.uniform(0.1, 1), 3)
+        # source['L1'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        # source['L2'] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        # source['C'] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
 
-        # source['R'] = 10
-        # source['L1'] = 5
-        # source['L2'] = 10
-        # source['C'] = 2
+        source['R'] = 10
+        source['L1'] = 5
+        source['L2'] = 10
+        source['C'] = 2
         
         
         return source
@@ -406,7 +406,8 @@ class NodeConstructorCableLoads():
             source: Dict with sampled parameters (dict)
         """
     
-        l = np.random.randint(1, 100)
+        # l = np.random.randint(1, 100)
+        l = 1
 
         Rb = 0.722
         Cb = 8*10**-9
@@ -415,7 +416,7 @@ class NodeConstructorCableLoads():
         cable = dict()
         cable['R'] = l * Rb
         cable['L'] = l * Lb
-        cable['C'] = l * Cb
+        cable['C'] = l * 0.5 * Cb #
 
         return cable
     
