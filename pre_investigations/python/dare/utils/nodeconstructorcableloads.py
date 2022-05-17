@@ -723,7 +723,7 @@ class NodeConstructorCableLoads():
             C_sum = parameter_i['C']
         
             for _, ele in enumerate(self.parameter['cable']):
-                C_sum += ele['C']
+                C_sum += ele['C'] * 0.5
                 
 
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
@@ -745,7 +745,7 @@ class NodeConstructorCableLoads():
             C_sum = 0
             
             for j, ele in enumerate(self.parameter['cable']):
-                C_sum += ele['C']
+                C_sum += ele['C'] * 0.5
                 
 
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
@@ -766,7 +766,7 @@ class NodeConstructorCableLoads():
             C_sum = parameter_i['C']
             
             for j, ele in enumerate(self.parameter['cable']):
-                C_sum += ele['C']
+                C_sum += ele['C'] * 0.5
                 
 
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
@@ -787,7 +787,7 @@ class NodeConstructorCableLoads():
             C_sum = 0
             
             for j, ele in enumerate(self.parameter['cable']):
-                C_sum += ele['C']
+                C_sum += ele['C'] * 0.5
                 
 
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
