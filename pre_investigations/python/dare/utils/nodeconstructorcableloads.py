@@ -416,7 +416,7 @@ class NodeConstructorCableLoads():
         cable = dict()
         cable['R'] = l * Rb
         cable['L'] = l * Lb
-        cable['C'] = l * 0.5 * Cb #
+        cable['C'] = l * Cb
 
         return cable
     
@@ -542,7 +542,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_source[3,2] = C_sum**-1
 
@@ -562,7 +562,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_source[1,0] = C_sum**-1
 
@@ -621,7 +621,7 @@ class NodeConstructorCableLoads():
 
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
                 
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
                 idx = int(idx)
@@ -642,7 +642,7 @@ class NodeConstructorCableLoads():
 
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             for _, (idx, sign) in enumerate(zip(indizes_, signs)):
                 idx = int(idx)
@@ -856,7 +856,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
             A_load[0,1] = - (C_sum)**-1
@@ -877,7 +877,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_load[0,1] = - (C_sum)**-1
 
@@ -897,7 +897,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
             
@@ -918,7 +918,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_load[0,1] = - (C_sum)**-1
 
@@ -937,7 +937,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
             
@@ -961,7 +961,7 @@ class NodeConstructorCableLoads():
             
             for _, idx in enumerate(indizes_):
                 idx = int(idx)
-                C_sum += self.parameter['cable'][idx-1]['C']
+                C_sum += self.parameter['cable'][idx-1]['C'] * 0.5
             
             A_load[0,0] = - ((parameter_i['R']) * (C_sum))**-1
         
