@@ -15,7 +15,7 @@ using LinearAlgebra
 printit = true
 discrete = false
 cable = true
-cableloads = true
+cableloads = false
 julia = true
 cut_outliers = false
 num_cm = 1
@@ -86,6 +86,10 @@ for n=num_mat_start:num_mat_end
         else
             global A, B, C, D = nc.get_sys()
         end
+
+        println("")
+        println(A)
+        println("")
 
         if discrete A = exp(A*ts) end
 
@@ -174,10 +178,10 @@ p2 = plot(num_mat_start:num_mat_end, evR_list, xlabel="Nodes", ylabel="Re{EW_max
 
 display(plot(p1,p2,layout=(2,1)))
 
-print(all_ev)
+#print(all_ev)
 println(" ")
 println(" ")
-println(all_ev[2]["im"])
+#println(all_ev[2]["im"])
 #print(all_ev[2]["im"])
 
 x_ax = []
@@ -192,8 +196,8 @@ end
 #x = length(all_ev[3]["im"])
 #x_ax = repeat([3], x)
 
-print(x_ax)
-print(y_ax)
+#print(x_ax)
+#print(y_ax)
 
 p3 = scatter(x_ax, y_ax, xlabel="Nodes", ylabel="Im{EWs(A)}")
 
