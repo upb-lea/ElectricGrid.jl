@@ -44,7 +44,7 @@ function NodeConstructor(;num_source, num_load, CM=nothing, parameter=nothing, S
         #sample = 0.1 * num_source * random.normal(0,1)
         #num_LC = int(np.ceil(np.clip(sample, 1, num_source-1)))
 
-        num_LC = 1 
+        num_LC = 1
         num_LCL = num_source - num_LC
         num_L = 0
 
@@ -268,22 +268,23 @@ end
 
 function sample_cable_para()
     """Sample cable parameter"""
-
-    l = rand(1:1:100)
+    
+    #TODO
+    l = 1# rand(1:1:100)
 
     Rb = 0.722
-    Cb = 8*10e-9 # too small?
-    Lb = 0.955*10e-3
+    Cb = 8e-9 # too small?
+    Lb = 0.955e-3
 
     cable = Dict()
     cable["R"] = l * Rb
     cable["L"] = l * Lb
     cable["C"] = l * Cb
 
-    #TODO
-    cable["R"] = 0.4
-    cable["L"] = 2.3e-3
-    cable["C"] = 1e-20
+    
+    #cable["R"] = 0.4
+    #cable["L"] = 2.3e-3
+    #cable["C"] = 1e-20
 
     cable
 end

@@ -14,13 +14,13 @@ using LinearAlgebra
 
 printit = true
 discrete = false
-cable = true
-cableloads = false
+cable = false
+cableloads = true
 julia = true
 cut_outliers = false
 num_cm = 1
-num_mat_start = 2  # hier auf 1 und dann num_LC = 0 ?!
-num_mat_end = 30
+num_mat_start = 1  # hier auf 1 und dann num_LC = 0 ?!
+num_mat_end = 1
 
 
 ts=1e-4
@@ -59,32 +59,30 @@ for n=num_mat_start:num_mat_end
     end
 
     for i=1:num_cm
+        CM = reduce(hcat, CM_list[i])'
+        CM = convert(Matrix{Int}, CM)
         if julia
-            CM = reduce(hcat, CM_list[i])'
-            CM = convert(Matrix{Int}, CM)
-
             global nc = NodeConstructor(num_source=n, num_load=n, CM=CM)
             global parameter = nc.parameter
         elseif cableloads
             global nc = py"NodeConstructorCableLoads"(n, n, CM=CM)
             global parameter = nc.parameter
         elseif cable
-            CM = reduce(hcat, CM_list[i])'
-            CM = convert(Matrix{Int}, CM)
-
             global nc = py"NodeConstructorCable"(n, n, CM=CM)
             global parameter = nc.parameter
         else
-            CM = reduce(hcat, CM_list[i])'
-            CM = convert(Matrix{Int}, CM)
-
             global nc = py"NodeConstructor"(n, n, parameter, CM=CM)
         end
+        println(parameter)
+        println(" ")
+        println(" ")
 
         if julia
             global A, B, C, D = get_sys(nc)
+            println(A)
         else
             global A, B, C, D = nc.get_sys()
+            #println(A)
         end
 
         println("")
@@ -179,9 +177,9 @@ p2 = plot(num_mat_start:num_mat_end, evR_list, xlabel="Nodes", ylabel="Re{EW_max
 display(plot(p1,p2,layout=(2,1)))
 
 #print(all_ev)
-println(" ")
-println(" ")
-#println(all_ev[2]["im"])
+#println(" ")
+#println(" ")
+#println(all_ev[1]["im"])
 #print(all_ev[2]["im"])
 
 x_ax = []
@@ -199,6 +197,6 @@ end
 #print(x_ax)
 #print(y_ax)
 
-p3 = scatter(x_ax, y_ax, xlabel="Nodes", ylabel="Im{EWs(A)}")
+#p3 = scatter(x_ax, y_ax, xlabel="Nodes", ylabel="Im{EWs(A)}")
 
-display(plot(p3))
+#display(plot(p3))
