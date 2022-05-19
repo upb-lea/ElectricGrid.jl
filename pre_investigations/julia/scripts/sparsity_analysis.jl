@@ -18,11 +18,11 @@ printit = true
 discrete = false
 cable = false
 cableloads = true
-julia = false
+julia = true
 cut_outliers = false
 num_cm = 1
-num_mat_start = 1  # hier auf 1 und dann num_LC = 0 ?!
-num_mat_end = 1
+num_mat_start = 8  # hier auf 1 und dann num_LC = 0 ?!
+num_mat_end = 8
 
 
 ts=1e-6
@@ -87,9 +87,9 @@ for n=num_mat_start:num_mat_end
             #println(A)
         end
 
-        println("")
-        println(A)
-        println("")
+        #println("")
+        #println(A)
+        #println("")
 
         if discrete A = exp(A*ts) end
 
@@ -101,11 +101,11 @@ for n=num_mat_start:num_mat_end
         global ev = eigvals(A)
         global eigenvec = eigvecs(A)
 
-        println(" ")
-        println(ev)
-        println(" ")
-        println(eigenvec)
-        println(" ")
+        #println(" ")
+        #println(ev)
+        #println(" ")
+        #println(eigenvec)
+        #println(" ")
         
 
         if discrete
@@ -237,5 +237,5 @@ global ttt = t
 xout, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
 
 
-plot(xout[4,:])
+# plot(xout[4,:])
 

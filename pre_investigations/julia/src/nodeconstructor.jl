@@ -46,17 +46,17 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameter=nothing, 
 
         #sample = 0.1 * num_source * random.normal(0,1)
         #num_LC = int(np.ceil(np.clip(sample, 1, num_source-1)))
-        num_LC = 0
+        num_LC = 1
         num_LCL = num_source - num_LC
-        num_L = 0
+        num_L = 1
 
         #sample = np.random.dirichlet(np.ones(7))* num_loads
-        num_loads_R = num_loads#int(np.floor(sample[0]))
-        num_loads_C = 0#int(np.floor(sample[1]))
-        num_loads_L = 0#int(np.floor(sample[2]))
-        num_loads_RL = 0#int(np.floor(sample[3]))
-        num_loads_RC = 0#int(np.floor(sample[4]))
-        num_loads_LC = 0#int(np.floor(sample[5]))
+        num_loads_R = 1#int(np.floor(sample[0]))
+        num_loads_C = 1#int(np.floor(sample[1]))
+        num_loads_L = 1#int(np.floor(sample[2]))
+        num_loads_RL = 1#int(np.floor(sample[3]))
+        num_loads_RC = 1#int(np.floor(sample[4]))
+        num_loads_LC = 1#int(np.floor(sample[5]))
         num_loads_RLC = num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
 
         parameter = generate_parameter(num_LC, num_LCL, num_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
@@ -130,12 +130,12 @@ function generate_parameter(num_LC, num_LCL, num_L, num_connections, num_loads_R
             push!(load_list, _sample_load_RL())
         end
 
-        for l in 1:num_loads_RC
-            push!(load_list, _sample_load_RC())
-        end
-
         for l in 1:num_loads_L
             push!(load_list, _sample_load_L())
+        end
+
+        for l in 1:num_loads_RC
+            push!(load_list, _sample_load_RC())
         end
 
         for l in 1:num_loads_C
@@ -246,8 +246,8 @@ function _sample_fltr_L()
 
     source = Dict()
     source["fltr"] = "L"
-    source["R"] = round(rand(Uniform(0.1, 1)), digits=3)
-    source["L1"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
+    source["R"] = 0.4 # round(rand(Uniform(0.1, 1)), digits=3)
+    source["L1"] = 2.3e-3 # round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
 
     source
 end
@@ -257,9 +257,9 @@ function _sample_load_RLC()
 
     load = Dict()
     load["impedance"] = "RLC"
-    load["R"] = round(rand(Uniform(10, 10000)), digits=3)
-    load["L"] = round(rand(Uniform(1, 10)), digits=3)
-    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+    load["R"] = 0.4 # round(rand(Uniform(10, 10000)), digits=3)
+    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
+    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
 
     load
 end
@@ -269,8 +269,8 @@ function _sample_load_LC()
 
     load = Dict()
     load["impedance"] = "LC"
-    load["L"] = round(rand(Uniform(1, 10)), digits=3)
-    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+    load["L"] = 2e-3 # round(rand(Uniform(1, 10)), digits=3)
+    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
 
     load
 end
@@ -280,8 +280,8 @@ function _sample_load_RL()
 
     load = Dict()
     load["impedance"] = "RL"
-    load["R"] = round(rand(Uniform(10, 10000)), digits=3)
-    load["L"] = round(rand(Uniform(1, 10)), digits=3)
+    load["R"] = 0.4 # round(rand(Uniform(10, 10000)), digits=3)
+    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
 
     load
 end
@@ -291,8 +291,8 @@ function _sample_load_RC()
 
     load = Dict()
     load["impedance"] = "RC"
-    load["R"] = round(rand(Uniform(10, 10000)), digits=3)
-    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+    load["R"] = 0.4 # round(rand(Uniform(10, 10000)), digits=3)
+    load["C"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
 
     load
 end
@@ -303,7 +303,7 @@ function _sample_load_L()
     load = Dict()
 
     load["impedance"] = "L"
-    load["L"] = round(rand(Uniform(1, 10)), digits=3)
+    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
 
     load
 end
@@ -314,7 +314,7 @@ function _sample_load_C()
     load = Dict()
 
     load["impedance"] = "C"
-    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
 
     load
 end
@@ -1013,7 +1013,7 @@ function generate_A(self::NodeConstructor)
         elseif i <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
 
             start = i + self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-            A_load_diag[start, start] = ele
+            A_load_diag[start:start, start:start] = ele
 
         end
     end

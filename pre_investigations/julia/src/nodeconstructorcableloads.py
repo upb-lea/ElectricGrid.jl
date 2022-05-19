@@ -202,7 +202,7 @@ class NodeConstructorCableLoads:
         """Create a distribution for the filter types"""
 
         sample = 0.1 * self.num_source * np.random.normal(0, 1)
-        self.num_LC = 0#int(np.ceil(np.clip(sample, 1, self.num_source - 1)))
+        self.num_LC = 1#int(np.ceil(np.clip(sample, 1, self.num_source - 1)))
         self.num_LCL = self.num_source - self.num_LC
         self.num_L = 0
         pass
@@ -213,11 +213,11 @@ class NodeConstructorCableLoads:
         sample = np.random.dirichlet(np.ones(7)) * self.num_loads
 
         self.num_loads_R = 1#int(np.floor(sample[0]))
-        self.num_loads_C = 0#int(np.floor(sample[1]))
-        self.num_loadss_L = 0#int(np.floor(sample[2]))
-        self.num_loads_RL = 0#int(np.floor(sample[3]))
-        self.num_loads_RC = 0#int(np.floor(sample[4]))
-        self.num_loads_LC = 0#int(np.floor(sample[5]))
+        self.num_loads_C = 1#int(np.floor(sample[1]))
+        self.num_loadss_L = 1#int(np.floor(sample[2]))
+        self.num_loads_RL = 1#int(np.floor(sample[3]))
+        self.num_loads_RC = 1#int(np.floor(sample[4]))
+        self.num_loads_LC = 1#int(np.floor(sample[5]))
         self.num_loads_RLC = self.num_loads - (
             self.num_loads_R
             + self.num_loads_C
@@ -316,9 +316,9 @@ class NodeConstructorCableLoads:
 
         source = dict()
         source["fltr"] = "LC"
-        source["R"] = np.round_(np.random.uniform(0.1, 1), 3)
-        source["L1"] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
-        source["C"] = np.round_(np.random.uniform(5, 15), 3) * 1e-6
+        source["R"] = 0.4 # np.round_(np.random.uniform(0.1, 1), 3)
+        source["L1"] = 2.3e-3 # np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        source["C"] = 10e-6 # np.round_(np.random.uniform(5, 15), 3) * 1e-6
 
         # source['R'] = 10
         # source['L1'] = 5
@@ -335,8 +335,8 @@ class NodeConstructorCableLoads:
 
         source = dict()
         source["fltr"] = "L"
-        source["R"] = np.round_(np.random.uniform(0.1, 1), 3)
-        source["L1"] = np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
+        source["R"] = 0.4 # np.round_(np.random.uniform(0.1, 1), 3)
+        source["L1"] = 2.3e-3 # np.round_(np.random.uniform(2, 2.5), 3) * 1e-3
 
         return source
 
@@ -362,7 +362,7 @@ class NodeConstructorCableLoads:
 
         load = dict()
         load["impedance"] = "C"
-        load["C"] = np.round_(np.random.uniform(1, 10), 3)
+        load["C"] = 10e-6 # np.round_(np.random.uniform(1, 10), 3)
         return load
 
     def _sample_load_L(self):
@@ -374,7 +374,7 @@ class NodeConstructorCableLoads:
 
         load = dict()
         load["impedance"] = "L"
-        load["L"] = np.round_(np.random.uniform(1, 10), 3)
+        load["L"] = 2.3e-3 # np.round_(np.random.uniform(1, 10), 3)
         return load
 
     def _sample_load_RL(self):
@@ -386,8 +386,8 @@ class NodeConstructorCableLoads:
 
         load = dict()
         load["impedance"] = "RL"
-        load["R"] = np.round_(np.random.uniform(10, 10000), 3)
-        load["L"] = np.round_(np.random.uniform(1, 10), 3)
+        load["R"] = 0.4 # np.round_(np.random.uniform(10, 10000), 3)
+        load["L"] = 2.3e-3 # np.round_(np.random.uniform(1, 10), 3)
         return load
 
     def _sample_load_RC(self):
@@ -399,8 +399,8 @@ class NodeConstructorCableLoads:
 
         load = dict()
         load["impedance"] = "RC"
-        load["R"] = np.round_(np.random.uniform(10, 10000), 3)
-        load["C"] = np.round_(np.random.uniform(1, 10), 3)
+        load["R"] = 0.4 # np.round_(np.random.uniform(10, 10000), 3)
+        load["C"] = 10e-6 # np.round_(np.random.uniform(1, 10), 3)
         return load
 
     def _sample_load_LC(self):
@@ -412,8 +412,8 @@ class NodeConstructorCableLoads:
 
         load = dict()
         load["impedance"] = "LC"
-        load["L"] = np.round_(np.random.uniform(1, 10), 3)
-        load["C"] = np.round_(np.random.uniform(1, 10), 3)
+        load["L"] = 2.3e-3 # np.round_(np.random.uniform(1, 10), 3)
+        load["C"] = 10e-6 # np.round_(np.random.uniform(1, 10), 3)
         return load
 
     def _sample_load_RLC(self):
@@ -425,9 +425,9 @@ class NodeConstructorCableLoads:
 
         load = dict()
         load["impedance"] = "RLC"
-        load["R"] = np.round_(np.random.uniform(10, 10000), 3)
-        load["L"] = np.round_(np.random.uniform(1, 10), 3)
-        load["C"] = np.round_(np.random.uniform(1, 10), 3)
+        load["R"] = 0.4 # np.round_(np.random.uniform(10, 10000), 3)
+        load["L"] = 2.3e-3# np.round_(np.random.uniform(1, 10), 3)
+        load["C"] = 10e-6 # np.round_(np.random.uniform(1, 10), 3)
         return load
 
     def _sample_cable(self):
