@@ -18,14 +18,14 @@ printit = true
 discrete = false
 cable = false
 cableloads = true
-julia = true
+julia = false
 cut_outliers = false
 num_cm = 1
 num_mat_start = 1  # hier auf 1 und dann num_LC = 0 ?!
 num_mat_end = 1
 
 
-ts=1e-4
+ts=1e-6
 
 parameter=Dict()
 parameter["R_source"] = 0.4

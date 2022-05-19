@@ -46,7 +46,7 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameter=nothing, 
 
         #sample = 0.1 * num_source * random.normal(0,1)
         #num_LC = int(np.ceil(np.clip(sample, 1, num_source-1)))
-        num_LC = 1
+        num_LC = 0
         num_LCL = num_source - num_LC
         num_L = 0
 
