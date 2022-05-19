@@ -1010,10 +1010,9 @@ function generate_A(self::NodeConstructor)
             stop = 2 * i
             A_load_diag[start:stop, start:stop] = ele
 
-        elseif i <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-                    + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+        elseif i <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
 
-            start = i + self.num_loads_RLC + self.num_loads_RL
+            start = i + self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
             A_load_diag[start, start] = ele
 
         end
@@ -1125,8 +1124,7 @@ function get_states(self::NodeConstructor)
         if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
             push!(states, "u_l$l")
             push!(states, "i_l$l")
-        elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-                    + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+        elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
             push!(states, "u_l$l")
         end
     end
