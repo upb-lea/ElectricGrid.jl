@@ -728,7 +728,7 @@ end
 
 function generate_A_load_row(self::NodeConstructor, load_i)
     
-    parameter_i = self.parameter["load"]# self.load[load_i]
+    parameter_i = self.load[load_i]
     
     if parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC" || parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L"
         A_load_row = zeros(self.num_connections, 2)
