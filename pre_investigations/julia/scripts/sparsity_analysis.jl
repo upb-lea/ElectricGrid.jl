@@ -7,10 +7,12 @@ using PyCall
 @pyinclude(srcdir("nodeconstructorcableloads.py"))
 include(srcdir("nodeconstructor.jl"))
 
+
 using ControlSystems
 using JSON
 using Plots
 using LinearAlgebra
+#include(srcdir("custom_control.jl"))
 
 printit = true
 discrete = false
@@ -93,6 +95,14 @@ for n=num_mat_start:num_mat_end
         notnull = count(i->(i!= 0), A)
         null = count(i->(i== 0), A)
         global ev = eigvals(A)
+        global eigenvec = eigvecs(A)
+
+        println(" ")
+        println(ev)
+        println(" ")
+        println(eigenvec)
+        println(" ")
+        
 
         if discrete
             evg1 = 0
@@ -145,7 +155,7 @@ for n=num_mat_start:num_mat_end
             else
                 println("Eigenwerte mit Realteil >= 0: $(evR_ge_zero)")
                 println("Größter EW-Realteil: $(evR_gr)")
-                println("Größter absoluter EW-Imaginärteil: $(evI_gr)")
+                println("Größter absoluter EW-Imaginärteil: $(evI_gr/2/pi)")
             end
             println(" ")
         end
@@ -163,14 +173,14 @@ arraytoplot = [results[n][1] for n=num_mat_start:num_mat_end]
 #plot(arraytoplot)
 evI_list = Float64.(evI_list)
 #histogram(evI_list)
-p1 = plot(num_mat_start:num_mat_end, evI_list,  ylabel="Im{EW_max_imag}")
+#p1 = plot(num_mat_start:num_mat_end, evI_list,  ylabel="Im{EW_max_imag}")
 #ylims!((2000,6000))
 #plot(num_mat_start:num_mat_end, evR_list)
 
 evR_list = Float64.(evR_list)
-p2 = plot(num_mat_start:num_mat_end, evR_list, xlabel="Nodes", ylabel="Re{EW_max_imag}")
+#p2 = plot(num_mat_start:num_mat_end, evR_list, xlabel="Nodes", ylabel="Re{EW_max_imag}")
 
-display(plot(p1,p2,layout=(2,1)))
+#display(plot(p1,p2,layout=(2,1)))
 
 #print(all_ev)
 #println(" ")
@@ -196,3 +206,32 @@ end
 #p3 = scatter(x_ax, y_ax, xlabel="Nodes", ylabel="Im{EWs(A)}")
 
 #display(plot(p3))
+
+####### plot step response
+
+
+
+Ad = exp(A*ts)
+Bd = A \ (Ad - C) * B
+
+global sys_d = StateSpace(Ad, Bd, C, D, ts)
+
+t = collect(0:ts:0.0005)
+
+ns = length(A[1,:])
+na = length(B[1,:])
+
+x0 = real(eigenvec[:,2])
+#global x0 = [0.0 for i = 1:ns]
+#global u = rand(Float64, ( length(t) )) .*2 .-1
+global u = [0.0 for i = 1:length(t)]
+global uu = [u for i = 1:na ]
+global uuu = mapreduce(permutedims, vcat, uu)
+global ttt = t
+
+#xout = lsim(sys_d, uuu, ttt, x0)
+xout, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
+
+
+plot(xout[4,:])
+
