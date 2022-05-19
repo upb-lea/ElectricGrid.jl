@@ -87,6 +87,10 @@ for n=num_mat_start:num_mat_end
             #println(A)
         end
 
+        println("")
+        println(A)
+        println("")
+
         if discrete A = exp(A*ts) end
 
         ns = length(A[1,:])

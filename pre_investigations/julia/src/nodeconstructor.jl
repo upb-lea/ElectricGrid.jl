@@ -4,10 +4,18 @@ using StatsBase
 mutable struct NodeConstructor
     num_connections
     num_source
-    num_load
+    num_loads
     num_LCL
     num_LC
     num_L
+    num_loads_RLC
+    num_loads_LC
+    num_loads_RL
+    num_loads_RC
+    num_loads_L
+    num_loads_C
+    num_loads_R
+    num_impedance
     num_fltr
     cntr
     tot_ele
@@ -17,9 +25,9 @@ mutable struct NodeConstructor
     S2L_p
 end
 
-function NodeConstructor(;num_source, num_load, CM=nothing, parameter=nothing, S2S_p=0.1, S2L_p=0.8)
+function NodeConstructor(;num_source, num_loads, CM=nothing, parameter=nothing, S2S_p=0.1, S2L_p=0.8)
 
-    tot_ele = num_source + num_load
+    tot_ele = num_source + num_loads
 
     cntr = 0
     num_connections = 0
@@ -38,37 +46,56 @@ function NodeConstructor(;num_source, num_load, CM=nothing, parameter=nothing, S
 
         #sample = 0.1 * num_source * random.normal(0,1)
         #num_LC = int(np.ceil(np.clip(sample, 1, num_source-1)))
-
         num_LC = 1
         num_LCL = num_source - num_LC
         num_L = 0
 
-        parameter = generate_parameter(num_LC, num_LCL, num_L, num_connections, num_load)
+        #sample = np.random.dirichlet(np.ones(7))* num_loads
+        num_loads_R = num_loads#int(np.floor(sample[0]))
+        num_loads_C = 0#int(np.floor(sample[1]))
+        num_loads_L = 0#int(np.floor(sample[2]))
+        num_loads_RL = 0#int(np.floor(sample[3]))
+        num_loads_RC = 0#int(np.floor(sample[4]))
+        num_loads_LC = 0#int(np.floor(sample[5]))
+        num_loads_RLC = num_loads - (num_loads_R + num_loads_C + num_loadss_L + num_loads_RL + num_loads_RC + num_loads_LC)
+
+        parameter = generate_parameter(num_LC, num_LCL, num_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
+                                        num_loads_L, num_loads_C, num_loads_R)
 
     elseif isa(parameter, Dict)
         @assert length(keys(parameter)) == 3 "Expect parameter to have the three entries 'cable', 'load' and 'source' but got $(keys(parameter))"
 
         @assert length(parameter["source"]) == num_source "Expect the number of sources to match the number of sources in the parameters, but got $num_source and $(length(parameter["source"]))"
 
-        @assert length(parameter["load"]) == num_load "Expect the number of loads to match the number of sources in the parameters, but got $num_load and $(length(parameter["load"]))"
+        @assert length(parameter["load"]) == num_loads "Expect the number of loads to match the number of sources in the parameters, but got $num_loads and $(length(parameter["load"]))"
 
         @assert length(parameter["cable"]) == num_connections "Expect the number of sources to match the number of sources in the parameters, but got $num_connections and $(length(parameter["cable"]))"
 
         num_LCL, num_LC, num_L = cntr_fltr(parameter["source"])
+        num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R = cntr_loads(parameter["load"])
 
         @assert num_LCL + num_LC + num_L == num_source "Expect the number of sources to be identical to the sum of the filter types, but the number of sources is $num_source and the sum of the filters is $(num_LCL + num_LC + num_L)"
+
+        @assert num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R == num_loads "Expect the number of loads to be identical to the sum of the loads types, but the number of loads is $num_loads and the sum of the loads is $(num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R)"
     else
         throw("Expect parameter to be a dict or nothing, not $(typeof(parameter))")
     end
 
     num_fltr = 4 * num_LCL + 2 * num_LC + 2 * num_L
+    self.num_impedance = 2 * (self.num_loads_RLC
+                                + self.num_loads_LC
+                                + self.num_loads_RL
+                                + self.num_loads_L)
+                        + self.num_loads_RC + self.num_loads_C + self.num_loads_R
 
-    NodeConstructor(num_connections, num_source, num_load, num_LCL, num_LC, num_L, num_fltr,
-                cntr, tot_ele, CM, parameter, S2S_p, S2L_p)
+    NodeConstructor(num_connections, num_source, num_loads, num_LCL, num_LC, num_L,
+                num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R,
+                num_impedance, num_fltr, cntr, tot_ele, CM, parameter, S2S_p, S2L_p)
 end
 
 
-function generate_parameter(num_LC, num_LCL, num_L, num_connections, num_load)
+function generate_parameter(num_LC, num_LCL, num_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
+                            num_loads_L, num_loads_C, num_loads_R)
     """Create parameter dict"""
 
         source_list = []
@@ -76,23 +103,47 @@ function generate_parameter(num_LC, num_LCL, num_L, num_connections, num_load)
         load_list = []
 
         for s in 1:num_LCL
-            push!(source_list, sample_LCL_para())
+            push!(source_list, _sample_fltr_LCL())
         end
         
         for s in 1:num_LC
-            push!(source_list, sample_LC_para())
+            push!(source_list, _sample_fltr_LC())
         end
         
         for s in 1:num_L
-            push!(source_list, sample_L_para())
+            push!(source_list, _sample_fltr_L())
         end
 
         for c in 1:num_connections
-            push!(cable_list, sample_cable_para())
+            push!(cable_list, _sample_cable())
         end
 
-        for l in 1:num_load
-            push!(load_list, sample_load_para())
+        for l in 1:num_loads_RLC
+            push!(load_list, _sample_load_RLC())
+        end
+
+        for l in 1:num_loads_LC
+            push!(load_list, _sample_load_LC())
+        end
+
+        for l in 1:num_loads_RL
+            push!(load_list, _sample_load_RL())
+        end
+
+        for l in 1:num_loads_RC
+            push!(load_list, _sample_load_RC())
+        end
+
+        for l in 1:num_loads_L
+            push!(load_list, _sample_load_L())
+        end
+
+        for l in 1:num_loads_C
+            push!(load_list, _sample_load_C())
+        end
+
+        for l in 1:num_loads_R
+            push!(load_list, _sample_load_R())
         end
 
         parameter = Dict()
@@ -122,7 +173,37 @@ function cntr_fltr(source_list)
     return cntr_LCL, cntr_LC, cntr_L
 end
 
-function sample_LCL_para()
+function cntr_loads(load_list)
+    cntr_RLC = 0
+    cntr_LC = 0
+    cntr_RL = 0
+    cntr_RC = 0
+    cntr_L = 0
+    cntr_C = 0
+    cntr_R = 0
+    
+    for (i, source) in enumerate(load_list)
+        if source["impedance"] == "RLC"
+            cntr_RLC += 1
+        elseif source["impedance"] == "LC"
+            cntr_LC += 1
+        elseif source["impedance"] == "RL"
+            cntr_RL += 1
+        elseif source["impedance"] == "RC"
+            cntr_RC += 1
+        elseif source["impedance"] == "L"
+            cntr_L += 1
+        elseif source["impedance"] == "C"
+            cntr_C += 1
+        elseif source["impedance"] == "R"
+            cntr_R += 1
+        end
+    end
+
+    return cntr_RLC, cntr_LC, cntr_RL, cntr_RC, cntr_L, cntr_C, cntr_R
+end
+
+function _sample_fltr_LCL()
     """Sample source parameter""" 
 
     source = Dict()
@@ -142,7 +223,7 @@ function sample_LCL_para()
     source
 end
 
-function sample_LC_para()
+function _sample_fltr_LC()
     """Sample source parameter"""      
 
     source = Dict()
@@ -160,7 +241,7 @@ function sample_LC_para()
     source
 end
 
-function sample_L_para()
+function _sample_fltr_L()
     """Sample source parameter"""      
 
     source = Dict()
@@ -171,20 +252,87 @@ function sample_L_para()
     source
 end
 
-
-function sample_load_para()
+function _sample_load_RLC()
     """Sample load parameter"""
 
     load = Dict()
-    #load["R"] = round(rand(Uniform(10, 10000)), digits=3)
+    load["impedance"] = "RLC"
+    load["R"] = round(rand(Uniform(10, 10000)), digits=3)
+    load["L"] = round(rand(Uniform(1, 10)), digits=3)
+    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+
+    load
+end
+
+function _sample_load_LC()
+    """Sample load parameter"""
+
+    load = Dict()
+    load["impedance"] = "LC"
+    load["L"] = round(rand(Uniform(1, 10)), digits=3)
+    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+
+    load
+end
+
+function _sample_load_RL()
+    """Sample load parameter"""
+
+    load = Dict()
+    load["impedance"] = "RL"
+    load["R"] = round(rand(Uniform(10, 10000)), digits=3)
+    load["L"] = round(rand(Uniform(1, 10)), digits=3)
+
+    load
+end
+
+function _sample_load_RC()
+    """Sample load parameter"""
+
+    load = Dict()
+    load["impedance"] = "RC"
+    load["R"] = round(rand(Uniform(10, 10000)), digits=3)
+    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+
+    load
+end
+
+function _sample_load_L()
+    """Sample load parameter"""
+
+    load = Dict()
+
+    load["impedance"] = "L"
+    load["L"] = round(rand(Uniform(1, 10)), digits=3)
+
+    load
+end
+
+function _sample_load_C()
+    """Sample load parameter"""
+
+    load = Dict()
+
+    load["impedance"] = "C"
+    load["C"] = round(rand(Uniform(1, 10)), digits=3)
+
+    load
+end
+
+function _sample_load_R()
+    """Sample load parameter"""
+
+    load = Dict()
 
     #TODO
+    load["impedance"] = "R"
+    #load["R"] = round(rand(Uniform(10, 10000)), digits=3)
     load["R"] = 14
 
     load
 end
 
-function sample_cable_para()
+function _sample_cable()
     """Sample cable parameter"""
     
     #TODO
@@ -317,7 +465,7 @@ function get_A_source(self::NodeConstructor, source_i)
         
         for idx in indizes_
             idx = Int(idx)
-            C_sum += self.parameter["cable"][idx]["C"]
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
         end
         
         A_source[4,3] = C_sum^(-1)
@@ -338,7 +486,7 @@ function get_A_source(self::NodeConstructor, source_i)
         
         for idx in indizes_
             idx = Int(idx)
-            C_sum += self.parameter["cable"][idx]["C"]
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
         end
         
         A_source[2,1] = C_sum^(-1)
@@ -397,7 +545,7 @@ function get_A_col(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            C_sum += self.parameter["cable"][idx]["C"]
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -418,7 +566,7 @@ function get_A_col(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            C_sum += self.parameter["cable"][idx]["C"]
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -486,25 +634,92 @@ function generate_A_tran_diag(self::NodeConstructor)
 end
 
 function generate_A_load_col(self::NodeConstructor, load_i)
-        
-    A_load_col = zeros(self.num_connections)
 
-    CM_row = self.CM[self.num_source + load_i, :]
+    parameter_i = self.load[load_i]
+    
+    if parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC"
+        A_load_col = zeros(2, self.num_connections)
 
-    indizes = CM_row[CM_row .!= 0] # get entries unequal 0
-    signs = [sign(x) for x in indizes] # get signs
+        CM_row = self.CM[self.num_source + load_i, :]
 
-    indizes_ = indizes .* signs # delet signs from indices
+        indizes = CM_row[CM_row .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
 
-    C_sum = 0
+        indizes_ = indizes .* signs # delet signs from indices
 
-    for ele in self.parameter["cable"]
-        C_sum += ele["C"]
-    end
+        C_sum = parameter_i["C"]
 
-    for (idx, sign) in zip(indizes_, signs)
-        idx = Int(idx)
-        A_load_col[idx] = sign * -(C_sum^(-1))
+        for ele in self.parameter["cable"]
+            C_sum += ele["C"] * 0.5
+        end
+
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            A_load_col[1,idx] = sign * -(C_sum^(-1))
+        end
+
+    elseif parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L"
+        A_load_col = zeros(2, self.num_connections)
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+
+        indizes_ = indizes .* signs # delet signs from indices
+
+        C_sum = 0
+
+        for ele in self.parameter["cable"]
+            C_sum += ele["C"] * 0.5
+        end
+
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            A_load_col[1, idx] = sign * -(C_sum^(-1))
+        end
+
+    elseif parameter_i["impedance"] == "RC" || parameter_i["impedance"] == "C"
+        A_load_col = zeros(1, self.num_connections)
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+
+        indizes_ = indizes .* signs # delet signs from indices
+
+        C_sum = parameter_i["C"]
+
+        for ele in self.parameter["cable"]
+            C_sum += ele["C"] * 0.5
+        end
+
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            A_load_col[idx] = sign * -(C_sum^(-1))
+        end
+
+    elseif parameter_i["impedance"] == "R"
+        A_load_col = zeros(1, self.num_connections)
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+
+        indizes_ = indizes .* signs # delet signs from indices
+
+        C_sum = 0
+
+        for ele in self.parameter["cable"]
+            C_sum += ele["C"] * 0.5
+        end
+
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            A_load_col[idx] = sign * -(C_sum^(-1))
+        end
     end
 
     return A_load_col
@@ -512,49 +727,176 @@ end
 
 
 function generate_A_load_row(self::NodeConstructor, load_i)
-            
-    A_load_row = zeros(self.num_connections)
+    
+    parameter_i = self.load[load_i]
+    
+    if parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC" || parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L"
+        A_load_row = zeros(self.num_connections, 2)
 
-    CM_col = self.CM[self.num_source + load_i, :]
+        CM_col = self.CM[self.num_source + load_i, :]
 
-    indizes = CM_col[CM_col .!= 0] # get entries unequal 0
-    signs = [sign(x) for x in indizes] # get signs
-    indizes_ = indizes .* signs # delet signs from indices
+        indizes = CM_col[CM_col .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
 
-    for (idx, sign) in zip(indizes_, signs)
-        idx = Int(idx)
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
 
-        A_load_row[idx] = sign * 1/self.parameter["cable"][idx]["L"] 
-    end 
+            A_load_row[idx, 1] = sign * 1/self.parameter["cable"][idx]["L"] 
+        end 
+        
+    elseif parameter_i["impedance"] == "RC" || parameter_i["impedance"] == "C" || parameter_i["impedance"] == "R"
+        A_load_row = zeros(self.num_connections, 1)
+
+        CM_col = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_col[CM_col .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
+
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+
+            A_load_row[idx, 1] = sign * 1/self.parameter["cable"][idx]["L"] 
+        end 
+    end
 
     return A_load_row
 end
 
 
-function generate_A_load_diag(self::NodeConstructor)
-    vec = zeros(self.num_load)
+function generate_A_load(self::NodeConstructor, load_i)
+    parameter_i = self.load[load_i]
 
-    for (i, ele) in enumerate(self.parameter["load"])
-        CM_row = self.CM[self.num_source + i, :]
+    if parameter_i["impedance"] == "RLC"
+        A_load = zeros(2, 2)
+        A_load[2,1] = 1 / parameter_i["L"]
+
+        C_sum = parameter_i["C"]
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
         indizes = CM_row[CM_row .!= 0]
-        signs = [sign(x) for x in indizes] # get signs
-        indizes_ = indizes .* signs # delet signs from indices
-        C_sum = 0
+        signs = [sign(x) for x in indizes]
+
+        indizes_ = indizes .* signs
 
         for idx in indizes_
             idx = Int(idx)
-            
-            C_sum += self.parameter["cable"][idx]["C"]  # Cb[idx]
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
         end
 
-        vec[i] = - (ele["R"] * (C_sum))^(-1) # Rload[i]
+        A_load[1,1] = - ((parameter_i["R"]) * C_sum)^(-1)
+        A_load[1,2] = - (C_sum)^(-1)
+
+    elseif parameter_i["impedance"] == "LC"
+        A_load = zeros(2, 2)
+        A_load[2,1] = 1 / parameter_i["L"]
+
+        C_sum = parameter_i["C"]
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes]
+
+        indizes_ = indizes .* signs
+
+        for idx in indizes_
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
+        end
+
+        A_load[1,2] = - (C_sum)^(-1)
+
+    elseif parameter_i["impedance"] == "RL"
+        A_load = zeros(2, 2)
+        A_load[2,1] = 1 / parameter_i["L"]
+
+        C_sum = 0
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes]
+
+        indizes_ = indizes .* signs
+
+        for idx in indizes_
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
+        end
+
+        A_load[1,1] = - ((parameter_i["R"]) * C_sum)^(-1)
+        A_load[1,2] = - (C_sum)^(-1)
+
+    elseif parameter_i["impedance"] == "RC"
+        A_load = zeros(1, 1)
+
+        C_sum = parameter_i["C"]
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes]
+
+        indizes_ = indizes .* signs
+
+        for idx in indizes_
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
+        end
+
+        A_load[1,1] = - ((parameter_i["R"]) * C_sum)^(-1)
+
+    elseif parameter_i["impedance"] == "L"
+        A_load = zeros(2, 2)
+        A_load[2,1] = 1 / parameter_i["L"]
+
+        C_sum = 0
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes]
+
+        indizes_ = indizes .* signs
+
+        for idx in indizes_
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
+        end
+
+        A_load[1,2] = - (C_sum)^(-1)
+
+    elseif parameter_i["impedance"] == "C"
+        A_load = zeros(1, 1)
+
+    elseif parameter_i["impedance"] == "R"
+        A_load = zeros(1, 1)
+
+        C_sum = 0
+
+        CM_row = self.CM[self.num_source + load_i, :]
+
+        indizes = CM_row[CM_row .!= 0]
+        signs = [sign(x) for x in indizes]
+
+        indizes_ = indizes .* signs
+
+        for idx in indizes_
+            idx = Int(idx)
+            C_sum += self.parameter["cable"][idx]["C"] * 0.5
+        end
+
+        A_load[1,1] = - ((parameter_i["R"]) * C_sum)^(-1)
+
+    else
+        throw("Expect Impedance to be \"RLC\", \"LC\", \"RL\", \"RC\", \"L\", \"C\" or \"R\", not $(parameter_i["impedance"]).")
     end
 
-    A_load_diag = Diagonal(vec)
-
-    return A_load_diag
+    return A_load
 end
-
 
 function generate_A(self::NodeConstructor)
     """Generate the A matrix
@@ -577,7 +919,7 @@ function generate_A(self::NodeConstructor)
             
     for (i, ele) in enumerate(A_source_list)
         if i <= self.num_LCL
-            start = 4 * (i - 1) + 1
+            start = 4 * i - 3
             stop = 4 * i
             A_source[start:stop, start:stop] = ele
 
@@ -599,7 +941,7 @@ function generate_A(self::NodeConstructor)
 
     for (i, ele) in enumerate(A_col_list)
         if i <= self.num_LCL
-            start = 4 * (i - 1) + 1
+            start = 4 * i - 3
             stop = 4 * i
             A_col[start:stop,:] = ele
 
@@ -621,7 +963,7 @@ function generate_A(self::NodeConstructor)
 
     for (i, ele) in enumerate(A_row_list)
         if i <= self.num_LCL
-            start = 4 * (i - 1) + 1
+            start = 4 * i - 3
             stop = 4 * i
             A_row[:,start:stop] = ele
 
@@ -640,23 +982,47 @@ function generate_A(self::NodeConstructor)
     A_tran_diag = generate_A_tran_diag(self)
 
     A_load_row_list = []
-    for i in 1:self.num_load
+    for i in 1:self.num_loads
         push!(A_load_row_list, generate_A_load_row(self, i))
     end
     A_load_row = reduce(hcat, A_load_row_list) # i-> idx // i+1 -> num of load
 
     A_load_col_list = []
-    for i in 1:self.num_load
+    for i in 1:self.num_loads
         push!(A_load_col_list, generate_A_load_col(self, i))
     end
-    A_load_col = reduce(hcat, A_load_col_list)'
+    A_load_col = reduce(vcat, A_load_col_list)
 
-    A_load_diag = generate_A_load_diag(self)
+    # get A_load_diag
+    self.num_impedance = 2 * (self.num_loads_RLC
+                                + self.num_loads_LC
+                                + self.num_loads_RL
+                                + self.num_loads_L)
+                        + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+    
+    A_load_diag = zeros(self.num_impedance, self.num_impedance)
+    A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
+
+    for (i, ele) in enumerate(A_load_list)
+        if i <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+
+            start = 2 * i - 1
+            stop = 2 * i
+            A_load_diag[start:stop, start:stop] = ele
+
+        elseif i <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+                    + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+
+            start = i + self.num_loads_RLC + self.num_loads_RL
+            A_load_diag[start, start] = ele
+
+        end
+    end
 
     #         A_transition = np.block([A_tran_diag, A_load_col],
     #                                 [A_load_col, A_load_diag])
 
-    A_load_zeros = zeros(self.num_fltr, self.num_load)
+    A_load_zeros = zeros(self.num_fltr, self.num_impedance)
 
     A_load_zeros_t = A_load_zeros'
 
@@ -680,13 +1046,13 @@ function generate_B(self::NodeConstructor)
     Returns:
         B: B matrix for state space (2*num_source+num_connections,num_source)
     """
-    B = zeros(self.num_fltr + self.num_connections + self.num_load, self.num_source)
+    B = zeros(self.num_fltr + self.num_connections + self.num_impedance, self.num_source)
 
     B_source_list = [get_B_source(self, i) for i in 1:self.num_source] # start at 1 bc Source 1 ...
 
     for (i, ele) in enumerate(B_source_list)
         if i <= self.num_LCL
-            start = start = 4 * (i - 1) + 1
+            start = start = 4 * i - 3
             stop = 4 * i
             B[start:stop,i] = ele
 
@@ -713,7 +1079,7 @@ function generate_C(self::NodeConstructor)
     Retruns:
         C: Identity matrix (2*num_source+num_connections)
     """
-    return Diagonal(ones(self.num_fltr + self.num_connections + self.num_load))
+    return Diagonal(ones(self.num_fltr + self.num_connections + self.num_impedance))
 end
 
 function generate_D(self::NodeConstructor)
@@ -755,8 +1121,14 @@ function get_states(self::NodeConstructor)
         push!(states, "i_c$c")
     end
 
-    for l in 1:self.num_load
-        push!(states, "u_l$l")
+    for l in 1:self.num_loads
+        if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+            push!(states, "u_l$l")
+            push!(states, "i_l$l")
+        elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+                    + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+            push!(states, "u_l$l")
+        end
     end
     return states
 end

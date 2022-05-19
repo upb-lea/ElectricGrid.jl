@@ -11,7 +11,7 @@ include(srcdir("custom_control.jl"))
 Base.@kwdef mutable struct SimEnv <: AbstractEnv
     A = [1.0 0.0; 0.0 1.0]
     B = [1.0 0.0; 0.0 1.0]
-    C = 0
+    C = [1.0 0.0; 0.0 1.0]
     D = 0
     action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(B[1,:]) ], )
     observation_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(A[1,:]) ], )
