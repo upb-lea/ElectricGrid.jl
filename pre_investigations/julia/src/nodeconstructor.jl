@@ -82,11 +82,11 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameter=nothing, 
     end
 
     num_fltr = 4 * num_LCL + 2 * num_LC + 2 * num_L
-    num_impedance = 2 * (num_loads_RLC
+    num_impedance = (2 * (num_loads_RLC
                         + num_loads_LC
                         + num_loads_RL
                         + num_loads_L)
-                    + num_loads_RC + num_loads_C + num_loads_R
+                        + num_loads_RC + num_loads_C + num_loads_R)
 
     NodeConstructor(num_connections, num_source, num_loads, num_LCL, num_LC, num_L,
                 num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R,
@@ -994,11 +994,11 @@ function generate_A(self::NodeConstructor)
     A_load_col = reduce(vcat, A_load_col_list)
 
     # get A_load_diag
-    self.num_impedance = 2 * (self.num_loads_RLC
+    self.num_impedance = (2 * (self.num_loads_RLC
                                 + self.num_loads_LC
                                 + self.num_loads_RL
                                 + self.num_loads_L)
-                        + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+                                + self.num_loads_RC + self.num_loads_C + self.num_loads_R)
     
     A_load_diag = zeros(self.num_impedance, self.num_impedance)
     A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
