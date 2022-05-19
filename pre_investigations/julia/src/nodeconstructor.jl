@@ -57,7 +57,7 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameter=nothing, 
         num_loads_RL = 0#int(np.floor(sample[3]))
         num_loads_RC = 0#int(np.floor(sample[4]))
         num_loads_LC = 0#int(np.floor(sample[5]))
-        num_loads_RLC = num_loads - (num_loads_R + num_loads_C + num_loadss_L + num_loads_RL + num_loads_RC + num_loads_LC)
+        num_loads_RLC = num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
 
         parameter = generate_parameter(num_LC, num_LCL, num_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
                                         num_loads_L, num_loads_C, num_loads_R)
@@ -82,11 +82,11 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameter=nothing, 
     end
 
     num_fltr = 4 * num_LCL + 2 * num_LC + 2 * num_L
-    self.num_impedance = 2 * (self.num_loads_RLC
-                                + self.num_loads_LC
-                                + self.num_loads_RL
-                                + self.num_loads_L)
-                        + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+    num_impedance = 2 * (num_loads_RLC
+                        + num_loads_LC
+                        + num_loads_RL
+                        + num_loads_L)
+                    + num_loads_RC + num_loads_C + num_loads_R
 
     NodeConstructor(num_connections, num_source, num_loads, num_LCL, num_LC, num_L,
                 num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R,
@@ -635,7 +635,7 @@ end
 
 function generate_A_load_col(self::NodeConstructor, load_i)
 
-    parameter_i = self.load[load_i]
+    parameter_i = self.parameter["load"][load_i]
     
     if parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC"
         A_load_col = zeros(2, self.num_connections)
@@ -728,7 +728,7 @@ end
 
 function generate_A_load_row(self::NodeConstructor, load_i)
     
-    parameter_i = self.load[load_i]
+    parameter_i = self.parameter["load"][load_i]
     
     if parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC" || parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L"
         A_load_row = zeros(self.num_connections, 2)
@@ -765,8 +765,8 @@ function generate_A_load_row(self::NodeConstructor, load_i)
 end
 
 
-function generate_A_load(self::NodeConstructor, load_i)
-    parameter_i = self.load[load_i]
+function get_A_load(self::NodeConstructor, load_i)
+    parameter_i = self.parameter["load"][load_i]
 
     if parameter_i["impedance"] == "RLC"
         A_load = zeros(2, 2)

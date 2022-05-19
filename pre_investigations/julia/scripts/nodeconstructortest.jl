@@ -31,7 +31,7 @@ CM = [0 0 1
     -1 -2 0]
 
 if julia
-    n = NodeConstructor(num_source=2, num_load=1, CM=CM)
+    n = NodeConstructor(num_source=2, num_loads=1, CM=CM)
 elseif cable
     n = py"NodeConstructorCable"(2, 1, CM=CM)
 else
