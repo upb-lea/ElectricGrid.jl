@@ -65,17 +65,17 @@ for n=num_mat_start:num_mat_end
         CM = convert(Matrix{Int}, CM)
         if julia
             global nc = NodeConstructor(num_source=n, num_loads=n, CM=CM)
-            global parameter = nc.parameter
+            global parameters = nc.parameters
         elseif cableloads
             global nc = py"NodeConstructorCableLoads"(n, n, CM=CM)
-            global parameter = nc.parameter
+            global parameters = nc.parameter
         elseif cable
             global nc = py"NodeConstructorCable"(n, n, CM=CM)
-            global parameter = nc.parameter
+            global parameters = nc.parameter
         else
             global nc = py"NodeConstructor"(n, n, parameter, CM=CM)
         end
-        println(parameter)
+        println(parameters)
         println(" ")
         println(" ")
 
