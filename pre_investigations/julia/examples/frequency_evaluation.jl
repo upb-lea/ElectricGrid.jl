@@ -12,8 +12,6 @@ investigate the occuring resonance frequencies for a given configuration
 CM = [ 0.  1.
         -1.  0.]
 
-a = 34
-
 parameters = Dict()
 parameters["source"] = [Dict("fltr" => "LCL", "R" => 0.4, "L1" => 2.3e-3, "L2" => 2.3e-3,"C" => 10e-6)]
 parameters["cable"] = [Dict("R" => 0.722, "L" => 0.955e-3, "C" => 8e-09)]
