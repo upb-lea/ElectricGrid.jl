@@ -366,7 +366,7 @@ function tobe_or_n2b(cntr, x, p)
     
     if x < p
         cntr += 1  
-        return cntr, x
+        return cntr, cntr
     else
         x = 0
         return cntr, x
