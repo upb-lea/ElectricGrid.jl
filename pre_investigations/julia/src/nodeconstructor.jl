@@ -48,7 +48,7 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameters=nothing,
         #num_LC = int(np.ceil(np.clip(sample, 1, num_source-1)))
         num_LC = 1
         num_LCL = num_source - num_LC
-        num_L = 1
+        num_L = 0
 
         #sample = np.random.dirichlet(np.ones(7))* num_loads
         num_loads_R = 1#int(np.floor(sample[0]))
@@ -246,6 +246,8 @@ function _sample_fltr_L()
 
     source = Dict()
     source["fltr"] = "L"
+
+    #TODO
     source["R"] = 0.4 # round(rand(Uniform(0.1, 1)), digits=3)
     source["L1"] = 2.3e-3 # round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
 
@@ -269,7 +271,7 @@ function _sample_load_LC()
 
     load = Dict()
     load["impedance"] = "LC"
-    load["L"] = 2e-3 # round(rand(Uniform(1, 10)), digits=3)
+    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
     load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
 
     load
@@ -292,7 +294,7 @@ function _sample_load_RC()
     load = Dict()
     load["impedance"] = "RC"
     load["R"] = 0.4 # round(rand(Uniform(10, 10000)), digits=3)
-    load["C"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
+    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
 
     load
 end
