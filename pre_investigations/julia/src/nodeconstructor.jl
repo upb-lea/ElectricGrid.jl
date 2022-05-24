@@ -573,6 +573,7 @@ function get_A_col(self::NodeConstructor, source_i)
         end
 
         for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
             A_col[2,idx] = sign * -(C_sum^(-1))
         end
 
