@@ -18,7 +18,7 @@ printit = true
 discrete = false
 cable = false
 cableloads = true
-julia = false
+julia = true
 cut_outliers = false
 num_cm = 1
 num_mat_start = 8  # hier auf 1 und dann num_LC = 0 ?!
