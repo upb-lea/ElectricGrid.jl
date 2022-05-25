@@ -37,11 +37,9 @@ global all_ev = Dict()
 global nc = nothing
 
 for n=num_mat_start:num_mat_end
-    if printit
-        println(" ")
-        println("--------- n=$n ---------")
-        println(" ")
-    end
+    println(" ")
+    println("--------- n=$n ---------")
+    println(" ")
 
     global results[n] = Dict()
 
@@ -120,21 +118,21 @@ for n=num_mat_start:num_mat_end
             end
         end
 
-        if printit
-            println("A: $(ns)x$(ns)")
-            println("Anzahl Nullen: $(null),   Anzahl Nicht-Null: $(notnull)")
-            #println("Ratio Nicht-Null/Null: $(round(notnull/null, digits=4))")
-            println("Anteil Nullen: $(round((null/(null + notnull))*100, digits=2))%")
-            if discrete
-                println("Eigenwerte abs >= 1: $(evg1)")
-                println("Größter abs EW: $(ev_gr)")
-            else
-                println("Eigenwerte mit Realteil >= 0: $(evR_ge_zero)")
-                println("Größter EW-Realteil: $(evR_gr)")
-                println("Größter absoluter EW-Imaginärteil: $(evI_gr/2/pi)")
-            end
-            println(" ")
+        
+        println("A: $(ns)x$(ns)")
+        println("Anzahl Nullen: $(null),   Anzahl Nicht-Null: $(notnull)")
+        #println("Ratio Nicht-Null/Null: $(round(notnull/null, digits=4))")
+        println("Anteil Nullen: $(round((null/(null + notnull))*100, digits=2))%")
+        if discrete
+            println("Eigenwerte abs >= 1: $(evg1)")
+            println("Größter abs EW: $(ev_gr)")
+        else
+            println("Eigenwerte mit Realteil >= 0: $(evR_ge_zero)")
+            println("Größter EW-Realteil: $(evR_gr)")
+            println("Größter absoluter EW-Imaginärteil: $(evI_gr/2/pi)")
         end
+        println(" ")
+        
 
         if !discrete
             append!(evI_list, evI_gr/(2*pi))
@@ -208,8 +206,14 @@ global ttt = t
 #xout = lsim(sys_d, uuu, ttt, x0)
 xout, _, _, _ = lsim(sys_d,uuu,ttt,x0=x0)
 
-p4 = plot(t, xout[2,:], xlabel="time", ylabel="v_LC / V")
+#p4 = plot(t, xout[2,:], xlabel="time", ylabel="v_LC / V")
+#display(plot(p4))
+
+p4 = plot(t, xout[3,:], xlabel="time", ylabel="i_LCL / A")
 display(plot(p4))
 
-p5 = plot(t, xout[ns,:], xlabel="time", ylabel="v_cable / V")
+#p5 = plot(t, xout[ns,:], xlabel="time", ylabel="v_cable / V") # -> R_loads
+#display(plot(p5))
+
+p5 = plot(t, xout[ns-1,:], xlabel="time", ylabel="v_cable / V") # -> RLC_loads
 display(plot(p5))
