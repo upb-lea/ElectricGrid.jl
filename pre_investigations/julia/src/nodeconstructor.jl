@@ -1,6 +1,9 @@
 using Distributions
 using LinearAlgebra
 using StatsBase
+using Graphs
+using GLMakie
+using GraphMakie
 mutable struct NodeConstructor
     num_connections
     num_source
@@ -1142,20 +1145,26 @@ function draw_graph(self::NodeConstructor)
     Lightblue nodes corresponse to a load.
     """
 
-    # edges = []
+    edges = []
     # color = []
-    # for i in range(1, self.num_connections+1):
-    #     (row, col) = np.where(self.CM==i)
-    #     (row_idx, col_idx) = (row[0]+1, col[0]+1)
-    #     edges.append((row_idx, col_idx))
+    for i in 1:self.num_connections
+         #(row, col) = np.where(self.CM==i)
+         #(row_idx, col_idx) = (row[0]+1, col[0]+1)
+         #edges.append((row_idx, col_idx))
+
+         ci = findall(x->x==i, self.CM)[1]
+         push!(edges, (ci[1], ci[2]))
     #     if row_idx <= self.num_source:
     #         color.append('red')
     #     else:
     #         color.append('blue')
     #     end
-    # end
+    end
 
     # G = nx.Graph(edges)
+    #G = SimpleGraphFromIterator(edges)
+    CM = abs.(CM)
+    G = SimpleGraph(CM)
 
     # color_map = []
 
@@ -1170,5 +1179,6 @@ function draw_graph(self::NodeConstructor)
     # nx.draw(G, node_color=color_map, with_labels = True)
     # plt.show()
 
+    graphplot(g)
     # pass
 end
