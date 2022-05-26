@@ -48,17 +48,17 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameters=nothing,
         #num_LC = int(np.ceil(np.clip(sample, 1, num_source-1)))
         num_L = 0
         num_LC = 1
-        num_LCL = num_source - num_LC - num_L
+        num_LCL =  num_source-1 #num_source - num_LC - num_L
         
 
         #sample = np.random.dirichlet(np.ones(7))* num_loads
-        num_loads_R = 1#int(np.floor(sample[0]))
+        num_loads_R = 0 #int(np.floor(sample[0]))
         num_loads_C = 0#int(np.floor(sample[1]))
         num_loads_L = 0#int(np.floor(sample[2]))
         num_loads_RL = 0#int(np.floor(sample[3]))
         num_loads_RC = 0#int(np.floor(sample[4]))
         num_loads_LC = 0#int(np.floor(sample[5]))
-        num_loads_RLC = num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
+        num_loads_RLC = num_loads # num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
 
         parameters = generate_parameters(num_LC, num_LCL, num_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
                                         num_loads_L, num_loads_C, num_loads_R)
@@ -339,11 +339,11 @@ function _sample_cable()
     """Sample cable parameter"""
     
     #TODO
-    l = 0.01# rand(1:1:100)
+    l =  1 #rand(1:1:100) * 0.01
 
     Rb = 0.722
-    Cb = 8e-9 # too small?
-    Lb = 0.955e-3
+    Cb = 0.4e-6 # too small?
+    Lb = 0.264e-3
 
     cable = Dict()
     cable["R"] = l * Rb
