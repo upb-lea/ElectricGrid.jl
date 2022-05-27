@@ -1145,40 +1145,24 @@ function draw_graph(self::NodeConstructor)
     Lightblue nodes corresponse to a load.
     """
 
-    edges = []
-    # color = []
-    for i in 1:self.num_connections
-         #(row, col) = np.where(self.CM==i)
-         #(row_idx, col_idx) = (row[0]+1, col[0]+1)
-         #edges.append((row_idx, col_idx))
-
-         ci = findall(x->x==i, self.CM)[1]
-         push!(edges, (ci[1], ci[2]))
-    #     if row_idx <= self.num_source:
-    #         color.append('red')
-    #     else:
-    #         color.append('blue')
-    #     end
-    end
-
-    # G = nx.Graph(edges)
-    #G = SimpleGraphFromIterator(edges)
-    CM = abs.(CM)
-    G = SimpleGraph(CM)
-
-    # color_map = []
-
-    # for node in G:
-    #     if node <= self.num_source:
-    #         color_map.append("red")
-    #     else:
-    #         color_map.append("lightblue")
-    #     end
+    # edges = []
+    # for i in 1:self.num_connections
+    #      ci = findall(x->x==i, self.CM)[1]
+    #      push!(edges, (ci[1], ci[2]))
     # end
 
-    # nx.draw(G, node_color=color_map, with_labels = True)
-    # plt.show()
+    CM = abs.(self.CM)
+    g = SimpleGraph(CM)
 
-    graphplot(g)
-    # pass
+    color_map = []
+
+    for i in 1:length(g.fadjlist)
+        if i <= self.num_source
+            push!(color_map, :red)
+        else
+            push!(color_map, :lightblue)
+        end
+    end
+
+    graphplot(g, node_color=color_map)
 end
