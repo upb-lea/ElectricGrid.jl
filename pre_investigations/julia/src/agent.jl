@@ -7,17 +7,17 @@ global rngg = StableRNG(123)
 global initt = glorot_uniform(rngg)
 
 global create_actor(na, ns) = Chain(
-    Dense(ns, 400, relu; init = initt),
-    Dense(400, 300, relu; init = initt),
-    Dense(300, na, tanh; init = initt),
+    Dense(ns, 40, relu; init = initt),
+    Dense(40, 30, relu; init = initt),
+    Dense(30, na, tanh; init = initt),
 ) |> gpu
 
 # gpu --> cpu? 
 
 global create_critic(na, ns) = Chain(
-    Dense(ns + na, 400, relu; init = initt),
-    Dense(400, 300, relu; init = initt),
-    Dense(300, 1; init = initt),
+    Dense(ns + na, 40, relu; init = initt),
+    Dense(40, 30, relu; init = initt),
+    Dense(30, 1; init = initt),
 ) |> gpu
 
 function create_agent(na, ns)

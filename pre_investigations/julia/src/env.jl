@@ -33,7 +33,7 @@ end
 
 RLBase.action_space(env::SimEnv) = env.action_space
 RLBase.state_space(env::SimEnv) = env.observation_space
-RLBase.reward!(env::SimEnv) = env.reward               #  = 1.0 #max(0, ((-1) * abs(env.state[2] - 150.0)) + 30)
+RLBase.reward(env::SimEnv) = env.reward               #  = 1.0 #max(0, ((-1) * abs(env.state[2] - 150.0)) + 30)
 
 
 RLBase.is_terminated(env::SimEnv) = env.done
