@@ -42,9 +42,13 @@ na = length(B[1,:])
 # time step
 ts = 1e-5
 
-global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=300, ts=rationalize(ts))
-global agent = create_agent(na, ns)
 
+V_source = 230
+# V_rms
+v_dc = V_source / sqrt(2)
+
+global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=v_dc, ts=rationalize(ts))
+global agent = create_agent(na, ns)
 
 # ----------------------------------------------------------------------------------------
 function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
@@ -65,6 +69,7 @@ function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
 end
 
 result = execute_env(env, agent, 300, true)
+
 
 display(plot(result[4, :]))
 
