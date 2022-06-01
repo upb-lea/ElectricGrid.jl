@@ -28,12 +28,13 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
     v_dc::Float64 = 300
+    reward::Float64 = 0
 end
 
 
 RLBase.action_space(env::SimEnv) = env.action_space
 RLBase.state_space(env::SimEnv) = env.observation_space
-RLBase.reward(env::SimEnv) = env.reward               #  = 1.0 #max(0, ((-1) * abs(env.state[2] - 150.0)) + 30)
+RLBase.reward(env::SimEnv) = env.reward #max(0, ((-1) * abs(env.state[2] - 150.0)) + 30)
 
 
 RLBase.is_terminated(env::SimEnv) = env.done
@@ -44,6 +45,7 @@ function RLBase.reset!(env::SimEnv)
     env.x = env.x0
     env.t = 0
     env.steps = 0
+    env.reward = 0
     env.done = false
     nothing
 end
@@ -65,8 +67,8 @@ function (env::SimEnv)(action)
     #env.x = xout_d'[2,:]
     env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
 
-    # dummy reward
-    env.reward = 1
+    # reward
+    env.reward = -1
     # terminal state check
     env.done = env.steps >= env.maxsteps
 end

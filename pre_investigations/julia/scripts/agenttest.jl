@@ -47,13 +47,13 @@ V_source = 230
 # V_rms
 v_dc = V_source / sqrt(2)
 
-global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=v_dc, ts=rationalize(ts))
+global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=230, ts=rationalize(ts))
 global agent = create_agent(na, ns)
 
 # ----------------------------------------------------------------------------------------
 function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     if debug
-        output = zeros(length(env.Ad[1,:]),t_len+1)
+        output = zeros(length(env.Ad[1,:]), t_len+1)
     else
         output = 0.0
     end
@@ -68,8 +68,17 @@ function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     return output
 end
 
-result = execute_env(env, agent, 300, true)
+# result = execute_env(env, agent, 300, true)
 
+hook = TotalRewardPerEpisode()
 
-display(plot(result[4, :]))
+run(
+    agent,
+    env,
+    StopAfterEpisode(10),
+    hook
+)
+
+# display(plot(hook.rewards))
+# display(plot(result[4, :]))
 

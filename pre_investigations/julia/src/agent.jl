@@ -52,7 +52,7 @@ function create_agent(na, ns)
             rng = rngg,
         ),
         trajectory = CircularArraySARTTrajectory(
-            capacity = 100,
+            capacity = 10000,
             state = Vector{Float32} => (ns,),
             action = Float32 => (na, ),
         ),
