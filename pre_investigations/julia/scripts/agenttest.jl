@@ -59,26 +59,29 @@ function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     end
 
     RLBase.reset!(env)
+
     for i = 1:t_len
         action = agent(env)
         env(action)
+        println(reward(env))
         if debug output[:,i+1] = env.state.*env.norm_array end
     end
 
     return output
 end
 
-# result = execute_env(env, agent, 300, true)
-
 hook = TotalRewardPerEpisode()
 
 run(
     agent,
+    # execute_env(env, agent, 300, false),
     env,
-    StopAfterEpisode(10),
+    StopAfterEpisode(3),
     hook
 )
 
 # display(plot(hook.rewards))
+
+# result = execute_env(env, agent, 300, true)
 # display(plot(result[4, :]))
 

@@ -19,7 +19,7 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     x0 = [ 0.0 for i = 1:length(A[1,:]) ]
     x = x0
     state::Vector{Float64} = x0
-    maxsteps::Int = 1000
+    maxsteps::Int = 300
     steps::Int = 0
     t::Rational = 0
     ts::Rational = 1//10_000
@@ -34,7 +34,7 @@ end
 
 RLBase.action_space(env::SimEnv) = env.action_space
 RLBase.state_space(env::SimEnv) = env.observation_space
-RLBase.reward(env::SimEnv) = env.reward #max(0, ((-1) * abs(env.state[2] - 150.0)) + 30)
+RLBase.reward(env::SimEnv) =  env.reward #max(0, ((-1) * abs(env.state[2] - 150.0)) + 30)
 
 
 RLBase.is_terminated(env::SimEnv) = env.done
@@ -68,7 +68,19 @@ function (env::SimEnv)(action)
     env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
 
     # reward
-    env.reward = -1
+    loss_error = 1e-1
+    # hardcoded values - change later
+    # use functions outside of this reward function
+    P_load = (20 * env.state[end])^2 * 14
+
+    # P_R = env.state[2]^2 *0.4 + env.state[end]^2 *0.722 
+    # P_source = action*env.state[2]  
+
+    # env.reward = -sqrt((P_source - (P_R + P_load + loss_error))^2)
+
+    env.reward = -abs(P_load - 500)
+
+    # env.reward = -1
     # terminal state check
     env.done = env.steps >= env.maxsteps
 end
