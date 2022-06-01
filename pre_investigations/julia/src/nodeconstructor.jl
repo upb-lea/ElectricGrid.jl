@@ -46,19 +46,19 @@ function NodeConstructor(;num_source, num_loads, CM=nothing, parameters=nothing,
 
         #sample = 0.1 * num_source * random.normal(0,1)
         #num_LC = int(np.ceil(np.clip(sample, 1, num_source-1)))
-        num_L = 0
+        num_L = 1
         num_LC = 1
-        num_LCL =  num_source-1 #num_source - num_LC - num_L
+        num_LCL =  num_source-2 #num_source - num_LC - num_L
         
 
         #sample = np.random.dirichlet(np.ones(7))* num_loads
-        num_loads_R = 0 #int(np.floor(sample[0]))
+        num_loads_R = num_loads #int(np.floor(sample[0]))
         num_loads_C = 0#int(np.floor(sample[1]))
         num_loads_L = 0#int(np.floor(sample[2]))
         num_loads_RL = 0#int(np.floor(sample[3]))
         num_loads_RC = 0#int(np.floor(sample[4]))
         num_loads_LC = 0#int(np.floor(sample[5]))
-        num_loads_RLC = num_loads # num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
+        num_loads_RLC = 0 # num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
 
         parameters = generate_parameters(num_LC, num_LCL, num_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
                                         num_loads_L, num_loads_C, num_loads_R)
@@ -210,13 +210,17 @@ function _sample_fltr_LCL()
     source = Dict()
     source["fltr"] = "LCL"
 
-    #source["R"] = round(rand(Uniform(0.1, 1)), digits=3)
+    #source["R1"] = round(rand(Uniform(0.1, 1)), digits=3)
+    #source["R2"] = round(rand(Uniform(0.1, 1)), digits=3)
+    #source["R_C"] = round(rand(Uniform(0.1, 1)), digits=3)
     #source["L1"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
     #source["L2"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
     #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
 
     #TODO
-    source["R"] = 0.4
+    source["R1"] = 0.4
+    source["R2"] = 0.4
+    source["R_C"] = 0.4
     source["L1"] = 2.3e-3
     source["L2"] = 2.3e-3
     source["C"] = 10e-6
@@ -230,12 +234,14 @@ function _sample_fltr_LC()
     source = Dict()
     source["fltr"] = "LC"
 
-    #source["R"] = round(rand(Uniform(0.1, 1)), digits=3)
+    #source["R1"] = round(rand(Uniform(0.1, 1)), digits=3)
+    #source["R_C"] = round(rand(Uniform(0.1, 1)), digits=3)
     #source["L1"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
     #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
 
     #TODO
-    source["R"] = 0.4
+    source["R1"] = 0.4
+    source["R_C"] = 0.4
     source["L1"] = 2.3e-3
     source["C"] = 10e-6
 
@@ -249,7 +255,7 @@ function _sample_fltr_L()
     source["fltr"] = "L"
 
     #TODO
-    source["R"] = 0.4 # round(rand(Uniform(0.1, 1)), digits=3)
+    source["R1"] = 0.4 # round(rand(Uniform(0.1, 1)), digits=3)
     source["L1"] = 2.3e-3 # round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
 
     source
@@ -451,11 +457,14 @@ function get_A_source(self::NodeConstructor, source_i)
 
     if parameter_i["fltr"] == "LCL"
         A_source = zeros(4,4)
-        A_source[1,1] = -parameter_i["R"]/parameter_i["L1"]
+        A_source[1,1] = -(parameter_i["R1"]+parameter_i["R_C"])/parameter_i["L1"]
         A_source[1,2] = -1/parameter_i["L1"]
+        A_source[1,3] = parameter_i["R2"]/parameter_i["L1"]
         A_source[2,1] = 1/parameter_i["C"]
         A_source[2,3] = -1/parameter_i["C"]
+        A_source[3,1] = parameter_i["R_C"]/parameter_i["L2"]
         A_source[3,2] = 1/parameter_i["L2"]
+        A_source[3,3] = -(parameter_i["R_C"]+parameter_i["R2"])/parameter_i["L2"]
         A_source[3,4] = -1/parameter_i["L2"]
         
         C_sum =  0
@@ -475,11 +484,13 @@ function get_A_source(self::NodeConstructor, source_i)
 
     elseif parameter_i["fltr"] == "LC"
 
-        A_source = zeros(2,2)
-        A_source[1,1] = -parameter_i["R"]/parameter_i["L1"]
-        A_source[1,2] = -1/parameter_i["L1"]
+        A_source = zeros(3,3)
+        A_source[1,1] = -parameter_i["R1"]/parameter_i["L1"]
+        A_source[1,3] = -1/parameter_i["L1"]
+        A_source[2,2] = -1/(parameter_i["C"]*parameter_i["R_C"])
+        A_source[2,3] = 1/(parameter_i["C"]*parameter_i["R_C"])
         
-        C_sum =  parameter_i["C"]
+        C_sum =  0
         
         CM_row = self.CM[source_i, :]
         
@@ -492,12 +503,14 @@ function get_A_source(self::NodeConstructor, source_i)
             C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
         
-        A_source[2,1] = C_sum^(-1)
+        A_source[3,1] = C_sum^(-1)
+        A_source[3,2] = (C_sum * parameter_i["R_C"])^(-1)
+        A_source[3,3] = -(C_sum * parameter_i["R_C"])^(-1)
 
     elseif parameter_i["fltr"] == "L"
 
         A_source = zeros(2,2)
-        A_source[1,1] = -parameter_i["R"]/parameter_i["L1"]
+        A_source[1,1] = -parameter_i["R1"]/parameter_i["L1"]
         A_source[1,2] = -1/parameter_i["L1"]
         
         C_sum =  0
@@ -534,7 +547,11 @@ function get_B_source(self::NodeConstructor, source_i)
         B_source = zeros(4,1)
         B_source[1,1] =  1/parameter_i["L1"]
 
-    elseif (parameter_i["fltr"] == "LC" || parameter_i["fltr"] == "L" )
+    elseif parameter_i["fltr"] == "LC"
+        B_source = zeros(3,1)
+        B_source[1,1] =  1/parameter_i["L1"]
+
+    elseif parameter_i["fltr"] == "L" 
         B_source = zeros(2,1)
         B_source[1,1] =  1/parameter_i["L1"]
     end
@@ -573,7 +590,7 @@ function get_A_col(self::NodeConstructor, source_i)
 
     elseif parameter_i["fltr"] == "LC"
 
-        A_col = zeros(2, self.num_connections)
+        A_col = zeros(3, self.num_connections)
 
         CM_row = self.CM[source_i,:]
 
@@ -581,7 +598,7 @@ function get_A_col(self::NodeConstructor, source_i)
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
 
-        C_sum = parameter_i["C"]
+        C_sum = 0
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
@@ -590,7 +607,7 @@ function get_A_col(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_col[2,idx] = sign * -(C_sum^(-1))
+            A_col[3,idx] = sign * -(C_sum^(-1))
         end
 
     elseif parameter_i["fltr"] == "L"
@@ -639,7 +656,21 @@ function get_A_row(self::NodeConstructor, source_i)
             A_row[4,idx] = sign * 1/self.parameters["cable"][idx]["L"]
         end
 
-    elseif (parameter_i["fltr"] == "LC" || parameter_i["fltr"] == "L")
+    elseif parameter_i["fltr"] == "LC"
+        A_row = zeros(3, self.num_connections)
+        
+        CM_col = self.CM[source_i,:]
+        
+        indizes = CM_col[CM_col .!= 0] # get entries unequal 0
+        signs = [sign(x) for x in indizes] # get signs
+        indizes_ = indizes .* signs # delet signs from indices
+        
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            A_row[3,idx] = sign * 1/self.parameters["cable"][idx]["L"]
+        end
+
+    elseif parameter_i["fltr"] == "L"
         A_row = zeros(2, self.num_connections)
         
         CM_col = self.CM[source_i,:]
@@ -949,7 +980,7 @@ function generate_A(self::NodeConstructor)
         A: A matrix for state space ((2*num_source+num_connections),(2*num_source+num_connections))
     """
     # get A_source
-    self.num_fltr = 4 * self.num_LCL + 2 * self.num_LC + 2 * self.num_L
+    self.num_fltr = 4 * self.num_LCL + 3 * self.num_LC + 2 * self.num_L
     A_source = zeros(self.num_fltr, self.num_fltr) # construct matrix of zeros
     A_source_list = [get_A_source(self, i) for i in 1:self.num_source]
             
@@ -957,16 +988,19 @@ function generate_A(self::NodeConstructor)
         if i <= self.num_LCL
             start = 4 * i - 3
             stop = 4 * i
+
             A_source[start:stop, start:stop] = ele
 
-        # elseif i <= self.num_LCL + self.num_LC
-        #     start = 2 * i + 2 * self.num_LCL - 1
-        #     stop = 2 * i + 2 * self.num_LCL
-        #     A_source[start:stop, start:stop] = ele
+        elseif i <= self.num_LCL + self.num_LC
+            start = 3 * i + self.num_LCL - 2
+            stop = 3 * i + self.num_LCL
+
+            A_source[start:stop, start:stop] = ele
 
         elseif i <= self.num_LCL + self.num_LC + self.num_L
-            start = 2 * i + 2 * self.num_LCL - 1
-            stop = 2 * i + 2 * self.num_LCL
+            start = 2 * i + 2 * self.num_LCL + self.num_LC - 1
+            stop = 2 * i + 2 * self.num_LCL + self.num_LC
+
             A_source[start:stop,start:stop] = ele
         end
     end
@@ -979,16 +1013,18 @@ function generate_A(self::NodeConstructor)
         if i <= self.num_LCL
             start = 4 * i - 3
             stop = 4 * i
+
             A_col[start:stop,:] = ele
 
-        # elseif i <= self.num_LCL+self.num_LC
-        #     start = 2 * i + 2 * self.num_LCL - 1
-        #     stop = 2 * i + 2 * self.num_LCL
-        #     A_col[start:stop,:] = ele
+        elseif i <= self.num_LCL+self.num_LC
+            start = 3 * i + self.num_LCL - 2
+            stop = 3 * i + self.num_LCL
+            A_col[start:stop,:] = ele
 
         elseif i <= self.num_LCL+self.num_LC+self.num_L
-            start = 2 * i + 2 * self.num_LCL - 1
-            stop = 2 * i + 2 * self.num_LCL
+            start = 2 * i + 2 * self.num_LCL + self.num_LC - 1
+            stop = 2 * i + 2 * self.num_LCL + self.num_LC
+
             A_col[start:stop,:] = ele
         end
     end
@@ -1001,16 +1037,19 @@ function generate_A(self::NodeConstructor)
         if i <= self.num_LCL
             start = 4 * i - 3
             stop = 4 * i
+
             A_row[:,start:stop] = ele
 
-        # elseif i <= self.num_LCL+self.num_LC
-        #     start = 2 * i + 2 * self.num_LCL - 1
-        #     stop = 2 * i + 2 * self.num_LCL
-        #     A_row[:,start:stop] = ele
+        elseif i <= self.num_LCL+self.num_LC
+            start = 3 * i + self.num_LCL - 2
+            stop = 3 * i + self.num_LCL
+
+            A_row[:,start:stop] = ele
 
         elseif i <= self.num_LCL+self.num_LC+self.num_L
-            start = 2 * i + 2 * self.num_LCL - 1
-            stop = 2 * i + 2 * self.num_LCL
+            start = 2 * i + 2 * self.num_LCL + self.num_LC - 1
+            stop = 2 * i + 2 * self.num_LCL + self.num_LC
+
             A_row[:,start:stop] = ele
         end
     end
@@ -1089,16 +1128,19 @@ function generate_B(self::NodeConstructor)
         if i <= self.num_LCL
             start = start = 4 * i - 3
             stop = 4 * i
+
             B[start:stop,i] = ele
 
-        # elseif i <= self.num_LCL + self.num_LC
-        #     start = 2 * i + 2 * self.num_LCL - 1
-        #     stop = 2 * i + 2 * self.num_LCL
-        #     B[start:stop,i] = ele
+        elseif i <= self.num_LCL + self.num_LC
+            start = 3 * i + self.num_LCL - 2
+            stop = 3 * i + self.num_LCL
+
+            B[start:stop,i] = ele
 
         elseif i <= self.num_LCL + self.num_LC + self.num_L
-            start = 2 * i + 2 * self.num_LCL - 1
-            stop = 2 * i + 2 * self.num_LCL
+            start = 2 * i + 2 * self.num_LCL + self.num_LC - 1
+            stop = 2 * i + 2 * self.num_LCL + self.num_LC
+
             B[start:stop,i:i] = ele
         end
     end
@@ -1145,7 +1187,12 @@ function get_states(self::NodeConstructor)
             push!(states, "u_f$s")
             push!(states, "i_$s")
             push!(states, "u_$s")
-
+        
+        elseif s <= self.num_LCL + self.num_LC
+            push!(states, "i_f$s")
+            push!(states, "u_f$s")
+            push!(states, "u_$s")
+        
         elseif s <= self.num_LCL + self.num_LC + self.num_L
             push!(states, "i_$s")
             push!(states, "u_$s")
