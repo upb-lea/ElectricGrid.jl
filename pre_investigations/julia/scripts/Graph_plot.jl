@@ -1,3 +1,6 @@
+using DrWatson
+@quickactivate "MicroGridSimWithRL"
+
 using GraphMakie
 using Graphs
 using GLMakie
@@ -6,25 +9,13 @@ using NetworkLayout
 #_______________________________________________________________________________
 ## Graph Operations
 
-function Circular_Layout(p, ax)
-    # gives the coordinates to the nodes such that they are laid out in a circle
-    radius = 5
-    # circular layout - square lattice
-    for i in 1:L
-        # graph coordinates
-        p[:node_pos][][i] = (radius*cos((i-1)*2*π/(L)), radius*sin((i-1)*2*π/(L)))
-    end
-    p[:node_pos][] = p[:node_pos][]
-    limits!(ax, -radius*1.5, radius*1.5, -radius*1.5, radius*1.5)
-end
-
 function AddNode(M, loc, node)
 
     # Adds new unconnected nodes to the system (if it is not already there)
 
     if size(M,1) < node
         increase = node-size(M,1)
-        L_or = size(M,1)    
+        L_or = size(M,1)
         L_in = L_or + increase
         new_M = Array{Float64, 2}(undef, L_in, L_in)
         new_M = fill!(new_M, 0)
@@ -291,6 +282,18 @@ end
 #_______________________________________________________________________________
 ## GUI Interactions
 
+function Circular_Layout(p, ax)
+    # gives the coordinates to the nodes such that they are laid out in a circle
+    radius = 5
+    # circular layout - square lattice
+    for i in 1:L
+        # graph coordinates
+        p[:node_pos][][i] = (radius*cos((i-1)*2*π/(L)), radius*sin((i-1)*2*π/(L)))
+    end
+    p[:node_pos][] = p[:node_pos][]
+    limits!(ax, -radius*1.5, radius*1.5, -radius*1.5, radius*1.5)
+end
+
 function node_hover_action(state, idx, event, axis)
     p.node_size[][idx] = state ? 20 : 10
     p.node_size[] = p.node_size[] # trigger observable
@@ -368,129 +371,13 @@ function (action::EdgeDragAction)(state, idx, event, axis)
     end
 end
 
-function Draw(M, num_sources, num_loads)
-
-    println(num_sources)
-    L = num_sources + num_loads
-
-    cm = SimpleGraph(M) # create graph object from Connecitivity Matrix
-    
-    #_______________________________________________________________________________
-    ## defining the colours of the nodes
-
-    nodecolours = Array{Symbol, 1}(undef, L)
-    for i in 1:L
-        if i <= num_sources
-            nodecolours[i] = :red
-        else
-            nodecolours[i] = :green
-        end
-    end
-
-    #_______________________________________________________________________________
-    ## creating the graph
-
-    edgelabels = Array{String, 1}(undef, ne(cm))
-    edgelabels = fill!(edgelabels, "")
-    nodelables = Array{String, 1}(undef, nv(cm))
-    nodelables = fill!(nodelables, "")
-
-    CM_net, ax, p = graphplot(cm,
-                            elabels = edgelabels,
-                            nlabels = nodelables,
-                            edge_width = [2.0 for i in 1:ne(cm)],
-                            edge_color = [:blue for i in 1:ne(cm)],
-                            node_size = [10 for i in 1:nv(cm)],
-                            node_color = nodecolours);
-
-    #Circular_Layout() # default is Spring graph
-
-    #_______________________________________________________________________________
-    ## Creating the Legend
-
-    elem = MarkerElement(color = :blue, marker = 'π', markersize = 15)
-    k = Legend(CM_net[1, 2],
-        [elem],
-        ["I am Legend"])
-
-    #_______________________________________________________________________________
-    ## Creating the buttons
-
-    CM_net[2,1] = layout_buttongrid = GridLayout(tellwidth = false)
-    layout_buttonlabels = ["Circular Layout", "Spring Layout"]
-    layout_buttons = layout_buttongrid[1, 1:2] = [Button(CM_net, label = l) for l in layout_buttonlabels]
-
-    CM_net[0,1] = add_grid = GridLayout(tellwidth = false)
-
-    add_grid[1,1] = add_buttongrid = GridLayout(tellwidth = false)
-    add_buttonlabels = ["Add Load", "Add Source", "Add Edge", "Draw Graph"]
-    add_buttons = add_buttongrid[1, 1:4] = [Button(CM_net, label = l) for l in add_buttonlabels]
-
-    #_______________________________________________________________________________
-    ## Creating the textboxes
-
-    add_grid[2,1] = add_textgrid = GridLayout(tellwidth = false)
-    add_textlabels = ["From Node", "To Node"]
-    add_text = add_textgrid[1, 1:2] = [Textbox(CM_net, placeholder = l) for l in add_textlabels]
-
-    #_______________________________________________________________________________
-    ## Registering all of the actions that can be performed
-
-    ax.aspect = DataAspect()
-    deregister_interaction!(ax, :rectanglezoom)
-    nhover = NodeHoverHandler(node_hover_action)
-    register_interaction!(ax, :nhover, nhover)
-    ehover = EdgeHoverHandler(edge_hover_action)
-    register_interaction!(ax, :ehover, ehover)
-    nclick = NodeClickHandler(node_click_action)
-    register_interaction!(ax, :nclick, nclick)
-    eclick = EdgeClickHandler(edge_click_action)
-    register_interaction!(ax, :eclick, eclick)
-    ndrag = NodeDragHandler(node_drag_action)
-    register_interaction!(ax, :ndrag, ndrag)
-    #register_interaction!(p, :ndrag, ndrag)
-    edrag = EdgeDragHandler(EdgeDragAction())
-    register_interaction!(ax, :edrag, edrag)
-
-    #_______________________________________________________________________________
-    ## Creating the actions
-
-    on(layout_buttons[1].clicks) do clicks;
-        Circular_Layout(p, ax)
-    end
-    on(layout_buttons[2].clicks) do clicks; 
-        p.layout = Spring(Ptype=Float32)
-        autolimits!(ax)
-    end
-    on(add_buttons[1].clicks) do clicks; #Add Load
-        M = AddNode(M, L+1, L+1) # add at the end, and add one more
-        num_loads = num_loads + 1
-    
-    end
-    on(add_buttons[2].clicks) do clicks; #Add Source
-        M = AddNode(M, 1, L+1) # add at the beginning, and add one more
-        num_sources = num_sources + 1
-    end
-    on(add_buttons[3].clicks) do clicks; #Add Source
-        M = AddNode(M, 1, L+1) # add at the beginning, and add one more
-        num_sources = num_sources + 1
-    end
-    on(add_buttons[4].clicks) do clicks; #Draw Graph
-        CM_net, ax, p = Draw(M, num_sources, num_loads)
-        display(CM_net)
-    end  
-
-    display(CM_net)
-    return CM_net, ax, p
-end
-
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
 #_______________________________________________________________________________
 ## Connectivity Matrix Parameters
 
-global num_sources = 3
-global num_loads = 3
+num_sources = 3
+num_loads = 3
 
 L = num_sources + num_loads
 
@@ -513,16 +400,12 @@ p = 0.4 # the fraction of random connections
 SW = SmallWorld(SW, L, Z, p)
 
 #_______________________________________________________________________________
-## Transitioning to general variable names and graph object
+## Transitioning to general variable names
 
 M = SW
 
 #_______________________________________________________________________________
-## Draw Graph
-
-#Draw(M, num_sources, num_loads)
-
-L = num_sources + num_loads
+## Define Graph Object from Connectivity Matrix
 
 cm = SimpleGraph(M) # create graph object from Connecitivity Matrix
 
@@ -572,19 +455,6 @@ CM_net[2,1] = layout_buttongrid = GridLayout(tellwidth = false)
 layout_buttonlabels = ["Circular Layout", "Spring Layout"]
 layout_buttons = layout_buttongrid[1, 1:2] = [Button(CM_net, label = l) for l in layout_buttonlabels]
 
-CM_net[0,1] = add_grid = GridLayout(tellwidth = false)
-
-add_grid[1,1] = add_buttongrid = GridLayout(tellwidth = false)
-add_buttonlabels = ["Add Load", "Add Source", "Add Edge", "Draw Graph"]
-add_buttons = add_buttongrid[1, 1:4] = [Button(CM_net, label = l) for l in add_buttonlabels]
-
-#_______________________________________________________________________________
-## Creating the textboxes
-
-add_grid[2,1] = add_textgrid = GridLayout(tellwidth = false)
-add_textlabels = ["From Node", "To Node"]
-add_text = add_textgrid[1, 1:2] = [Textbox(CM_net, placeholder = l) for l in add_textlabels]
-
 #_______________________________________________________________________________
 ## Registering all of the actions that can be performed
 
@@ -613,25 +483,6 @@ on(layout_buttons[2].clicks) do clicks;
     p.layout = Spring(Ptype=Float32)
     autolimits!(ax)
 end
-on(add_buttons[1].clicks) do clicks; #Add Load
-    M = collect(adjacency_matrix(cm))
-    L = size(M,1)
-    M = AddNode(M, L+1, L+1) # add at the end, and add one more
-    global num_loads = num_loads + 1
-end
-on(add_buttons[2].clicks) do clicks; #Add Source
-    M = collect(adjacency_matrix(cm))
-    L = size(M,1)
-    M = AddNode(M, 1, L+1) # add at the beginning, and add one more
-    global num_sources = num_sources + 1
-end
-on(add_buttons[3].clicks) do clicks; #Add Edge
-    
-end
-on(add_buttons[4].clicks) do clicks; #Draw Graph
-    M = collect(adjacency_matrix(cm))
-    Draw(M, num_sources, num_loads)
-end  
 
 display(CM_net)
 
