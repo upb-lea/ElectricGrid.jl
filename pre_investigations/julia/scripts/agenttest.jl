@@ -42,12 +42,9 @@ na = length(B[1,:])
 # time step
 ts = 1e-5
 
+V_source = 300
 
-V_source = 230
-# V_rms
-v_dc = V_source / sqrt(2)
-
-global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=230, ts=rationalize(ts))
+global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=V_source, ts=rationalize(ts))
 global agent = create_agent(na, ns)
 
 # ----------------------------------------------------------------------------------------
@@ -72,16 +69,15 @@ end
 
 hook = TotalRewardPerEpisode()
 
+No_Episodes = 50
 run(
     agent,
-    # execute_env(env, agent, 300, false),
     env,
-    StopAfterEpisode(3),
+    StopAfterEpisode(50),
     hook
 )
 
-# display(plot(hook.rewards))
+display(plot(hook.rewards))
 
 # result = execute_env(env, agent, 300, true)
 # display(plot(result[4, :]))
-

@@ -10,7 +10,7 @@ global create_actor(na, ns) = Chain(
     Dense(ns, 40, relu; init = initt),
     Dense(40, 30, relu; init = initt),
     Dense(30, na, tanh; init = initt),
-) |> gpu
+) |> gpu 
 
 # gpu --> cpu? 
 
