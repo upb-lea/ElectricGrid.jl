@@ -45,7 +45,7 @@ function create_agent(na, ns)
             batch_size = 64,
             start_steps = 0,
             start_policy = RandomPolicy(-1.0..1.0; rng = rngg),
-            update_after = 1000,
+            update_after = 150, #1000 
             update_freq = 1,
             act_limit = 1.0,
             act_noise = 0.1,

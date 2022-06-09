@@ -24,9 +24,10 @@ function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     return output
 end
 
-
 # params = No_Episodes, 
 
 result = execute_env(env, agent, 300, true)
-display(plot(actions))
-display(plot(rewards))
+
+display(plot(actions, title = "Source voltage as actions"))
+display(plot(rewards, title = "Rewards over each time step"))
+display(plot(result[:, end]))

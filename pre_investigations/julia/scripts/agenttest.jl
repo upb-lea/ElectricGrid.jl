@@ -67,9 +67,35 @@ function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     return output
 end
 
+P_required = 500 # W
+V_required = 230 # V
+PLoad = []
+Pdiff = []
+
+function reward_func(method::String, env::SimEnv)
+
+    i_1, u_1, i_c1, u_l1 = env.state
+
+    P_load = (env.norm_array[end] * u_l1)^2 / 14
+    
+    if method == "Power_exp"
+        push!(PLoad, P_load)
+        P_diff = -abs(P_required - P_load) 
+        push!(Pdiff, P_diff)
+        reward = exp(P_diff/130) - 1
+    
+    elseif method == "Power"
+        reward = -abs(P_required - P_load) / (600 * 20)
+
+    elseif method == "Voltage"
+        reward = -((V_required - u_l1)/ 600) ^2
+    end
+    return reward
+end
+
 hook = TotalRewardPerEpisode()
 
-No_Episodes = 50
+No_Episodes = 10
 run(
     agent,
     env,
@@ -77,7 +103,4 @@ run(
     hook
 )
 
-display(plot(hook.rewards))
-
-# result = execute_env(env, agent, 300, true)
-# display(plot(result[4, :]))
+plot(hook.rewards, title = "Total reward per episode")

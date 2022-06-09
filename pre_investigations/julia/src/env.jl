@@ -9,9 +9,10 @@ include(srcdir("custom_control.jl"))
 # required power at the load
 P_required = 1000 # W
 
-# required Voltage at transformer
+# required Voltage at transformer [v_1]
 V_required = 230  # V
 
+PLoad = []
 # --- RL ENV ---
 
 Base.@kwdef mutable struct SimEnv <: AbstractEnv
@@ -77,19 +78,13 @@ function (env::SimEnv)(action)
     # loss_error = 1e-1
     # hardcoded values - change later
     # use functions outside this reward function - normalised
-    P_load = (20 * env.state[end])^2 * 14 
-
-    # P_R = env.state[2]^2 *0.4 + env.state[end]^2 *0.722 
-    # P_source = action*env.state[2]  
+    # P_load = (env.norm_array[end] * env.state[end])^2 / 14
+    # push!(PLoad, P_load)
+    # P_diff = -abs(P_required - P_load)   
 
     # env.reward = -sqrt((P_source - (P_R + P_load + loss_error))^2)
     # Power constraint
-    env.reward = -(P_load - P_required) 
-    
-    # Voltage constraint
-    # env.reward = -abs(action - V_required)
+    env.reward = reward_func("Power_exp", env)
 
-    # env.reward = -1
-    # terminal state check
     env.done = env.steps >= env.maxsteps
 end
