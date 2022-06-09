@@ -1,5 +1,5 @@
-#using DrWatson
-#@quickactivate "MicroGridSimWithRL"
+using DrWatson
+@quickactivate "MicroGridSimWithRL"
 
 using GraphMakie
 using Graphs
@@ -375,6 +375,7 @@ function Draw(M, num_sources, num_loads)
 
     println(num_sources)
     L = num_sources + num_loads
+    println(L)
 
     cm = SimpleGraph(M) # create graph object from Connecitivity Matrix
     
@@ -466,22 +467,26 @@ function Draw(M, num_sources, num_loads)
         autolimits!(ax)
     end
     on(add_buttons[1].clicks) do clicks; #Add Load
-        M = AddNode(M, L+1, L+1) # add at the end, and add one more
-        num_loads = num_loads + 1
-    
+        M = collect(adjacency_matrix(cm))
+        L = size(M,1)
+        global M = AddNode(M, L+1, L+1) # add at the end, and add one more
+        global cm = SimpleGraph(M)
+        global num_loads = num_loads + 1
     end
     on(add_buttons[2].clicks) do clicks; #Add Source
-        M = AddNode(M, 1, L+1) # add at the beginning, and add one more
-        num_sources = num_sources + 1
+        M = collect(adjacency_matrix(cm))
+        L = size(M,1)
+        global M = AddNode(M, 1, L+1) # add at the beginning, and add one more
+        global cm = SimpleGraph(M)
+        global num_sources = num_sources + 1
     end
-    on(add_buttons[3].clicks) do clicks; #Add Source
-        M = AddNode(M, 1, L+1) # add at the beginning, and add one more
-        num_sources = num_sources + 1
+    on(add_buttons[3].clicks) do clicks; #Add Edge
+        
     end
     on(add_buttons[4].clicks) do clicks; #Draw Graph
-        CM_net, ax, p = Draw(M, num_sources, num_loads)
-        display(CM_net)
-    end  
+        M = collect(adjacency_matrix(cm))
+        Draw(M, num_sources, num_loads)
+    end
 
     display(CM_net)
     return CM_net, ax, p
@@ -619,13 +624,15 @@ end
 on(add_buttons[1].clicks) do clicks; #Add Load
     M = collect(adjacency_matrix(cm))
     L = size(M,1)
-    M = AddNode(M, L+1, L+1) # add at the end, and add one more
+    global M = AddNode(M, L+1, L+1) # add at the end, and add one more
+    global cm = SimpleGraph(M)
     global num_loads = num_loads + 1
 end
 on(add_buttons[2].clicks) do clicks; #Add Source
     M = collect(adjacency_matrix(cm))
     L = size(M,1)
-    M = AddNode(M, 1, L+1) # add at the beginning, and add one more
+    global M = AddNode(M, 1, L+1) # add at the beginning, and add one more
+    global cm = SimpleGraph(M)
     global num_sources = num_sources + 1
 end
 on(add_buttons[3].clicks) do clicks; #Add Edge
@@ -634,7 +641,7 @@ end
 on(add_buttons[4].clicks) do clicks; #Draw Graph
     M = collect(adjacency_matrix(cm))
     Draw(M, num_sources, num_loads)
-end  
+end
 
 display(CM_net)
 
