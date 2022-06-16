@@ -5,6 +5,25 @@ using GLMakie
 using GraphMakie
 using Graphs
 
+
+function replot()
+    global CM
+    global g = SimpleGraph(CM)
+    global f, ax, p = graphplot(g,
+            edge_width = [3.0 for i in 1:ne(g)],
+            edge_color = [:black for i in 1:ne(g)],
+            node_size = [20 for i in 1:nv(g)],
+            node_color = [:red for i in 1:nv(g)])
+
+    global ehover
+    global nhover
+    deregister_interaction!(ax, :rectanglezoom)
+    register_interaction!(ax, :ehover, ehover)
+    register_interaction!(ax, :nhover, nhover)
+
+    f
+end
+
 g = wheel_graph(10)
 f, ax, p = graphplot(g,
         edge_width = [3.0 for i in 1:ne(g)],
@@ -30,4 +49,8 @@ end
 nhover = NodeHoverHandler(node_hover_action)
 register_interaction!(ax, :nhover, nhover)
 
-f
+CM = adjacency_matrix(g)
+CM[5,3] = 1
+CM[3,5] = 1
+
+replot()
