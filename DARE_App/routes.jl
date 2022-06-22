@@ -6,3 +6,5 @@ route("/") do
 end
 
 route("/nc", NcConfigsController.index)
+
+route("/ncconfigs/search", NcConfigsController.search, named = :search_ncconfigs)
