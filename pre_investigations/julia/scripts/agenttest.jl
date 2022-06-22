@@ -44,8 +44,8 @@ ts = 1e-5
 
 V_source = 300
 
-global env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=V_source, ts=rationalize(ts))
-global agent = create_agent(na, ns)
+env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=V_source, ts=rationalize(ts))
+agent = create_agent(na, ns)
 
 # ----------------------------------------------------------------------------------------
 function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
