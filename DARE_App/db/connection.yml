@@ -1,0 +1,5 @@
+env: ENV["GENIE_ENV"]
+
+dev:
+  adapter:  SQLite
+  database: db/dev.sqlite3
