@@ -1,3 +1,7 @@
 module NcConfigsController
-  # Build something great
+  
+function index()
+  "Welcome to movies list!"
+end
+
 end
