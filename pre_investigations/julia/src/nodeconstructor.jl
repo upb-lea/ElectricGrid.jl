@@ -23,7 +23,9 @@ mutable struct NodeConstructor
     parameters
     S2S_p
     S2L_p
+    three_phase
 end
+
 
 """
     NodeConstructor(;
@@ -110,6 +112,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
                 num_impedance, num_fltr, cntr, tot_ele, CM, parameters, S2S_p, S2L_p)
 end
 
+
 """
     generate_parameters(
         num_fltr_LCL,
@@ -186,6 +189,7 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
     parameters
 end
 
+
 """
     cntr_fltrs(source_list)
 
@@ -208,6 +212,7 @@ function cntr_fltrs(source_list)
 
     return cntr_LCL, cntr_LC, cntr_L
 end
+
 
 """
     cntr_loads(load_list)
@@ -244,6 +249,7 @@ function cntr_loads(load_list)
     return cntr_RLC, cntr_LC, cntr_RL, cntr_RC, cntr_L, cntr_C, cntr_R
 end
 
+
 """
     _sample_fltr_LCL()
 
@@ -262,15 +268,16 @@ function _sample_fltr_LCL()
     #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
 
     #TODO
-    source["R1"] = 0.4
-    source["R2"] = 0.4
-    source["R_C"] = 0.4
-    source["L1"] = 2.3e-3
-    source["L2"] = 2.3e-3
-    source["C"] = 10e-6
+    source["R1"] = 1
+    source["R2"] = 1
+    source["R_C"] = 1
+    source["L1"] = 3.3e-3
+    source["L2"] = 3.3e-3
+    source["C"] = 12e-6
 
     source
 end
+
 
 """
     _sample_fltr_LC()
@@ -288,13 +295,14 @@ function _sample_fltr_LC()
     #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
 
     #TODO
-    source["R1"] = 0.4
-    source["R_C"] = 0.4
-    source["L1"] = 2.3e-3
-    source["C"] = 10e-6
+    source["R1"] = 1
+    source["R_C"] = 1
+    source["L1"] = 3.3e-3
+    source["C"] = 12e-6
 
     source
 end
+
 
 """
     _sample_fltr_L()
@@ -307,11 +315,12 @@ function _sample_fltr_L()
     source["fltr"] = "L"
 
     #TODO
-    source["R1"] = 0.4 # round(rand(Uniform(0.1, 1)), digits=3)
-    source["L1"] = 2.3e-3 # round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
+    source["R1"] = 1 # round(rand(Uniform(0.1, 1)), digits=3)
+    source["L1"] = 3.3e-3 # round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
 
     source
 end
+
 
 """
     _sample_load_RLC()
@@ -322,12 +331,13 @@ function _sample_load_RLC()
 
     load = Dict()
     load["impedance"] = "RLC"
-    load["R"] = 0.4 # round(rand(Uniform(10, 10000)), digits=3)
-    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
-    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
+    load["R"] = round(rand(Uniform(10, 1e5)), digits=3)
+    load["L"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
+    load["C"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
 
     load
 end
+
 
 """
     _sample_load_LC()
@@ -338,11 +348,13 @@ function _sample_load_LC()
 
     load = Dict()
     load["impedance"] = "LC"
-    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
-    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
+    load["L"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
+    load["C"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
+
 
     load
 end
+
 
 """
     _sample_load_RL()
@@ -353,11 +365,12 @@ function _sample_load_RL()
 
     load = Dict()
     load["impedance"] = "RL"
-    load["R"] = 0.4 # round(rand(Uniform(10, 10000)), digits=3)
-    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
+    load["R"] = round(rand(Uniform(10, 1e5)), digits=3)
+    load["L"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
 
     load
 end
+
 
 """
     _sample_load_RC()
@@ -368,11 +381,12 @@ function _sample_load_RC()
 
     load = Dict()
     load["impedance"] = "RC"
-    load["R"] = 0.4 # round(rand(Uniform(10, 10000)), digits=3)
-    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
+    load["R"] = round(rand(Uniform(10, 1e5)), digits=3)
+    load["C"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
 
     load
 end
+
 
 """
     _sample_load_L()
@@ -384,10 +398,11 @@ function _sample_load_L()
     load = Dict()
 
     load["impedance"] = "L"
-    load["L"] = 2.3e-3 # round(rand(Uniform(1, 10)), digits=3)
+    load["L"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
 
     load
 end
+
 
 """
     _sample_load_C()
@@ -399,10 +414,11 @@ function _sample_load_C()
     load = Dict()
 
     load["impedance"] = "C"
-    load["C"] = 10e-6 # round(rand(Uniform(1, 10)), digits=3)
+    load["C"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
 
     load
 end
+
 
 """
     _sample_load_R()
@@ -413,13 +429,12 @@ function _sample_load_R()
 
     load = Dict()
 
-    #TODO
     load["impedance"] = "R"
-    #load["R"] = round(rand(Uniform(10, 10000)), digits=3)
-    load["R"] = 14
+    load["R"] = round(rand(Uniform(10, 1e5)), digits=3)
 
     load
 end
+
 
 """
     _sample_cable()
@@ -428,11 +443,10 @@ Sample parameters for the cable.
 """
 function _sample_cable()
     
-    #TODO
-    l =  0.01 #rand(1:1:100) * 0.01
+    l =  rand(Uniform(1e-3, 1e1))
 
     Rb = 0.722
-    Cb = 0.4e-6 # too small?
+    Cb = 0.4e-6
     Lb = 0.264e-3
 
     cable = Dict()
@@ -440,13 +454,9 @@ function _sample_cable()
     cable["L"] = l * Lb
     cable["C"] = l * Cb
 
-    
-    #cable["R"] = 0.4
-    #cable["L"] = 2.3e-3
-    #cable["C"] = 1e-20
-
     cable
 end
+
 
 """
     tobe_or_n2b(cntr, x, p)
@@ -463,6 +473,7 @@ function tobe_or_n2b(cntr, x, p)
         return cntr, x
     end
 end
+
 
 """
     CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
@@ -530,6 +541,7 @@ function CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
 
     return cntr, CM
 end
+
 
 """
     get_A_src(self::NodeConstructor, source_i)
@@ -620,6 +632,7 @@ function get_A_src(self::NodeConstructor, source_i)
 
 end
 
+
 """
     get_B_source(self::NodeConstructor, source_i)
 
@@ -644,6 +657,7 @@ function get_B_source(self::NodeConstructor, source_i)
 
     return B_source
 end
+
 
 """
     get_A_src_trn_c(self::NodeConstructor, source_i)
@@ -723,6 +737,7 @@ function get_A_src_trn_c(self::NodeConstructor, source_i)
     return A_src_trn_c
 end
 
+
 """
     get_A_src_trn_l(self::NodeConstructor, source_i)
 
@@ -777,6 +792,7 @@ function get_A_src_trn_l(self::NodeConstructor, source_i)
     return A_src_trn_l'
 end
 
+
 """
     generate_A_trn(self::NodeConstructor)
 
@@ -793,6 +809,7 @@ function generate_A_trn(self::NodeConstructor)
 
     return A_trn
 end
+
 
 """
     get_A_tran_load_c(self::NodeConstructor, load_i)
@@ -891,6 +908,7 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
     return A_tran_load_c
 end
 
+
 """
     get_A_tran_load_l(self::NodeConstructor, load_i)
 
@@ -933,6 +951,7 @@ function get_A_tran_load_l(self::NodeConstructor, load_i)
 
     return A_tran_load_l
 end
+
 
 """
     get_A_load(self::NodeConstructor, load_i)
@@ -1071,6 +1090,7 @@ function get_A_load(self::NodeConstructor, load_i)
 
     return A_load
 end
+
 
 """
     generate_A(self::NodeConstructor)
@@ -1226,6 +1246,7 @@ function generate_A(self::NodeConstructor)
     return A
 end
 
+
 """
     generate_B(self::NodeConstructor)
 
@@ -1268,6 +1289,7 @@ function generate_B(self::NodeConstructor)
     return B
 end
 
+
 """
     generate_C(self::NodeConstructor)
 
@@ -1291,6 +1313,12 @@ function generate_D(self::NodeConstructor)
     return 0
 end
 
+
+"""
+    get_sys(self::NodeConstructor)
+
+Generates the system matrices A, B, C and D.
+"""
 function get_sys(self::NodeConstructor)
     """Returns state space matrices"""
 
@@ -1301,7 +1329,11 @@ function get_sys(self::NodeConstructor)
     return (A, B, C, D)
 end
 
+"""
+    get_states(self::NodeConstructor)
 
+Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
+"""
 function get_states(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
