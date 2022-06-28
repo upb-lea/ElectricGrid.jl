@@ -23,6 +23,7 @@ mutable struct NodeConstructor
     parameters
     S2S_p
     S2L_p
+    net_para
 end
 
 
@@ -41,7 +42,9 @@ Create a mutable struct NodeConstructor, which serves as a basis for the creatio
 function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8)
 
     tot_ele = num_sources + num_loads
-
+    net_para = Dict()
+    net_para["fs"] =  10e3
+    net_para["v_rms"] = 230
     cntr = 0
     num_connections = 0
 
@@ -78,7 +81,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         num_loads_RLC =  num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
 
         parameters = generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
-                                        num_loads_L, num_loads_C, num_loads_R)
+                                        num_loads_L, num_loads_C, num_loads_R, net_para)
 
     elseif isa(parameters, Dict)
         @assert length(keys(parameters)) == 3 "Expect parameters to have the three entries 'cable', 'load' and 'source' but got $(keys(parameters))"
@@ -108,7 +111,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L,
                 num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R,
-                num_impedance, num_fltr, cntr, tot_ele, CM, parameters, S2S_p, S2L_p)
+                num_impedance, num_fltr, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, net_para)
 end
 
 
@@ -130,22 +133,22 @@ end
 Function that samples the parameters for the individual elements if no parameters are entered. 
 """
 function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
-                            num_loads_L, num_loads_C, num_loads_R)
+                            num_loads_L, num_loads_C, num_loads_R, net_para)
 
     source_list = []
     cable_list = []
     load_list = []
 
     for s in 1:num_fltr_LCL
-        push!(source_list, _sample_fltr_LCL())
+        push!(source_list, _sample_fltr_LCL(net_para))
     end
     
     for s in 1:num_fltr_LC
-        push!(source_list, _sample_fltr_LC())
+        push!(source_list, _sample_fltr_LC(net_para))
     end
     
     for s in 1:num_fltr_L
-        push!(source_list, _sample_fltr_L())
+        push!(source_list, _sample_fltr_L(net_para))
     end
 
     for c in 1:num_connections
@@ -254,25 +257,28 @@ end
 
 Sample parameters for the LCL filter.
 """
-function _sample_fltr_LCL()
+function _sample_fltr_LCL(net_para)
 
     source = Dict()
     source["fltr"] = "LCL"
 
-    #source["R1"] = round(rand(Uniform(0.1, 1)), digits=3)
-    #source["R2"] = round(rand(Uniform(0.1, 1)), digits=3)
-    #source["R_C"] = round(rand(Uniform(0.1, 1)), digits=3)
-    #source["L1"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
-    #source["L2"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
-    #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
+    source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
+    source["vdc"] = rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = rand(Uniform(0.1, 0.15))
+    source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    #TODO
-    source["R1"] = 1
-    source["R2"] = 1
-    source["R_C"] = 1
-    source["L1"] = 3.3e-3
-    source["L2"] = 3.3e-3
-    source["C"] = 12e-6
+    ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
+    i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+    ilfmax = source["i_rip"] * i_peak
+    vcfmax = source["v_rip"] * sqrt(2)*net_para["v_rms"]
+
+
+    source["L1"] = 0.5*(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)
+    source["L2"] = deepcopy(source["L1"]) 
+    source["C"] = ilfmax*(8*net_para["fs"]*vcfmax)^-1
+    source["R1"] = 400 * source["L1"]
+    source["R2"] = deepcopy(source["R1"])
+    source["R_C"] = 28* source["C"]
 
     source
 end
@@ -283,21 +289,26 @@ end
 
 Sample parameters for the LC filter.
 """
-function _sample_fltr_LC()  
+function _sample_fltr_LC(net_para)  
 
     source = Dict()
     source["fltr"] = "LC"
 
-    #source["R1"] = round(rand(Uniform(0.1, 1)), digits=3)
-    #source["R_C"] = round(rand(Uniform(0.1, 1)), digits=3)
-    #source["L1"] = round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
-    #source["C"] = round(rand(Uniform(5, 15)), digits=3) * 1e-6
+    source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
+    source["vdc"] = rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = rand(Uniform(0.1, 0.15))
+    source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    #TODO
-    source["R1"] = 1
-    source["R_C"] = 1
-    source["L1"] = 3.3e-3
-    source["C"] = 12e-6
+    ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
+    i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+    ilfmax = source["i_rip"] * i_peak
+    vcfmax = source["v_rip"] * sqrt(2)*net_para["v_rms"]
+
+
+    source["L1"] = (source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)
+    source["C"] = ilfmax*(8*net_para["fs"]*vcfmax)^-1
+    source["R1"] = 400 * source["L1"]
+    source["R_C"] = 28* source["C"]
 
     source
 end
@@ -308,14 +319,23 @@ end
 
 Sample parameters for the L filter.
 """
-function _sample_fltr_L()  
+function _sample_fltr_L(net_para)  
 
     source = Dict()
     source["fltr"] = "L"
 
-    #TODO
-    source["R1"] = 1 # round(rand(Uniform(0.1, 1)), digits=3)
-    source["L1"] = 3.3e-3 # round(rand(Uniform(2, 2.5)), digits=3) * 1e-3
+    source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
+    source["vdc"] = rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = rand(Uniform(0.1, 0.15))
+    source["v_rip"] = rand(Uniform(0.014, 0.016))
+
+    ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
+    i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+    ilfmax = source["i_rip"] * i_peak
+
+
+    source["L1"] = (source["vdc"]*(4*net_para["fs"]*ilfmax)^-1) 
+    source["R1"] = 400 * source["L1"] 
 
     source
 end
