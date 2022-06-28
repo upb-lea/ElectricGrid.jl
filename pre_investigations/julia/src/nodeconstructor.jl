@@ -23,7 +23,6 @@ mutable struct NodeConstructor
     parameters
     S2S_p
     S2L_p
-    three_phase
 end
 
 
