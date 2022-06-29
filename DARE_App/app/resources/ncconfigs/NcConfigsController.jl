@@ -7,8 +7,6 @@ function index()
 end
 
 function search()
-  isempty(strip(params(:search_ncconfigs))) && redirect(:get_ncconfigs)
-
   ncconfigs = find(NcConfig,
               SQLWhereExpression("name LIKE ? OR cm LIKE ? OR parameters LIKE ?",
                                   repeat(['%' * params(:search_ncconfigs) * '%'], 4)))
