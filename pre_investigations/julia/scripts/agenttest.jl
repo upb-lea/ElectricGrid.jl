@@ -1,16 +1,18 @@
 using DrWatson
 @quickactivate "MicroGridSimWithRL"
 
+using PProf, Profile
 # using DifferentialEquations
 # using Sundials
 using Plots
 # using LinearAlgebra
 # using ControlSystems
-# using BenchmarkTools
+using BenchmarkTools
 using ReinforcementLearning
 using Flux
 using StableRNGs
 # using IntervalSets
+using TimerOutputs
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
@@ -67,7 +69,7 @@ function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
     return output
 end
 
-P_required = 500 # W
+P_required = 466 # W
 V_required = 230 # V
 PLoad = []
 Pdiff = []
@@ -79,9 +81,9 @@ function reward_func(method::String, env::SimEnv)
     P_load = (env.norm_array[end] * u_l1)^2 / 14
     
     if method == "Power_exp"
-        push!(PLoad, P_load)
+        # push!(PLoad, P_load)
         P_diff = -abs(P_required - P_load) 
-        push!(Pdiff, P_diff)
+        # push!(Pdiff, P_diff)
         reward = exp(P_diff/130) - 1
     
     elseif method == "Power"
@@ -95,12 +97,48 @@ end
 
 hook = TotalRewardPerEpisode()
 
-No_Episodes = 10
+No_Episodes = 5
+global const timer_run = TimerOutput()
+
+
+# @timeit timer_run "Overall run" begin
 run(
     agent,
     env,
-    StopAfterEpisode(50),
+    StopAfterEpisode(No_Episodes),
     hook
 )
+# end
 
-plot(hook.rewards, title = "Total reward per episode")
+# show(timer_run)
+
+
+# @benchmark run(
+#     agent,
+#     env,
+#     StopAfterEpisode(No_Episodes),
+#     hook
+# ) seconds = 120 evals = 2
+
+# pprof(;webport=58699)
+
+# plot(hook.rewards, 
+#     title = "Total reward per episode",
+#     xlabel = "Episodes",
+#     ylabel = "Rewards",
+#     legend = false)
+
+# plot(PLoad,
+#     title = "Power @ Load",
+#     ylabel = "Power in Watts",
+#     xlabel = "Time steps for 150 episodes [150 x 300]",
+#     legend = false)
+
+# plot(PLoad[end-300 : end],
+#     title = "Power @ Load for the last episode",
+#     ylabel = "Power in Watts",
+#     xlabel = "Time steps",
+#     legend = false
+#     )
+
+# Plots.savefig(p, plotsdir())
