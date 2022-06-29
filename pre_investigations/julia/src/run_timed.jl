@@ -96,42 +96,61 @@ function run(policy::AbstractPolicy,
     hook = EmptyHook(),
     )
 
-    hook(PRE_EXPERIMENT_STAGE, policy, env)
-    policy(PRE_EXPERIMENT_STAGE, env, timer)
-    is_stop = false
-    while !is_stop
-        reset!(env)
-        policy(PRE_EPISODE_STAGE, env, timer)
-        hook(PRE_EPISODE_STAGE, policy, env)
+    @timeit timer "inside run" begin
+        @timeit timer "hooks" begin
+            hook(PRE_EXPERIMENT_STAGE, policy, env)
+        end
+        policy(PRE_EXPERIMENT_STAGE, env, timer)
+        is_stop = false
+        while !is_stop
+            reset!(env)
+            policy(PRE_EPISODE_STAGE, env, timer)
+            @timeit timer "hooks" begin
+                hook(PRE_EPISODE_STAGE, policy, env)
+            end
 
-        while !is_terminated(env) # one episode
-            action = policy(env, timer)
+            while !is_terminated(env) # one episode
+                action = policy(env, timer)
 
-            policy(PRE_ACT_STAGE, env, action, timer)
-            hook(PRE_ACT_STAGE, policy, env, action)
+                policy(PRE_ACT_STAGE, env, action, timer)
+                @timeit timer "hooks" begin
+                    hook(PRE_ACT_STAGE, policy, env, action)
+                end
 
-            @timeit timer "Env calculation" begin
                 if env.Ad isa CuArray
-                    env(CuArray(action))
-                else
+                    @timeit timer "Agent prepare data" begin
+                        if action isa Array
+                            action = CuArray(action)
+                        else
+                            action = CuArray([action])
+                        end
+                    end
+                end
+                @timeit timer "Env calculation" begin
                     env(action)
                 end
+
+                policy(POST_ACT_STAGE, env, timer)
+                @timeit timer "hooks" begin
+                    hook(POST_ACT_STAGE, policy, env)
+                end
+
+                if stop_condition(policy, env)
+                    is_stop = true
+                    break
+                end
+            end # end of an episode
+
+            if is_terminated(env)
+                policy(POST_EPISODE_STAGE, env, timer)  # let the policy see the last observation
+                @timeit timer "hooks" begin
+                    hook(POST_EPISODE_STAGE, policy, env)
+                end
             end
-
-            policy(POST_ACT_STAGE, env, timer)
-            hook(POST_ACT_STAGE, policy, env)
-
-            if stop_condition(policy, env)
-                is_stop = true
-                break
-            end
-        end # end of an episode
-
-        if is_terminated(env)
-            policy(POST_EPISODE_STAGE, env, timer)  # let the policy see the last observation
-            hook(POST_EPISODE_STAGE, policy, env)
         end
+        @timeit timer "hooks" begin
+            hook(POST_EXPERIMENT_STAGE, policy, env)
+        end
+        hook
     end
-    hook(POST_EXPERIMENT_STAGE, policy, env)
-    hook
 end

@@ -19,8 +19,20 @@ include(srcdir("env.jl"))
 include(srcdir("agent.jl"))
 include(srcdir("run_timed.jl"))
 
+global const timer = TimerOutput()
+
+env_cuda = false
+agent_cuda = true
+
+num_nodes = 4
+
 CM = [ 0.  1.
         -1.  0.]
+
+CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(num_nodes) * ".json"))
+
+CM = reduce(hcat, CM_list[1])'
+CM = convert(Matrix{Int}, CM)
 
 parameters = Dict()
 # LC filter
@@ -28,7 +40,8 @@ parameters["source"] = [Dict("fltr" => "LC", "R" => 0.4, "L1" => 2.3e-3, "C" => 
 parameters["cable"] = [Dict("R" => 0.722, "L" => 0.955e-3, "C" => 8e-09)]
 parameters["load"] = [Dict("impedance" => "R", "R" => 14)]
 
-nc = NodeConstructor(num_source=1, num_loads=1, CM=CM, parameters=parameters)
+#nc = NodeConstructor(num_source=1, num_loads=1, CM=CM, parameters=parameters)
+nc = NodeConstructor(num_source=num_nodes, num_loads=num_nodes, CM=CM)
 
 #draw_graph(Grid_FC)   ---   not yet implemented
 
@@ -47,8 +60,21 @@ ts = 1e-5
 
 V_source = 300
 
-env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=false)
-agent = create_agent(na, ns)
+x0 = [ 0.0 for i = 1:length(A[1,:]) ]
+Ad = exp(A*ts)
+Bd = A \ (Ad - C) * B
+
+if env_cuda
+    A = CuArray(A)
+    B = CuArray(B)
+    C = CuArray(C)
+    Ad = CuArray(Ad)
+    Bd = CuArray(Bd)
+    x0 = CuArray(x0)
+end
+
+env = SimEnv(A=A, B=B, C=C, Ad=Ad, Bd=Bd, norm_array=norm_array, x0=x0, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=true)
+agent = create_agent(na, ns, agent_cuda)
 
 # ----------------------------------------------------------------------------------------
 function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
@@ -99,7 +125,8 @@ end
 hook = TotalRewardPerEpisode()
 
 No_Episodes = 5
-global const timer = TimerOutput()
+
+run(agent, env, StopAfterEpisode(1), hook)
 
 @timeit timer "Overall run" begin
 run(

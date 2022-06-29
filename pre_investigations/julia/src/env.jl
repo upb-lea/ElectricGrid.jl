@@ -25,7 +25,6 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     done::Bool = false
     x0 = [ 0.0 for i = 1:length(A[1,:]) ]
     x = x0
-    state::AbstractVector = x0
     maxsteps::Int = 300
     steps::Int = 0
     t::Rational = 0
@@ -37,6 +36,7 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     v_dc::Float64 = 300
     reward::Float64 = 0
     convert_state_to_cpu::Bool = true
+    state = convert_state_to_cpu ? Array(x0) : x0
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -48,7 +48,7 @@ RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
 
 function RLBase.reset!(env::SimEnv)
-    env.state = env.x0
+    env.state = env.convert_state_to_cpu ? Array(env.x0) : env.x0
     env.x = env.x0
     env.t = 0
     env.steps = 0
@@ -66,6 +66,13 @@ function (env::SimEnv)(action)
     env.t = tt[2]
 
     action *= env.v_dc
+    if env.Ad isa CuArray && !(action isa CuArray)
+        if action isa Array
+            action = CuArray(action)
+        else
+            action = CuArray([action])
+        end
+    end
     u = [action action]
 
     xout_d = custom_lsim(env.sys_d, u, tt, x0=env.x)
