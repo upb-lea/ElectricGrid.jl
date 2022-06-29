@@ -13,18 +13,19 @@ using Flux
 using StableRNGs
 using IntervalSets
 using TimerOutputs
+using JSON
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent.jl"))
 include(srcdir("run_timed.jl"))
 
-global const timer = TimerOutput()
+global timer = TimerOutput()
 
 env_cuda = false
 agent_cuda = true
 
-num_nodes = 4
+num_nodes = 20
 
 CM = [ 0.  1.
         -1.  0.]
@@ -40,8 +41,8 @@ parameters["source"] = [Dict("fltr" => "LC", "R" => 0.4, "L1" => 2.3e-3, "C" => 
 parameters["cable"] = [Dict("R" => 0.722, "L" => 0.955e-3, "C" => 8e-09)]
 parameters["load"] = [Dict("impedance" => "R", "R" => 14)]
 
-#nc = NodeConstructor(num_source=1, num_loads=1, CM=CM, parameters=parameters)
-nc = NodeConstructor(num_source=num_nodes, num_loads=num_nodes, CM=CM)
+#nc = NodeConstructor(num_sources=1, num_loads=1, CM=CM, parameters=parameters)
+nc = NodeConstructor(num_sources=num_nodes, num_loads=num_nodes, CM=CM)
 
 #draw_graph(Grid_FC)   ---   not yet implemented
 
@@ -49,8 +50,18 @@ A, B, C, D = get_sys(nc)
 
 limits = Dict("i_lim" => 20, "v_lim" => 600)
 
-norm_array = vcat([limits[i] for j = 1:nc.num_source for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
+norm_array = vcat([limits[i] for j = 1:nc.num_sources for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
 norm_array = vcat( norm_array, [limits["v_lim"] for i = 1:nc.num_loads] )
+
+states = get_states(nc)
+norm_array = []
+for state_name in states
+    if startswith(state_name, "i")
+        push!(norm_array, limits["i_lim"])
+    elseif startswith(state_name, "u")
+        push!(norm_array, limits["v_lim"])
+    end
+end
 
 ns = length(A[1,:])
 na = length(B[1,:])
