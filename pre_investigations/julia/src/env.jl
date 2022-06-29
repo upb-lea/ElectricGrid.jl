@@ -73,7 +73,7 @@ function (env::SimEnv)(action)
 
     env.x = xout_d[:,2]
     #env.x = xout_d'[2,:]
-    if env.convert_state_to_cpu
+    if convert_state_to_cpu
         env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
     else
         env.state = xout_d'[2,:] ./ env.norm_array

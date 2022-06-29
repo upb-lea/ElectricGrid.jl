@@ -17,7 +17,6 @@ using TimerOutputs
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent.jl"))
-include(srcdir("run_timed.jl"))
 
 CM = [ 0.  1.
         -1.  0.]
@@ -47,7 +46,7 @@ ts = 1e-5
 
 V_source = 300
 
-env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=false)
+env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=V_source, ts=rationalize(ts))
 agent = create_agent(na, ns)
 
 # ----------------------------------------------------------------------------------------
@@ -77,7 +76,7 @@ Pdiff = []
 
 function reward_func(method::String, env::SimEnv)
 
-    i_1, u_1, i_c1, u_l1 = Array(env.state)
+    i_1, u_1, i_c1, u_l1 = env.state
 
     P_load = (env.norm_array[end] * u_l1)^2 / 14
     
@@ -99,19 +98,19 @@ end
 hook = TotalRewardPerEpisode()
 
 No_Episodes = 5
-global const timer = TimerOutput()
+global const timer_run = TimerOutput()
 
-@timeit timer "Overall run" begin
+@timeit timer_run "Overall run" begin
 run(
     agent,
     env,
-    timer,
     StopAfterEpisode(No_Episodes),
-    hook
+    hook,
+    timer_run
 )
 end
 
-show(timer)
+show(timer_run)
 
 
 # @benchmark run(
