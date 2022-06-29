@@ -4,13 +4,13 @@ using StableRNGs
 
 # also in a sep src
 global rngg = StableRNG(123)
-global initt = glorot_uniform(rngg)
+global initt = Flux.glorot_uniform(rngg)
 
 global create_actor(na, ns) = Chain(
     Dense(ns, 40, relu; init = initt),
     Dense(40, 30, relu; init = initt),
     Dense(30, na, tanh; init = initt),
-) |> gpu 
+) |> gpu
 
 # gpu --> cpu? 
 
@@ -25,19 +25,19 @@ function create_agent(na, ns)
         policy = DDPGPolicy(
             behavior_actor = NeuralNetworkApproximator(
                 model = create_actor(na, ns),
-                optimizer = ADAM(),
+                optimizer = Flux.ADAM(),
             ),
             behavior_critic = NeuralNetworkApproximator(
                 model = create_critic(na, ns),
-                optimizer = ADAM(),
+                optimizer = Flux.ADAM(),
             ),
             target_actor = NeuralNetworkApproximator(
                 model = create_actor(na, ns),
-                optimizer = ADAM(),
+                optimizer = Flux.ADAM(),
             ),
             target_critic = NeuralNetworkApproximator(
                 model = create_critic(na, ns),
-                optimizer = ADAM(),
+                optimizer = Flux.ADAM(),
             ),
             γ = 0.99f0,
             ρ = 0.995f0,
