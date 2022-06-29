@@ -19,23 +19,23 @@ global create_critic(na, ns) = Chain(
     Dense(30, 1; init = initt),
 )
 
-function create_agent(na, ns, gpu = true)
+function create_agent(na, ns, use_gpu = true)
     Agent(
         policy = DDPGPolicy(
             behavior_actor = NeuralNetworkApproximator(
-                model = gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
+                model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             behavior_critic = NeuralNetworkApproximator(
-                model = gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
+                model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             target_actor = NeuralNetworkApproximator(
-                model = gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
+                model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             target_critic = NeuralNetworkApproximator(
-                model = gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
+                model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             γ = 0.99f0,
