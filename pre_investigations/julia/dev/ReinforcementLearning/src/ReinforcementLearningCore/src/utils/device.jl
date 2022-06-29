@@ -21,6 +21,7 @@ send_to_device(::CuDevice, m) = fmap(CUDA.cu, m)
 Detect the suitable running device for the `model`.
 Return `Val(:cpu)` by default.
 """
+
 device(x) = device(Flux.trainable(x))
 device(x::Function) = nothing
 device(::Array) = Val(:cpu)

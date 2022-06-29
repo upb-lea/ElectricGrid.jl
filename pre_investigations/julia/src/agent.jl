@@ -1,6 +1,7 @@
 using ReinforcementLearning
 using Flux
 using StableRNGs
+using IntervalSets
 
 # also in a sep src
 global rngg = StableRNG(123)
@@ -10,33 +11,31 @@ global create_actor(na, ns) = Chain(
     Dense(ns, 40, relu; init = initt),
     Dense(40, 30, relu; init = initt),
     Dense(30, na, tanh; init = initt),
-) |> gpu
-
-# gpu --> cpu? 
+)
 
 global create_critic(na, ns) = Chain(
     Dense(ns + na, 40, relu; init = initt),
     Dense(40, 30, relu; init = initt),
     Dense(30, 1; init = initt),
-) |> gpu
+)
 
-function create_agent(na, ns)
+function create_agent(na, ns, gpu = true)
     Agent(
         policy = DDPGPolicy(
             behavior_actor = NeuralNetworkApproximator(
-                model = create_actor(na, ns),
+                model = gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             behavior_critic = NeuralNetworkApproximator(
-                model = create_critic(na, ns),
+                model = gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             target_actor = NeuralNetworkApproximator(
-                model = create_actor(na, ns),
+                model = gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             target_critic = NeuralNetworkApproximator(
-                model = create_critic(na, ns),
+                model = gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             γ = 0.99f0,

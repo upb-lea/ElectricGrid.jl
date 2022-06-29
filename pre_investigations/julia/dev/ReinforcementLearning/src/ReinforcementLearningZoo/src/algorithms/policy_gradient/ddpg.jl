@@ -118,9 +118,9 @@ function (p::DDPGPolicy)(env, player::Any = nothing)
         s = DynamicStyle(env) == SEQUENTIAL ? state(env) : state(env, player)
         s = Flux.unsqueeze(s, ndims(s) + 1)
 
-        actions2 = p.behavior_actor(send_to_device(D, s)) |> vec
+        actions = p.behavior_actor(send_to_device(D, s)) |> vec
 
-        actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
+        actions = actions |> send_to_host
         c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
         p.na == 1 && return c[1]
         c
@@ -139,6 +139,7 @@ function RLBase.update!(
     update!(p, batch)
 end
 
+#  Entirely on the device of baehavior actor's
 function RLBase.update!(p::DDPGPolicy, batch::NamedTuple{SARTS})
     s, a, r, t, s′ = send_to_device(device(p), batch)
 

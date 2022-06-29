@@ -11,7 +11,7 @@ using BenchmarkTools
 using ReinforcementLearning
 using Flux
 using StableRNGs
-# using IntervalSets
+using IntervalSets
 using TimerOutputs
 
 include(srcdir("nodeconstructor.jl"))
@@ -100,17 +100,17 @@ hook = TotalRewardPerEpisode()
 No_Episodes = 5
 global const timer_run = TimerOutput()
 
-
-# @timeit timer_run "Overall run" begin
+@timeit timer_run "Overall run" begin
 run(
     agent,
     env,
     StopAfterEpisode(No_Episodes),
-    hook
+    hook,
+    timer_run
 )
-# end
+end
 
-# show(timer_run)
+show(timer_run)
 
 
 # @benchmark run(

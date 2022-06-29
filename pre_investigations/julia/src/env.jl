@@ -25,7 +25,7 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     done::Bool = false
     x0 = [ 0.0 for i = 1:length(A[1,:]) ]
     x = x0
-    state::Vector{Float64} = x0
+    state::AbstractVector = x0
     maxsteps::Int = 300
     steps::Int = 0
     t::Rational = 0
@@ -36,6 +36,7 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
     v_dc::Float64 = 300
     reward::Float64 = 0
+    convert_state_to_cpu::Bool = true
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -72,7 +73,11 @@ function (env::SimEnv)(action)
 
     env.x = xout_d[:,2]
     #env.x = xout_d'[2,:]
-    env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
+    if convert_state_to_cpu
+        env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
+    else
+        env.state = xout_d'[2,:] ./ env.norm_array
+    end
 
     # reward
     # loss_error = 1e-1

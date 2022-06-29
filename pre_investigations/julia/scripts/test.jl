@@ -1,31 +1,25 @@
 using DrWatson
 @quickactivate "MicroGridSimWithRL"
 
-ENV["JULIA_DEBUG"] = "CUDA"
-
+using BenchmarkTools
 using CUDA
 
-#CUDA.version()
-#CUDA.versioninfo()
+function test(a::CuArray)
+    CUDA.@sync begin
 
-#println(has_device())
+        a = sin.(a)
 
+    end 
 
-dev = CuDevice(0)
-ctx = CuContext(dev)
-synchronize(ctx)
+    a
+end
 
-println(has_device())
+function test(a::AbstractArray)
+    a = sin.(a)
 
-#buf = Mem.alloc(Device, ...)
+    a
+end
 
-event = CuEvent()
-record(event)
+# @benchmark test(CuArray(1:0.0001:10))
 
-stream = CuStream()
-
-hallo = CUDA.fill(1.0f0, 3)
-println(has_device())
-hallo .= 5
-
-a = 12
+# @benchmark test(collect(1:0.0001:10))
