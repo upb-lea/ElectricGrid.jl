@@ -26,6 +26,7 @@ from stable_baselines3.common.noise import NormalActionNoise
 
 from pre_investigations.python.Interface.env_dare import Env_DARE
 from pre_investigations.python.dare.utils.nodeconstructor import NodeConstructor
+import pre_investigations.python.solver_investigations.custom_control as cc
 
 
 # time measure based on https://note.nkmk.me/en/python-timeit-measure/
@@ -102,7 +103,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
         y_debug[methode[n]+'_c'+str(c)+'_nodes'+str(num_nodes[k])+'_tend'+str(t_end[l])] = result_ivp.y.tolist()
 
     def run_control_debug(sys, t, u_random, x0, k, l, c, n):
-        T, yout_d, xout_d = control.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
+        T, yout_d, xout_d = cc.forced_response(sys, T=t, U=u_random, X0=x0, return_x=True, squeeze=True)
         plt.step(xout_d[1], 'r', label='v1_discret')
         plt.title('Control, nodes:'+ str(num_nodes[k]) + ', t_end: ' + str(t_end[l]) + ', cm: ' + str(c+1))
         plt.show()
@@ -190,16 +191,26 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
 
                         A_sys, B_sys, C_sys, D_sys = power_grid.get_sys()
 
-                        if methode[n] in ['control.py'] and methode_args[n] == 'discrete':
+                        use_cuda = False
+                        if methode_args[n] == 'cuda':
+                            use_cuda = True
+
+                        if methode[n] in ['control.py', 'control.py32']:
                             A_d = scipy.linalg.expm(A_sys * ts)
                             A_inv = scipy.linalg.inv(A_sys)
                             B_d = A_inv @ (A_d - np.eye(A_sys.shape[0])) @ B_sys
                             C_d = copy.copy(C_sys)
 
-                            sys = control.ss(A_d, B_d, C_d, 0, dt=True)
+                            if methode[n] in ['control.py32']:
+                                sys = cc.ss(A_d, B_d, C_d, 0, dt=True, bit32=True, use_cuda=use_cuda)
+                            else:
+                                sys = cc.ss(A_d, B_d, C_d, 0, dt=True, use_cuda=use_cuda)
 
-                        else:
-                            sys = control.ss(A_sys, B_sys, C_sys, D_sys)
+                        elif methode[n] in ['control.py_con', 'control.py_con32']:
+                            if methode[n] in ['control.py_con32']:
+                                sys = cc.ss(A_sys, B_sys, C_sys, D_sys, bit32=True, offline_expm=True, use_cuda=use_cuda)
+                            else:
+                                sys = cc.ss(A_sys, B_sys, C_sys, D_sys, offline_expm=True, use_cuda=use_cuda)
 
                         # generate init state
                         x0 = np.zeros((A_sys.shape[0],))
@@ -219,20 +230,28 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                                                                            atol=1e-10, rtol=1e-6)
                         ode_solver.set_initial_value(x0, 0)
 
-                    if methode[n] in ['control.py']:
+                    if methode[n] in ['control.py', 'control.py32', 'control.py_con', 'control.py_con32']:
                         if debug:
                             u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
                                 (power_grid.num_source, len(t)))
+                            if methode[n] in ['control.py32', 'control.py_con32']:
+                                u_fix = u_fix.astype(np.float32)
                             #u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
                             res_list = timeit.repeat(lambda: run_control_debug(sys, t, u_fix, x0, k, l, c, n), repeat=repeat, number=loops)
                         else:
                             u_fix = np.array([230] * power_grid.num_source)[:, None] * np.ones(
                                 (power_grid.num_source, len(t)))
+                            if methode[n] in ['control.py32', 'control.py_con32']:
+                                u_fix = u_fix.astype(np.float32)
                             #u_random = np.random.uniform(-1, 1, (power_grid.num_source, len(t))) * parameter['V_dc']
-                            with threadpool_limits(limits=methode_args[n]):
+                            if isinstance(methode_args[n], int):
+                                limit = methode_args[n]
+                            else:
+                                limit = 8
+                            with threadpool_limits(limits=limit):
                                 #pprint(threadpool_info())
                                 res_list = timeit.repeat(
-                                lambda: control.forced_response(sys, T=t, U=u_fix, X0=x0, return_x=True, squeeze=True)
+                                lambda: cc.forced_response(sys, T=t, U=u_fix, X0=x0, return_x=True, squeeze=True)
                                 , repeat=repeat, number=loops)
 
                     if methode[n] in ['scipy_ode']:
@@ -295,7 +314,7 @@ def timing_experiment_simulation(repeat: int = 5, loops: int = 10, num_nodes: li
                 t_result_mean[n][k][l] = np.mean(time_list)
                 t_result_std[n][k][l] = np.std(time_list)
 
-                print("done for " + str(n) + ", " + str(k) + " and " + str(l))
+                print("done for " + str(methode[n]) + ", " + str(num_nodes[k]) + " and " + str(t_end[l]))
 
                 # save time_array to pkl
         if save_data:
