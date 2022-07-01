@@ -23,8 +23,8 @@ include(srcdir("run_timed.jl"))
 
 # collect_results = Dict()
 
-global timer = TimerOutput()
-# reset_timer!(timer::TimerOutput)
+
+reset_timer!(timer::TimerOutput)
 
 no_nodes = []
 overall_run = []
@@ -33,14 +33,18 @@ policy_update = []
 env_calc = []
 prepare_data = []
 
+global timer = TimerOutput()
 
-function train_ddpg(env_cuda::Bool, agent_cuda::Bool, num_nodes::Int, 
+function train_ddpg(timer::TimerOutput, env_cuda::Bool, agent_cuda::Bool, num_nodes::Int, 
                     No_Episodes::Int)
-
+    
+    reset_timer!(timer::TimerOutput)
+    
     env_cuda = env_cuda
     agent_cuda = agent_cuda
 
     num_nodes = num_nodes
+    print(num_nodes)
 
     CM = [ 0.  1.
             -1.  0.]
@@ -164,11 +168,11 @@ end
 
 # collect_results!(timer, 1)
 
-nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30]
+nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]#, 30, 50]
 
 for i = 1:length(nodes)
-    local_timer = train_ddpg(true, true, nodes[i], 5)
-    collect_results!(local_timer, i)
+    local_timer = train_ddpg(false, false, nodes[i], 5)
+    collect_results!(local_timer, nodes[i])
 end
 # show(timer)
 
@@ -183,7 +187,7 @@ end
 
 # Plots.plot(nodes, overall_run)
 Plots.plot(nodes, [overall_run, inside_run, policy_update],
-    title = "Overall training time - on CPU",
+    title = "Training time - CPU",
     ylabel = "Time [ns]",
     xlabel = "No. of Nodes",
     label = ["overall run" "inside run" "policy update"],
