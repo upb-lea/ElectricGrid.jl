@@ -37,10 +37,10 @@ prepare_data = []
 function train_ddpg(env_cuda::Bool, agent_cuda::Bool, num_nodes::Int, 
                     No_Episodes::Int)
 
-    # env_cuda = true
-    # agent_cuda = true
+    env_cuda = env_cuda
+    agent_cuda = agent_cuda
 
-    # num_nodes = 1
+    num_nodes = num_nodes
 
     CM = [ 0.  1.
             -1.  0.]
@@ -167,7 +167,7 @@ end
 nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30]
 
 for i = 1:length(nodes)
-    local_timer = train_ddpg(true, true, i, 5)
+    local_timer = train_ddpg(true, true, nodes[i], 5)
     collect_results!(local_timer, i)
 end
 # show(timer)
@@ -183,7 +183,7 @@ end
 
 # Plots.plot(nodes, overall_run)
 Plots.plot(nodes, [overall_run, inside_run, policy_update],
-    title = "Overall training time - on GPU",
+    title = "Overall training time - on CPU",
     ylabel = "Time [ns]",
     xlabel = "No. of Nodes",
     label = ["overall run" "inside run" "policy update"],
