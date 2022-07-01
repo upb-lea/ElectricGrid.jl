@@ -15,96 +15,113 @@ using IntervalSets
 using TimerOutputs
 using JSON
 
+# include(srcdir("collect_timing_results.jl"))
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent.jl"))
 include(srcdir("run_timed.jl"))
 
+# collect_results = Dict()
+
 global timer = TimerOutput()
+# reset_timer!(timer::TimerOutput)
 
-env_cuda = false
-agent_cuda = true
+no_nodes = []
+overall_run = []
+inside_run = []
+policy_update = []
+env_calc = []
+prepare_data = []
 
-num_nodes = 20
 
-CM = [ 0.  1.
-        -1.  0.]
+function train_ddpg(env_cuda::Bool, agent_cuda::Bool, num_nodes::Int, 
+                    No_Episodes::Int)
 
-CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(num_nodes) * ".json"))
+    # env_cuda = true
+    # agent_cuda = true
 
-CM = reduce(hcat, CM_list[1])'
-CM = convert(Matrix{Int}, CM)
+    # num_nodes = 1
 
-parameters = Dict()
-# LC filter
-parameters["source"] = [Dict("fltr" => "LC", "R" => 0.4, "L1" => 2.3e-3, "C" => 10e-6)]
-parameters["cable"] = [Dict("R" => 0.722, "L" => 0.955e-3, "C" => 8e-09)]
-parameters["load"] = [Dict("impedance" => "R", "R" => 14)]
+    CM = [ 0.  1.
+            -1.  0.]
 
-#nc = NodeConstructor(num_sources=1, num_loads=1, CM=CM, parameters=parameters)
-nc = NodeConstructor(num_sources=num_nodes, num_loads=num_nodes, CM=CM)
+    CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(num_nodes) * ".json"))
 
-#draw_graph(Grid_FC)   ---   not yet implemented
+    CM = reduce(hcat, CM_list[1])'
+    CM = convert(Matrix{Int}, CM)
 
-A, B, C, D = get_sys(nc)
+    parameters = Dict()
+    # LC filter
+    # parameters["source"] = [Dict("fltr" => "LC", "R" => 0.4, "L1" => 2.3e-3, "C" => 10e-6)]
+    # parameters["cable"] = [Dict("R" => 0.722, "L" => 0.955e-3, "C" => 8e-09)]
+    # parameters["load"] = [Dict("impedance" => "R", "R" => 14)]
 
-limits = Dict("i_lim" => 20, "v_lim" => 600)
 
-norm_array = vcat([limits[i] for j = 1:nc.num_sources for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
-norm_array = vcat( norm_array, [limits["v_lim"] for i = 1:nc.num_loads] )
+    #nc = NodeConstructor(num_sources=1, num_loads=1, CM=CM, parameters=parameters)
+    nc = NodeConstructor(num_sources=num_nodes, num_loads=num_nodes, CM=CM)
 
-states = get_states(nc)
-norm_array = []
-for state_name in states
-    if startswith(state_name, "i")
-        push!(norm_array, limits["i_lim"])
-    elseif startswith(state_name, "u")
-        push!(norm_array, limits["v_lim"])
-    end
-end
+    #draw_graph(Grid_FC)   ---   not yet implemented
 
-ns = length(A[1,:])
-na = length(B[1,:])
+    A, B, C, D = get_sys(nc)
 
-# time step
-ts = 1e-5
+    limits = Dict("i_lim" => 20, "v_lim" => 600)
 
-V_source = 300
+    norm_array = vcat([limits[i] for j = 1:nc.num_sources for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
+    norm_array = vcat( norm_array, [limits["v_lim"] for i = 1:nc.num_loads] )
 
-x0 = [ 0.0 for i = 1:length(A[1,:]) ]
-Ad = exp(A*ts)
-Bd = A \ (Ad - C) * B
-
-if env_cuda
-    A = CuArray(A)
-    B = CuArray(B)
-    C = CuArray(C)
-    Ad = CuArray(Ad)
-    Bd = CuArray(Bd)
-    x0 = CuArray(x0)
-end
-
-env = SimEnv(A=A, B=B, C=C, Ad=Ad, Bd=Bd, norm_array=norm_array, x0=x0, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=true)
-agent = create_agent(na, ns, agent_cuda)
-
-# ----------------------------------------------------------------------------------------
-function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
-    if debug
-        output = zeros(length(env.Ad[1,:]), t_len+1)
-    else
-        output = 0.0
+    states = get_states(nc)
+    norm_array = []
+    for state_name in states
+        if startswith(state_name, "i")
+            push!(norm_array, limits["i_lim"])
+        elseif startswith(state_name, "u")
+            push!(norm_array, limits["v_lim"])
+        end
     end
 
-    RLBase.reset!(env)
+    ns = length(A[1,:])
+    na = length(B[1,:])
 
-    for i = 1:t_len
-        action = agent(env)
-        env(action)
-        println(reward(env))
-        if debug output[:,i+1] = env.state.*env.norm_array end
+    # time step
+    ts = 1e-5
+
+    V_source = 300
+
+    x0 = [ 0.0 for i = 1:length(A[1,:]) ]
+    Ad = exp(A*ts)
+    Bd = A \ (Ad - C) * B
+
+    if env_cuda
+        A = CuArray(A)
+        B = CuArray(B)
+        C = CuArray(C)
+        Ad = CuArray(Ad)
+        Bd = CuArray(Bd)
+        x0 = CuArray(x0)
     end
 
-    return output
+
+    env = SimEnv(A=A, B=B, C=C, Ad=Ad, Bd=Bd, norm_array=norm_array, x0=x0, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=true)
+    agent = create_agent(na, ns, agent_cuda)
+
+    hook = TotalRewardPerEpisode()
+
+    # No_Episodes = 50
+
+    # run once to precompile
+    run(agent, env, StopAfterEpisode(1), hook)
+    
+    # time parts of the algorithm
+    @timeit timer "Overall run" begin
+        run(
+            agent,
+            env,
+            timer,
+            StopAfterEpisode(No_Episodes),
+            hook
+        )
+        end
+    timer
 end
 
 P_required = 466 # W
@@ -133,23 +150,28 @@ function reward_func(method::String, env::SimEnv)
     return reward
 end
 
-hook = TotalRewardPerEpisode()
-
-No_Episodes = 5
-
-run(agent, env, StopAfterEpisode(1), hook)
-
-@timeit timer "Overall run" begin
-run(
-    agent,
-    env,
-    timer,
-    StopAfterEpisode(No_Episodes),
-    hook
-)
+function collect_results!(timer::TimerOutput, node::Int)
+    append!(no_nodes, node)
+    append!(overall_run, TimerOutputs.time(timer["Overall run"]))
+    append!(inside_run, TimerOutputs.time(timer["Overall run"]["inside run"]))
+    append!(policy_update, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]))
+    append!(env_calc, TimerOutputs.time(timer["Overall run"]["inside run"]["Env calculation"]))
+    append!(prepare_data, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent prepare data"]))
 end
 
-show(timer)
+
+
+
+# collect_results!(timer, 1)
+
+nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30]
+
+for i = 1:length(nodes)
+    local_timer = train_ddpg(true, true, i, 5)
+    collect_results!(local_timer, i)
+end
+# show(timer)
+
 
 
 # @benchmark run(
@@ -159,7 +181,13 @@ show(timer)
 #     hook
 # ) seconds = 120 evals = 2
 
-# pprof(;webport=58699)
+# Plots.plot(nodes, overall_run)
+Plots.plot(nodes, [overall_run, inside_run, policy_update],
+    title = "Overall training time - on GPU",
+    ylabel = "Time [ns]",
+    xlabel = "No. of Nodes",
+    label = ["overall run" "inside run" "policy update"],
+    legend =:outertopright)
 
 # plot(hook.rewards, 
 #     title = "Total reward per episode",
@@ -181,3 +209,11 @@ show(timer)
 #     )
 
 # Plots.savefig(p, plotsdir())
+
+Timing_dict = Dict()
+Timing_dict["no_nodes"] = nodes
+Timing_dict["overall_run"] = overall_run
+Timing_dict["inside_run"] = inside_run
+Timing_dict["policy_update"] = policy_update
+Timing_dict["env_calc"] = env_calc
+Timing_dict["prepare_data"] = prepare_data
