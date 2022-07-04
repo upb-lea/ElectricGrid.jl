@@ -288,6 +288,8 @@ function handlers(model)
     on(model.plot_selected) do data
       if haskey(data, "points")
         model.selectedNodes[] = data["points"]
+
+        #TODO additional info in selected nodes needed
       end
     end
 
