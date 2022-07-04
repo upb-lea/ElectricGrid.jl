@@ -200,6 +200,12 @@ path = "dev/Genie"
 uuid = "c43c736e-a2d1-11e8-161f-af95117fbd1e"
 version = "4.18.1"
 
+[[deps.GenieAutoReload]]
+deps = ["Distributed", "Genie", "Logging", "Revise"]
+git-tree-sha1 = "ae1464989240548c5fa348ce7b901e2f445b14cb"
+uuid = "c6228e60-a24f-11e9-1776-c313472ebacc"
+version = "1.2.0"
+
 [[deps.GraphPlot]]
 deps = ["ArnoldiMethod", "ColorTypes", "Colors", "Compose", "DelimitedFiles", "Graphs", "LinearAlgebra", "Random", "SparseArrays"]
 git-tree-sha1 = "5cd479730a0cb01f880eff119e9803c13f214cab"

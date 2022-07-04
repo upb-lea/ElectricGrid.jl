@@ -1,4 +1,4 @@
-using Stipple, StippleUI, StipplePlotly, PlotlyBase, DataFrames, Graphs, GraphPlot, LinearAlgebra
+using Stipple, StippleUI, StipplePlotly, PlotlyBase, DataFrames, Graphs, GraphPlot, LinearAlgebra, GenieAutoReload
 import Genie.Renderer.Html.div
 
 register_mixin(@__MODULE__)
@@ -276,7 +276,7 @@ end
 
 #Genie.config.run_as_server = true
 Genie.Router.delete!(:Setup)
-Stipple.js_mounted(::Setup) = watchplots(Setup)
+Stipple.js_mounted(::Setup) = watchplots()
 
 function handlers(model)
 
@@ -322,6 +322,7 @@ function handlers(model)
 
 function ui(model)
   page( model, class="container q-layout", [
+      
       header(class="st-header q-pa-sm", row([
         Stipple.image(src="logo.png")
 
@@ -364,7 +365,10 @@ route("/") do
     startConfig()
   end
   drawGraph()
+  #Stipple.injectdeps(GenieAutoReload.assets(), model)
   html(ui(model), context = @__MODULE__)
 end
 
+#Genie.config.websockets_server = true
+GenieAutoReload.autoreload(pwd())
 up()
