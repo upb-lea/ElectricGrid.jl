@@ -17,6 +17,7 @@ mutable struct NodeConstructor
     num_loads_R
     num_impedance
     num_fltr
+    num_spp
     cntr
     tot_ele
     CM
@@ -39,14 +40,19 @@ end
 
 Create a mutable struct NodeConstructor, which serves as a basis for the creation of an energy grid: `num_sources` corresponse to the amount of sources and `num_loads` is the amount of loads in the grid. `CM` is the connection matrix which indicates how the elements in the grid are connected to each other. To specify the elements of the net in more detail, values for the elements can be passed via `parameters`. If no connection matrix is entered, it can be generated automatically. `S2S_p` is the probability that a source is connected to another source and `S2L_p` is the probability that a source is connected to a load.
 """
-function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8)
+function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, net_para=nothing)
 
     tot_ele = num_sources + num_loads
-    net_para = Dict()
-    net_para["fs"] =  10e3
-    net_para["v_rms"] = 230
+
     cntr = 0
     num_connections = 0
+
+    if net_para === nothing
+        net_para = Dict()
+        net_para["fs"] =  10e3
+        net_para["v_rms"] = 230
+        net_para["phase"] = 3
+    end
 
     if CM === nothing
         cntr, CM = CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
@@ -109,9 +115,9 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
                         + num_loads_L)
                         + num_loads_RC + num_loads_C + num_loads_R)
 
-    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L,
-                num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R,
-                num_impedance, num_fltr, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, net_para)
+    num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R) 
+
+    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, net_para)
 end
 
 
@@ -1262,7 +1268,13 @@ function generate_A(self::NodeConstructor)
         A_src_trn_l           A_trn  A_tran_load_l
         A_load_zeros_t  A_tran_load_c   A_load_diag]
 
-    return A
+    if self.net_para["phase"] === 1
+            return A
+        elseif self.net_para["phase"] === 3
+            z = zeros(size(A))
+            A_ = [A z z; z A z; z z A]
+            return A_
+        end
 end
 
 
@@ -1304,8 +1316,13 @@ function generate_B(self::NodeConstructor)
             B[start:stop,i:i] = ele
         end
     end
-
-    return B
+    if self.net_para["phase"] === 1
+        return B
+    elseif self.net_para["phase"] === 3
+        z = zeros(size(B))
+        B_ = [B z z ; z B z; z z B]
+        return B_
+    end
 end
 
 
@@ -1320,7 +1337,16 @@ function generate_C(self::NodeConstructor)
     Retruns:
         C: Identity matrix (2*num_sources+num_connections)
     """
-    return Diagonal(ones(self.num_fltr + self.num_connections + self.num_impedance))
+    C =  Diagonal(ones(self.num_fltr + self.num_connections + self.num_impedance))
+    if self.net_para["phase"] === 1
+        return C
+    elseif self.net_para["phase"] === 3
+        z = zeros(size(C))
+        C_ = [C z z;
+              z C z;
+              z z C]
+        return C_
+    end
 end
 
 """
@@ -1353,6 +1379,8 @@ end
 
 Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
 """
+
+
 function get_states(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
