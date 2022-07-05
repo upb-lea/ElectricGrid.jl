@@ -8,9 +8,13 @@ mutable struct Source_Controller
     Vdc::Vector{Float64}
     Vrms::Vector{Float64}
     S::Vector{Float64} # rated nominal apparent power
+    P::Vector{Float64} # rated nominal active power
+    Q::Vector{Float64} # rated nominal active power
+
     f_cntr::Float64 # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
     μ_cntr::Float64 # s, sampling timestep
     N_cntr::Int64
+    delay::Int64
 
     fpll::Array{Float64}
     θpll::Array{Float64}
@@ -40,9 +44,13 @@ mutable struct Source_Controller
 
     Vd_abc_new::Array{Float64}
 
+    D::Matrix{Float64} # Droop coefficients
+    ω_droop::Array{Float64}
+    θ_droop::Array{Float64}
+
     function Source_Controller(Vdc::Vector{Float64}, Vrms::Vector{Float64},
-        S::Vector{Float64},
-        f_cntr::Float64, μ_cntr::Float64, N_cntr::Int64,
+        S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
+        f_cntr::Float64, μ_cntr::Float64, N_cntr::Int64, delay::Int64,
         fpll::Array{Float64}, θpll::Array{Float64},
         V_filt_poc::Array{Float64}, I_filt_poc::Array{Float64},
         I_filt_inv::Array{Float64}, p_q_filt::Array{Float64},
@@ -52,11 +60,12 @@ mutable struct Source_Controller
         I_ref::Array{Float64}, V_ref::Array{Float64},
         I_ref_dq0::Array{Float64}, V_ref_dq0::Array{Float64},
         I_dq0::Array{Float64}, V_dq0::Array{Float64},
-        Vd_abc_new::Array{Float64})
+        Vd_abc_new::Array{Float64},
+        D::Matrix{Float64}, ω_droop::Array{Float64}, θ_droop::Array{Float64})
 
         new(Vdc, Vrms,
-        S,
-        f_cntr, μ_cntr, N_cntr,
+        S, P, Q,
+        f_cntr, μ_cntr, N_cntr, delay,
         fpll, θpll,
         V_filt_poc, I_filt_poc,
         I_filt_inv, p_q_filt,
@@ -66,7 +75,8 @@ mutable struct Source_Controller
         I_ref, V_ref,
         I_ref_dq0, V_ref_dq0,
         I_dq0, V_dq0,
-        Vd_abc_new)
+        Vd_abc_new,
+        D, ω_droop, θ_droop)
     end
 
     function Source_Controller(t_final, f_cntr, num_sources)
@@ -79,9 +89,14 @@ mutable struct Source_Controller
 
         S = Array{Float64, 1}(undef, num_sources)
         S = fill!(S, 50.0e3)
+        P = Array{Float64, 1}(undef, num_sources)
+        P = fill!(P, 40.0e3)
+        Q = Array{Float64, 1}(undef, num_sources)
+        Q = fill!(Q, 30.0e3)
 
         μ_cntr = 1/f_cntr
         N_cntr = convert(Int64, floor(t_final/μ_cntr)) + 1
+        delay = 1
 
         fpll = Array{Float64, 3}(undef, num_sources, 3, N_cntr) #3 for 3 phases
         fpll = fill!(fpll, 50.0)
@@ -134,9 +149,18 @@ mutable struct Source_Controller
         Vd_abc_new = Array{Float64, 3}(undef, num_sources, 3, N_cntr)
         Vd_abc_new = fill!(Vd_abc_new, 0)
 
+        D = Array{Float64, 2}(undef, num_sources, 2)
+        D = fill!(D, 0)
+
+        ω_droop = Array{Float64, 3}(undef, num_sources, 3, N_cntr) #3 for 3 phases
+        ω_droop = fill!(ω_droop, 50.0*2*π)
+
+        θ_droop = Array{Float64, 3}(undef, num_sources, 3, N_cntr)
+        θ_droop = fill!(θ_droop, 5)
+
         Source_Controller(Vdc, Vrms,
-        S,
-        f_cntr, μ_cntr, N_cntr,
+        S, P, Q,
+        f_cntr, μ_cntr, N_cntr, delay,
         fpll, θpll,
         V_filt_poc, I_filt_poc,
         I_filt_inv, p_q_filt,
@@ -146,17 +170,22 @@ mutable struct Source_Controller
         I_ref, V_ref,
         I_ref_dq0, V_ref_dq0,
         I_dq0, V_dq0,
-        Vd_abc_new)
+        Vd_abc_new,
+        D, ω_droop, θ_droop)
     end
 end
 
 mutable struct Environment
 
     μ::Float64 # s, sampling timestep
-    N::Int64
+    N::Int64 # number of samples
 
+    fsys::Float64 # Mostly for plotting
     fs::Vector{Float64}
     θs::Vector{Float64}
+    Δfmax::Float64 # The maximum allowable angular frequency deviation
+    ΔEmax::Float64 # The maximum allowable voltage deviation
+    T_sp_rms::Float64
 
     V_ph::Array{Float64}
     I_ph::Array{Float64}
@@ -178,21 +207,39 @@ mutable struct Environment
     y::Matrix{Float64}
     u::Matrix{Float64}
 
+    V_poc_loc::Matrix{Int64}
+    I_poc_loc::Matrix{Int64}
+    I_inv_loc::Matrix{Int64}
+
+    V_load_loc::Matrix{Int64}
+    I_load_loc::Matrix{Int64}
+
+    num_sources::Int64
+    num_loads::Int64
+
     function Environment(μ::Float64, N::Int64,
-        fs::Vector{Float64}, θs::Vector{Float64},
+        fsys::Float64, fs::Vector{Float64}, θs::Vector{Float64},
+        Δfmax::Float64, ΔEmax::Float64, T_sp_rms::Float64,
         V_ph::Array{Float64}, I_ph::Array{Float64},
         p_q_inst::Array{Float64}, p_inst::Array{Float64}, P::Array{Float64}, Q::Array{Float64},
         A::Matrix{Float64}, B::Vector{Float64}, C::Matrix{Float64}, D::Vector{Float64},
         Ad::Matrix{Float64}, Bd::Vector{Float64},
-        x::Matrix{Float64}, y::Matrix{Float64}, u::Matrix{Float64})
+        x::Matrix{Float64}, y::Matrix{Float64}, u::Matrix{Float64},
+        V_poc_loc::Matrix{Int64}, I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
+        V_load_loc::Matrix{Int64}, I_load_loc::Matrix{Int64},
+        num_sources::Int64, num_loads::Int64)
 
         new(μ, N,
-        fs, θs,
+        fsys, fs, θs,
+        Δfmax, ΔEmax, T_sp_rms,
         V_ph, I_ph,
         p_q_inst, p_inst, P, Q,
         A, B, C, D,
         Ad, Bd,
-        x, y, u)
+        x, y, u,
+        V_poc_loc, I_poc_loc, I_inv_loc,
+        V_load_loc, I_load_loc,
+        num_sources, num_loads)
     end
 
     function Environment(t_final, μ, A, B, C, D, num_sources, num_loads)
@@ -200,11 +247,17 @@ mutable struct Environment
         N = convert(Int64, floor(t_final/μ)) + 1
         num_nodes = num_sources + num_loads
 
+        fsys = 50.0
+        T_sp_rms = 5*fsys #samples in a second for rms calcs, x*fsys = x samples in a cycle
+
         fs = Array{Float64, 1}(undef, N)
         fs = fill!(fs, fsys)
 
         θs = Array{Float64, 1}(undef, N)
         θs = fill!(θs, 0)
+
+        Δfmax = 5.0 # Hz
+        ΔEmax = 10.0 # V
 
         # RMS Phasors
         V_ph = Array{Float64, 4}(undef, num_nodes, 3, 3, N)
@@ -236,18 +289,33 @@ mutable struct Environment
         u = Array{Float64, 2}(undef, size(A, 1), N+10)
         u = fill!(u, 0)
 
+        V_poc_loc = Array{Int64, 2}(undef, 3, num_sources)
+        V_poc_loc = fill!(V_poc_loc, 1)
+        I_poc_loc = Array{Int64, 2}(undef, 3, num_sources)
+        I_poc_loc = fill!(I_poc_loc, 1)
+        I_inv_loc = Array{Int64, 2}(undef, 3, num_sources)
+        I_inv_loc = fill!(I_inv_loc, 1)
+
+        V_load_loc = Array{Int64, 2}(undef, 3, num_loads)
+        V_load_loc = fill!(V_load_loc, 1)
+        I_load_loc = Array{Int64, 2}(undef, 3, num_loads)
+        I_load_loc = fill!(I_load_loc, 1)
+
         Environment(μ, N,
-        fs, θs,
+        fsys, fs, θs,
+        Δfmax, ΔEmax, T_sp_rms,
         V_ph, I_ph,
         p_q_inst, p_inst, P, Q,
         A, B, C, D,
         Ad, Bd,
-        x, y, u)
+        x, y, u,
+        V_poc_loc, I_poc_loc, I_inv_loc,
+        V_load_loc, I_load_loc,
+        num_sources, num_loads)
     end
-
 end
 
-function Phase_Locked_Loop_3ph(Source::Source_Controller, num_source, i, v_abc)
+function Phase_Locked_Loop_3ph(Source::Source_Controller, num_source, i, v_abc; Kp = 0.1, Ki = 10)
 
     #= A robost 3 phase phase locked loop
     The PLL circuit tracks continuously the fundamental frequency of the measured
@@ -308,8 +376,8 @@ function Phase_Locked_Loop_3ph(Source::Source_Controller, num_source, i, v_abc)
     cntr_range = cntr_cnt_start:cntr_cnt_end
 
     μ = Source.μ_cntr
-    f = Source.fpll[num_source, num_source, cntr_range]
-    θ = Source.θpll[num_source, num_source, cntr_range]
+    f = Source.fpll[num_source, 1, cntr_range]
+    θ = Source.θpll[num_source, 1, cntr_range]
     err_t = Source.pll_err_t[num_source, 1]
     err = Source.pll_err[num_source, 1, :]
 
@@ -318,8 +386,6 @@ function Phase_Locked_Loop_3ph(Source::Source_Controller, num_source, i, v_abc)
     θ_new = Array{Float64, 1}(undef, 3)
     θ_new = fill!(θ_new, 0)
 
-    Kp = 0.1
-    Ki = 10
     ω = 2*π*f
 
     err_new = 1*((v_abc[1] - v_abc[2])*cos(-θ[n])
@@ -356,36 +422,107 @@ function Phase_Locked_Loop_3ph(Source::Source_Controller, num_source, i, v_abc)
     θ_new[2] = (θ_new[1] - 120*π/180)%(2*π)
     θ_new[3] = (θ_new[1] + 120*π/180)%(2*π)
 
-    Source_Control.fpll[num_source, :, i] = [f_new; f_new; f_new]
-    Source_Control.θpll[num_source, :, i] = θ_new
-    Source_Control.pll_err_t[num_source, :] = [err_t_new; 0; 0]
-    Source_Control.pll_err[num_source, :, :] = [transpose(err_int); transpose(err_int); transpose(err_int)]
+    Source.fpll[num_source, :, i] = [f_new; f_new; f_new]
+    Source.θpll[num_source, :, i] = θ_new
+    Source.pll_err_t[num_source, :] = [err_t_new; 0; 0]
+    Source.pll_err[num_source, :, :] = [transpose(err_int); transpose(err_int); transpose(err_int)]
 
     return nothing
 end
 
-function Current_Controller(Source::Source_Controller, num_source, i, i_abc, θ)
+function PQ_Control(Source::Source_Controller, num_source, i, i_abc, v_abc, θ)
 
-    #= --- to be removed
-    Rf_I = [Rf_Ia[i]; Rf_Ib[i]; Rf_Ic[i]]
-    I_ref_dq0[:,i] = DQ0_transform(Rf_I, θ)
+    V_αβγ = Clarke_Transform(v_abc)
+    I_αβγ = Clarke_Transform(i_abc)
+
+    pq0 = [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
+
+    pq0_ref = [40e3; 10e3; 0]
+
+    I_αβγ_ref = Inv_p_q_theory(V_αβγ, pq0_ref)
+    I_abc_ref = Inv_Clarke_Transform(I_αβγ_ref)
+
+    I_ref_dq0 = Park_Transform(I_αβγ_ref, θ)
+
+    Source.I_ref_dq0[num_source, :, i] = Park_Transform(I_αβγ_ref, θ)
+end
+
+function Droop_Control(Source::Source_Controller, num_source, i, p_q, Env::Environment)
+
+    #=
+    The droop control method has been referred to as the independent, autonomous,
+    and wireless control due to elimination of intercommunication links between
+    the converters.
+
+    Droop control works best when switching ripples and high frequency harmonics
+    are neglegtc, in which case the VSC can be modeled as an AC source.
+
+    The droop coefficients, Dp and Dq, can be adjusted either heuristically or by
+    tuning algorithms (e.g., particle swarm optimisation). In the former approach,
+    Dp and Dq are determined based on the converter power rating and the maximum
+    allowable voltage and frequency deviations.
+    =#
+
+    cntr_cnt_start = i - 3
+    cntr_cnt_end = i - 1
+    if cntr_cnt_end < 1
+        cntr_cnt_start = 1
+        cntr_cnt_end = 1
+    end
+    if cntr_cnt_start < 1
+        cntr_cnt_start = 1
+    end
+    cntr_range = cntr_cnt_start:cntr_cnt_end
+
+    μ = Source.μ_cntr
+    ω = Source.ω_droop[num_source, 1, cntr_range]
+    θ = Source.θ_droop[num_source, 1, cntr_range]
+
+    n = length(ω)
+
+    θ_new = Array{Float64, 1}(undef, 3)
+    θ_new = fill!(θ_new, 0)
+
+    ω_new = 50*2*π - p_q[1]*Source.D[num_source, 1]/3
+    Source.ω_droop[num_source, :, i] = [ω_new; ω_new; ω_new]
+
+    ω_d = [ω; ω_new]
+    if n > 2
+        ω_int = ω_d[2:end]
+    else
+        ω_int = ω_d
+    end
+
+    Source.θ_droop[num_source, 1, i] = Third_Order_Integrator(θ[end], μ, ω_int)%(2*π)
+    Source.θ_droop[num_source, 2, i] = (Source.θ_droop[num_source, 1, i] - 120*π/180)%(2*π)
+    Source.θ_droop[num_source, 3, i] = (Source.θ_droop[num_source, 1, i] + 120*π/180)%(2*π)
+
+    E_new = Source.Vrms[num_source] - p_q[2]*Source.D[num_source, 2]/3
+
+    Source.V_ref[num_source, 1, i] = sqrt(2)*E_new*sin(Source.θ_droop[num_source, 1, i])
+    Source.V_ref[num_source, 2, i] = sqrt(2)*E_new*sin(Source.θ_droop[num_source, 2, i])
+    Source.V_ref[num_source, 3, i] = sqrt(2)*E_new*sin(Source.θ_droop[num_source, 3, i])
+end
+
+function Current_Controller(Source::Source_Controller, num_source, i, i_abc, θ; Ki = 10.0, Kp = 5)
+
+    # --- to be removed
+    #Source.I_ref_dq0[num_source, :,i] = DQ0_transform(Source.I_ref[num_source, :, i], θ)
     # --- =#
+    Source.I_ref[num_source, :, i] = Inv_DQ0_transform(Source.I_ref_dq0[num_source, :,i], θ)
 
-    Source_Control.I_dq0[num_source, :, i] = DQ0_transform(i_abc, θ)
+    Source.I_dq0[num_source, :, i] = DQ0_transform(i_abc, θ)
 
-    I = Source_Control.I_dq0[num_source, :, i]
-    I_ref = Source_Control.I_ref_dq0[num_source, :,i]
-    I_err = Source_Control.I_err[num_source, :, :]
-    I_err_t = Source_Control.I_err_t[num_source, :]
-    μ = Source_Control.μ_cntr
+    I = Source.I_dq0[num_source, :, i]
+    I_ref = Source.I_ref_dq0[num_source, :,i]
+    I_err = Source.I_err[num_source, :, :]
+    I_err_t = Source.I_err_t[num_source, :]
+    μ = Source.μ_cntr
 
     n = size(I_err, 2)
 
     I_err_t_new = Array{Float64, 1}(undef, 3)
     I_err_t_new = fill!(I_err_t_new, 0)
-
-    Ki = 200
-    Kp = 2
 
     I_err_new = I_ref .- I
 
@@ -398,38 +535,45 @@ function Current_Controller(Source::Source_Controller, num_source, i, i_abc, θ)
         #I_err_t_new[i] = I_err_t[i] + μ*I_err_int[i, end] # integration
     end
 
-    V_new = [0; 0; 0] + Kp*I_err_new .+ Ki*I_err_t_new
+    s_dq0_avg = Kp.*I_err_new/1000 .+ Ki.*I_err_t_new/100
+    #=
+    The switching functions s_abc(t) is generated by comparing the normalized
+    voltage value with a triangular modulation carrier. The output of the
+    comparator can be directly referred to as the switching function. Through
+    geometric interpretation of this procedure it becomes clear that the time
+    average of the switching function corresponds to the reference signal, as
+    long as the phasor components of the reference signal can be assumed to be
+    slowly varying. That is, the above equation holds when averaging over one
+    pulse period.
+    =#
 
-    Source_Control.I_err[num_source, :, :] = I_err_int
-    Source_Control.I_err_t[num_source, :] = I_err_t_new
+    Source.I_err[num_source, :, :] = I_err_int
+    Source.I_err_t[num_source, :] = I_err_t_new
 
-    Source_Control.Vd_abc_new[num_source, :, i] = Inv_DQ0_transform(V_new, θ)
+    Source.Vd_abc_new[num_source, :, i] = 0.5*Source.Vdc[num_source].*Inv_DQ0_transform(s_dq0_avg, θ)
 
     return nothing
 end
 
-function Voltage_Controller(Source::Source_Controller, num_source, i, v_abc, θ)
+function Voltage_Controller(Source::Source_Controller, num_source, i, v_abc, θ; Ki = 100.0, Kp = 0.01)
 
     Rf_V = [Source.V_ref[num_source, 1, i];
             Source.V_ref[num_source, 2, i];
             Source.V_ref[num_source, 3, i]]
 
     Source.V_ref_dq0[num_source, :,i] = DQ0_transform(Rf_V, θ)
-    Source_Control.V_dq0[num_source, :, i] = DQ0_transform(v_abc, θ)
+    Source.V_dq0[num_source, :, i] = DQ0_transform(v_abc, θ)
 
-    V = Source_Control.V_dq0[num_source, :, i]
-    V_ref = Source_Control.V_ref_dq0[num_source, :, i]
-    V_err = Source_Control.V_err[num_source, :, :]
-    V_err_t = Source_Control.V_err_t[num_source, :]
-    μ = Source_Control.μ_cntr
+    V = Source.V_dq0[num_source, :, i]
+    V_ref = Source.V_ref_dq0[num_source, :, i]
+    V_err = Source.V_err[num_source, :, :]
+    V_err_t = Source.V_err_t[num_source, :]
+    μ = Source.μ_cntr
 
     n = size(V_err,2)
 
     V_err_t_new = Array{Float64, 1}(undef, 3)
     V_err_t_new = fill!(V_err_t_new, 0)
-
-    Ki = 50
-    Kp = 0.04
 
     V_err_new = V_ref .- V
 
@@ -442,11 +586,11 @@ function Voltage_Controller(Source::Source_Controller, num_source, i, v_abc, θ)
         #V_err_t_new[i] = V_err_t[i] + μ*V_err_int[i, end] # integration
     end
 
-    I_new = [0; 0; 0] + Kp*V_err_new .+ Ki*V_err_t_new
+    I_new = [0; 0; 0] .+ Kp.*V_err_new .+ Ki.*V_err_t_new
 
-    Source_Control.I_ref_dq0[num_source, :,i] = I_new
-    Source_Control.V_err[num_source, :, :] = V_err_int
-    Source_Control.V_err_t[num_source, :] = V_err_t_new
+    Source.I_ref_dq0[num_source, :, i] = I_new
+    Source.V_err[num_source, :, :] = V_err_int
+    Source.V_err_t[num_source, :] = V_err_t_new
 
     return nothing
 end
@@ -544,297 +688,22 @@ function Third_Order_Integrator(y_i, μ, u)
     return y_next
 end
 
-function RMS(θ, t_signals, T_sp)
-
-    # Calcutates the DC offset, RMS magnitude, and phase angle relative to the
-    # frequency (θ = 2*π*t[:]) for a three phase system
-    i = 1
-    i_length = size(t_signals, 1)
-
-    rms = Array{Float64, 2}(undef, 3, 3)
-    rms = fill!(rms, 0)
-
-    rm = sqrt(2)
-
-    # Least squares method to find RMS of fundamental
-    LS = [ones(i_length, 1) rm*cos.(θ) rm*sin.(θ)]
-    LS_inv = pinv(LS)
-
-    for ph in 1:3
-
-        #println(t_signals[ph, i_range])
-        AB = LS_inv*t_signals[:, ph]
-        A0 = AB[1]
-        A1 = AB[2]
-        B1 = AB[3]
-
-        a = sqrt(A1^2 + B1^2)
-
-        if B1 < 0 && A1 > 0
-            d = acos(B1/a)
-        elseif B1 < 0 && A1 < 0
-            d = -acos(B1/a)
-        elseif B1 > 0 && A1 > 0
-            d = acos(B1/a)
-        else
-            d = -acos(B1/a)
-        end
-
-        rms[ph,1] = A0
-        rms[ph,2] = a
-        rms[ph,3] = d
-    end
-
-    return rms
-end
-
-function Clarke_Transform(v_abc)
-    #= Also known as the alpha-beta-(gamma), αβγ transformation. Implementing
-    below is the the power invariant version, such that the matrix is unitary.
-    This feature is very suitable when the focus is put on the analysis of
-    instantaneous power in three-phase systems. The three-phase instantaneous
-    active power has a clear and universally accepted physical meaning and is
-    also valid during transient states.
-
-    The transformation maps the three-phase instantaneous voltages/currents in the
-    abc phases into the instantaneous voltages/currents on the αβγ axes.
-
-    One advantage of applying the Clark transformation is to separate the zero-
-    sequence components from the abc-phase components. The α and β axes make no
-    contribution to the zero-sequence components. Typically no zero-sequence currents
-    exist in a three-phase three-wire system. If the three-phase voltages are
-    balanced in a four-wire system, no zero-sequence voltage is present.
-
-    The transformation suggest an axis transformation. They are stationary axes
-    and should not be confused with the concepts of voltage or current phasors.
-    Here, instantaneous values of phase voltages and line currents referred to the
-    stationary axes transformed into the αβ stationary axes, or vice versa. The
-    a, b, and c axes aer spatially shifted by 120 degrees from each other, whereas
-    the α and β axes are orthogonal, and the α axis is parallel to the a axis.
-    The direction of the β axis was chosen in such a way that if voltage or current
-    spatial vectors on the abc coordinates rotate in the abc sequence, they would
-    rotate in the αβ sequenc on the αβ coordinates.
-
-    =#
-    return v_αβγ = sqrt(2/3)*[1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)]*v_abc
-end
-
-function Inv_Clarke_Transform(v_αβγ)
-
-    return v_abc = sqrt(2/3)*[1 0 1/sqrt(2);-1/2 sqrt(3)/2 1/sqrt(2);-1/2 -sqrt(3)/2 1/sqrt(2)]*v_αβγ
-end
-
-function Park_Transform(v_αβγ, θ)
-    #=
-    The αβγ to dq0 function performs a transformation of αβγ Clarke components
-    in a fixed reference frame to dq0 Park components in a rotating reference
-    frame. The rotating fame is aligned such that the α-axis and the d-axis are
-    parrallel. This type of Park transform is also known as the cosine-based
-    Park transformation.
-
-    The position of the rotating frame is given by θ = ωt (where ω represents the
-    frame rotation speed), the αβγ to dq0 transformation performs a -ωt rotation
-    to the space vector Us = Uα + j*Uβ. The homopolar or zero-sequence component
-    remains unchanged. That is, the angle, θ, in the Park transformation is the
-    synchronous angular position. It can be made equal to the time integral of the
-    fundamental angular frequency ω, determined by a PLL circuit.
-
-    When using PLL circuits and the synchronous reference frames, special care
-    should be taken to properly set up the angular position θ = ωt of the Park
-    transformation in order to guarantee that the direct-axis current component
-    id produces only real power (active power) with the system voltage. In this
-    case, the quadrature axis iq produces only imaginary power (reactive power).
-    This is the principal reason to set up θ = ωt in phase with the fundamental,
-    positive-sequence voltage.
-     =#
-    return v_dq0 = [cos(θ) sin(θ) 0; -sin(θ) cos(θ) 0; 0 0 1]*v_αβγ
-end
-
-function Inv_Park_Transform(v_dq0, θ)
-    return v_αβγ = [cos(θ) -sin(θ) 0; sin(θ) cos(θ) 0; 0 0 1]*v_dq0
-end
-
-function DQ0_transform(v_abc,θ)
-    return v_dq0 = Park_Transform(Clarke_Transform(v_abc), θ)
-end
-
-function Inv_DQ0_transform(v_dq0, θ)
-
-    return v_abc = Inv_Clarke_Transform(Inv_Park_Transform(v_dq0, θ))
-end
-
-function p_q_theory(V_abc, I_abc)
-
-    #=
-        For a three-phase system with or without a neutral conductor in the steady-
-        state or during transients, the three-phase instantaneous active power
-        describes the total instantaneous energy flow per second between two
-        subsystems.
-
-        The p-q theory is defined in three-phase system with or without a
-        neutral conductor. Three instantaneous powers - the instantaneous zero-sequence
-        p0, the instantaneous real power p, and the instantaneous imaginary power q -
-        are defined from the instantaneous phase voltages, and line current on the
-        αβ0 axes as
-
-        [p0; p; q] = [v0 0 0; 0 vα vβ; 0 vβ -vα]*[i0; iα; iβ]
-
-        The imaginary power q does not contribute to the total energy flow between
-        the source and the load and vice versa. The imaginary power q is a new quantity
-        and needs a unit to distinguish this power from the traditional reactive power.
-        The authors propose the units of "volt-ampere-imaginary" and the symbol [vai].
-        The imaginary power q is proportional to the quantity of energy that is being
-        exchanged between the phases of the system. It does not contribute to the
-        energy transfer between the source and the load at any time. The term
-        energy transfer is used here in its strict sense, meaning not only the energy
-        delivered to the load, but also the energy oscillating between the source
-        and the load.
-
-        It is important to note that the conventional power theory defined reactive
-        power as a component of the instantaneous (active) power, which has an average
-        value equal to zero. Here, it is not so. The imaginary power means a sum
-        of products of instantaneous three-phase voltage and current portions that
-        do not contribute to the energy transfer between two subsystems at any time.
-
-        For a linear circuit with sinusoidal voltages and currents, both the instantaneous
-        powers aer constant. The real power is equal to the conventional definition of
-        the three-phase active power, whereas the imaginary power q is equal to the
-        conventional three-phase reactive power. If the load has inductive characteristics,
-        the imaginary power has a positive value, and if the load is capacitive, its
-        value is negative, in concordance with the most common difinition of reactive power.
-
-        If however a three-phase balanced voltage with a three-phase balanced capacitive
-        load is compared to an unbalanced load where the load is unbalanced with just
-        one capacitor connected between two phases the difference to conventional theory is
-        clearer. In the first case, there is no power flowing from the source to the
-        load. Moreover, the imaginary power is constant and coincident with the
-        conventional three-phase reactive power. In the second case, the real power
-        has no constant part, but an oscillating part. The imaginary power has a constant
-        value and an oscillating component. From the conventional power theory, it would
-        be normal to expect only a reactive power (average imaginary power) and no real
-        power at all. The reason for the difference is because the real power is not zero
-        and the capacitor terminal voltage is verying as a sinusoidal wave and, therefore,
-        it is being charged and discharged, justifying the energy flow given by p. In fact,
-        if it is considered that a turbine is powering the generator, it will have to produce
-        a positive torque when the capacitor is charging, or a negative torque when it
-        is discharging. Of course, there will be torque ripples in its shaft. In the first
-        example, with three balanced capacitors, one capacitor is discharging while
-        the others are charging. In steady-stae conditions, there is not total
-        three-phase energy flow from the source to the capacitors.
-
-        The imaginary power corresponds to a power that is being exchanged among the
-        three phases, without transferring any energy between the source and the load.
-        The p-q theory has the prominent merit of allowing complete analysis and real
-        time calculation of various powers and respective currents involved in three-
-        phase circuits. However, this is not the main point. Knowing in real time the
-        values of undesirable currents in a circuit allows us to eliminate them.
-        For instance, if the oscillating powers are undesirable, by compensating the
-        respective currents of the load and their correspondent currents then the
-        compensated currents drawn from the network would be sinusoidal. This is one
-        of the basic ideas of active filtering.
-
-        The zero-sequence power has the same characteristics as the instantaneous power
-        in a single-phase circuit. It has an average value and an oscillating component
-        at twice the line frequency. The average value represents a unidirectional energy
-        flow. It has the same characteristics as the conventional (average) active power.
-        The oscillating component also transfers energy instantaneously. However, it is has
-        an average value equal to zero, because it is oscillating. The analysis shows that,
-        in principle, the average value of the zero-sequence power helps to increase the
-        total energy transfer, and in this sense, it can be considered as a positive point.
-        However, even for the simplest case of a zero-sequence component in the voltage
-        and current, the zero-sequence power cannot produce constant power alone. In
-        other words, p0 always consists of an oscillating component and a non-zero average
-        component. The elimination of the oscillating component is accompanied by the
-        elimination of the average component. The zero-sequence power exists only if there
-        are zero-sequence voltage and current.
-
-        In summary. The instantaneous powers that the p-q theory defines in the time
-        domain are independent of the rms values of voltages and currents. This theory
-        includes the conventional frequency-domain concepts of active and reactive
-        power defined for three phase sinusoidal balanced systems as a particular case.
-        Therefore, the p-q theory in the time domain is not contradictory but
-        complementary to the conventional theories in the frequency domain.
-
-        1. Zero-sequence components in the fundamental voltage and current and/or
-        in the harmonics do not contribute to hte real power p or the imaginary power q
-        2. The total instantaneous energy flow per unit time, that is, the three-phase
-        instantaneous active power, even in a distorted and unbalanced system, is
-        always equal to the sum of the real and the zero-sequence power (p3Φ = p + p9),
-        and may contain several oscillating parts.
-        3. The imaginary power q, independent of the presence of harmonic or unbalances,
-        represents the energy quantity that is being exchanged between the phases of the
-        system. This means that the imaginary power does not contribute to the energy transfer
-        between the source and the load at any time. The term "energy transfer" is used
-        here in a general manner, referring not only to the energy delivered to the load,
-        but also to the energy oscillation between the source and load as well.
-    =#
-
-    V_αβγ = Clarke_Transform(V_abc)
-    I_αβγ = Clarke_Transform(I_abc)
-
-    return p = [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
-end
-
-function Filter_Design(Source::Source_Controller, num_source, ΔILf_ILf, ΔVCf_VCf)
-
-    Ir = ΔILf_ILf
-    Vr = ΔVCf_VCf
-
-    Sr = Source.S[num_source]
-    fs = Source.f_cntr
-    Vdc = Source.Vdc[num_source]
-
-    #____________________________________________________________
-    # Inductor Design
-    Vorms = Source.Vrms[num_source]*1.05
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/Sr
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-
-    ΔIlfmax = Ir*Iop
-
-    Lf = Vdc/(4*fs*ΔIlfmax)
-
-    #____________________________________________________________
-    # Capacitor Design
-    Vorms = Source.Vrms[num_source]*0.95
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/Sr
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-    Ir = Vdc/(4*fs*Lf*Iop)
-    ΔIlfmax = Ir*Iop
-    ΔVcfmax = Vr*Vop
-
-    Cf = ΔIlfmax/(8*fs*ΔVcfmax)
-
-    fc = 1/(2*π*sqrt(Lf*Cf))
-
-    return Lf, Cf, fc
-end
+#-------------------------------------------------------------------------------
 
 function Measurements(Env::Environment, i)
 
-    v_loc = [2 5 8; 2 5 8]
-    i_loc = [3 6 9; 3 6 9]
+    v_loc = [3 11 19; 4 12 20]
+    i_loc = [5 13 21; 6 14 22]
 
     t_final = (Env.N - 1)*Env.μ
     t = 0:Env.μ:t_final # bad code
 
     num_nodes = size(v_loc, 1)
 
-    fsys = 50
-
     T_eval = 1 #number of periods to average over
-    T_sp_rms = 5*fsys #samples in a second, x*fsys = x samples in a cycle
-    i_sp_rms = convert(Int64, round((1/(Env.μ*T_sp_rms))))
+    i_sp_rms = convert(Int64, round((1/(Env.μ*Env.T_sp_rms))))
 
-    i_start = i - convert(Int64, round(T_eval/(fsys*μps)))
+    i_start = i - convert(Int64, round(T_eval/(Env.fsys*Env.μ)))
 
     i_range = i_start:i_sp_rms:i
 
@@ -856,9 +725,9 @@ function Measurements(Env::Environment, i)
                 # Currents
                 i_signals = [Env.x[i_loc[n,1], i_range] Env.x[i_loc[n,2], i_range] Env.x[i_loc[n,3], i_range]]
 
-                Env.V_ph[n,  :, :, i] = RMS(2*pi*fsys*t[i_range], v_signals, T_sp_rms)
+                Env.V_ph[n,  :, :, i] = RMS(Env.θs[i_range], v_signals, Env.T_sp_rms)
 
-                Env.I_ph[n, :, :, i] = RMS(2*pi*fsys*t[i_range], i_signals, T_sp_rms)
+                Env.I_ph[n, :, :, i] = RMS(Env.θs[i_range], i_signals, Env.T_sp_rms)
 
                 Env.P[n, 1:3, i] = (Env.V_ph[n, :, 2, i].*Env.I_ph[n, :, 2, i]).*cos.(Env.V_ph[n, :, 3, i] .- Env.I_ph[n, :, 3, i])
                 Env.P[n, 4, i] = sum(Env.P[n, 1:3, i])
@@ -871,8 +740,25 @@ function Measurements(Env::Environment, i)
     return nothing
 end
 
-function Discrete_time(Env::Environment, i)
+function Evolution(Env::Environment, Source::Source_Controller, i)
 
+    i_next = i + 1
+    Vo_p = 230*sqrt(2)
+
+    # Inverter Voltages - Control Actions
+    #_______________________________________________________
+    Env.u[1, i_next + Source.delay] = Source.Vd_abc_new[1, 1, i] # Vo_p*sin(Env.θs[i]) #
+    Env.u[9, i_next + Source.delay] = Source.Vd_abc_new[1, 2, i] # Vo_p*sin(Env.θs[i] - 120*π/180) #
+    Env.u[17, i_next + Source.delay] = Source.Vd_abc_new[1, 3, i] # Vo_p*sin(Env.θs[i] + 120*π/180) #
+
+    # 2nd Source
+
+    Env.u[2, i_next + Source.delay] = Source.Vd_abc_new[2, 1, i] # Vo_p*sin(Env.θs[i]) #
+    Env.u[10, i_next + Source.delay] = Source.Vd_abc_new[2, 2, i] # Vo_p*sin(Env.θs[i] - 120*π/180) #
+    Env.u[18, i_next + Source.delay] = Source.Vd_abc_new[2, 3, i] # Vo_p*sin(Env.θs[i] + 120*π/180) #
+
+    # Evolving System to next state
+    #_______________________________________________________
     k = 1 # number of steps to evolve
 
     x0 = Env.x[:,i]
@@ -888,15 +774,12 @@ function Discrete_time(Env::Environment, i)
         end
     end
 
-    i_next = i + 1
     Env.x[:, i_next] = (Env.Ad^k)*x0 + xp
 
-    #  Outputs
     Env.y[:, i_next] = Env.C*Env.x[:, i_next] + Env.u[:,i].*Env.D # Currents and Voltages
-    # Brute force - not discrete time matrices
-    #dx_dt = A*x0+ u*B
-    #x = x0 + μ.*dx_dt
 
+    # Evolving System Frequency and Phase
+    #_______________________________________________________
     i_start = i_next - 2
     if i_start < 1
         i_start = 1
@@ -908,4 +791,106 @@ function Discrete_time(Env::Environment, i)
     Env.θs[i_next] = Third_Order_Integrator(Env.θs[i], Env.μ, ω)%(2*π)
 
     return nothing
+end
+
+function Simple_State_Space(u, Lf, Cf, LL, RL)
+
+    a = [[0 -1/Lf 0];
+        [1/Cf 0 -1/Cf];
+        [0 1/LL -RL/LL]]
+    a2 = [[0 -1/Lf 0];
+        [1/Cf 0 -1/Cf];
+        [0 1/LL -RL*2/LL]]
+    A = [a zeros(3,3) zeros(3,3);
+        zeros(3,3) a zeros(3,3);
+        zeros(3,3) zeros(3,3) a]
+
+    if u == 1
+        A = [a2 zeros(3,3) zeros(3,3);
+        zeros(3,3) a zeros(3,3);
+        zeros(3,3) zeros(3,3) a]
+    end
+
+
+    b = [1/Lf; 0; -1/LL]
+    B = [b; b; b]
+
+    c = [[0 -1 0];
+        [1 0 -1];
+        [0 1 -RL]]
+    C = [c zeros(3,3) zeros(3,3);
+        zeros(3,3) c zeros(3,3);
+        zeros(3,3) zeros(3,3) c]
+    d = [1.0; 0.0; -1.0]
+    D = [d; d; d]
+
+    return A, B, C, D
+end
+
+function Two_Sources_One_Load(Lf1, Lf2, Cf1, Cf2, LL, CL, RL1, RL2, Lt1, Lt2, Rt1, Rt2)
+
+    a = [[0 0 -1/Lf1 0 0 0 0 0];
+        [0 0 0 -1/Lf2 0 0 0 0];
+        [1/Cf1 0 0 0 -1/Cf1 0 0 0];
+        [0 1/Cf2 0 0 0 -1/Cf2 0 0];
+        [0 0 1/Lt1 0 -Rt1/Lt1 0 -1/Lt1 0];
+        [0 0 0 1/Lt2 0 -Rt2/Lt2 -1/Lt2 0];
+        [0 0 0 0 1/CL 1/CL -1/(RL2*CL) -1/CL];
+        [0 0 0 0 0 0 1/LL -RL1/LL]]
+
+    c = [[0 0 -1 0 0 0 0 0];
+        [0 0 0 -1 0 0 0 0];
+        [1 0 0 0 -1 0 0 0];
+        [0 1 0 0 0 -1 0 0];
+        [0 0 1 0 -Rt1 0 -1 0];
+        [0 0 0 1 0 -Rt2 -1 0];
+        [0 0 0 0 1 1 -1/RL2 -1];
+        [0 0 0 0 0 0 -1 RL1]]
+
+    b = [1/Lf1; 1/Lf2; 0; 0; 0; 0; 0; 0]
+    d = [1.0; 1.0; 0; 0; 0; 0; 0; 0]
+
+    A = [a zeros(8,8) zeros(8,8);
+        zeros(8,8) a zeros(8,8);
+        zeros(8,8) zeros(8,8) a]
+
+    B = [b; b; b]
+
+    C = [c zeros(8,8) zeros(8,8);
+        zeros(8,8) c zeros(8,8);
+        zeros(8,8) zeros(8,8) c]
+
+    D = [d; d; d]
+
+    return A, B, C, D
+end
+
+function Source_Initialiser(Source::Source_Controller, Env::Environment; num_source = 1, Prated = 0, Qrated = 0, Srated = 0)
+
+    if Prated == 0 && Qrated == 0 && Srated == 0
+        Source.S[num_source] = 50e3
+        Source.P[num_source] = 40e3
+        Source.Q[num_source] = 30e3
+    elseif Prated == 0 && Qrated == 0 && Srated != 0
+        Source.S[num_source] = Srated
+        Source.P[num_source] = 0.8*Srated
+        Source.Q[num_source] = sqrt(Srated^2 - Source.P[num_source]^2)
+    elseif Prated != 0 && Qrated != 0 && Srated == 0
+        Source.P[num_source] = Prated
+        Source.Q[num_source] = Qrated
+        Source.S[num_source] = sqrt(Prated^2 + Qrated^2)
+    elseif Prated != 0 && Qrated == 0 && Srated != 0
+        Source.S[num_source] = Srated
+        Source.P[num_source] = Prated
+        Source.Q[num_source] = sqrt(Srated^2 - Prated^2)
+    elseif Prated == 0 && Qrated != 0 && Srated != 0
+        Source.S[num_source] = Srated
+        Source.Q[num_source] = Qrated
+        Source.P[num_source] = sqrt(Srated^2 - Qrated^2)
+    elseif Prated != 0 && Qrated != 0 && Srated != 0
+        println("\nError. Too many arguments specified")
+    end
+
+    Source.D[num_source, 1] = 2*π*Env.Δfmax/Source.P[num_source]
+    Source.D[num_source, 2] = Env.ΔEmax/Source.Q[num_source]
 end
