@@ -1,6 +1,7 @@
 using Distributions
 using LinearAlgebra
 using StatsBase
+using Intervals
 mutable struct NodeConstructor
     num_connections 
     num_sources
@@ -104,6 +105,8 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         @assert num_fltr_LCL + num_fltr_LC + num_fltr_L == num_sources "Expect the number of sources to be identical to the sum of the filter types, but the number of sources is $num_sources and the sum of the filters is $(num_fltr_LCL + num_fltr_LC + num_fltr_L)"
 
         @assert num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R == num_loads "Expect the number of loads to be identical to the sum of the loads types, but the number of loads is $num_loads and the sum of the loads is $(num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R)"
+        
+        valid_realistic_para(parameters)
     else
         throw("Expect parameters to be a dict or nothing, not $(typeof(parameters))")
     end
@@ -197,6 +200,56 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
     parameters
 end
 
+"""
+    valid_realistic_para(para)
+
+Checks if the passed parameters e.g. for the filters have logical and realistic values.
+"""
+
+function valid_realistic_para(para)
+    
+    para["source"] = source_list
+    para["net"] = net_para
+    
+    for (i, source) in enumerate(source_list)
+        
+        ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
+        i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+        ilfmax = source["i_rip"] * i_peak
+        vcfmax = source["v_rip"] * sqrt(2)*net_para["v_rms"]
+        
+        if source["fltr"] == "LCL"
+            In_L = Interval{Closed, Closed}(0.001*(0.5*source["vdc"]*(4*net_para["fs"]*ilfmax)^-1),(0.5*source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)*1000)
+            In_C = Interval{Closed, Closed}(0.001*(ilfmax*(8*net_para["fs"]*vcfmax)^-1),(ilfmax*(8*net_para["fs"]*vcfmax)^-1)*1000)
+            In_R_L = Interval{Closed, Closed}(0.001*(400 * source["L1"]),(400 * source["L1"])*1000)
+            In_R_C = Interval{Closed, Closed}(0.001*(28* source["C"]),(28* source["C"])*1000)
+            
+            if (!(source["L1"] in In_L) || !(source["L2"] in In_L) || !(source["C"] in In_C) || !(source["R1"] in In_R_L) || !(source["R2"] in In_R_L) || !(source["R_C"] in In_R_C))
+                @warn " Source $i contains filter parameters that are not recommended."
+            end
+            
+        elseif source["fltr"] == "LC"
+            In_L = Interval{Closed, Closed}(0.001*(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1),(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)*1000)
+            In_C = Interval{Closed, Closed}(0.001*(ilfmax*(8*net_para["fs"]*vcfmax)^-1),(ilfmax*(8*net_para["fs"]*vcfmax)^-1)*1000)
+            In_R_L = Interval{Closed, Closed}(0.001*(400 * source["L1"]),(400 * source["L1"])*1000)
+            In_R_C = Interval{Closed, Closed}(0.001*(28* source["C"]),(28* source["C"])*1000)
+            
+            if (!(source["L1"] in In_L) || !(source["C"] in In_C) || !(source["R1"] in In_R_L) || !(source["R_C"] in In_R_C))
+                @warn " Source $i contains filter parameters that are not recommended."
+            end
+            
+        elseif source["fltr"] == "L"
+            In_L = Interval{Closed, Closed}(0.001*(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1),(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)*1000)
+            In_R_L = Interval{Closed, Closed}(0.001*(400 * source["L1"]),(400 * source["L1"])*1000)
+            
+            if (!(source["L1"] in In_L) || !(source["R1"] in In_R_L))
+                @warn " Source $i contains filter parameters that are not recommended."
+            end
+            
+        end
+    end
+
+end
 
 """
     cntr_fltrs(source_list)
