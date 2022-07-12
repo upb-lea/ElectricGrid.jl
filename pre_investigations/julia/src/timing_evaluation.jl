@@ -199,7 +199,7 @@ function timing_experiment_simulation(repeat::Int64=5, loops::Int64=10, num_node
                     CM = reduce(hcat, CM_list[c])'
                     CM = convert(Matrix{Int}, CM)
 
-                    nc = py"NodeConstructor"(num_nodes[k], num_nodes[k], parameter, CM=CM)
+                    #nc = py"NodeConstructor"(num_nodes[k], num_nodes[k], parameter, CM=CM)
                     nc = py"NodeConstructorCable"(num_nodes[k], num_nodes[k], CM=CM)
                     A, B, C, D = nc.get_sys()
                     ns = length(A[1,:])
