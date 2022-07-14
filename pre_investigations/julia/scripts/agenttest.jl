@@ -11,20 +11,13 @@ using BenchmarkTools
 using ReinforcementLearning
 using Flux
 using StableRNGs
-<<<<<<< HEAD
-# using IntervalSets
-using TimerOutputs
-=======
 using IntervalSets
 using TimerOutputs
 using JSON
->>>>>>> develop
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent.jl"))
-<<<<<<< HEAD
-=======
 include(srcdir("run_timed.jl"))
 
 global timer = TimerOutput()
@@ -33,31 +26,23 @@ env_cuda = false
 agent_cuda = true
 
 num_nodes = 20
->>>>>>> develop
 
 CM = [ 0.  1.
         -1.  0.]
 
-<<<<<<< HEAD
-=======
 CM_list = JSON.parsefile(srcdir("CM_matrices", "CM_nodes" * string(num_nodes) * ".json"))
 
 CM = reduce(hcat, CM_list[1])'
 CM = convert(Matrix{Int}, CM)
 
->>>>>>> develop
 parameters = Dict()
 # LC filter
 parameters["source"] = [Dict("fltr" => "LC", "R" => 0.4, "L1" => 2.3e-3, "C" => 10e-6)]
 parameters["cable"] = [Dict("R" => 0.722, "L" => 0.955e-3, "C" => 8e-09)]
 parameters["load"] = [Dict("impedance" => "R", "R" => 14)]
 
-<<<<<<< HEAD
-nc = NodeConstructor(num_source=1, num_loads=1, CM=CM, parameters=parameters)
-=======
 #nc = NodeConstructor(num_sources=1, num_loads=1, CM=CM, parameters=parameters)
 nc = NodeConstructor(num_sources=num_nodes, num_loads=num_nodes, CM=CM)
->>>>>>> develop
 
 #draw_graph(Grid_FC)   ---   not yet implemented
 
@@ -65,11 +50,6 @@ A, B, C, D = get_sys(nc)
 
 limits = Dict("i_lim" => 20, "v_lim" => 600)
 
-<<<<<<< HEAD
-norm_array = vcat([limits[i] for j = 1:nc.num_source for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
-norm_array = vcat( norm_array, [limits["v_lim"] for i = 1:nc.num_loads] )
-
-=======
 norm_array = vcat([limits[i] for j = 1:nc.num_sources for i in ["i_lim", "v_lim"]], [limits["i_lim"] for i = 1:nc.num_connections] )
 norm_array = vcat( norm_array, [limits["v_lim"] for i = 1:nc.num_loads] )
 
@@ -83,7 +63,6 @@ for state_name in states
     end
 end
 
->>>>>>> develop
 ns = length(A[1,:])
 na = length(B[1,:])
 
@@ -92,10 +71,6 @@ ts = 1e-5
 
 V_source = 300
 
-<<<<<<< HEAD
-env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, v_dc=V_source, ts=rationalize(ts))
-agent = create_agent(na, ns)
-=======
 x0 = [ 0.0 for i = 1:length(A[1,:]) ]
 Ad = exp(A*ts)
 Bd = A \ (Ad - C) * B
@@ -111,7 +86,6 @@ end
 
 env = SimEnv(A=A, B=B, C=C, Ad=Ad, Bd=Bd, norm_array=norm_array, x0=x0, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=true)
 agent = create_agent(na, ns, agent_cuda)
->>>>>>> develop
 
 # ----------------------------------------------------------------------------------------
 function execute_env(env::SimEnv, agent::Agent, t_len::Int, debug::Bool)
@@ -140,11 +114,7 @@ Pdiff = []
 
 function reward_func(method::String, env::SimEnv)
 
-<<<<<<< HEAD
-    i_1, u_1, i_c1, u_l1 = env.state
-=======
     i_1, u_1, i_c1, u_l1 = Array(env.state)
->>>>>>> develop
 
     P_load = (env.norm_array[end] * u_l1)^2 / 14
     
@@ -166,21 +136,6 @@ end
 hook = TotalRewardPerEpisode()
 
 No_Episodes = 5
-<<<<<<< HEAD
-global const timer_run = TimerOutput()
-
-
-# @timeit timer_run "Overall run" begin
-run(
-    agent,
-    env,
-    StopAfterEpisode(No_Episodes),
-    hook
-)
-# end
-
-# show(timer_run)
-=======
 
 run(agent, env, StopAfterEpisode(1), hook)
 
@@ -195,7 +150,6 @@ run(
 end
 
 show(timer)
->>>>>>> develop
 
 
 # @benchmark run(
