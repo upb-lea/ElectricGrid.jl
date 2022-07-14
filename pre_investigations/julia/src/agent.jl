@@ -1,6 +1,10 @@
 using ReinforcementLearning
 using Flux
 using StableRNGs
+<<<<<<< HEAD
+=======
+using IntervalSets
+>>>>>>> develop
 
 # also in a sep src
 global rngg = StableRNG(123)
@@ -10,14 +14,19 @@ global create_actor(na, ns) = Chain(
     Dense(ns, 40, relu; init = initt),
     Dense(40, 30, relu; init = initt),
     Dense(30, na, tanh; init = initt),
+<<<<<<< HEAD
 ) |> gpu
 
 # gpu --> cpu? 
+=======
+)
+>>>>>>> develop
 
 global create_critic(na, ns) = Chain(
     Dense(ns + na, 40, relu; init = initt),
     Dense(40, 30, relu; init = initt),
     Dense(30, 1; init = initt),
+<<<<<<< HEAD
 ) |> gpu
 
 function create_agent(na, ns)
@@ -37,6 +46,27 @@ function create_agent(na, ns)
             ),
             target_critic = NeuralNetworkApproximator(
                 model = create_critic(na, ns),
+=======
+)
+
+function create_agent(na, ns, use_gpu = true)
+    Agent(
+        policy = DDPGPolicy(
+            behavior_actor = NeuralNetworkApproximator(
+                model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
+                optimizer = Flux.ADAM(),
+            ),
+            behavior_critic = NeuralNetworkApproximator(
+                model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
+                optimizer = Flux.ADAM(),
+            ),
+            target_actor = NeuralNetworkApproximator(
+                model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
+                optimizer = Flux.ADAM(),
+            ),
+            target_critic = NeuralNetworkApproximator(
+                model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
+>>>>>>> develop
                 optimizer = Flux.ADAM(),
             ),
             γ = 0.99f0,
