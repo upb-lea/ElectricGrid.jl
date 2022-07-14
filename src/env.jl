@@ -96,7 +96,7 @@ function (env::SimEnv)(action)
 
     # env.reward = -sqrt((P_source - (P_R + P_load + loss_error))^2)
     # Power constraint
-    env.reward = reward_func("Power_exp", env)
+    env.reward = 1#reward_func("Power_exp", env)
 
     env.done = env.steps >= env.maxsteps
 end
