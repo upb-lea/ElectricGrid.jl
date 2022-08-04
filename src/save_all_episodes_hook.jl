@@ -4,6 +4,8 @@ using CSV
 
 Base.@kwdef mutable struct SaveAllEpisodes <: AbstractHook
 
+    dir = "episode_data"
+
     df = DataFrame()
     tmp = DataFrame()
     episode = 1
@@ -35,7 +37,7 @@ function (hook::SaveAllEpisodes)(::PostEpisodeStage, agent, env)
 
     push!(hook.rewards, mean(hook.df.reward))
 
-    CSV.write("episode_data/$(hook.episode).csv", hook.df)
+    CSV.write(dir + "/$(hook.episode).csv", hook.df)
     hook.df = DataFrame()
     hook.episode += 1
 
@@ -43,8 +45,6 @@ end
 
 function (hook::SaveAllEpisodes)(::PostExperimentStage, agent, env)
 
-    summary = DataFrame(:MeanReward => hook.rewards)
-    CSV.write("episode_data/summary.csv", summary)
     hook.episode = 0
 
 end
