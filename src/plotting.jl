@@ -13,39 +13,47 @@ function get_data(episode)
 
 end
 
-function plotting(episode, state, NodeConstructor) # also path to data
+function plotting_state(episodes, states, NodeConstructor) # also path to data
     
-    data = get_data(episode)
-    
-    state_list = get_states(NodeConstructor)
-    
+    plots = Array{Plots.Plot}(undef, length(states), length(episodes))
+    println(plots)
+
     phase = NodeConstructor.parameters["grid"]["phase"]
     fs = NodeConstructor.parameters["grid"]["fs"]
-    
-    t = range(0, length(data.state)-1)/fs |> collect
-        
-    if typeof(state) === String
-        state = findall(x->x==state, state_list)
-        state = state[1]
-    end
-    
-    data_state = mapreduce(permutedims, vcat, data.state)
-    
-    ns = NodeConstructor.num_spp
-    
-    p = plot(xlabel="time", ylabel="$(state_list[state])")
-    
-    if phase == 1
-        
-        plot!(p, t, data_state[:, state+ns*0])
-    
-    elseif phase == 3
+
+    state_list = get_states(NodeConstructor)
+
+    for (idx_ep, episode) in enumerate(episodes)
+
+        data = get_data(episode)
+        t = range(0, length(data.state)-1)/fs |> collect
+
+        for (idx_state, state) in enumerate(states)
+                
+            if typeof(state) === String
+                state = findall(x->x==state, state_list)
+                state = state[1]
+            end
             
-        plot!(p, t, data_state[:, state+ns*0], label="Phase 1")
-        plot!(p, t, data_state[:, state+ns*1], label="Phase 2")
-        plot!(p, t, data_state[:, state+ns*2], label="Phase 3")
+            data_state = mapreduce(permutedims, vcat, data.state)
             
+            ns = NodeConstructor.num_spp
+            
+            plots[idx_state,idx_ep] = plot(xlabel="time", ylabel="$(state_list[state])")
+            
+            if phase == 1
+                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*0], legend=false)
+            
+            elseif phase == 3
+                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*0], label="Phase 1")
+                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*1], label="Phase 2")
+                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*2], label="Phase 3")
+                    
+            end
+        end
     end
+
+    plot(plots..., layout=(length(episodes), length(states)))
 
 end
 
