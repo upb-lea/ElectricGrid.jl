@@ -107,7 +107,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         throw("Expect parameters to be a dict or nothing, not $(typeof(parameters))")
     end
 
-    num_fltr = 4 * num_fltr_LCL + 2 * num_fltr_LC + 2 * num_fltr_L
+    num_fltr = 4 * num_fltr_LCL + 3 * num_fltr_LC + 2 * num_fltr_L
     num_impedance = (2 * (num_loads_RLC
                         + num_loads_LC
                         + num_loads_RL
@@ -147,7 +147,7 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
     grid_properties = Dict()
     grid_properties["fs"] =  10e3
     grid_properties["v_rms"] = 230
-    grid_properties["phase"] = 3
+    grid_properties["phase"] = 1
 
 
     for s in 1:num_fltr_LCL

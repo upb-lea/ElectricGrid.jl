@@ -7,11 +7,8 @@ Base.@kwdef mutable struct SaveStep <: AbstractHook
     df = DataFrame()
     tmp = DataFrame()
     episode = 1
-    state = []
-    next_state = []
-    action = []
-    reward = []
-    done = []
+
+    rewards::Vector{Float64} = Float64[]
 
 end
 
@@ -39,8 +36,10 @@ end
 
 function (hook::SaveStep)(::PostEpisodeStage, agent, env)
 
-    CSV.write("episode_data/$(hook.episode).csv", hook.df)
+    
+    push!(hook.rewards, mean(hook.df.reward))
 
+    CSV.write("episode_data/$(hook.episode).csv", hook.df)
     hook.df = DataFrame()
     hook.episode += 1
 
@@ -48,6 +47,8 @@ end
 
 function (hook::SaveStep)(::PostExperimentStage, agent, env)
 
+    summary = DataFrame(:MeanReward => hook.rewards)
+    CSV.write("episode_data/summary.csv", summary)
     hook.episode = 0
 
 end
