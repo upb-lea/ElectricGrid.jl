@@ -2,7 +2,7 @@ using ReinforcementLearning
 using DataFrames
 using CSV
 
-Base.@kwdef mutable struct SaveStep <: AbstractHook
+Base.@kwdef mutable struct SaveAllEpisodes <: AbstractHook
 
     df = DataFrame()
     tmp = DataFrame()
@@ -12,17 +12,14 @@ Base.@kwdef mutable struct SaveStep <: AbstractHook
 
 end
 
-function (hook::SaveStep)(::PreActStage, agent, env, action)
+function (hook::SaveAllEpisodes)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, 1, :state => Ref(env.state))
     insertcols!(hook.tmp, 2, :action => Ref(action))
-
-    # push!(hook.state, env.state)
-    # push!(hook.action, action)
     
 end
 
-function (hook::SaveStep)(::PostActStage, agent, env)
+function (hook::SaveAllEpisodes)(::PostActStage, agent, env)
 
     insertcols!(hook.tmp, 3, :next_state => Ref(env.state))
     insertcols!(hook.tmp, 4, :reward => env.reward)
@@ -34,9 +31,8 @@ function (hook::SaveStep)(::PostActStage, agent, env)
     
 end
 
-function (hook::SaveStep)(::PostEpisodeStage, agent, env)
+function (hook::SaveAllEpisodes)(::PostEpisodeStage, agent, env)
 
-    
     push!(hook.rewards, mean(hook.df.reward))
 
     CSV.write("episode_data/$(hook.episode).csv", hook.df)
@@ -45,7 +41,7 @@ function (hook::SaveStep)(::PostEpisodeStage, agent, env)
 
 end
 
-function (hook::SaveStep)(::PostExperimentStage, agent, env)
+function (hook::SaveAllEpisodes)(::PostExperimentStage, agent, env)
 
     summary = DataFrame(:MeanReward => hook.rewards)
     CSV.write("episode_data/summary.csv", summary)
