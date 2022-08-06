@@ -1,0 +1,992 @@
+using Plots
+using LinearAlgebra
+
+function Partitioning(x, x_range, ϵ)
+
+    #=
+    Every instrument implements a very basic inherent coarse-graining. Typically,
+    this would be the measurement sensors and transducers. A transducer is a
+    machine that not only reads symbols from some input, taking the appropriate
+    transitions, but also outputs a symbol determined by each transition taken.
+    In the graphical representation the edges of a transducer are labeled with
+    both input and output symbols. The latter may come from different alphabets.
+
+    1. Simulate the measurement instrument
+        a. m is the number of experimental probes
+        b. An instrument that distinguishes the projected states to within a
+        resolution ϵ partitions the measurement space into a set of cells.
+        c. Each cell is the equivalence class of projected states projected states
+        that are indistinguishable using the instrument.
+        d. The cells have volume ϵ^m
+        e. The (unknowable) exact states of the observed system are translated
+        into a sequence of symbols via a measurement chanel.
+        f. The instrument maps a sequence of states into a sequence of symbols.
+        g. Define an alphabet of symbols, which have k~ϵ^-m partition elements,
+        if the inputs are normalised
+        h. Implement maximum and minimum limits
+
+    The generating partition requirement necessarily determines the number of
+    probes required by the instrument. The (unknowable) exact states of the
+    observed system are translated into a sequence of symbols via a measurement
+    channel. This process is described by a parametrized partition of the state
+    space.
+    =#
+
+    m = length(x) # number of dimensions
+
+    s = 0 # mapped symbol
+    k = 1 # number of symbols in the alphabet
+
+    for d in 1:m
+
+        norm = (x_range[d, 1] - x_range[d, 2])
+
+        if x[d] >= x_range[d, 1] #maximum not included
+            x[d] = x_range[d, 1] - 0.1*ϵ[d]*norm
+        end
+        if x[d] < x_range[d, 2]
+            x[d] = x_range[d, 2]
+        end
+        x[d] = x[d] - x_range[d, 2]
+        s = s + Int(floor(x[d]/(ϵ[d]*norm))*k)
+
+        k = Int(k*ceil(1/ϵ[d]))
+    end
+
+    return s, k
+end
+
+function Dimensioning(s, x_range, ϵ)
+
+    #=
+    This function provides the inverse of the Partitioning function. A symbol
+    is mapped back to the state space.
+    =#
+
+    m = length(ϵ) # number of dimensions
+
+    x = Array{Float64, 1}(undef, m) # State space position
+    k = [1; Int.(ceil.(1 ./ ϵ[:]))]
+
+    for d in 1:m
+        norm = (x_range[d, 1] - x_range[d, 2])
+        x[d] = (norm/k[d+1])*floor((s/prod(k[1:d]))%(k[d+1])) + x_range[d, 2] + norm*ϵ[d]/2
+    end
+
+    return x
+end
+
+mutable struct Node
+
+    value::Int64 # value of the link leading to node
+
+    parent::Int64
+    generation::Int64
+    child_vals::Vector{Int64}
+    child_locs::Vector{Int64}
+
+    cn::Int64 # the count accumulated at each node n
+    Pr::Float64 # the probability of the sequence leading to the node
+    Pr_c::Vector{Float64} # the node-child transition probability
+
+    morph_vals::Vector{Int64}
+    morph_Pr_c::Vector{Float64}
+    morph_children::Vector{Int64}
+    morph_dist::Vector{Float64}
+
+    state::Int64
+
+    function Node(value::Int64,
+                parent::Int64, generation::Int64,
+                child_vals::Vector{Int64}, child_locs::Vector{Int64},
+                cn::Int64, Pr::Float64, Pr_c::Vector{Float64},
+                morph_vals::Vector{Int64}, morph_Pr_c::Vector{Float64},
+                morph_children::Vector{Int64}, morph_dist::Vector{Float64},
+                state::Int64)
+
+        new(value,
+            parent, generation,
+            child_vals, child_locs,
+            cn, Pr, Pr_c,
+            morph_vals, morph_Pr_c,
+            morph_children, morph_dist,
+            state)
+    end
+
+    function Node(value, parent)
+
+        child_vals = Array{Int64, 1}(undef, 0)
+        child_locs = Array{Int64, 1}(undef, 0)
+        cn = 0
+        Pr = 0.0
+        Pr_c = Array{Float64, 1}(undef, 0)
+        generation = 0
+
+        morph_vals = Array{Int64, 1}(undef, 0)
+        morph_Pr_c = Array{Float64, 1}(undef, 0)
+        morph_children = Array{Int64, 1}(undef, 0)
+        morph_dist = Array{Float64, 1}(undef, 0)
+
+        state = 0
+
+        Node(value,
+            parent, generation,
+            child_vals, child_locs,
+            cn, Pr, Pr_c,
+            morph_vals, morph_Pr_c,
+            morph_children, morph_dist,
+            state)
+    end
+end
+
+mutable struct Parse_Tree
+
+    #=
+    A window of width D is advanced through s one symbol at a time.
+    Therefore, the window lags behind the process D number of time steps.
+
+    D is an approximation parameter. The longer it is, the more correlation,
+    structure, and so on, is captured by the tree. Since, s is of finite length
+    the tree depth cannot be indefinitely extended. Thus, to obtain good estimates
+    of the subsequences generated by the process and of the tree structure the
+    tree depth mustbe set at some optimal value. That value in turn depends on the
+    amount of available data.
+
+    A tree T = {n,l} consists of nodes n = {ni} and directed, labeled links
+    l = {li} connecting them in a hierarchical structure with no closed paths.
+    The links are labeled by the measurement symbols.
+
+    An D-level subtree T(n,D) is a tree that starts at node n and contains all
+    nodes below n that can be reached within D links. To construct a tree from a
+    measurement sequence we simply parse the latter for all length D sequences
+    and from this construct the tree with links up to level D that are labeled
+    with individual symbols up to that time. We refer to length D subsequences
+    as D-cylinders. Hence an D level tree has a length D path corresponding to
+    each distinct observed D-cylinder.
+
+    1. Get sequence of past D symbols
+    2. Add probabilistic structure to the tree by recording for each node ni the
+    number Ni(L) of occurrences of the associated L-cylinder relative to the
+    total number N(L) observed.
+    =#
+
+    Nodes::Vector{Node}
+    N::Int64 # length of the total sequence
+    D::Int64 # 1st Approximation Parameter - Depth of the tree (even number)
+    L::Int64 # 2nd Approximation Parameter - length of future subsequences
+
+    function Parse_Tree(Nodes::Vector{Node}, N::Int64, D::Int64, L::Int64)
+        new(Nodes, N, D, L)
+    end
+
+    function Parse_Tree(N, D)
+
+        Nodes = Array{Node, 1}(undef, 0)
+        Nodes = [Nodes; Node(-1, 0)] # creating the root node
+        Nodes[1].cn = Nodes[1].cn + 1
+        Nodes[1].Pr = Nodes[1].cn/(N - D)
+
+        L = Int(floor(D/2))
+
+        Parse_Tree(Nodes, N, D, L)
+    end
+end
+
+mutable struct ϵ_Machine
+
+    #=
+    An ϵ-machine is a stochastic automaton of the minimal computational power
+    yielding a finite description of the data stream. Minimality is essential.
+    It restricts the scope of properties detected in the ϵ-machine to be no
+    larger than those possessed by the underlying physical system. We may assume
+    at first that the data stream is governed by a stationary measure. That is,
+    the probabilities of fixed length blocks of measurements exist and are
+    time-translation invariant.
+
+    The fact that machine reconstruction uses observational data makes it similar
+    to neural networks when finding a causal pattern in data, except that in the
+    case of neural network, the discovered causal pattern is hidden from the
+    modeler. In contrast, the reconstructed machine displays the computational
+    structuer of the process being modeled. Probabilistic and deterministic
+    structure is discovered rather than imprinted onto the data. The machine
+    representations captures pattern and regularities in the data in a way that
+    reflects the causal structure of the process.
+
+    The ϵ simply reminds us that what we are constructing is an approximation
+    of the process's computational structure and depends on the measuring
+    instrument's characteristics, such as its resolution. The procedure begins
+    with a data stream and estimates the number of states and their transition
+    structure and probabilities.
+
+    The goal, is to reconstruct from a given physical process a computationally
+    equivalent machine. The reconstruction technique, is quite general and applies
+    directly to the modeling tasks for forecasting temporal or spatio-temporal
+    data series. The resulting minimal machine's structure indicates the inherent
+    information processing, i.e. transmission and computation, of the original
+    physical process.
+
+    Through a choice of symmetry that is appropriate for forecasting the data
+    stream the conditional complexity C(D|S) can be estimated. The aim is to
+    infer generalized "states" in the data stream that are optimal for
+    forecasting. We will identify these staes with measurement sequences giving
+    rise to the same set of possible future sequences. Using the temporal
+    translation invariance guaranteed by stationarity, we identify these states
+    using a sliding window that advances one measurement at a time through the
+    sequence. This leads to a second step in the inference technique, the
+    construction of a parse tree for the measurement sequence probability
+    distribution. This is a coarse-grained representation of the underlying
+    process's measure in orbit space. The state identification requirement
+    then leads to an equivalece relation on the parse tree. The machine states
+    correspond to the induced equivalence classes; the tate transitions, to the
+    observed transitions in the tree between the classes.
+
+    The overall procedure has two steps. The first is to identify the states and
+    the second is to infer the transformation T. Once the states are found, the
+    temporal evolution of the process, its (symbolic) dynamic, is given by a
+    mapping from states to states T: S->S; that is, S(t+1) = T*S(t). T is the
+    full probabilistic structure described by a set of input-alphabet labeled
+    transition matrices.
+
+    To infer the set of states we look for distinct subtrees of a given depth L.
+    This is the length of future subsequences over which the morphs must agree.
+    This step introduces a second approximation parameter, the morph depth L.
+    The states should not only be topologically distinct, but also distinct in
+    probability. That is, two states are in the same equivalence class, if their
+    subtrees adhere to a similarity relation.
+
+    The state-to-state transition structure is obtained by looking at how the
+    morphs change into one another upon moving down the parse tree. Subtree
+    equivalence means that the link structure is identical. Furthermore, two
+    L-subtrees should be δ-similar and their corresponding links individually
+    equally probable within some margin δ. The state-to-state transition
+    probabilities are taken from the estimated node-to-node transition
+    probabilities.
+
+    As a whole, a machine is defined by a set of vertices, V = {v}, a set of
+    transitions T, and an alphabet A. M = {V, E, A}. The graphical depiction of
+    M is a labeled directed multigraph, or 1-digraph. They are related to the
+    Shannon graphs of information theory, to Weiss's sofic systems in symbolic
+    dynamics, to discrete finite automata in computation theory, and to
+    regular languages in Chomsky's hierarchy. In particular it's a probabilistic
+    version of these. Their topological structure can be described by a 1-digraph
+    G = {V, E} that consists of vertices V = {vi} and directed edges E = {ei}
+    connecting them, where each of the edges is labelled by a symbol s ϵ A.
+
+    Some states may transition to dangling states, states that have no transitions
+    to other states. Dangling states may indicate that the amount of data, N, is
+    too low.
+
+    A machine is a compact and very informative representation of the underlying
+    source. In order to appreciate the properties that it captures, there are
+    several statistics that can be computed for a given machine. Each of these is,
+    naturally, a simplification in one way or another of the structure captured
+    by the machine. For example, the machine can be reduced to a Markov process.
+    =#
+
+    CM::Vector{Matrix{Float64}} # The connectivity matrix / transition matrix - probability and symbol elements
+    Tree::Parse_Tree
+    δ::Float64 # Conditional Probability Margin - 3rd Approximation Parameter
+    C_states::Matrix{Int64} #Nodes, and macro checks
+    Dangling::Int64
+
+    T::Matrix{Float64} #stochastic connection matrix - Markov process
+    eigval::Vector{ComplexF64} #eigen values of T
+    r_eigvecs::Matrix{ComplexF64} # right eigenvectors
+    l_eigvecs::Matrix{ComplexF64} # left eigenvectors
+    D::Matrix{ComplexF64} # diagonal matrix
+    Stat_dist::Vector{Float64} # stationary state probability distribution
+
+    h::Float64 # Topological Entropy
+    hμ::Float64 # Entropy rate - growth rate of Shannon information in subsequences
+    Cμ::Float64 # Statistical Complexity - measures amount of memory in the source
+    Cμe::Float64 # Statistical Edge Complexity
+    C::Float64 # State topological (Finitary) Complexity
+    Ce::Float64 # Transition topological Complexity
+
+    function ϵ_Machine(CM::Vector{Matrix{Float64}}, Tree::Parse_Tree,
+        δ::Float64, C_states::Matrix{Int64}, Dangling::Int64,
+        T::Matrix{Float64}, eigval::Vector{ComplexF64},
+        r_eigvecs::Matrix{ComplexF64}, l_eigvecs::Matrix{ComplexF64},
+        D::Matrix{ComplexF64}, Stat_dist::Vector{Float64},
+        hμ::Float64, Cμ::Float64, Cμe::Float64, C::Float64, Ce::Float64)
+
+        new(CM, Tree, δ, C_states, Dangling,
+        T, eigval, r_eigvecs, l_eigvecs, D, Stat_dist,
+        hμ, Cμ, Cμe, C, Ce)
+    end
+
+    function ϵ_Machine(N, D, δ)
+
+        # Stochastic transitions on a Multigraph
+        CM = Vector{Matrix{Float64}}(undef, 0)
+        C_states = Array{Int64, 2}(undef, 0, 4)
+        Tree = Parse_Tree(N, D)
+        Dangling = 0
+
+        # Markov process
+        T = Array{Float64, 2}(undef, 0, 0)
+        eigval = Array{ComplexF64, 1}(undef, 0)
+        r_eigvecs = Array{ComplexF64, 2}(undef, 0, 0)
+        l_eigvecs = Array{ComplexF64, 2}(undef, 0, 0)
+        D = Array{ComplexF64, 2}(undef, 0, 0)
+        Stat_dist = Array{Float64, 1}(undef, 0)
+
+        hμ = 0.0
+        Cμ = 0.0
+        Cμe = 0.0
+        C = 0.0
+        Ce = 0.0
+
+        ϵ_Machine(CM, Tree, δ, C_states, Dangling,
+        T, eigval, r_eigvecs, l_eigvecs, D, Stat_dist,
+        hμ, Cμ, Cμe, C, Ce)
+    end
+end
+
+function add_Nodes(Tree::Parse_Tree, s; parent = 1)
+
+    d = length(s) # Depth of the remaining sub-sequence
+
+    if length(Tree.Nodes[parent].child_vals) == 0
+
+        new_node = add_Node(Tree, parent, s[1])
+
+        Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; Tree.Nodes[new_node].cn/Tree.Nodes[parent].cn]
+
+        if d > 1
+            add_Nodes(Tree, s[2:end], parent = new_node)
+        end
+    else
+
+        parent_loc = findfirst(x->x == s[1], Tree.Nodes[parent].child_vals)
+
+        Tree.Nodes[parent].cn = Tree.Nodes[parent].cn + 1
+        Tree.Nodes[parent].Pr = Tree.Nodes[parent].cn/(Tree.N - Tree.D)
+
+        if parent_loc != nothing
+
+            new_parent = Int(Tree.Nodes[parent].child_locs[parent_loc])
+
+            if d > 1
+                add_Nodes(Tree, s[2:end], parent = new_parent)
+            else
+                Tree.Nodes[new_parent].cn = Tree.Nodes[new_parent].cn + 1
+                Tree.Nodes[new_parent].Pr = Tree.Nodes[new_parent].cn/(Tree.N - Tree.D)
+            end
+        else
+
+            new_node = add_Node(Tree, parent, s[1])
+
+            Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; 0]
+
+            if d > 1
+                add_Nodes(Tree, s[2:end], parent = new_node)
+            end
+        end
+
+        children = Tree.Nodes[parent].child_locs
+
+        for i in 1:length(children)
+            Tree.Nodes[parent].Pr_c[i] = Tree.Nodes[children[i]].cn./Tree.Nodes[parent].cn
+        end
+    end
+
+    return nothing
+end
+
+function add_Node(Tree::Parse_Tree, parent, s)
+
+    new_node = length(Tree.Nodes) + 1
+    Tree.Nodes[parent].child_vals = [Tree.Nodes[parent].child_vals; s[1]]
+    Tree.Nodes[parent].child_locs = [Tree.Nodes[parent].child_locs; new_node]
+    Tree.Nodes = [Tree.Nodes; Node(s[1], parent)]
+
+    Tree.Nodes[new_node].cn = Tree.Nodes[new_node].cn + 1
+    Tree.Nodes[new_node].Pr = Tree.Nodes[new_node].cn/(Tree.N - Tree.D)
+
+    Tree.Nodes[new_node].generation = Tree.Nodes[parent].generation + 1
+
+    return new_node
+end
+
+function Tree_Isomorphism(Deus::ϵ_Machine; Ancest::Vector{Int64} = [1], d = 0)
+
+    # Creating a unique topological isomorphism encoding - Order of function?
+
+    all_vals = Array{Int64, 1}(undef, 0)
+    all_Pr_c = Array{Float64, 1}(undef, 0)
+    all_child = Array{Int64, 1}(undef, 0)
+    all_dist = Array{Float64, 1}(undef, 0)
+
+    d = d + 1
+
+    for i in 1:length(Ancest)
+
+        child_vals = Deus.Tree.Nodes[Ancest[i]].child_vals
+        num_children = length(child_vals)
+
+        perm = sortperm(Deus.Tree.Nodes[Ancest[i]].child_vals)
+
+        sorted_locs = Deus.Tree.Nodes[Ancest[i]].child_locs[perm]
+        sorted_vals = Deus.Tree.Nodes[Ancest[i]].child_vals[perm]
+        sorted_Pr_c = Deus.Tree.Nodes[Ancest[i]].Pr_c[perm]
+
+        if num_children != 0 && d < Deus.Tree.L && (length(Deus.Tree.Nodes[Ancest[i]].morph_vals) == 0)
+
+            child_morph_vals, child_morph_Pr_c, num_child_morph, child_morph_dist =
+            Tree_Isomorphism(Deus, Ancest = sorted_locs, d = d)
+
+            all_vals = [all_vals; sorted_vals; child_morph_vals]
+            all_Pr_c = [all_Pr_c; sorted_Pr_c; child_morph_Pr_c]
+            all_child = [all_child; num_children; num_child_morph]
+            all_dist = [all_dist; child_morph_dist]
+
+            if d == 1
+
+                Tree_Isomorphism(Deus, Ancest = sorted_locs)
+
+                if Deus.Tree.Nodes[Ancest[i]].generation <= Deus.Tree.D - Deus.Tree.L
+
+                    Deus.Tree.Nodes[Ancest[i]].morph_vals = [Deus.Tree.Nodes[Ancest[i]].morph_vals; sorted_vals; child_morph_vals]
+                    Deus.Tree.Nodes[Ancest[i]].morph_Pr_c = [Deus.Tree.Nodes[Ancest[i]].morph_Pr_c; sorted_Pr_c; child_morph_Pr_c]
+                    Deus.Tree.Nodes[Ancest[i]].morph_children = [Deus.Tree.Nodes[Ancest[i]].morph_children; num_children; num_child_morph]
+                    Deus.Tree.Nodes[Ancest[i]].morph_dist = [Deus.Tree.Nodes[Ancest[i]].morph_dist; child_morph_dist]
+
+                    Reconstruction(Deus, Ancest[i])
+                end
+            end
+        else
+
+            all_vals = [all_vals; sorted_vals]
+            all_Pr_c = [all_Pr_c; sorted_Pr_c]
+            all_child = [all_child; num_children]
+            all_dist = [all_dist; sorted_Pr_c]
+        end
+    end
+
+    return all_vals, all_Pr_c, all_child, all_dist
+end
+
+function Reconstruction(Deus::ϵ_Machine, Node)
+
+    num_states = length(Deus.CM)
+    l_vals = length(Deus.Tree.Nodes[Node].morph_vals)
+    num_children = length(Deus.Tree.Nodes[Node].child_vals)
+    parent = Deus.Tree.Nodes[Node].parent
+    flag = 0
+
+    if num_states == 0
+
+        Deus.C_states = cat([Node; parent; l_vals; num_children], dims = 2)
+        Deus.Tree.Nodes[Node].state = 1 # this will be a dangling state
+        Deus.CM = push!(Deus.CM, Matrix{Float64}(undef,3,0))
+        Deus.CM[1] = cat([1; -1; 1.0], dims = 2)
+        Deus.Dangling = Deus.Dangling + 1
+    else
+        for n in 1:num_states
+
+            if l_vals == Deus.C_states[3, n] && num_children == Deus.C_states[4, n]
+
+                state_vals = Deus.Tree.Nodes[Deus.C_states[1, n]].morph_vals
+                state_Pr_c = Deus.Tree.Nodes[Deus.C_states[1, n]].morph_Pr_c
+
+                node_vals = Deus.Tree.Nodes[Node].morph_vals
+                node_Pr_c = Deus.Tree.Nodes[Node].morph_Pr_c
+
+                if node_vals == state_vals
+
+                    Pr_d = maximum(abs.(node_Pr_c .- state_Pr_c))
+
+                    if Pr_d <= Deus.δ
+                        flag = 1
+                        Deus.Tree.Nodes[Node].state = Deus.Tree.Nodes[Deus.C_states[1, n]].state
+
+                        #taking the average of the two morphs
+                        new_morph = Deus.Tree.Nodes[Deus.C_states[1, n]].morph_Pr_c .+ Deus.Tree.Nodes[Node].morph_Pr_c
+                        Deus.Tree.Nodes[Deus.C_states[1, n]].morph_Pr_c = new_morph./2
+
+                        if Node == 1 # making sure start state appears in table
+                            Deus.C_states[1, n] = 1
+                            Deus.C_states[2, n] = 0
+                            Deus.Tree.Nodes[Node].morph_Pr_c = Deus.Tree.Nodes[Deus.C_states[1, n]].morph_Pr_c
+                        end
+
+                        # if compare state is dangling - overwrite and rewire
+                        # don't overwrite if state is low gen or already overwritten
+
+                        state_test = Deus.Tree.Nodes[Deus.C_states[1, n]].generation - Deus.Tree.D + Deus.Tree.L
+
+                        if state_test == 0 && Deus.CM[Deus.Tree.Nodes[Node].state][2, 1] == -1
+                            Add_Transitions(Deus, Node, n, num_children, overwrite = 1)
+                        end
+
+                        break
+                    end
+                end
+            end
+        end
+
+        if flag == 0
+
+            Deus.C_states = cat(Deus.C_states, [Node; parent; l_vals; num_children], dims = 2)
+            state_from = num_states + 1
+            Deus.Tree.Nodes[Node].state = state_from
+            Deus.CM = push!(Deus.CM, Matrix{Float64}(undef, 3, 0))
+
+            Add_Transitions(Deus, Node, state_from, num_children)
+        end
+    end
+
+    return nothing
+end
+
+function Add_Transitions(Deus::ϵ_Machine, Node, state_from, num_children; overwrite = 0)
+
+    state_test = Deus.Tree.Nodes[Node].generation - Deus.Tree.D + Deus.Tree.L
+
+    if state_test < 0
+
+        if overwrite == 1
+            Deus.CM[state_from] = Matrix{Float64}(undef, 3, 0)
+            Deus.Dangling = Deus.Dangling - 1
+        end
+
+        child_locs = Deus.Tree.Nodes[Node].child_locs
+
+        for n in 1:num_children
+
+            state_to = Deus.Tree.Nodes[child_locs[n]].state
+            symbol = Deus.Tree.Nodes[child_locs[n]].value
+            state_Pr_c = Deus.Tree.Nodes[Node].Pr_c[n]
+
+            Deus.CM[state_from] = cat(Deus.CM[state_from], [state_to; symbol; state_Pr_c], dims = 2)
+        end
+    elseif state_test == 0 && overwrite == 0# dangling state
+
+        Deus.Dangling = Deus.Dangling + 1
+        Deus.CM[state_from] = cat(Deus.CM[state_from], [state_from; -1; 1.0], dims = 2)
+    end
+
+    return nothing
+end
+
+function Statistical_Mechanics(Deus::ϵ_Machine)
+
+    #=
+    One useful reduction of an ϵ-Machine is to ask for its equivalent Markov
+    process, which can be described by a stochastic connection matrix containing
+    the state to state transition probabilities, uncondition by the measurement
+    symbols. By construction, every state has an outgoing transition. The effect
+    is losing the "computational" structure of the input data stream. All that
+    is retained in T is the state transition structure and this is a Markov chain.
+    The interesting fact is that Markov chains are proper subset of stochastic
+    finite machines.
+
+    Shannon entropy is a method to compute the uncertainty in an event. This can
+    be used to compute the uncertainty in a stochastic process. However, it is
+    easy to extend such that it can be used. Also when a stochastic process
+    satisfies certain properties, for example if the stochastic process is a
+    Markov process, it is straightforward to compute the entropy of the process.
+    Recal that the entropy is the average number of bits to encode a single
+    source symbol. If all of the random variables are i.i.d. each random variable
+    emits symbols according to the same distribution. Therefore the output of
+    each RV can be encoding using the same number of bits. If the entropy rate of
+    a stochastic process is the average number of bits used to encode a source
+    symbol it makes sense that for an i.i.d. stochastic process the entropy rate
+    is equal to the entropy of its random variables.
+
+    A stochastic process, also called a random process, is a set of random variables
+    that model a non deterministic system. In other words the outcome of the system
+    if not known on beforehand and the system can evolve in multiple ways. Put
+    differently, a stochastic process is an indexed collection of random variables.
+    There can be arbitrary dependence between each of the random variables. The
+    stochastic process is characterised by the joint probabiliry mass function.
+    A stochastic process is said to be stationary if the joint probability
+    distribution of any subsequence of the sequence of random variables in
+    invariant of shifts in time. The random variables in a stochastic process
+    can have arbitrary dependence. However, if the random variables that a random
+    variable can depend on are restricted to only its direct predecessor the
+    stochastic process is called a Markov chain or a Markov process.
+
+    The entropy rate, hμ, of the Markov chain can be calculated. It is the average of
+    transition uncertainty over all the states, it measures the information
+    production rate in bits per time step. It is also the growth rate of the
+    Shannon information in subsequences. In general, subsequences are not in a
+    one-to-one correspondence with the Markov chain's state-to-state transition
+    sequences. Nonetheless, it is a finite-to-one relationship. And so the
+    Markov entropy rate is also the entropy rate of the original source. Thus,
+    one a machine is reconstructed from a data stream, its entropy is an estimate
+    of the underlying process's entropy rate. If the entropy rate is low then we
+    gain certainty as the process proceeds.
+
+    The Markov matrix, a stochastic matrix, always has an eigenvalue that is
+    equal to 1. The eigenvector associated with λ = 1 can be chosen to be strictly
+    positive. All other eigenvalues have magnitude less than 1.
+
+    A common type of Markov chain with transient states is an absorbing one. An
+    absorbing Markov chain is a Markov chain in which it is impossible to leave
+    some states, and sany state state could(after some number of steps, with
+    positive probability) reach such a state. It follows that all non-absorbing
+    states in an absorbing Markov chain are transient. A Markov chain that is
+    aperiodic and positive recurrent is known as ergodic. Ergodic Markov chains
+    are, in some senses, the processes with the "nicest" behaviour. A stochastic
+    process contains states that may be either transient or recurrent; transience
+    and recurrence describe the likelihood of a proces beginning in some state
+    of returning to that particular state. There is some possibility (a nonzero
+    probability) that a process beginning in a transient state will never return
+    to that state. There is a guarantee that a process beginning in a recurrent
+    state will return to that state. Transience and recurrence issues are central
+    to the study of Markov chains and help describe the Markov chain's overall
+    structure. The presence of may transient states may suggest that the Markov
+    chain is absorbing, and a strong form of recurrence is necesary in an
+    ergodic Markov chain. An absorbing state is a state for which the probability
+    of returning to that state from itself is 1. Once a Markov chain is in an
+    absorbing state, it will never leave the state. A state is known as recurrent
+    or transient depending upon whether or not hte Markov chain will eventually
+    return to it. A recurrent state is known as positive recurrent if it is
+    expected to return within a finite number of steps, and null recurrent
+    otherwise. A state is known as ergodic if it is positive recurrent and
+    aperiodic. A Markov chain is ergodic if all its states are ergodic.
+
+    Ergodic Markov chains have a unique stationary distribution, and absorbing
+    Markov chains have stationary distributions with nonzero elements only in
+    absorbing states. The stationary distribution gives information about the
+    stability of a random process and, in certain cases, describesthe limiting
+    behaviour of the Markov chain.
+
+    The state space of a Markov chain can be partitioned into a set of non-
+    overlapping communicating classes. States i and j are in the same
+    communicating class if there is asome way of getting from state i to state j,
+    AND there is some way of getting from state j to state i. It needn't be
+    possible to get between i and j in a single step, but it must be possible
+    over somenumber of steps to travel between them both ways. Mathematically,
+    it is easy to show that the communicating relation is an equivalence relation
+    which means that it partitions the sample space S into non-overlapping
+    classes. States i and j are in the same communicating class if each state
+    is accessible from the other.
+
+    The stationary state probabilities are given by the left eigenvector of T,
+    which corresponds to the eigenvalue that is equal to 1. Over the long run,
+    no matter what the starting state was, the proportion of time the chain spends
+    in state j is is approximately equal to l_eigvecs[j]. When there are multiple
+    eigenvectors associated to an eigenvalue of 1, each such eigenvector gives
+    rise to an associated stationary distribution. However, this can only occur
+    when the Markov chain is reducible, i.e. has multiple communicating classes.
+
+    The stationary distribution can then be used to calculate the information in
+    the state-alphabet sequences. Not the alphabet associated with the measurements,
+    but of the state-to-state transitions. This would measure the amount of memory
+    in the source. Another term for this quantity would be the complexity, Cμ.
+    Cμ is the Shannon entropy of stationary distribution which quantifies the
+    uncertainty in bits for the causal states.
+
+    For completeness, note that there is an edge-complexity, Cμe that is the
+    information contained in the asymptotic edge distribution. These quantities
+    are not independent. From the principle of conservation of information leads
+    to the relation Cμe = Cμ + hμ. For every state, the Shannon entropy can be
+    computed over all the edges, but for a stochastic process this is not
+    a helpful quantity.
+
+    Thus, there are only two independent quantities when modelling a source as a
+    stochastic finite automaton. The entropy, hμ, as a measure of the diversity
+    of patterns, and the complexity Cμ, as a measure of memory, have been taken
+    as the two elementary "information processing" coordinates with which to
+    analyze a range of sources.
+
+    There is another set of quantities that derive from the skeletal structure
+    of the machine. If we drop all probabilistic structure on the machine, we can
+    calculate the growth rate of the raw number of sequences it produces - the
+    topological entropy, which can be found from the connection matrix and its
+    principal eigenvalue. Similarly, the state and transition complexities can
+    easily be calculated. These can be used for processes with finite memory. The
+    general notions without the finiteness restriction is Cμ and Cμe.
+    =#
+
+    num_edges = 0
+    num_states = length(Deus.CM)
+    T = Array{Float64, 2}(undef, num_states, num_states)
+    T = fill!(T, 0.0)
+    Deus.T = cat(T, dims = 2)
+
+    for ns in 1:num_states
+
+        num_trans = length(Deus.CM[ns][1,:])
+        num_edges = num_edges + num_trans
+
+        for nt in 1:num_trans
+
+            state_to = Int(Deus.CM[ns][1,nt])
+            Deus.T[ns, state_to] = Deus.T[ns, state_to] + Deus.CM[ns][3, nt]
+        end
+    end
+
+    Deus.eigval = eigvals(Deus.T) # The eigenvalues for left and right eigenvectors are equal
+    Deus.l_eigvecs = eigvecs(transpose(Deus.T)) # the left eigenvectors are the right eigenvectors of the transpose
+    Deus.r_eigvecs = eigvecs(Deus.T)
+    Deus.D = Diagonal(Deus.eigval)
+
+    Deus.C = log(2, num_states) # state topological complexity
+    Deus.Ce = log(2, num_edges) # transition topological complexity
+
+    index = findfirst( ==(1.0), real(round.(Deus.eigval, digits = 1)))
+
+    if index != nothing
+
+        Deus.Stat_dist = Deus.l_eigvecs[1:end, end]/sum(Deus.l_eigvecs[1:end, end])
+
+        for v in 1:num_states
+
+            num_trans = length(Deus.CM[v][1,:])
+
+            if Deus.Stat_dist[v] != 0
+
+                Deus.Cμ = Deus.Cμ + Deus.Stat_dist[v]*log(2, Deus.Stat_dist[v])
+
+                for v_vd in 1:num_trans
+
+                    if Deus.CM[v][3, v_vd] != 0
+
+                        p = Deus.Stat_dist[v]*Deus.CM[v][3, v_vd]*log(2, Deus.CM[v][3, v_vd])
+                        pe = Deus.Stat_dist[v]*Deus.CM[v][3, v_vd]
+                        Deus.hμ = Deus.hμ + p
+                        Deus.Cμe = Deus.Cμe + pe*log(2, pe)
+                    end
+                end
+            end
+        end
+
+        Deus.hμ = -Deus.hμ
+        Deus.Cμ = -Deus.Cμ
+        Deus.Cμe = -Deus.Cμe
+    else
+
+        println("\nError. The eigenvalue with value of 1 could not be found
+        in the Markov Matrix.")
+    end
+
+    return nothing
+end
+
+function Markov_Evolution(Deus::ϵ_Machine, n; start_ic = zeros(1, length(Deus.CM)))
+
+    # n is the number of steps
+
+    num_states = length(Deus.CM)
+    index = findfirst(==(1), Deus.C_states[1,:]) # finding starting state
+
+    if index != nothing && length(start_ic) == num_states
+
+        if sum(start_ic) == 0
+
+            start_ic[index] = 1.0
+        end
+
+        inv_r_eigenvecs = inv(Deus.r_eigvecs)
+        #inv_l_eigenvecs = inv(Deus.l_eigvecs)
+        Dn = Diagonal((Deus.eigval).^n)
+
+        state = start_ic*Deus.r_eigvecs*(Dn)*inv_r_eigenvecs
+        state# = Deus.l_eigvecs*(Dn)*inv_l_eigenvecs*transpose(start_ic) # equivalent
+    else
+        state = 0
+        println("\nMarkov Evolution. Initial state not valid.")
+    end
+
+    return state
+end
+
+print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
+
+#_______________________________________________________________________________
+# Parameters - Time simulation
+Timestep = 10 #time step in μs
+t_final = 100 #time in seconds, total simulation run time
+
+#_______________________________________________________________________________
+# Environment Calcs
+Nps = (1/(Timestep*1e-6)) # time intervals
+μps = 1/Nps # time step
+t = 0:μps:t_final # time
+N = convert(Int64, floor(t_final/μps)) + 1
+
+m = 1
+x = Array{Float64, 2}(undef, m, N) # State space
+
+x_range = Array{Float64, 2}(undef, m, 2) # State space
+ϵ = Array{Float64, 1}(undef, m) # Instrument resolution
+s = Array{Int64, 1}(undef, N)
+s = fill!(s, 0)
+
+#= The Logistic Map
+
+1. Discrete quadratic nonlineariy
+2. 0 <= r <= 4
+3. 0 <= s[1] <= 1
+
+x[i+1] = r*x[i]*(1 - x[i])
+
+The control parameter r governs the degree of nonlinearity. At a Misiurewicz
+parameter value the chaotic behaviour is governed by an absolutely continuous
+invariant measure. The consequence is that the statistical properties are
+particularly well-behaved. These parameter values are determined by the condition
+that the iterates f^(n)(xc) of the map's maximum xc = 1/2 are asymptotically
+stable.
+
+We can choose a partitioning {[0, xc],(xc,1)}
+
+This partition is generating and the resulting binary sequences completely
+capture the statistical properties of the Logistic map. In other words, there is
+a one-to-one mapping between infinite binary sequences and almost all points on
+the attractor.
+=#
+
+# Misiurewicz point:
+r = 3.9277370017867516
+
+xc = 1/2
+
+x[1] = xc
+
+ϵ[1] = 0.5
+
+x_range[1,1] = 1 # maximum
+
+x_range[1,2] = 0 # minimum
+
+s[1] = 0
+
+#%% Starting time simulation
+println("\nHere we go.\n")
+
+@time begin
+
+    println("Progress : 0.0 %")
+
+    for i in 1:N-1
+
+        # Progress Bar
+        if i > 1 && floor((10*t[i]/t_final)) != floor((10*t[i - 1]/t_final))
+            flush(stdout)
+            println("Progress : ", 10*floor((10*t[i]/t_final)), " %")
+        end
+
+        x[1, i + 1] = r*x[1, i]*(1 - x[1, i])
+
+        #s[i], k = Partitioning(x[:,i], x_range, ϵ)
+        #x2[:,i] = Dimensioning(s[i], x_range, ϵ)
+        #s2[i], k = Partitioning(x2[:,i], x_range, ϵ)
+
+        if i%2 == 0
+            s[i] = 1
+        else
+            d = randn()
+            if d > 0
+                s[i] = 0
+            else
+                s[i] = 1
+            end
+        end
+    end
+end
+
+D = 5 # 7 for map
+δ = 0.15 # 0.15 for map
+Deus = ϵ_Machine(N, D, δ)
+
+for i in 1:N-D+1
+    add_Nodes(Deus.Tree, s[i : i + D - 1])
+end
+
+Tree_Isomorphism(Deus)
+Statistical_Mechanics(Deus)
+#Next_State = Markov_Evolution(Deus, 100)
+
+p = plot(t, x[1,:])
+p = plot!(t, s)
+
+#display(p)
+
+print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
+
+
+#=
+a = 0
+b = 0
+c = 0
+d = 0
+e = 0
+f = 0
+g = 0
+h = 0
+for i in 1:1000
+
+    global a, b, c, d, e,  f, g, h
+
+    if i%8 == 1
+        a = a + 1
+        S = [11 2 33 4 5 6]
+    elseif i%8 == 2
+        b = b + 1
+        S = [11 2 3 4 5 6]
+    elseif i%8 == 3
+        c = c + 1
+        S = [11 2 3 4 5 66]
+    elseif i%8 == 4
+        d = d + 1
+        S = [1 2 3 44 5 6]
+    elseif i%8 == 5
+        e = e + 1
+        S = [1 2 3 45 5 6]
+    elseif i%8 == 6
+        f = f + 1
+        S = [1 2 3 4 5 6]
+    elseif i%8 == 7
+        g = g + 1
+        S = [1 2 3 4 5 66]
+    else
+        h = h + 1
+        S = [1 22 3 4 5 6]
+    end
+    add_Nodes(Deus.Tree, S)
+end
+
+a = 0
+b = 0
+c = 0
+d = 0
+e = 0
+f = 0
+g = 0
+h = 0
+for i in 1:1000
+
+    global a, b, c, d, e,  f, g, h
+
+    if i%8 == 1
+        a = a + 1
+        S = [1 1 1 1 1]
+    elseif i%8 == 2
+        b = b + 1
+        S = [1 1 1 1 0]
+    elseif i%8 == 3
+        c = c + 1
+        S = [1 1 0 0 1]
+    elseif i%8 == 4
+        d = d + 1
+        S = [1 1 0 0 0]
+    elseif i%8 == 5
+        e = e + 1
+        S = [0 0 1 1 1]
+    elseif i%8 == 6
+        f = f + 1
+        S = [0 0 1 1 0]
+    elseif i%8 == 7
+        g = g + 1
+        S = [0 0 0 0 1]
+    else
+        h = h + 1
+        S = [0 0 0 0 0]
+    end
+    add_Nodes(Deus.Tree, S)
+end
+=#
