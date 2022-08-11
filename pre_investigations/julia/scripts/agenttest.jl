@@ -170,13 +170,12 @@ end
 
 
 
-
 # collect_results!(timer, 1)
 
 env_cuda = true
 agent_cuda = true
 
-nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 50, 60, 70]
+nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 50] #, 60, 70]
 
 to = TimerOutput()
 reset_timer!(to)
@@ -200,9 +199,9 @@ end
 # ) seconds = 120 evals = 2
 
 # Plots.plot(nodes, overall_run)
-p = Plots.plot(nodes, [overall_run ./ 1000000000,
-                        env_calc ./ 1000000000,
-                        policy_update ./ 1000000000],
+p = Plots.plot(nodes, [overall_run,
+                        env_calc,
+                        policy_update] ./1e9,
     title = "Training time - GPU",
     ylabel = "Time [ns]",
     xlabel = "No. of Nodes",
@@ -217,13 +216,13 @@ p = Plots.plot(nodes, [grad_Actor, grad_Critic]./1e9,
     title = "Update Actor and Critic Networks - GPU",
     ylabel = "Time [s]",
     xlabel = "No. of Nodes",
-    label = ["udpate(Actor)" "update(Critic)"],
+    label = ["update(Actor)" "update(Critic)"],
     legend =:outertopright)
 
 display(p)
 
 p = Plots.plot(nodes, [update_Actor, update_Critic]./1e9,
-    title = "Gradient Computions - GPU",
+    title = "Gradient Computations - GPU",
     ylabel = "Time [s]",
     xlabel = "No. of Nodes",
     label = ["grad(Actor)" "grad(Critic)"],
@@ -232,7 +231,7 @@ p = Plots.plot(nodes, [update_Actor, update_Critic]./1e9,
 display(p)
 
 p = Plots.plot(nodes, [data_transfer]./1e9,
-    title = "data transfer to GPU - GPU",
+    title = "data transfer: CPU -> GPU",
     ylabel = "Time [s]",
     xlabel = "No. of Nodes",
     # label = ["grad(Actor)"],
