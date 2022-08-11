@@ -119,7 +119,8 @@ function train_ddpg(timer::TimerOutput,
             hook
         )
         end
-    timer
+    
+    nothing
 end
 
 P_required = 466 # W
@@ -162,13 +163,20 @@ end
 
 # collect_results!(timer, 1)
 
-nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]#, 30, 50]
+env_cuda = true
+agent_cuda = true
+
+nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 50, 60, 70]
+
+to = TimerOutput()
+reset_timer!(to)
+train_ddpg(to, env_cuda, agent_cuda, 1, 10)
 
 for i = 1:length(nodes)
     to = TimerOutput()
     reset_timer!(to)
-    local_timer = train_ddpg(to, true, true, nodes[i], 10)
-    collect_results!(local_timer, nodes[i])
+    train_ddpg(to, env_cuda, agent_cuda, nodes[i], 10)
+    collect_results!(to, nodes[i])
 end
 # show(timer)
 
@@ -182,12 +190,17 @@ end
 # ) seconds = 120 evals = 2
 
 # Plots.plot(nodes, overall_run)
-Plots.plot(nodes, [overall_run, inside_run, policy_update],
-    title = "Training time - CPU",
+p = Plots.plot(nodes, [overall_run ./ 1000000000,
+                        env_calc ./ 1000000000,
+                        policy_update ./ 1000000000],
+    title = "Training time - GPU",
     ylabel = "Time [ns]",
     xlabel = "No. of Nodes",
-    label = ["overall run" "inside run" "policy update"],
-    legend =:outertopright)
+    label = ["overall run" "env calculation" "policy update"],
+    legend =:outertopright,
+    ylims = (0, 20))
+
+display(p)
 
 # plot(hook.rewards, 
 #     title = "Total reward per episode",
