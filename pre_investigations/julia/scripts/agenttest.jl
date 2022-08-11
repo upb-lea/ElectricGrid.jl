@@ -30,6 +30,11 @@ no_nodes = []
 overall_run = []
 inside_run = []
 policy_update = []
+grad_Actor = []
+grad_Critic=[]
+data_transfer=[]
+update_Critic=[]
+update_Actor=[]
 env_calc = []
 prepare_data = []
 
@@ -154,6 +159,11 @@ function collect_results!(timer::TimerOutput, node::Int)
     append!(inside_run, TimerOutputs.time(timer["Overall run"]["inside run"]))
     append!(policy_update, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]))
     append!(env_calc, TimerOutputs.time(timer["Overall run"]["inside run"]["Env calculation"]))
+    append!(grad_Actor, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["gradients for Actor"]))
+    append!(grad_Critic, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["gradients for Critic"]))
+    append!(update_Actor, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["policy - transfer of data to device"]))
+    append!(update_Critic, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["update Critic network"]))
+    append!(data_transfer, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["Update Actor network"]))
     append!(prepare_data, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent prepare data"]))
 end
 
@@ -162,7 +172,7 @@ end
 
 # collect_results!(timer, 1)
 
-nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]#, 30, 50]
+nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 50]
 
 for i = 1:length(nodes)
     to = TimerOutput()
@@ -189,6 +199,27 @@ Plots.plot(nodes, [overall_run, inside_run, policy_update],
     label = ["overall run" "inside run" "policy update"],
     legend =:outertopright)
 
+
+    Plots.plot(nodes, [grad_Actor, grad_Critic]./1e9,
+    title = "Update Actor and Critic Networks - GPU",
+    ylabel = "Time [s]",
+    xlabel = "No. of Nodes",
+    label = ["udpate(Actor)" "update(Critic)"],
+    legend =:outertopright)
+
+    Plots.plot(nodes, [update_Actor, update_Critic]./1e9,
+    title = "Gradient Computions - GPU",
+    ylabel = "Time [s]",
+    xlabel = "No. of Nodes",
+    label = ["grad(Actor)" "grad(Critic)"],
+    legend =:outertopright)
+
+    Plots.plot(nodes, [data_transfer]./1e9,
+    title = "data transfer to GPU - GPU",
+    ylabel = "Time [s]",
+    xlabel = "No. of Nodes",
+    # label = ["grad(Actor)"],
+    legend =:outertopright)
 # plot(hook.rewards, 
 #     title = "Total reward per episode",
 #     xlabel = "Episodes",
