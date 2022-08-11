@@ -29,7 +29,7 @@ function (hook::Summary)(::PostExperimentStage, agent, env)
 
     if save
         summary = DataFrame(:MeanReward => hook.rewards)
-        CSV.write("episode_data/summary.csv", summary)
+        CSV.write(save_path, summary)
     end
 
 end
