@@ -213,26 +213,33 @@ p = Plots.plot(nodes, [overall_run ./ 1000000000,
 display(p)
 
 
-    Plots.plot(nodes, [grad_Actor, grad_Critic]./1e9,
+p = Plots.plot(nodes, [grad_Actor, grad_Critic]./1e9,
     title = "Update Actor and Critic Networks - GPU",
     ylabel = "Time [s]",
     xlabel = "No. of Nodes",
     label = ["udpate(Actor)" "update(Critic)"],
     legend =:outertopright)
 
-    Plots.plot(nodes, [update_Actor, update_Critic]./1e9,
+display(p)
+
+p = Plots.plot(nodes, [update_Actor, update_Critic]./1e9,
     title = "Gradient Computions - GPU",
     ylabel = "Time [s]",
     xlabel = "No. of Nodes",
     label = ["grad(Actor)" "grad(Critic)"],
     legend =:outertopright)
 
-    Plots.plot(nodes, [data_transfer]./1e9,
+display(p)
+
+p = Plots.plot(nodes, [data_transfer]./1e9,
     title = "data transfer to GPU - GPU",
     ylabel = "Time [s]",
     xlabel = "No. of Nodes",
     # label = ["grad(Actor)"],
     legend =:outertopright)
+
+display(p)
+
 # plot(hook.rewards, 
 #     title = "Total reward per episode",
 #     xlabel = "Episodes",
