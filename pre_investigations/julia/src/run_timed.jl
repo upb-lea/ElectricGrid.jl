@@ -82,40 +82,46 @@ function RLBase.update!(p::DDPGPolicy, batch::NamedTuple{SARTS}, timer::TimerOut
     qₜ = Cₜ(vcat(s′, a′)) |> vec
     y = r .+ γ .* (1 .- t) .* qₜ
     a = Flux.unsqueeze(a, ndims(a) + 1)
-    println("inside Policy")
+    # println("inside Policy")
 
     @timeit timer "gradients for Critic " begin
-    gs1 = gradient(Flux.params(C)) do
-        q = C(vcat(s, a)) |> vec
-        loss = mean((y .- q) .^ 2)
-        # ignore() do
-            p.critic_loss = loss
-        # end
-        loss
+        gs1 = gradient(Flux.params(C)) do
+            q = C(vcat(s, a)) |> vec
+            loss = mean((y .- q) .^ 2)
+            # ignore() do
+                p.critic_loss = loss
+            # end
+            loss
+        end
     end
-    end
+    
 
-    @timeit timer "udpate Critic network " begin
-    update!(C, gs1)
+    @timeit timer "update Critic network " begin
+        update!(C, gs1)
     end
+    
 
     @timeit timer "gradients for Actor " begin
-    gs2 = gradient(Flux.params(A)) do
-        loss = -mean(C(vcat(s, A(s))))
-        # ignore() do
-            p.actor_loss = loss
-        # end
-        loss
+        gs2 = gradient(Flux.params(A)) do
+            loss = -mean(C(vcat(s, A(s))))
+            # ignore() do
+                p.actor_loss = loss
+            # end
+            loss
+        end
     end
-    end
+            
 
     @timeit timer "Update Actor network " begin
-    update!(A, gs2)
+        update!(A, gs2)
     end
 
+
     # polyak averaging
-    for (dest, src) in zip(Flux.params([Aₜ, Cₜ]), Flux.params([A, C]))
-        dest .= ρ .* dest .+ (1 - ρ) .* src
+    @timeit timer "polyak average" begin
+        for (dest, src) in zip(Flux.params([Aₜ, Cₜ]), Flux.params([A, C]))
+            dest .= ρ .* dest .+ (1 - ρ) .* src
+        end
     end
 end
 
