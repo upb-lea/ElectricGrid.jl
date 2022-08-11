@@ -24,7 +24,7 @@ include(srcdir("run_timed.jl"))
 # collect_results = Dict()
 
 
-reset_timer!(timer::TimerOutput)
+# reset_timer!(timer::TimerOutput)
 
 no_nodes = []
 overall_run = []
@@ -33,12 +33,13 @@ policy_update = []
 env_calc = []
 prepare_data = []
 
-global timer = TimerOutput()
+# global timer = TimerOutput()
 
-function train_ddpg(timer::TimerOutput, env_cuda::Bool, agent_cuda::Bool, num_nodes::Int, 
+function train_ddpg(timer::TimerOutput, 
+                    env_cuda::Bool, 
+                    agent_cuda::Bool, 
+                    num_nodes::Int, 
                     No_Episodes::Int)
-    
-    reset_timer!(timer::TimerOutput)
     
     env_cuda = env_cuda
     agent_cuda = agent_cuda
@@ -55,13 +56,6 @@ function train_ddpg(timer::TimerOutput, env_cuda::Bool, agent_cuda::Bool, num_no
     CM = convert(Matrix{Int}, CM)
 
     parameters = Dict()
-    # LC filter
-    # parameters["source"] = [Dict("fltr" => "LC", "R" => 0.4, "L1" => 2.3e-3, "C" => 10e-6)]
-    # parameters["cable"] = [Dict("R" => 0.722, "L" => 0.955e-3, "C" => 8e-09)]
-    # parameters["load"] = [Dict("impedance" => "R", "R" => 14)]
-
-
-    #nc = NodeConstructor(num_sources=1, num_loads=1, CM=CM, parameters=parameters)
     nc = NodeConstructor(num_sources=num_nodes, num_loads=num_nodes, CM=CM)
 
     #draw_graph(Grid_FC)   ---   not yet implemented
@@ -171,7 +165,9 @@ end
 nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]#, 30, 50]
 
 for i = 1:length(nodes)
-    local_timer = train_ddpg(false, false, nodes[i], 5)
+    to = TimerOutput()
+    reset_timer!(to)
+    local_timer = train_ddpg(to, true, true, nodes[i], 10)
     collect_results!(local_timer, nodes[i])
 end
 # show(timer)
