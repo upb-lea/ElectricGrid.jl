@@ -84,7 +84,7 @@ function RLBase.update!(p::DDPGPolicy, batch::NamedTuple{SARTS}, timer::TimerOut
     a = Flux.unsqueeze(a, ndims(a) + 1)
     # println("inside Policy")
 
-    @timeit timer "gradients for Critic " begin
+    @timeit timer "gradients for Critic" begin
         gs1 = gradient(Flux.params(C)) do
             q = C(vcat(s, a)) |> vec
             loss = mean((y .- q) .^ 2)
@@ -96,12 +96,12 @@ function RLBase.update!(p::DDPGPolicy, batch::NamedTuple{SARTS}, timer::TimerOut
     end
     
 
-    @timeit timer "update Critic network " begin
+    @timeit timer "update Critic network" begin
         update!(C, gs1)
     end
     
 
-    @timeit timer "gradients for Actor " begin
+    @timeit timer "gradients for Actor" begin
         gs2 = gradient(Flux.params(A)) do
             loss = -mean(C(vcat(s, A(s))))
             # ignore() do
@@ -112,7 +112,7 @@ function RLBase.update!(p::DDPGPolicy, batch::NamedTuple{SARTS}, timer::TimerOut
     end
             
 
-    @timeit timer "Update Actor network " begin
+    @timeit timer "Update Actor network" begin
         update!(A, gs2)
     end
 
