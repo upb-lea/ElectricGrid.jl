@@ -44,7 +44,8 @@ function train_ddpg(timer::TimerOutput,
                     env_cuda::Bool, 
                     agent_cuda::Bool, 
                     num_nodes::Int, 
-                    No_Episodes::Int)
+                    No_Episodes::Int,
+                    batch)
     
     env_cuda = env_cuda
     agent_cuda = agent_cuda
@@ -105,7 +106,7 @@ function train_ddpg(timer::TimerOutput,
 
 
     env = SimEnv(A=A, B=B, C=C, Ad=Ad, Bd=Bd, norm_array=norm_array, x0=x0, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=true)
-    agent = create_agent(na, ns, agent_cuda)
+    agent = create_agent(na, ns, batch, agent_cuda)
 
     hook = TotalRewardPerEpisode()
 
@@ -175,90 +176,80 @@ end
 env_cuda = true
 agent_cuda = true
 
+batch_sizes = [16, 32]
 nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 50] #, 60, 70]
+No_Episodes = 50
 
 to = TimerOutput()
 reset_timer!(to)
-train_ddpg(to, env_cuda, agent_cuda, 1, 10)
+train_ddpg(to, env_cuda, agent_cuda, 1, 10, 64)
 
-for i = 1:length(nodes)
-    to = TimerOutput()
-    reset_timer!(to)
-    train_ddpg(to, env_cuda, agent_cuda, nodes[i], 10)
-    collect_results!(to, nodes[i])
+for batch in batch_sizes
+    no_nodes = []
+    overall_run = []
+    inside_run = []
+    policy_update = []
+    grad_Actor = []
+    grad_Critic=[]
+    data_transfer=[]
+    update_Critic=[]
+    update_Actor=[]
+    env_calc = []
+    prepare_data = []
+
+    for i = 1:length(nodes)
+        to = TimerOutput()
+        reset_timer!(to)
+        train_ddpg(to, env_cuda, agent_cuda, nodes[i], No_Episodes, batch)
+        collect_results!(to, nodes[i])
+    end
+
+    p = Plots.plot(nodes, [overall_run,
+                            env_calc,
+                            policy_update] ./1e9,
+        title = "Training time - GPU",
+        ylabel = "Time [s]",
+        xlabel = "No. of Nodes",
+        label = ["overall run" "env calculation" "policy update"],
+        legend =:outertopright)
+
+    name = @ntuple env_cuda agent_cuda No_Episodes batch
+
+
+    display(p)
+    Plots.savefig(p, plotsdir(savename("overall_run", name, "png")))
+
+
+    p = Plots.plot(nodes, [grad_Actor, grad_Critic]./1e9,
+        title = "Update Actor and Critic Networks - GPU",
+        ylabel = "Time [s]",
+        xlabel = "No. of Nodes",
+        label = ["update(Actor)" "update(Critic)"],
+        legend =:outertopright)
+
+        Plots.savefig(p, plotsdir(savename("update_networks", name, "png")))
+    display(p)
+
+    p = Plots.plot(nodes, [update_Actor, update_Critic]./1e9,
+        title = "Gradient Computations - GPU",
+        ylabel = "Time [s]",
+        xlabel = "No. of Nodes",
+        label = ["grad(Actor)" "grad(Critic)"],
+        legend =:outertopright)
+        Plots.savefig(p, plotsdir(savename("gradients", name, "png")))
+    display(p)
+
+    p = Plots.plot(nodes, [data_transfer]./1e9,
+        title = "data transfer: CPU -> GPU",
+        ylabel = "Time [s]",
+        xlabel = "No. of Nodes",
+        # label = ["grad(Actor)"],
+        legend =:outertopright)
+        Plots.savefig(p, plotsdir(savename("data_transfer", name, "png")))
+    display(p)
+
 end
-# show(timer)
 
-
-
-# @benchmark run(
-#     agent,
-#     env,
-#     StopAfterEpisode(No_Episodes),
-#     hook
-# ) seconds = 120 evals = 2
-
-# Plots.plot(nodes, overall_run)
-p = Plots.plot(nodes, [overall_run,
-                        env_calc,
-                        policy_update] ./1e9,
-    title = "Training time - GPU",
-    ylabel = "Time [ns]",
-    xlabel = "No. of Nodes",
-    label = ["overall run" "env calculation" "policy update"],
-    legend =:outertopright,
-    ylims = (0, 20))
-
-display(p)
-
-
-p = Plots.plot(nodes, [grad_Actor, grad_Critic]./1e9,
-    title = "Update Actor and Critic Networks - GPU",
-    ylabel = "Time [s]",
-    xlabel = "No. of Nodes",
-    label = ["update(Actor)" "update(Critic)"],
-    legend =:outertopright)
-
-display(p)
-
-p = Plots.plot(nodes, [update_Actor, update_Critic]./1e9,
-    title = "Gradient Computations - GPU",
-    ylabel = "Time [s]",
-    xlabel = "No. of Nodes",
-    label = ["grad(Actor)" "grad(Critic)"],
-    legend =:outertopright)
-
-display(p)
-
-p = Plots.plot(nodes, [data_transfer]./1e9,
-    title = "data transfer: CPU -> GPU",
-    ylabel = "Time [s]",
-    xlabel = "No. of Nodes",
-    # label = ["grad(Actor)"],
-    legend =:outertopright)
-
-display(p)
-
-# plot(hook.rewards, 
-#     title = "Total reward per episode",
-#     xlabel = "Episodes",
-#     ylabel = "Rewards",
-#     legend = false)
-
-# plot(PLoad,
-#     title = "Power @ Load",
-#     ylabel = "Power in Watts",
-#     xlabel = "Time steps for 150 episodes [150 x 300]",
-#     legend = false)
-
-# plot(PLoad[end-300 : end],
-#     title = "Power @ Load for the last episode",
-#     ylabel = "Power in Watts",
-#     xlabel = "Time steps",
-#     legend = false
-#     )
-
-# Plots.savefig(p, plotsdir())
 
 Timing_dict = Dict()
 Timing_dict["no_nodes"] = nodes

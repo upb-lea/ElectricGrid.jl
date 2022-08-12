@@ -20,7 +20,7 @@ global create_critic(na, ns) = Chain(
     Dense(30, 1; init = initt),
 )
 
-function create_agent(na, ns, use_gpu = true)
+function create_agent(na, ns, batch_size, use_gpu = true)
     Agent(
         policy = DDPGPolicy(
             behavior_actor = NeuralNetworkApproximator(
@@ -42,7 +42,7 @@ function create_agent(na, ns, use_gpu = true)
             γ = 0.99f0,
             ρ = 0.995f0,
             na = na,
-            batch_size = 64,
+            batch_size = batch_size,
             start_steps = 0,
             start_policy = RandomPolicy(-1.0..1.0; rng = rngg),
             update_after = 150, #1000 
