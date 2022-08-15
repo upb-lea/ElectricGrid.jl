@@ -112,7 +112,7 @@ function RLBase.update!(p::DDPGPolicy, batch::NamedTuple{SARTS}, timer::TimerOut
     end
             
 
-    @timeit timer "Update Actor network" begin
+    @timeit timer "update Actor network" begin
         update!(A, gs2)
     end
 
