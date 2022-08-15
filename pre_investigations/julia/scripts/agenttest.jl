@@ -178,9 +178,8 @@ agent_cuda = true
 
 nodes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 50, 60, 70]
 
-to = TimerOutput()
-reset_timer!(to)
-train_ddpg(to, env_cuda, agent_cuda, 1, 10)
+
+train_ddpg(reset_timer!(TimerOutput()), env_cuda, agent_cuda, 1, 10)
 
 for i = 1:length(nodes)
     to = TimerOutput()
