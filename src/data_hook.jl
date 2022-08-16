@@ -53,7 +53,7 @@ end
 
 function (hook::DataHook)(::PostExperimentStage, agent, env)
 
-    if save_data_to_hd
+    if hook.save_data_to_hd
         isdir(hook.dir) || mkdir(hook.dir)
         Arrow.write(hook.dir * "data.arrow", hook.df)
     end
