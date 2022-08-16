@@ -27,8 +27,8 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     x = x0
     maxsteps::Int = 300
     steps::Int = 0
-    t::Rational = 0
-    ts::Rational = 1//10_000
+    t = 0
+    ts = 1/10_000
     Ad = exp(A*ts)
     Bd = A \ (Ad - C) * B
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
@@ -83,7 +83,7 @@ function (env::SimEnv)(action)
     env.x = xout_d[:,2]
     #env.x = xout_d'[2,:]
     if env.convert_state_to_cpu
-        env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
+        env.state = Array(xout_d)'[2,:] ./ env.norm_array
     else
         env.state = xout_d'[2,:] ./ env.norm_array
     end

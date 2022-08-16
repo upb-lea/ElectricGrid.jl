@@ -11,7 +11,7 @@ using Plots
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"));
 include(srcdir("sin_policy.jl"))
-include("../src/data_hook.jl")
+include(srcdir("data_hook.jl"))
 
 
 function reward(env)

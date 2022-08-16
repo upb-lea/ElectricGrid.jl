@@ -7,6 +7,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     dir = "episode_data/"
 
     state_ids = []
+    next_state_ids = []
 
     df = DataFrame()
     tmp = DataFrame()
@@ -25,6 +26,7 @@ end
 function (hook::DataHook)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, :episode => hook.ep)
+    insertcols!(hook.tmp, :time => Float32(env.t))
 
     for state_id in hook.state_ids
         insertcols!(hook.tmp, state_id => env.state[findfirst(x -> x == state_id, env.state_ids)])
@@ -36,7 +38,10 @@ end
 
 function (hook::DataHook)(::PostActStage, agent, env)
 
-   # insertcols!(hook.tmp, :next_state => Ref(env.state))
+    for state_id in hook.next_state_ids
+        insertcols!(hook.tmp, ("next_state_" * state_id) => env.state[findfirst(x -> x == state_id, env.state_ids)])
+    end
+
     insertcols!(hook.tmp, :reward => env.reward)
     insertcols!(hook.tmp, :done => env.done)
 
