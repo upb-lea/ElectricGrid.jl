@@ -32,11 +32,18 @@ using ControlSystems
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
 # Parameters
-Lf = 2.3e-3 #Henry, filter inductor
-Rf = 0.4 # Ohms, inductor parasitic resistance
-Cf = 10e-6 # Farad, filter capacitor
-Ts = 25e-6 # Seconds, switching/sampling time step
-Vdc = 600 # Volts, DC bus
+
+
+Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+f_cntr = 1/(Timestep*1e-6) # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
+
+#num_source = 1
+
+Lf = Source.Lf[num_source] # 2.3e-3 # Henry, filter inductor 
+Rf = Source.Rf[num_source]  # 400e-3 # Ohms, inductor parasitic resistance
+Cf = Source.Cf[num_source] # 10e-6  # Farad, filter capacitor
+Ts = Timestep*1e-6 # 0.1e-3 # Seconds, switching/sampling time step
+Vdc = Source.Vdc[num_source] # 2*600 # Volts, DC bus 
 
 fsys = 50 # Hz, System frequency
 
@@ -70,6 +77,7 @@ PWM_gain = Vdc/2
 
 #SC = tf([1/(1*Lf)], [1, Rf/Lf]) # = tf(sys_sc)
 Gsc_ol = minreal(tf(sys_sc)*Pade*PWM_gain*ZoH) # Full transfer function of plant
+#Gsc_ol = minreal(tf(sys_sc)*Pade*PWM_gain) # Full transfer function of plant
 kp_i = 0.0
 ki_i = 0.0
 for i in 6:max_i
@@ -99,8 +107,8 @@ for i in 6:max_i
         println("\nMeasured gain @ crossover = ", round(10*log(10, abs(Validate[1]))), " [dB]")
         println("Measured phase margin = ", round(180 + angle(Validate[1])*180/π), " [degrees]")
 
-        println("\nPI coefficient, kp = ", round(kp_i, digits = 3), " [V/A]")
-        println("PI coefficient, ki = ", round(ki_i, digits = 3), " [V/As]")
+        println("\nPI coefficient, kp = ", round(kp_i, digits = 3), " [A/V]")
+        println("PI coefficient, ki = ", round(ki_i, digits = 3), " [A/Vs]")
 
         println("\nClosed Loop Poles: ")
         for j in 1:length(poles(Gi_cl))
@@ -171,7 +179,9 @@ end
 #OC = tf([1/(Lf*Cf)], [1, Rf/Lf, 1/(Lf*Cf)]) # = tf(sys_oc)[1,1] - basic check
 Goc_ol = minreal(tf(sys_oc)[1,1]*ZoH*Gi_oc_cl) # Full open loop transfer function of current controller and open circuit plant
 
-for i in max_i:-0.25:1
+Goc_ol = minreal(Gi_cl*tf([1], [Cf, 0]))
+
+for i in max_i:-1:1
 
     global Goc_ol, Gv_cl, Gpi_v, ωp, pm
 

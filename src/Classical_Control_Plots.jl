@@ -3,7 +3,7 @@ function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller, Env::En
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
@@ -65,7 +65,7 @@ function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller, Env::En
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
@@ -121,7 +121,7 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, Env
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
@@ -188,7 +188,7 @@ function Plot_Irms(T_plot_start, T_plot_end, Env::Environment; num_node = 1)
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
@@ -240,7 +240,7 @@ function Plot_Vrms(T_plot_start, T_plot_end, Env::Environment, Source::Source_Co
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
 
@@ -334,7 +334,7 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
 
@@ -384,7 +384,7 @@ function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env::Envi
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
@@ -435,7 +435,7 @@ function Plot_P_inst(num_node, T_plot_start, T_plot_end, Env::Environment)
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
@@ -501,7 +501,7 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Env::Environme
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
@@ -550,7 +550,7 @@ function Plot_fft(T_plot_start, T_plot_end, Env::Environment, Source::Source_Con
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     x_lim = (-1500, +1500)
     x_ticks = -1500:250:1500
 
@@ -642,7 +642,7 @@ function Plot_Droop(T_plot_start, T_plot_end, Source::Source_Controller, Env::En
     if T_plot_end > Env.t_final*Env.fsys
         T_plot_end = Env.t_final*Env.fsys
     end
-
+    Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end

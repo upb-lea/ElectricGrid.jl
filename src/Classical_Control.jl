@@ -5,6 +5,10 @@ mutable struct Source_Controller <: AbstractPolicy
         control of a three-phase half bridge DC to AC Converter.
     =#
 
+    # Abstract Policy
+
+    action_space::Space{Vector{ClosedInterval{Float64}}}
+
     #---------------------------------------------------------------------------
     # Physical Electrical Parameters
 
@@ -123,7 +127,8 @@ mutable struct Source_Controller <: AbstractPolicy
     eq::Matrix{Float64}
     Mfif::Matrix{Float64}
 
-    function Source_Controller(Vdc::Vector{Float64}, Vrms::Vector{Float64},
+    function Source_Controller(action_space::Space{Vector{ClosedInterval{Float64}}},
+        Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
         i_max::Vector{Float64}, v_max::Vector{Float64},
         Lf::Vector{Float64}, Cf::Vector{Float64}, Rf::Vector{Float64},
@@ -154,7 +159,8 @@ mutable struct Source_Controller <: AbstractPolicy
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Matrix{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Matrix{Float64})
 
-        new(Vdc, Vrms,
+        new(action_space,
+        Vdc, Vrms,
         S, P, Q,
         i_max, v_max,
         Lf, Cf, Rf,
@@ -187,6 +193,11 @@ mutable struct Source_Controller <: AbstractPolicy
     end
 
     function Source_Controller(t_final, f_cntr, num_sources; delay = 1)
+
+        #---------------------------------------------------------------------------
+        # Abstract Policy
+
+        action_space = Space([ -1.0..1.0 for i = 1:num_sources*3], )
 
         #---------------------------------------------------------------------------
         # Physical Electrical Parameters
@@ -377,7 +388,8 @@ mutable struct Source_Controller <: AbstractPolicy
         Mfif = Array{Float64, 2}(undef, num_sources, N_cntr)
         Mfif = fill!(Mfif, 0)
 
-        Source_Controller(Vdc, Vrms,
+        Source_Controller(action_space,
+        Vdc, Vrms,
         S, P, Q,
         i_max, v_max,
         Lf, Cf, Rf,
@@ -876,7 +888,7 @@ function Phase_Locked_Loop_1ph(Source::Source_Controller, num_source; Kp = 0.001
     return nothing
 end
 
-function PQ_Control(Source::Source_Controller, num_source, θ; Kp = 0.1, Ki = 10, pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
+function PQ_Control(Source::Source_Controller, num_source, θ; Kp = 0.05, Ki = 5, pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
 
     i = Source.steps
 
@@ -972,22 +984,22 @@ end
 function Current_Controller(Source::Source_Controller, num_source, θ)
 
     #=
-    When a grid-connected inverter is controlled as a current supply, the output
-    voltage is mainted by the grid and the inverter only regulates current exchanged
-    with the grid. Some simplified synchronizing methods can be adopted and no
-    extra effort is needed to design the synchronizing unit. Because of the
-    simplified control structure and the reduced demand on the synchronization
-    unit, it is well known that it is much easier to control a grid-connected inverter
-    as a current supply than to control it as a voltage supply. However, when an
-    inverter is controlled as a current supply, it causes undesirable problems.
-    For example, the controller needs to be changed when the inverter is disconnected
-    from the grid to operate in the standalone mode or when the grid is weak because,
-    it does not have the capability of regulating the voltage. A current-controlled
-    inverter may also continue injecting currents into the grid when there is
-    a fault on the grid, which might cause excessively high voltage. Moreover,
-    a current-controlled inverter is difficult to take part in the regulation of
-    the grid frequency and voltage, which is a must when the penetration of
-    renewable energy exceeds a certain level.
+        When a grid-connected inverter is controlled as a current supply, the output
+        voltage is mainted by the grid and the inverter only regulates current exchanged
+        with the grid. Some simplified synchronizing methods can be adopted and no
+        extra effort is needed to design the synchronizing unit. Because of the
+        simplified control structure and the reduced demand on the synchronization
+        unit, it is well known that it is much easier to control a grid-connected inverter
+        as a current supply than to control it as a voltage supply. However, when an
+        inverter is controlled as a current supply, it causes undesirable problems.
+        For example, the controller needs to be changed when the inverter is disconnected
+        from the grid to operate in the standalone mode or when the grid is weak because,
+        it does not have the capability of regulating the voltage. A current-controlled
+        inverter may also continue injecting currents into the grid when there is
+        a fault on the grid, which might cause excessively high voltage. Moreover,
+        a current-controlled inverter is difficult to take part in the regulation of
+        the grid frequency and voltage, which is a must when the penetration of
+        renewable energy exceeds a certain level.
     =#
 
     # --- to be removed
@@ -1010,18 +1022,17 @@ function Current_Controller(Source::Source_Controller, num_source, θ)
 
     s_dq0_avg, Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] =
     PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.μ_cntr)
-    # Kp/1000, Ki/100
 
     Source.Vd_abc_new[num_source, :, i + Source.delay] = 0.5*Source.Vdc[num_source].*Inv_DQ0_transform(s_dq0_avg, θ)
-    #=
-    The switching functions s_abc(t) is generated by comparing the normalized
-    voltage value with a triangular modulation carrier. The output of the
-    comparator can be directly referred to as the switching function. Through
-    geometric interpretation of this procedure it becomes clear that the time
-    average of the switching function corresponds to the reference signal, as
-    long as the phasor components of the reference signal can be assumed to be
-    slowly varying. That is, the above equation holds when averaging over one
-    pulse period.
+    #= Theory:
+        The switching functions s_abc(t) is generated by comparing the normalized
+        voltage value with a triangular modulation carrier. The output of the
+        comparator can be directly referred to as the switching function. Through
+        geometric interpretation of this procedure it becomes clear that the time
+        average of the switching function corresponds to the reference signal, as
+        long as the phasor components of the reference signal can be assumed to be
+        slowly varying. That is, the above equation holds when averaging over one
+        pulse period.
     =#
 
     return nothing
@@ -1894,6 +1905,7 @@ function Current_PI_LoopShaping(Source::Source_Controller, num_source)
 
         if i == max_i
             println("\nError. PI Current Controller with Positive Poles.")
+            println("Suggestion: Decrease Simulation Time Step")
             println("Source = ", num_source,"\n")
         end
     end
@@ -1968,6 +1980,7 @@ function Voltage_PI_LoopShaping(Source::Source_Controller, num_source)
 
         if i == 1
             println("\nError. PI Voltage Controller with Positive Poles.")
+            println("Suggestion: Decrease Simulation Time Step")
             println("Source = ", num_source,"\n")
         end
     end

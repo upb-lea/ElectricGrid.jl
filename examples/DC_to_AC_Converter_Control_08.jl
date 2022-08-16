@@ -22,16 +22,16 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 
 #_______________________________________________________________________________
 # Parameters - Time simulation
-Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+Timestep = 75 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_final = 2 #time in seconds, total simulation run time
 
 #_______________________________________________________________________________
 # Environment Calcs
-Nps = (1/(Timestep*1e-6)) # time intervals
-μps = 1/Nps # time step
-t = 0:μps:t_final # time
 
-f_cntr = 1/μps # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
+Ts = Timestep*1e-6
+t = 0:Ts:t_final # time
+
+f_cntr = 1/Ts # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
 
 #_______________________________________________________________________________
 # Setting up the Sources
@@ -63,7 +63,7 @@ Mode_Keys = collect(keys(Source.Modes))
 =#
 
 Source_Initialiser(Source, Mode_Keys[3], num_source = 1, Prated = 150e3)
-Source_Initialiser(Source, "PQ Control Mode", num_source = 2, Prated = 100e3, Qrated = 20e3)
+Source_Initialiser(Source, Mode_Keys[2], num_source = 2, Prated = 100e3, Qrated = 10e3)
 
 #_______________________________________________________________________________
 # Circuit Elements Calcs
@@ -98,8 +98,8 @@ A, B, C, D, B2, D2 = Two_Sources_One_Load(Source, Vo_rms, SL1, pf1, SL2, pf2, Lt
     A, B, C, D = get_sys(power_grid)
 =#
 
-Env = Environment(t_final, μps, A, B, C, D, num_sources, num_loads)
-Env.V_poc_loc = [3 4; 11 12; 19 20] # ID's at which nodes the are sources located
+Env = Environment(t_final, Ts, A, B, C, D, num_sources, num_loads)
+Env.V_poc_loc = [3 4; 11 12; 19 20] # ID's at which nodes the sources are located
 Env.I_poc_loc = [5 6; 13 14; 21 22]
 Env.I_inv_loc = [1 2; 9 10; 17 18]
 
@@ -107,10 +107,14 @@ ns = length(A[1,:]) # get num of states
 x0 = [0.0 for i = 1:ns] # initial conditions
 env = SimEnv(A = A, B = B2, C = C, D = D2, x0 = x0)
 
-reset!(env)
-
 #%% Starting time simulation
 println("\nHere we go.\n")
+
+reset!(env) 
+
+#run(policy, env, StopAfterStep(10))
+# reset source as well.
+# current limitation for PQ mode
 
 @time begin
 
@@ -131,7 +135,9 @@ println("\nHere we go.\n")
         # Control System _______________________________________________________
 
         if t[i] > t_final/2
-            Source.pq0_set[2,:] = [-50e3; 10e3; 0]
+            num_source = 2 # changing the power set points of the 2nd source
+            #Source.pq0_set[num_source, 1] = -50e3 # W, Real Power
+            Source.pq0_set[num_source, 2] = 30e3 # VAi, Imaginary Power
         end
 
         #-----------------------------------------------------------------------
@@ -169,6 +175,7 @@ println("\nHere we go.\n")
 
         # System Dynamics ______________________________________________________
 
+        #env(Action)
         Evolution(Env, Action)
 
     end
