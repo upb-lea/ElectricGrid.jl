@@ -1,8 +1,7 @@
 using ReinforcementLearning
 using DataFrames
-using CSV
 
-Base.@kwdef mutable struct SaveAllEpisodes <: AbstractHook
+Base.@kwdef mutable struct DataHook <: AbstractHook
 
     save_data_to_hd = false
     dir = "episode_data/"
@@ -15,7 +14,7 @@ Base.@kwdef mutable struct SaveAllEpisodes <: AbstractHook
 
 end
 
-function (hook::SaveAllEpisodes)(::PreExperimentStage, agent, env)
+function (hook::DataHook)(::PreExperimentStage, agent, env)
 
     # rest
     hook.df = DataFrame()
@@ -23,7 +22,7 @@ function (hook::SaveAllEpisodes)(::PreExperimentStage, agent, env)
     
 end
 
-function (hook::SaveAllEpisodes)(::PreActStage, agent, env, action)
+function (hook::DataHook)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, 1, :episode => hook.ep)
     insertcols!(hook.tmp, 2, :state => Ref(env.state))
@@ -32,7 +31,7 @@ function (hook::SaveAllEpisodes)(::PreActStage, agent, env, action)
     
 end
 
-function (hook::SaveAllEpisodes)(::PostActStage, agent, env)
+function (hook::DataHook)(::PostActStage, agent, env)
 
     insertcols!(hook.tmp, 4, :next_state => Ref(env.state))
     insertcols!(hook.tmp, 5, :reward => env.reward)
@@ -43,13 +42,13 @@ function (hook::SaveAllEpisodes)(::PostActStage, agent, env)
     
 end
 
-function (hook::SaveAllEpisodes)(::PostEpisodeStage, agent, env)
+function (hook::DataHook)(::PostEpisodeStage, agent, env)
 
     hook.ep += 1
 
 end
 
-function (hook::SaveAllEpisodes)(::PostExperimentStage, agent, env)
+function (hook::DataHook)(::PostExperimentStage, agent, env)
 
     if save_data_to_hd
         isdir(hook.dir) || mkdir(hook.dir)

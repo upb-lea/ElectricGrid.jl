@@ -4,7 +4,7 @@ using LinearAlgebra
 using ControlSystems
 using CUDA
 
-include(srcdir("custom_control.jl"))
+include("./custom_control.jl")
 
 # required power at the load
 P_required = 1000 # W
@@ -29,7 +29,9 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     steps::Int = 0
     t::Rational = 0
     ts::Rational = 1//10_000
-    sys_d = HeteroStateSpace(exp(A*ts), A \ (Ad - C) * B, C, D, Float64(ts))
+    Ad = exp(A*ts)
+    Bd = A \ (Ad - C) * B
+    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     state_ids::Vector{String}
     norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
     v_dc::Float64 = 300
