@@ -393,7 +393,7 @@ function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env::Envi
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Frequency [Hz]",
-        title = "Phase-Locked-Loop",
+        title = "Phase-Locked-Loop: Source = "*string(num_source),
         grid = true,
         foreground_color_grid = :black,
         minorgrid = true,

@@ -105,6 +105,7 @@ mutable struct Source_Controller <: AbstractPolicy
     #---------------------------------------------------------------------------
     # PQ Mode
 
+    pq0_set::Matrix{Float64}
     PQ_err::Array{Float64}
     PQ_err_t::Matrix{Float64}
 
@@ -148,7 +149,7 @@ mutable struct Source_Controller <: AbstractPolicy
         I_lim::Matrix{Float64},
         Δfmax::Float64, ΔEmax::Float64, τv::Float64, τf::Float64,
         D::Matrix{Float64}, ω_droop::Array{Float64}, θ_droop::Array{Float64},
-        PQ_err::Array{Float64}, PQ_err_t::Matrix{Float64},
+        pq0_set::Matrix{Float64}, PQ_err::Array{Float64}, PQ_err_t::Matrix{Float64},
         J_sync::Vector{Float64}, K_sync::Vector{Float64}, ΔT_t::Vector{Float64},
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Matrix{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Matrix{Float64})
@@ -179,7 +180,7 @@ mutable struct Source_Controller <: AbstractPolicy
         I_lim,
         Δfmax, ΔEmax, τv, τf,
         D, ω_droop, θ_droop,
-        PQ_err, PQ_err_t,
+        pq0_set, PQ_err, PQ_err_t,
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif)
@@ -346,6 +347,8 @@ mutable struct Source_Controller <: AbstractPolicy
         #---------------------------------------------------------------------------
         # PQ Mode
 
+        pq0_set = Array{Float64, 2}(undef, num_sources, 3) # real, imaginary, and zero power set points
+        pq0_set = fill!(pq0_set, 0)
         PQ_err = Array{Float64, 3}(undef, num_sources, 3, 3) # 3 phases and 3rd order integration
         PQ_err = fill!(PQ_err, 0)
         PQ_err_t = Array{Float64, 2}(undef, num_sources, 3) # PLL total integrated error
@@ -400,7 +403,7 @@ mutable struct Source_Controller <: AbstractPolicy
         I_lim,
         Δfmax, ΔEmax, τv, τf,
         D, ω_droop, θ_droop,
-        PQ_err, PQ_err_t,
+        pq0_set, PQ_err, PQ_err_t,
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif)
@@ -561,7 +564,7 @@ function Classical_Policy(Source::Source_Controller, Env::Environment)
             Voltage_Control_Mode(Source, s)
         elseif Source.Modes[Source.Source_Modes[s]] == 3
 
-            #PQ_Control_Mode(Source, s, Source.pq0_set[s,:])
+            PQ_Control_Mode(Source, s, Source.pq0_set[s,:])
         elseif Source.Modes[Source.Source_Modes[s]] == 4
 
             Droop_Control_Mode(Source, s)
@@ -611,6 +614,7 @@ function Swing_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp 
     Source.V_ref[num_source, :, i] = sqrt(2)*Vrms*sin.(θph)
 
     Source.Vd_abc_new[num_source, :, i] = Source.V_ref[num_source, :, i]
+    Phase_Locked_Loop_3ph(Source, num_source)
 
     return nothing
 end
@@ -623,7 +627,8 @@ function Voltage_Control_Mode(Source::Source_Controller, num_source; δ = 0, pu 
     θph = [θt + δ; θt + δ - 120π/180; θt + δ + 120π/180]
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.μ_cntr, i; t_end = t_end, ramp = ramp)
     Source.V_ref[num_source, :, i] = sqrt(2)*Vrms*cos.(θph)
-
+    
+    Phase_Locked_Loop_3ph(Source, num_source)
     Voltage_Controller(Source, num_source, θt)
     Current_Controller(Source, num_source, θt)
 
@@ -643,6 +648,7 @@ function Droop_Control_Mode(Source::Source_Controller, num_source; ramp = 0, t_e
     Droop_Control(Source, num_source, Vrms = Vrms)
     θt = Source.θ_droop[num_source, 1, i]
 
+    Phase_Locked_Loop_3ph(Source, num_source)
     Voltage_Controller(Source, num_source, θt)
     Current_Controller(Source, num_source, θt)
 
@@ -662,6 +668,7 @@ function PQ_Control_Mode(Source::Source_Controller, num_source, pq0)
         Voltage_Controller(Source, num_source, θt)
     end
 
+    Phase_Locked_Loop_3ph(Source, num_source)
     Current_Controller(Source, num_source, θt)
 
     return nothing
@@ -869,7 +876,7 @@ function Phase_Locked_Loop_1ph(Source::Source_Controller, num_source; Kp = 0.001
     return nothing
 end
 
-function PQ_Control(Source::Source_Controller, num_source, θ; Kp = 0.001, Ki = 1, pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
+function PQ_Control(Source::Source_Controller, num_source, θ; Kp = 0.1, Ki = 10, pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
 
     i = Source.steps
 
@@ -1679,11 +1686,20 @@ function Two_Sources_One_Load(Source::Source_Controller, Vo_rms, SL1, pf1, SL2, 
     b = [1/Lf1; 1/Lf2; 0; 0; 0; 0; 0; 0]
     d = [1.0; 1.0; 0; 0; 0; 0; 0; 0]
 
+    b2a = [1/Lf1; 0; 0; 0; 0; 0; 0; 0]
+    b2b = [0; 1/Lf2; 0; 0; 0; 0; 0; 0]
+    b2 = [b2a b2b]
+
+    d2a = [1.0; 0; 0; 0; 0; 0; 0; 0]
+    d2b = [0; 1.0; 0; 0; 0; 0; 0; 0]
+    d2 = [d2a d2b]
+
     A = [a zeros(8,8) zeros(8,8);
         zeros(8,8) a zeros(8,8);
         zeros(8,8) zeros(8,8) a]
 
     B = [b; b; b]
+    B2 = [b2; b2; b2]
 
     C = [c zeros(8,8) zeros(8,8);
         zeros(8,8) c zeros(8,8);
@@ -1691,10 +1707,12 @@ function Two_Sources_One_Load(Source::Source_Controller, Vo_rms, SL1, pf1, SL2, 
 
     D = [d; d; d]
 
-    return A, B, C, D
+    D2 = [d2; d2; d2]
+
+    return A, B, C, D, B2, D2
 end
 
-function Source_Initialiser(Source::Source_Controller; num_source = 1, Prated = 0, Qrated = 0, Srated = 0, pf = 0.8)
+function Source_Initialiser(Source::Source_Controller, mode; num_source = 1, Prated = 0, Qrated = 0, Srated = 0, pf = 0.8)
 
     if Prated == 0 && Qrated == 0 && Srated == 0
         Source.S[num_source] = 50e3
@@ -1725,6 +1743,10 @@ function Source_Initialiser(Source::Source_Controller; num_source = 1, Prated = 
         Source.P[num_source] = Prated
         Source.Q[num_source] = sqrt(Source.S[num_source]^2 - Prated^2)
     end
+
+    Source.Source_Modes[num_source] = mode
+
+    Source.pq0_set[num_source, :] = [Source.P[num_source]; Source.Q[num_source]; 0]
 
     Source.i_max[num_source] = 1.15*sqrt(2)*Source.S[num_source]/(3*Source.Vrms[num_source])
 
@@ -1791,75 +1813,87 @@ end
 function Current_PI_LoopShaping(Source::Source_Controller, num_source)
 
     #=
-    The current controller is designed for a short circuit
-    The voltage controller is designed for an open circuit
-    - assuming that cable capacitances can be neglected
+        The current controller is designed for a short circuit
+        The voltage controller is designed for an open circuit
+        - assuming that cable capacitances can be neglected
 
-    Controller Definitions
-    ωcp - gain crossover frequency, is the frequency where the phase margin is measured,
-    which is a 0-dB Gain crossing frequency
-    ωcg - phase crossover frequency, is the frequency where the gain margin is measure,
-    which is a -π phase crossing frequency
-    pm - phase margin, the phase margin is the difference between the phase of the response
-    and -π when the loop gain is 1
-    gm - gain margin, the amount of gain variance required to make the loop gain unity
-    at the frequency ωcg where the phase angle is -π. In other words, the gain margin
-    is 1/g if g is the gain at the -π phase frequency. Negative gain margins indicate
-    that stability is lost by decreasing the gain, while positive gain margins indicate
-    that stability is lost by decreasing the gain, while positive gain margins indicate
-    that stability is lost by increasing the gain.
+        Controller Definitions
+        ωcp - gain crossover frequency, is the frequency where the phase margin is measured,
+        which is a 0-dB Gain crossing frequency
+        ωcg - phase crossover frequency, is the frequency where the gain margin is measure,
+        which is a -π phase crossing frequency
+        pm - phase margin, the phase margin is the difference between the phase of the response
+        and -π when the loop gain is 1
+        gm - gain margin, the amount of gain variance required to make the loop gain unity
+        at the frequency ωcg where the phase angle is -π. In other words, the gain margin
+        is 1/g if g is the gain at the -π phase frequency. Negative gain margins indicate
+        that stability is lost by decreasing the gain, while positive gain margins indicate
+        that stability is lost by decreasing the gain, while positive gain margins indicate
+        that stability is lost by increasing the gain.
 
-    Dead Time in Digital Control Loops
-    If the control scheme is implemented on a microcontroller or microprocessor,
-    then a certain time is required to process the control algorithm. Therefore,
-    a measured value can affect the voltage reference only after this time period
-    has passed. In an appropriate manner, all these processes are synchronised with
-    the clock cycle given by the pulse width modulation or vector modulation. This
-    way, the digital control loop introduces a dead time of one sampling step.
-    Together with the ZoH which samples the signals at the PoC, a total dead time of
-    1.5 sampling steps of the current control loop results.
+        Dead Time in Digital Control Loops
+        If the control scheme is implemented on a microcontroller or microprocessor,
+        then a certain time is required to process the control algorithm. Therefore,
+        a measured value can affect the voltage reference only after this time period
+        has passed. In an appropriate manner, all these processes are synchronised with
+        the clock cycle given by the pulse width modulation or vector modulation. This
+        way, the digital control loop introduces a dead time of one sampling step.
+        Together with the ZoH which samples the signals at the PoC, a total dead time of
+        1.5 sampling steps of the current control loop results.
     =#
+
+    #--------------------------------------
+    # Current Controller
 
     # Short Circuit State Space
     A = [-Source.Rf[num_source]/Source.Lf[num_source]]
-    B = [Source.Vdc[num_source]/(2*Source.Lf[num_source])]
+    B = [1/(Source.Lf[num_source])]
     C = [1]
     D = [0]
     sys_sc = ss(A,B,C,D) # continuous
-    SC = tf([Source.Vdc[num_source]/(2*Source.Lf[num_source])], [1, Source.Rf[num_source]/Source.Lf[num_source]]) # = tf(sys_sc)
 
     Ts = 1/Source.f_cntr
     dly = Source.delay*Ts
-    ZoH = tf([1], [Ts/2, 1]) # Transfer function of the sample and hold process + Pade
+    ZoH = tf([1], [Ts/2, 1]) # Transfer function of the sample and hold process
     Pade = tf([-dly/2, 1], [dly/2, 1]) # Pure first-order delay approximation
+    PWM_gain = Source.Vdc[num_source]/2
 
-    Gsc_ol = tf(sys_sc)*Pade*ZoH
+    #SC = tf([1/(1*Lf)], [1, Rf/Lf]) # = tf(sys_sc)
+    Gsc_ol = minreal(tf(sys_sc)*Pade*PWM_gain*ZoH) # Full transfer function of plant
 
-    for i in 5:20
+    min_fp = 300 # Hz, minimum allowable gain cross-over frequency
+    max_i = convert(Int64, floor(1/(min_fp*Ts)))
+
+    #=
+        Decreasing the cross-over frequency, making the controller slower until it is stable.
+        The result is the fastest stable controller.
+    =#
+    for i in 6:max_i
 
         ωp = 2π/(i*Ts) # gain cross-over frequency
         pm = 60 # degrees, phase margin
-        Gpi, kp, ki = loopshapingPI(Gsc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
+        Gpi_i, _, _ = loopshapingPI(Gsc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
 
-        Gi_cl = G_PS(Gsc_ol*Gpi, tf(1)) # closed loop transfer function
+        Gi_cl = minreal(Gsc_ol*Gpi_i/(1 + Gsc_ol*Gpi_i)) # closed loop transfer function
 
         if any(real(poles(Gi_cl)) .> 0) == false
 
             # all the poles are on the left side
-            ωp = 2π/((i+3)*Ts) # gain cross-over frequency
+            ωp = 2π/((i)*Ts) # gain cross-over frequency
             pm = 60 # degrees, phase margin
             Gpi_i, kp_i, ki_i = loopshapingPI(Gsc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
-            Gi_cl = G_PS(Gsc_ol*Gpi_i, tf(1))
+            Gi_cl = minreal(Gsc_ol*Gpi_i/(1 + Gsc_ol*Gpi_i))
 
-            Source.I_kp[num_source] = kp
-            Source.I_ki[num_source] = ki
+            Source.I_kp[num_source] = kp_i
+            Source.I_ki[num_source] = ki_i
             Source.Gi_cl[num_source] = Gi_cl
 
             break
+
         end
 
-        if i == 20
-            println("\nError. Current Controller\n Positive Poles.")
+        if i == max_i
+            println("\nError. PI Current Controller with Positive Poles.")
             println("Source = ", num_source,"\n")
         end
     end
@@ -1870,65 +1904,60 @@ end
 function Voltage_PI_LoopShaping(Source::Source_Controller, num_source)
 
     #=
-    The current controller is designed for a short circuit
-    The voltage controller is designed for an open circuit
-    - assuming that cable capacitances can be neglected
+        The current controller is designed for a short circuit
+        The voltage controller is designed for an open circuit
+        - assuming that cable capacitances can be neglected
 
-    Controller Definitions
-    ωcp - gain crossover frequency, is the frequency where the phase margin is measured,
-    which is a 0-dB Gain crossing frequency
-    ωcg - phase crossover frequency, is the frequency where the gain margin is measure,
-    which is a -π phase crossing frequency
-    pm - phase margin, the phase margin is the difference between the phase of the response
-    and -π when the loop gain is 1
-    gm - gain margin, the amount of gain variance required to make the loop gain unity
-    at the frequency ωcg where the phase angle is -π. In other words, the gain margin
-    is 1/g if g is the gain at the -π phase frequency. Negative gain margins indicate
-    that stability is lost by decreasing the gain, while positive gain margins indicate
-    that stability is lost by decreasing the gain, while positive gain margins indicate
-    that stability is lost by increasing the gain.
+        Controller Definitions
+        ωcp - gain crossover frequency, is the frequency where the phase margin is measured,
+        which is a 0-dB Gain crossing frequency
+        ωcg - phase crossover frequency, is the frequency where the gain margin is measure,
+        which is a -π phase crossing frequency
+        pm - phase margin, the phase margin is the difference between the phase of the response
+        and -π when the loop gain is 1
+        gm - gain margin, the amount of gain variance required to make the loop gain unity
+        at the frequency ωcg where the phase angle is -π. In other words, the gain margin
+        is 1/g if g is the gain at the -π phase frequency. Negative gain margins indicate
+        that stability is lost by decreasing the gain, while positive gain margins indicate
+        that stability is lost by decreasing the gain, while positive gain margins indicate
+        that stability is lost by increasing the gain.
 
-    Dead Time in Digital Control Loops
-    If the control scheme is implemented on a microcontroller or microprocessor,
-    then a certain time is required to process the control algorithm. Therefore,
-    a measured value can affect the voltage reference only after this time period
-    has passed. In an appropriate manner, all these processes are synchronised with
-    the clock cycle given by the pulse width modulation or vector modulation. This
-    way, the digital control loop introduces a dead time of one sampling step.
-    Together with the ZoH which samples the signals at the PoC, a total dead time of
-    1.5 sampling steps of the current control loop results.
+        Dead Time in Digital Control Loops
+        If the control scheme is implemented on a microcontroller or microprocessor,
+        then a certain time is required to process the control algorithm. Therefore,
+        a measured value can affect the voltage reference only after this time period
+        has passed. In an appropriate manner, all these processes are synchronised with
+        the clock cycle given by the pulse width modulation or vector modulation. This
+        way, the digital control loop introduces a dead time of one sampling step.
+        Together with the ZoH which samples the signals at the PoC, a total dead time of
+        1.5 sampling steps of the current control loop results.
     =#
 
-    # Open Circuit State Space
-    A = [[-Source.Rf[num_source]/Source.Lf[num_source] -1/Source.Lf[num_source]];
-        [1/Source.Cf[num_source] 0]]
-    B = [Source.Vdc[num_source]/(2*Source.Lf[num_source]); 0]
-    C = [[0 1];
-        [0 0]]
-    D = [0; 0]
-    sys_oc = ss(A,B,C,D) # continuous
+    Goc_ol = minreal(Source.Gi_cl[num_source]*tf([1], [Source.Cf[num_source], 0]))
 
-    OC = tf([Source.Vdc[num_source]/(2*Source.Lf[num_source]*Source.Cf[num_source])],
-    [1, Source.Rf[num_source]/Source.Lf[num_source], 1/(Source.Lf[num_source]*Source.Cf[num_source])]) # = tf(sys_oc)[1,1]
     Ts = 1/Source.f_cntr
-    ZoH = tf([1], [Ts/2, 1]) # Transfer function of the sample and hold process + Pade
-    Goc_ol = tf(sys_oc)[1,1]*ZoH*Source.Gi_cl[num_source]
+    min_fp = 300 # Hz, minimum allowable gain cross-over frequency
+    max_i = convert(Int64, floor(1/(min_fp*Ts)))
 
-    for i in 5:60
+    #=
+        Increasing the cross-over frequency, making the controller faster, until it is stable.
+        The result is the slowest stable controller.
+    =#
+    for i in max_i:-1:1
 
         ωp = 2π/(i*Ts) # gain cross-over frequency
         pm = 60 # degrees, phase margin
-        Gpi_v, kp_v, ki_v = loopshapingPI(Goc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
+        Gpi_v, _, _ = loopshapingPI(Goc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
 
-        Gv_cl = G_PS(Goc_ol*Gpi_v, tf(1)) # closed loop transfer function
+        Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v)) # closed loop transfer function
 
         if any(real(poles(Gv_cl)) .> 0) == false
 
             # all the poles are on the left side
-            ωp = 2π/((i+3)*Ts) # gain cross-over frequency
+            ωp = 2π/((i)*Ts) # gain cross-over frequency
             pm = 60 # degrees, phase margin
             Gpi_v, kp_v, ki_v = loopshapingPI(Goc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
-            Gv_cl = G_PS(Goc_ol*Gpi_v, tf(1))
+            Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v))
 
             Source.V_kp[num_source] = kp_v
             Source.V_ki[num_source] = ki_v
@@ -1937,8 +1966,8 @@ function Voltage_PI_LoopShaping(Source::Source_Controller, num_source)
             break
         end
 
-        if i == 60
-            println("\nError. Voltage Controller\n Positive Poles.")
+        if i == 1
+            println("\nError. PI Voltage Controller with Positive Poles.")
             println("Source = ", num_source,"\n")
         end
     end
