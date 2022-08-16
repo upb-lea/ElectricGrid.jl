@@ -16,7 +16,6 @@ end
 function plotting_state(episodes, states, NodeConstructor) # also path to data
     
     plots = Array{Plots.Plot}(undef, length(states), length(episodes))
-    println(plots)
 
     phase = NodeConstructor.parameters["grid"]["phase"]
     fs = NodeConstructor.parameters["grid"]["fs"]

@@ -1,11 +1,12 @@
 using ReinforcementLearning
 using DataFrames
-using CSV
+using Arrow
+
 
 Base.@kwdef mutable struct Summary <: AbstractHook
 
     save = false
-    save_path = "episode_data/summary.csv"
+    save_path = "episode_data/"
 
     rewards::Vector{Float64} = Float64[]
     ep_rewards::Vector{Float64} = Float64[]
@@ -29,7 +30,7 @@ function (hook::Summary)(::PostExperimentStage, agent, env)
 
     if save
         summary = DataFrame(:MeanReward => hook.rewards)
-        CSV.write(save_path, summary)
+        Arrow.write(save_path * "summary.arrow", summary)
     end
 
 end

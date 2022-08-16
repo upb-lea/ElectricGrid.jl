@@ -4,7 +4,7 @@ using CSV
 
 Base.@kwdef mutable struct SaveAllEpisodes <: AbstractHook
 
-    dir = "episode_data"
+    dir = "episode_data/"
 
     df = DataFrame()
     tmp = DataFrame()
@@ -47,6 +47,6 @@ end
 
 function (hook::SaveAllEpisodes)(::PostExperimentStage, agent, env)
 
-    CSV.write(hook.dir * "/test.csv", hook.df)
+    Arrow.write(hook.dir * "data.arrow", hook.df)
 
 end
