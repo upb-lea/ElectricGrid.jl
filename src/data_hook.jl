@@ -24,18 +24,21 @@ end
 
 function (hook::DataHook)(::PreActStage, agent, env, action)
 
-    insertcols!(hook.tmp, 1, :episode => hook.ep)
-    insertcols!(hook.tmp, 2, :state => Ref(env.state))
-    #TODO actions implementieren
-    #insertcols!(hook.tmp, 3, :action => Ref(action))
+    insertcols!(hook.tmp, :episode => hook.ep)
+
+    for state_id in hook.state_ids
+        insertcols!(hook.tmp, state_id => env.state[findfirst(x -> x == state_id, env.state_ids)])
+    end
+
+    insertcols!(hook.tmp, :action => Ref(action))
     
 end
 
 function (hook::DataHook)(::PostActStage, agent, env)
 
-    insertcols!(hook.tmp, 4, :next_state => Ref(env.state))
-    insertcols!(hook.tmp, 5, :reward => env.reward)
-    insertcols!(hook.tmp, 6, :done => env.done)
+   # insertcols!(hook.tmp, :next_state => Ref(env.state))
+    insertcols!(hook.tmp, :reward => env.reward)
+    insertcols!(hook.tmp, :done => env.done)
 
     append!(hook.df, hook.tmp)
     hook.tmp = DataFrame()

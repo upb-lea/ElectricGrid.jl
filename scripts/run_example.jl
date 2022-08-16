@@ -53,4 +53,4 @@ agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 hook = DataHook(state_ids = ["u_f1", "u_f2", "u_l1"])
 
-run(agent, env, timer, StopAfterEpisode(10), hook)
+run(agent, env, StopAfterEpisode(10), hook)
