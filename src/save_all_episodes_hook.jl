@@ -4,7 +4,10 @@ using CSV
 
 Base.@kwdef mutable struct SaveAllEpisodes <: AbstractHook
 
+    save_data_to_hd = false
     dir = "episode_data/"
+
+    state_ids = []
 
     df = DataFrame()
     tmp = DataFrame()
@@ -24,7 +27,8 @@ function (hook::SaveAllEpisodes)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, 1, :episode => hook.ep)
     insertcols!(hook.tmp, 2, :state => Ref(env.state))
-    insertcols!(hook.tmp, 3, :action => Ref(action))
+    #TODO actions implementieren
+    #insertcols!(hook.tmp, 3, :action => Ref(action))
     
 end
 
@@ -47,6 +51,9 @@ end
 
 function (hook::SaveAllEpisodes)(::PostExperimentStage, agent, env)
 
-    Arrow.write(hook.dir * "data.arrow", hook.df)
+    if save_data_to_hd
+        isdir(hook.dir) || mkdir(hook.dir)
+        Arrow.write(hook.dir * "data.arrow", hook.df)
+    end
 
 end

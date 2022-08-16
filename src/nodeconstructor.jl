@@ -1431,13 +1431,15 @@ function get_sys(self::NodeConstructor)
 end
 
 """
-    get_states(self::NodeConstructor)
+    get_state_ids(self::NodeConstructor)
 
 Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
 """
 
+#TODO: remove legacy workaround
+get_states(self::NodeConstructor) = get_state_ids(self)
 
-function get_states(self::NodeConstructor)
+function get_state_ids(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL

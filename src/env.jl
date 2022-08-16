@@ -16,9 +16,9 @@ PLoad = []
 # --- RL ENV ---
 
 Base.@kwdef mutable struct SimEnv <: AbstractEnv
-    A = [1.0 0.0; 0.0 1.0]
-    B = [1.0 0.0; 0.0 1.0]
-    C = [1.0 0.0; 0.0 1.0]
+    A
+    B
+    C
     D = 0
     action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(B[1,:]) ], )
     observation_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(A[1,:]) ], )
@@ -29,9 +29,8 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     steps::Int = 0
     t::Rational = 0
     ts::Rational = 1//10_000
-    Ad::AbstractMatrix = exp(A*ts)
-    Bd::AbstractMatrix = A \ (Ad - C) * B
-    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    sys_d = HeteroStateSpace(exp(A*ts), A \ (Ad - C) * B, C, D, Float64(ts))
+    state_ids::Vector{String}
     norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
     v_dc::Float64 = 300
     reward::Float64 = 0
