@@ -6,6 +6,11 @@ include("../src/agent_ddpg.jl")
 include("../src/data_hook.jl")
 
 
+function reward(env)
+    #implement your reward function here
+    return 1
+end
+
 env_cuda = false
 agent_cuda = false
 
@@ -48,7 +53,7 @@ if env_cuda
     x0 = CuArray(x0)
 end
 
-env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, x0=x0, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=true)
+env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, rewardfunction = reward, x0=x0, v_dc=V_source, ts=rationalize(ts), convert_state_to_cpu=true)
 agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 hook = DataHook(state_ids = ["u_f1", "u_f2", "u_l1"])

@@ -33,6 +33,7 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     Bd = A \ (Ad - C) * B
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     state_ids::Vector{String}
+    rewardfunction
     norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
     v_dc::Float64 = 300
     reward::Float64 = 0
@@ -97,7 +98,7 @@ function (env::SimEnv)(action)
 
     # env.reward = -sqrt((P_source - (P_R + P_load + loss_error))^2)
     # Power constraint
-    env.reward = 1#reward_func("Power_exp", env)
+    env.reward = env.rewardfunction(env)
 
     env.done = env.steps >= env.maxsteps
 end
