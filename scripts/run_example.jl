@@ -14,6 +14,7 @@ function reward(env)
     #implement your reward function here
 
     P_required = 466 # W
+    V_required = 230 # V
 
     u_l1_index = findfirst(x -> x == "u_l1", env.state_ids)
 
@@ -21,8 +22,10 @@ function reward(env)
 
     P_load = (env.norm_array[u_l1_index] * u_l1)^2 / 14
     
-    P_diff = -abs(P_required - P_load) 
-    reward = exp(P_diff/130) - 1
+    # P_diff = -abs(P_required - P_load) 
+    # reward = exp(P_diff/130) - 1
+
+    reward = -(abs(V_required - (env.norm_array[u_l1_index] * u_l1))/300)
 
     return reward
 end
@@ -74,7 +77,7 @@ agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 hook = DataHook(state_ids = ["u_f1", "u_f2", "u_l1"])
 
-run(agent, env, StopAfterEpisode(10), hook)
+run(agent, env, StopAfterEpisode(150), hook)
 
 
 

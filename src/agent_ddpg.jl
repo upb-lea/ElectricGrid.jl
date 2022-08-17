@@ -45,7 +45,7 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
             batch_size = batch_size,
             start_steps = 0,
             start_policy = RandomPolicy(-1.0..1.0; rng = rngg),
-            update_after = 150, #1000 
+            update_after = 50, #1000 
             update_freq = 10,
             act_limit = 1.0,
             act_noise = 0.1,
