@@ -8,6 +8,7 @@ include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
+include(srcdir("plotting.jl"))
 
 
 function reward(env)
@@ -99,78 +100,11 @@ run(agent, env, StopAfterEpisode(80), hook)
 
 # PLOT rewards in 3D plot over every episode
 
-layout = Layout(
-            plot_bgcolor="#f1f3f7",
-            title = "Reward over Episodes",
-            scene = attr(
-                xaxis_title = "Time in Seconds",
-                yaxis_title = "Episodes",
-                zaxis_title = "Reward"),
-            autosize = false,
-            width = 1000,
-            height = 650,
-            margin=attr(l=10, r=10, b=10, t=60, pad=10)
-        )
-
-p = plot(scatter3d(hook.df, x = :time, y = :episode, z = :reward,
-                    marker=attr(size=2, color=:reward, colorscale=[[0, "rgb(255,0,0)"], [1, "rgb(0,255,0)"]]),
-                    mode = "markers"),
-        config = PlotConfig(scrollZoom=true),
-        layout)
-display(p)
-
-
-
+plot_rewards_3d(hook)
 
 
 
 # PLOT a test run with the best behavior_actor NNA so far
 
-reset!(env)
+plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1", "u_2", "u_l1"])
 
-act_noise_old = agent.policy.act_noise
-agent.policy.act_noise = 0.0
-copyto!(agent.policy.behavior_actor, hook.bestNNA)
-
-temphook = DataHook(collect_state_ids = ["u_f1", "u_1", "u_2", "u_l1"])
-
-run(agent.policy, env, StopAfterEpisode(1), temphook)
-
-layout = Layout(
-        plot_bgcolor="#f1f3f7",
-        title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * string(hook.bestepisode) * "</sub>",
-        xaxis_title = "Time in Seconds",
-        yaxis_title = "State values",
-        yaxis2 = attr(
-            title="Reward",
-            overlaying="y",
-            side="right",
-            titlefont_color="orange",
-            range=[-1, 1]
-        ),
-        legend = attr(
-            x=1,
-            y=1.02,
-            yanchor="bottom",
-            xanchor="right",
-            orientation="h"
-        ),
-        autosize = false,
-        width = 1000,
-        height = 650,
-        margin=attr(l=100, r=80, b=80, t=100, pad=10)
-    )
-
-trace1 = scatter(temphook.df, x = :time, y = :u_f1, mode="lines", name = "U f1")
-trace2 = scatter(temphook.df, x = :time, y = :u_1, mode="lines", name = "U 1")
-trace3 = scatter(temphook.df, x = :time, y = :u_2, mode="lines", name = "U 2")
-trace4 = scatter(temphook.df, x = :time, y = :u_l1, mode="lines", name = "U l1")
-trace5 = scatter(temphook.df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward")
-
-p = plot([trace1, trace2, trace3, trace4, trace5], layout, config = PlotConfig(scrollZoom=true))
-display(p)
-
-copyto!(agent.policy.behavior_actor, hook.currentNNA)
-agent.policy.act_noise = act_noise_old
-
-reset!(env)
