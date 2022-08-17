@@ -52,9 +52,13 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
             rng = rngg,
         ),
         trajectory = CircularArraySARTTrajectory(
-            capacity = 1000,
+            capacity = 800,
             state = Vector{Float32} => (ns,),
             action = Float32 => (na, ),
         ),
     )
+end
+
+function (::DDPGPolicy)(::AbstractStage, ::AbstractEnv)
+    nothing
 end
