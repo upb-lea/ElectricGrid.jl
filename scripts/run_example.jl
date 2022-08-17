@@ -91,7 +91,7 @@ agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 hook = DataHook(save_best_NNA = true, plot_rewards = true)
 
-run(agent, env, StopAfterEpisode(1500), hook)
+run(agent, env, StopAfterEpisode(80), hook)
 
 
 
