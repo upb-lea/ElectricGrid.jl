@@ -1,25 +1,15 @@
 using DrWatson
-@quickactivate "MicroGridSimWithRL"
+quickactivate("../../.", "dare")
 
-using PProf, Profile
-# using DifferentialEquations
-# using Sundials
-using Plots
-# using LinearAlgebra
-# using ControlSystems
 using BenchmarkTools
 using ReinforcementLearning
-using Flux
-using StableRNGs
-using IntervalSets
-using TimerOutputs
-using JSON
+#using PlotlyJS
 
-# include(srcdir("collect_timing_results.jl"))
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
-include(srcdir("agent.jl"))
-include(srcdir("run_timed.jl"))
+include(srcdir("agent_ddpg.jl"))
+include(srcdir("data_hook.jl"))
+include(srcdir("plotting.jl"))
 
 function reward(env)
     #implement your reward function here
@@ -101,3 +91,33 @@ env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, rewardfun
 agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 hook = DataHook(save_best_NNA = true, plot_rewards = true)
+
+
+
+
+#  ---------- Memory Analysis Start ----------
+
+
+println("Hook - Pre Experiment Stage")
+@time hook(PRE_EXPERIMENT_STAGE, agent, env);
+hook.currentNNA = nothing; hook.bestNNA = nothing;
+@time hook(PRE_EXPERIMENT_STAGE, agent, env);
+println(""); println(""); println("");
+
+
+println("Agent - Pre Experiment Stage")
+@time agent(PRE_EXPERIMENT_STAGE, env);
+@time agent(PRE_EXPERIMENT_STAGE, env);
+println(""); println(""); println("");
+
+
+println("Agent - Pre Episode Stage")
+@time agent(PRE_EPISODE_STAGE, env);
+@time agent(PRE_EPISODE_STAGE, env);
+println(""); println(""); println("");
+
+
+println("Hook - Pre Episode Stage")
+@time hook(PRE_EPISODE_STAGE, agent, env);
+@time hook(PRE_EPISODE_STAGE, agent, env);
+println(""); println(""); println("");

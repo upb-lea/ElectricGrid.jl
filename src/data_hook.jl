@@ -84,10 +84,8 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env)
 
     hook.ep += 1
 
-    if hook.plot_rewards
-        push!(hook.rewards, hook.reward)
-        hook.reward = 0
-    end
+    push!(hook.rewards, hook.reward)
+    hook.reward = 0
 
     if hook.save_best_NNA
         copyto!(hook.currentNNA, agent.policy.behavior_actor)
