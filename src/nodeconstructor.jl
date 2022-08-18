@@ -1474,6 +1474,29 @@ function get_state_ids(self::NodeConstructor)
     return states
 end
 
+"""
+    get_action_ids(self::NodeConstructor)
+
+Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
+"""
+
+function get_action_ids(self::NodeConstructor)
+    actions = []
+    for s in 1:self.num_sources
+        println(s)
+        if s <= self.num_fltr_LCL
+            push!(actions, "u_v$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+            push!(actions, "u_v$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+            push!(actions, "u_v$s")
+        end
+    end
+    return actions
+end
+
 function draw_graph(self::NodeConstructor)
     """Plots a graph according to the CM matrix
 
