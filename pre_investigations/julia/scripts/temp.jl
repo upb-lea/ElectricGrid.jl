@@ -15,3 +15,9 @@ B = [434.783    0.0;
 function f!(du, u, p, t)
   du[:] = A * u + B * p
 end
+
+
+Base.@kwdef mutable struct hello
+  a = 0
+  b = a > 2 ? 200 : 0
+end

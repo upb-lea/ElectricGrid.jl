@@ -299,3 +299,18 @@ end
 toplot = Array{GenericTrace}(toplot)
 
 plot(toplot, layout)
+
+
+layout["title"] = "Memory Analysis of Different Sections"
+layout["scene"] = attr(
+                    xaxis_title = "Size of Network",
+                    yaxis_title = "Size")
+toplot = []
+
+for node in nodes
+    push!(toplot, bar(results_allocated, x=sections, y=Symbol(string(node)), name=string(node)))
+end
+
+toplot = Array{GenericTrace}(toplot)
+
+plot(toplot, layout)
