@@ -7,6 +7,9 @@ docs/build
 log/*
 sessions/*
 !*.gitkeep
+
+
+pre_investigations/julia/Manifest.toml
 Manifest.toml
 
 # Vagrant
