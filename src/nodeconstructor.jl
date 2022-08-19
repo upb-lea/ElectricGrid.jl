@@ -147,7 +147,7 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
     grid_properties = Dict()
     grid_properties["fs"] =  10e3
     grid_properties["v_rms"] = 230
-    grid_properties["phase"] = 1
+    grid_properties["phase"] = 3
 
 
     for s in 1:num_fltr_LCL
@@ -1441,73 +1441,40 @@ get_states(self::NodeConstructor) = get_state_ids(self)
 
 function get_state_ids(self::NodeConstructor)
     states = []
-
-    if self.parameters["grid"]["phase"] === 1
-
-        for s in 1:self.num_sources
-            if s <= self.num_fltr_LCL
-                push!(states, "i_f$s")    # i_f1; dann i_f2....
-                push!(states, "u_f$s")
-                push!(states, "i_$s")
-                push!(states, "u_$s")
-            
-            elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-                push!(states, "i_f$s")
-                push!(states, "u_f$s")
-                push!(states, "u_$s")
-            
-            elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-                push!(states, "i_$s")
-                push!(states, "u_$s")
-            end
+    for s in 1:self.num_sources
+        if s <= self.num_fltr_LCL
+            push!(states, "i_f$s")    # i_f1; dann i_f2....
+            push!(states, "u_f$s")
+            push!(states, "i_$s")
+            push!(states, "u_$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+            push!(states, "i_f$s")
+            push!(states, "u_f$s")
+            push!(states, "u_$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+            push!(states, "i_$s")
+            push!(states, "u_$s")
         end
+    end
 
-        for c in 1:self.num_connections
-            push!(states, "i_c$c")
+    for c in 1:self.num_connections
+        push!(states, "i_cable$c")
+    end
+
+    for l in 1:self.num_loads
+        if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+            push!(states, "u_load$l")
+            push!(states, "i_load$l")
+        elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+            push!(states, "u_load$l")
         end
+    end
 
-        for l in 1:self.num_loads
-            if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-                push!(states, "u_l$l")
-                push!(states, "i_l$l")
-            elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
-                push!(states, "u_l$l")
-            end
-        end
-    
-    elseif self.parameters["grid"]["phase"] === 3
-        for p in ["a","b","c"]
-            for s in 1:self.num_sources
-                if s <= self.num_fltr_LCL
-                    push!(states, "i_$(p)_f$(s)")    # i_f1; dann i_f2....
-                    push!(states, "u_$(p)_f$(s)")
-                    push!(states, "i_$(p)_$(s)")
-                    push!(states, "u_$(p)_$(s)")
-                
-                elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-                    push!(states, "i_$(p)_f$(s)")
-                    push!(states, "u_$(p)_f$(s)")
-                    push!(states, "u_$(p)_$(s)")
-                
-                elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-                    push!(states, "i_$(p)_$(s)")
-                    push!(states, "u_$(p)_$(s)")
-                end
-            end
-
-            for c in 1:self.num_connections
-                push!(states, "i_$(p)_c$(c)")
-            end
-
-            for l in 1:self.num_loads
-                if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-                    push!(states, "u_$(p)_l$(l)")
-                    push!(states, "i_$(p)_l$(l)")
-                elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
-                    push!(states, "u_$(p)_l$(l)")
-                end
-            end
-        end
+    if self.parameters["grid"]["phase"] === 3
+        A = ["_a", "_b", "_c"]
+        states = vcat([broadcast(*, states, A[i]) for i in 1:3]...)
     end
     
     return states
@@ -1521,36 +1488,24 @@ Creates the State Vector for an related NodeConstructor and outputs it as a list
 
 function get_action_ids(self::NodeConstructor)
     actions = []
-    if self.parameters["grid"]["phase"] === 1
-        for s in 1:self.num_sources
-            if s <= self.num_fltr_LCL
-                push!(actions, "u_v$s")
-            
-            elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-                push!(actions, "u_v$s")
-            
-            elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-                push!(actions, "u_v$s")
-            end
-        end
-
-    elseif self.parameters["grid"]["phase"] === 3
-        for p in ["a","b","c"]
-            for s in 1:self.num_sources
-                for s in 1:self.num_sources
-                    if s <= self.num_fltr_LCL
-                        push!(actions, "u_$(p)_v$(s)")
-                    
-                    elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-                        push!(actions, "u_$(p)_v$(s)")
-                    
-                    elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-                        push!(actions, "u_$(p)_v$(s)")
-                    end
-                end
-            end
+    
+    for s in 1:self.num_sources
+        if s <= self.num_fltr_LCL
+            push!(actions, "u_v$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+            push!(actions, "u_v$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+            push!(actions, "u_v$s")
         end
     end
+
+    if self.parameters["grid"]["phase"] === 3
+        A = ["_a", "_b", "_c"]
+        actions = vcat([broadcast(*, actions, A[i]) for i in 1:3]...)
+    end
+    
 
     return actions
 end
