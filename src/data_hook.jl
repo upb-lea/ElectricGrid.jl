@@ -67,9 +67,7 @@ function (hook::DataHook)(::PostActStage, agent, env)
     append!(hook.df, hook.tmp)
     hook.tmp = DataFrame()
     
-    if hook.plot_rewards
-        hook.reward += env.reward
-    end
+    hook.reward += env.reward
 end
 
 function (hook::DataHook)(::PostEpisodeStage, agent, env)
