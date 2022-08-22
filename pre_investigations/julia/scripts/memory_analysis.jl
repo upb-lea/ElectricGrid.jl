@@ -298,8 +298,8 @@ end
 
 toplot = Array{GenericTrace}(toplot)
 
-plot(toplot, layout)
-
+p = plot(toplot, layout)
+display(p)
 
 layout["title"] = "Memory Analysis of Different Sections"
 layout["scene"] = attr(
@@ -313,4 +313,5 @@ end
 
 toplot = Array{GenericTrace}(toplot)
 
-plot(toplot, layout)
+p = plot(toplot, layout)
+display(p)
