@@ -4,7 +4,7 @@ using DrWatson
 include(srcdir("Complexity.jl"))
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
-
+#=
 function Draw_Graph(Deus::ϵ_Machine, Net, nodekey, N)
 
     cm = SimpleGraph(Net) # create graph object from Connecitivity Matrix
@@ -17,7 +17,7 @@ function Draw_Graph(Deus::ϵ_Machine, Net, nodekey, N)
     fig[1, 1:2] = title = Label(fig, "Topological Complexity", textsize = 30)
     title.tellwidth = false
 
-    Cμ_t_ax = Axis(fig[2, 2], title = "Complexity", xlabel = "Time [seconds]", ylabel = "Cμ [bits]")
+    Cμ_t_ax = Axis(fig[2, 2], title = "Time Dependent Complexity - Knowledge Relaxation", xlabel = "Time [seconds]", ylabel = "Cμ [bits]")
     lines!(Cμ_t_ax, Deus.t_m, Deus.Cμ_t, color = :red)
 
     fig[2, 1] = graph_ax = Axis(fig)
@@ -70,7 +70,7 @@ function Draw_Graph(Deus::ϵ_Machine, Net, nodekey, N)
     
     return nothing
 end
-
+=#
 #_______________________________________________________________________________
 # Parameters - Time simulation
 fsys = 2000 # Hz
@@ -87,9 +87,35 @@ t = 0:μ_s:t_final # time
 
 #_______________________________________________________________________________
 # Machine Parameters
-D = 25 # 20 for map, 10 for every other 1, ϵ = 0.5 # 15 for map gives trouble
-δ = 0.025 # 0.025 for map, 0.002 for every other, ϵ = 0.5 # 0.025 for map gives trouble
-dim = 10 # dimensions of state space
+D = 160 # 20 for map, 10 or 20 for every other 1, ϵ = 0.5 # 15 for map gives trouble
+δ = 0.05 # 0.025 for map, 0.002 for every other, ϵ = 0.5 # 0.025 for map gives trouble
+
+#= Every other one
+    D = 4
+    Timestep = 10
+    t_final = 10
+    δ = 0.005
+=#
+#= Logistic Map
+    D = 12
+    Timestep = 10
+    t_final = 10
+    δ = 0.035
+=#
+#= CCA
+    T = 1    T = 2   T = 3      T = 4
+    Cμ = 2   Cμ = 3  Cμ = 8.5   Cμ = 0 
+
+    dim = 20
+    1:200:3801
+    L = 5000
+    D = 10
+    Timestep = 10
+    t_final = 0.005
+    δ = 0.05
+=#
+
+dim = 20 # dimensions of state space
 #μ_m = 0.25/150 #sampling timestep
 μ_m = μ_s #sampling timestep
 t_m = 0:μ_m:t_final
@@ -97,11 +123,11 @@ t_m = 0:μ_m:t_final
 x_range = Array{Float64, 2}(undef, dim, 2) # State space limits
 ϵ = Array{Float64, 1}(undef, dim) # Instrument resolution
 
-ϵ[:] = [0.25 for i in 1:10]
+ϵ[:] = [0.25 for i in 1:dim]
 
-x_range[:,1] = [4.0 for i in 1:10] # maximum
+x_range[:,1] = [4.0 for i in 1:dim] # maximum
 
-x_range[:,2] = [0.0 for i in 1:10] # minimum
+x_range[:,2] = [0.0 for i in 1:dim] # minimum
 #_range[1,2] = -1.1 # minimum
 
 Deus = ϵ_Machine(N, D, δ, ϵ, x_range, μ_m, μ_s)
@@ -145,15 +171,15 @@ x[:, 1] = initialise_CCA(x[:, 1])
     capture the statistical properties of the Logistic map. In other words, there is
     a one-to-one mapping between infinite binary sequences and almost all points on
     the attractor.
+    =#
 
-    # Misiurewicz point:
-    r = 3.9277370017867516
+# Misiurewicz point:
+#r = 3.9277370017867516
 
-    xc = 1/2
+#xc = 1/2
 
-    x[1] = xc # initial conditions
-    #x[1] = 0
-=#
+#x[1] = xc # initial conditions
+#x[1] = 0
 
 #_______________________________________________________________________________
 #%% Starting time simulation
@@ -171,14 +197,20 @@ println("\nHere we go.\n")
             println("Progress : ", 10*floor((10*t[i]/t_final)), " %")
         end
 
-        Sampling(Deus, x[1:100:901, i], i, μ_s)   
-
-        x[:, i + 1] = CCA_dynamics(Net, x[:, i]; T = 4)
-
-        #=
+        #= CCA =#
+        Sampling(Deus, x[1:200:3801, i], i, μ_s)   
+        x[:, i + 1] = CCA_dynamics(Net, x[:, i]; T = 3)
+        #= =#
+        #= Map =
+            Sampling(Deus, x[:, i], i, μ_s) 
             x[1, i + 1] = r*x[1, i]*(1 - x[1, i])
-            x[1, i + 1] = sin(2π*fsys*t[i+1]) + 0.5*sin(2π*3*fsys*t[i+1])
+        = =#
 
+        #= periodic
+            x[1, i + 1] = sin(2π*fsys*t[i+1]) + 0.5*sin(2π*3*fsys*t[i+1])
+        =#
+
+        #= Every other One
             if i%2 == 0
                 Deus.s[i] = 1
             else
@@ -190,6 +222,7 @@ println("\nHere we go.\n")
                 end
             end
         =#
+        
     end
 
     println("Progress : 100.0 %\n")
@@ -198,8 +231,6 @@ end
 Cranking(Deus)
 
 #=
-    Cranking(Deus)
-    #Next_State = Markov_Evolution(Deus, 100)
 
     T_plot_end = 5
 
@@ -218,7 +249,7 @@ Cranking(Deus)
 #_______________________________________________________________________________
 ## Draw Graph
 
-Draw_Graph(Deus, Net, x, N)
+#Draw_Graph(Deus, Net, x, N)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
 println(Deus.Cμ_t[end])

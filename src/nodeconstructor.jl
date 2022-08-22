@@ -37,7 +37,6 @@ end
         S2S_p = 0.1,
         S2L_p = 0.8
         )
-
 Create a mutable struct NodeConstructor, which serves as a basis for the creation of an energy grid: `num_sources` corresponse to the amount of sources and `num_loads` is the amount of loads in the grid. `CM` is the connection matrix which indicates how the elements in the grid are connected to each other. To specify the elements of the net in more detail, values for the elements can be passed via `parameters`. If no connection matrix is entered, it can be generated automatically. `S2S_p` is the probability that a source is connected to another source and `S2L_p` is the probability that a source is connected to a load.
 """
 function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8)
@@ -256,7 +255,6 @@ end
 
 """
     cntr_fltrs(source_list)
-
 Counts the number of filter types, if `parameters` is passed.
 """
 function cntr_fltrs(source_list)
@@ -280,7 +278,6 @@ end
 
 """
     cntr_loads(load_list)
-
 Counts the number of load types, if `parameters` is passed.
 """
 function cntr_loads(load_list)
@@ -316,7 +313,6 @@ end
 
 """
     _sample_fltr_LCL()
-
 Sample parameters for the LCL filter.
 """
 function _sample_fltr_LCL(grid_properties)
@@ -348,7 +344,6 @@ end
 
 """
     _sample_fltr_LC()
-
 Sample parameters for the LC filter.
 """
 function _sample_fltr_LC(grid_properties)  
@@ -378,7 +373,6 @@ end
 
 """
     _sample_fltr_L()
-
 Sample parameters for the L filter.
 """
 function _sample_fltr_L(grid_properties)  
@@ -405,7 +399,6 @@ end
 
 """
     _sample_load_RLC()
-
 Sample parameters for the RLC load.
 """
 function _sample_load_RLC()
@@ -422,7 +415,6 @@ end
 
 """
     _sample_load_LC()
-
 Sample parameters for the LC load.
 """
 function _sample_load_LC()
@@ -439,7 +431,6 @@ end
 
 """
     _sample_load_RL()
-
 Sample parameters for the RL load.
 """
 function _sample_load_RL()
@@ -455,7 +446,6 @@ end
 
 """
     _sample_load_RC()
-
 Sample parameters for the RC load.
 """
 function _sample_load_RC()
@@ -471,7 +461,6 @@ end
 
 """
     _sample_load_L()
-
 Sample parameters for the L load.
 """
 function _sample_load_L()
@@ -487,7 +476,6 @@ end
 
 """
     _sample_load_C()
-
 Sample parameters for the C load.
 """
 function _sample_load_C()
@@ -503,7 +491,6 @@ end
 
 """
     _sample_load_R()
-
 Sample parameters for the R load.
 """
 function _sample_load_R()
@@ -519,7 +506,6 @@ end
 
 """
     _sample_cable()
-
 Sample parameters for the cable.
 """
 function _sample_cable()
@@ -541,7 +527,6 @@ end
 
 """
     tobe_or_n2b(cntr, x, p)
-
 Sets x to zero or to the value of the counter as a function of p and increases it as well.
 """
 function tobe_or_n2b(cntr, x, p)
@@ -558,7 +543,6 @@ end
 
 """
     CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
-
 Returns the constructed CM and the total number of connections.
 """
 function CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
@@ -626,7 +610,6 @@ end
 
 """
     get_A_src(self::NodeConstructor, source_i)
-
 Create the A_src entry for a source in the A matrix.
 """
 function get_A_src(self::NodeConstructor, source_i)
@@ -716,7 +699,6 @@ end
 
 """
     get_B_source(self::NodeConstructor, source_i)
-
 Create the B_source entry for a source in the B matrix.
 """
 function get_B_source(self::NodeConstructor, source_i)
@@ -742,7 +724,6 @@ end
 
 """
     get_A_src_trn_c(self::NodeConstructor, source_i)
-
 Create the A_src_trn_c entry in the A matrix.
 """
 function get_A_src_trn_c(self::NodeConstructor, source_i)
@@ -821,7 +802,6 @@ end
 
 """
     get_A_src_trn_l(self::NodeConstructor, source_i)
-
 Create the A_src_trn_l entry in the A matrix.
 """
 function get_A_src_trn_l(self::NodeConstructor, source_i)
@@ -876,7 +856,6 @@ end
 
 """
     generate_A_trn(self::NodeConstructor)
-
 Create the A_tran entry in the A matrix.
 """
 function generate_A_trn(self::NodeConstructor)
@@ -894,7 +873,6 @@ end
 
 """
     get_A_tran_load_c(self::NodeConstructor, load_i)
-
 Create the A_tran_load_c entry in the A matrix.
 """
 function get_A_tran_load_c(self::NodeConstructor, load_i)
@@ -992,7 +970,6 @@ end
 
 """
     get_A_tran_load_l(self::NodeConstructor, load_i)
-
 Create the A_tran_load_l entry in the A matrix.
 """
 function get_A_tran_load_l(self::NodeConstructor, load_i)
@@ -1036,7 +1013,6 @@ end
 
 """
     get_A_load(self::NodeConstructor, load_i)
-
 Create the A_tran_load_l entry in the A matrix.
 """
 function get_A_load(self::NodeConstructor, load_i)
@@ -1175,7 +1151,6 @@ end
 
 """
     generate_A(self::NodeConstructor)
-
 Generates the A matrix by joining the individual sub-matrices together.
 """
 function generate_A(self::NodeConstructor)
@@ -1184,12 +1159,10 @@ function generate_A(self::NodeConstructor)
         [[      A_src,   A_src_trn_c,             0],
          [A_src_trn_l,         A_trn, A_tran_load_l],
          [          0, A_tran_load_c,        A_load]]
-
     with A_src:
         [[LCL, 0 , 0]
          [0,   LC, 0]
          [0,   0,  L]]
-
     with A_load:
          [[RLC, 0 , 0,  0,  0, 0, 0]
           [0,   LC, 0,  0,  0, 0, 0]
@@ -1336,7 +1309,6 @@ end
 
 """
     generate_B(self::NodeConstructor)
-
 Generates the B matrix by joining the individual sub-matrices together.
 """
 function generate_B(self::NodeConstructor)
@@ -1346,7 +1318,6 @@ function generate_B(self::NodeConstructor)
          [         0, B_source_2, ...,           0],
          [         0,          0, ...,           0],
          [         0,          0, ...,  B_source_n]]
-
     """
     B = zeros(self.num_fltr + self.num_connections + self.num_impedance, self.num_sources)
 
@@ -1384,12 +1355,10 @@ end
 
 """
     generate_C(self::NodeConstructor)
-
 Generates the C matrix.
 """
 function generate_C(self::NodeConstructor)
     """Generate the C matrix
-
     Retruns:
         C: Identity matrix (2*num_sources+num_connections)
     """
@@ -1407,7 +1376,6 @@ end
 
 """
     generate_D(self::NodeConstructor)
-
 Generates the D matrix.
 """
 function generate_D(self::NodeConstructor)
@@ -1417,7 +1385,6 @@ end
 
 """
     get_sys(self::NodeConstructor)
-
 Generates the system matrices A, B, C and D.
 """
 function get_sys(self::NodeConstructor)
@@ -1431,13 +1398,14 @@ function get_sys(self::NodeConstructor)
 end
 
 """
-    get_states(self::NodeConstructor)
-
+    get_state_ids(self::NodeConstructor)
 Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
 """
 
+#TODO: remove legacy workaround
+get_states(self::NodeConstructor) = get_state_ids(self)
 
-function get_states(self::NodeConstructor)
+function get_state_ids(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL
@@ -1474,7 +1442,6 @@ end
 
 function draw_graph(self::NodeConstructor)
     """Plots a graph according to the CM matrix
-
     Red nodes corresponse to a source.
     Lightblue nodes corresponse to a load.
     """

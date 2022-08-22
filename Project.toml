@@ -1,5 +1,10 @@
 [deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 SearchLightSQLite = "21a827c4-482a-11ea-3a19-4d2243a4a2c5"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"

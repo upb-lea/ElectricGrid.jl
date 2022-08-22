@@ -1,13 +1,9 @@
-mutable struct Source_Controller <: AbstractPolicy
+mutable struct Source_Controller
 
     #=
         This object contains the functions and parameters that are relevant for the
         control of a three-phase half bridge DC to AC Converter.
     =#
-
-    # Abstract Policy
-
-    action_space::Space{Vector{ClosedInterval{Float64}}}
 
     #---------------------------------------------------------------------------
     # Physical Electrical Parameters
@@ -28,6 +24,18 @@ mutable struct Source_Controller <: AbstractPolicy
     Rf::Vector{Float64}
 
     #---------------------------------------------------------------------------
+    # Measurements
+
+    T_sp_rms::Float64
+    V_ph::Array{Float64}
+    I_ph::Array{Float64}
+
+    p_q_inst::Array{Float64}
+    p_inst::Array{Float64}
+    Pm::Array{Float64}
+    Qm::Array{Float64}
+
+    #---------------------------------------------------------------------------
     # General System & Control
 
     Modes::Dict{String, Int64}
@@ -42,6 +50,10 @@ mutable struct Source_Controller <: AbstractPolicy
     N_cntr::Int64
     delay::Int64
     steps::Int64
+
+    V_poc_loc::Matrix{Int64} # the position in the state vector where the POC Voltage is measured
+    I_poc_loc::Matrix{Int64}
+    I_inv_loc::Matrix{Int64}
 
     #---------------------------------------------------------------------------
     # Phase Locked Loops
@@ -127,15 +139,17 @@ mutable struct Source_Controller <: AbstractPolicy
     eq::Matrix{Float64}
     Mfif::Matrix{Float64}
 
-    function Source_Controller(action_space::Space{Vector{ClosedInterval{Float64}}},
-        Vdc::Vector{Float64}, Vrms::Vector{Float64},
+    function Source_Controller(Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
         i_max::Vector{Float64}, v_max::Vector{Float64},
         Lf::Vector{Float64}, Cf::Vector{Float64}, Rf::Vector{Float64},
+        T_sp_rms::Float64, V_ph::Array{Float64}, I_ph::Array{Float64}, 
+        p_q_inst::Array{Float64}, p_inst::Array{Float64}, Pm::Array{Float64}, Qm::Array{Float64},
         Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
         μ_cntr::Float64, N_cntr::Int64, delay::Int64, steps::Int64,
+        V_poc_loc::Matrix{Int64}, I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
         pll_err::Array{Float64}, pll_err_t::Matrix{Float64},
         vd::Array{Float64}, qvd::Array{Float64},
         fpll::Array{Float64}, θpll::Array{Float64},
@@ -159,15 +173,17 @@ mutable struct Source_Controller <: AbstractPolicy
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Matrix{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Matrix{Float64})
 
-        new(action_space,
-        Vdc, Vrms,
+        new(Vdc, Vrms,
         S, P, Q,
         i_max, v_max,
         Lf, Cf, Rf,
+        T_sp_rms, V_ph, I_ph, 
+        p_q_inst, p_inst, Pm, Qm,
         Modes, Source_Modes,
         num_sources,
         f_cntr, fsys, θsys,
         μ_cntr, N_cntr, delay, steps,
+        V_poc_loc, I_poc_loc, I_inv_loc,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -193,11 +209,6 @@ mutable struct Source_Controller <: AbstractPolicy
     end
 
     function Source_Controller(t_final, f_cntr, num_sources; delay = 1)
-
-        #---------------------------------------------------------------------------
-        # Abstract Policy
-
-        action_space = Space([ -1.0..1.0 for i = 1:num_sources*3], )
 
         #---------------------------------------------------------------------------
         # Physical Electrical Parameters
@@ -227,6 +238,36 @@ mutable struct Source_Controller <: AbstractPolicy
         Rf = fill!(Rf, 0.001)
 
         #---------------------------------------------------------------------------
+        # Measurements
+
+        μ_cntr = 1/f_cntr
+        N_cntr = convert(Int64, floor(t_final/μ_cntr)) + 1
+
+        steps = 0
+        fsys = 50.0
+        θsys = 0.0
+
+        T_sp_rms = 5*fsys #samples in a second for rms calcs, x*fsys = x samples in a cycle
+
+        # RMS Phasors
+        V_ph = Array{Float64, 4}(undef, num_sources, 3, 3, N_cntr)
+        V_ph = fill!(V_ph, 0)
+        I_ph = Array{Float64, 4}(undef, num_sources, 3, 3, N_cntr)
+        I_ph = fill!(I_ph, 0)
+
+        # Instantaneous Real, Imaginary, and Zero powers
+        p_q_inst = Array{Float64, 3}(undef, num_sources, 3, N_cntr)
+        p_q_inst = fill!(p_q_inst, 0)
+
+        p_inst = Array{Float64, 3}(undef, num_sources, 3, N_cntr) # instantaneous power at PCC
+        p_inst = fill!(p_inst, 0)
+
+        Pm = Array{Float64, 3}(undef, num_sources, 4, N_cntr) # 4th column is total
+        Pm = fill!(Pm, 0)
+        Qm = Array{Float64, 3}(undef, num_sources, 4, N_cntr) # 4th column is total
+        Qm = fill!(Qm, 0)
+
+        #---------------------------------------------------------------------------
         # General System & Control
 
         Modes = Dict("Swing Mode" => 1, "Voltage Control Mode" => 2, "PQ Control Mode" => 3,
@@ -235,16 +276,16 @@ mutable struct Source_Controller <: AbstractPolicy
         Source_Modes = Array{String, 1}(undef, num_sources)
         Source_Modes = fill!(Source_Modes, "Voltage Control Mode")
 
-        steps = 0
-        fsys = 50.0
-        θsys = 0.0
-
-        μ_cntr = 1/f_cntr
-        N_cntr = convert(Int64, floor(t_final/μ_cntr)) + 1
-
         t_final = convert(Float64, t_final)
         t = 0:μ_cntr:t_final
         θt = (2*π*fsys*t).%(2π)
+
+        V_poc_loc = Array{Int64, 2}(undef, 3, num_sources)
+        V_poc_loc = fill!(V_poc_loc, 1)
+        I_poc_loc = Array{Int64, 2}(undef, 3, num_sources)
+        I_poc_loc = fill!(I_poc_loc, 1)
+        I_inv_loc = Array{Int64, 2}(undef, 3, num_sources)
+        I_inv_loc = fill!(I_inv_loc, 1)
 
         #---------------------------------------------------------------------------
         # Phase Locked Loops
@@ -388,15 +429,17 @@ mutable struct Source_Controller <: AbstractPolicy
         Mfif = Array{Float64, 2}(undef, num_sources, N_cntr)
         Mfif = fill!(Mfif, 0)
 
-        Source_Controller(action_space,
-        Vdc, Vrms,
+        Source_Controller(Vdc, Vrms,
         S, P, Q,
         i_max, v_max,
         Lf, Cf, Rf,
+        T_sp_rms, V_ph, I_ph, 
+        p_q_inst, p_inst, Pm, Qm,
         Modes, Source_Modes,
         num_sources,
         f_cntr, fsys, θsys,
         μ_cntr, N_cntr, delay, steps,
+        V_poc_loc, I_poc_loc, I_inv_loc,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -562,9 +605,29 @@ mutable struct Environment
     end
 end
 
-function Classical_Policy(Source::Source_Controller, Env::Environment)
+Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
-    Source_Interface(Env, Source, active = 0, fc = 2000)
+    n_actions = 1
+    action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:n_actions], )
+    Source::Source_Controller
+
+end
+
+function (Peace::Classical_Policy)(env)
+
+    Action = Classical_Control_RL(Peace.Source, env)
+
+    return Action    
+end
+
+function reward(env)
+    #implement your reward function here
+    return 1
+end
+
+function Classical_Control(Source::Source_Controller, Env::Environment)
+
+    Source_Interface(Env, Source)
 
     for s in 1:Source.num_sources
 
@@ -587,8 +650,158 @@ function Classical_Policy(Source::Source_Controller, Env::Environment)
     end
 
     Action = Env_Interface(Env, Source)
+    Measurements(Source)
 
     return Action
+end
+
+function Source_Interface(Env::Environment, Source::Source_Controller)
+
+    i = Env.steps
+    Source.steps = i
+    ω = 2*π*Source.fsys
+    Source.θsys = (Source.θsys + Source.μ_cntr*ω)%(2*π)
+
+    for num_source in 1:Source.num_sources
+
+            Source.V_filt_poc[num_source, :, i] = Env.x[Source.V_poc_loc[: , num_source], i]
+            Source.V_filt_inv[num_source, :, i] = Env.y[Source.I_inv_loc[: , num_source], i] .+ Source.V_filt_poc[num_source, :, i]
+            Source.I_filt_poc[num_source, :, i] = Env.x[Source.I_poc_loc[: , num_source], i]
+            Source.I_filt_inv[num_source, :, i] = Env.x[Source.I_inv_loc[: , num_source], i]
+            Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
+
+    end
+
+    return nothing
+end
+
+function Env_Interface(Env::Environment, Source::Source_Controller)
+
+    i = Source.steps
+
+    Action = zeros(length(Env.B), 1)
+
+    for s in 1:Source.num_sources
+
+        # Inverter Voltages - Control Actions
+        #_______________________________________________________
+        Action[Source.I_inv_loc[1, s]] = Source.Vd_abc_new[s, 1, i]
+        Action[Source.I_inv_loc[2, s]] = Source.Vd_abc_new[s, 2, i]
+        Action[Source.I_inv_loc[3, s]] = Source.Vd_abc_new[s, 3, i]
+    end
+
+    return Action
+end
+
+function Classical_Control_RL(Source::Source_Controller, env)
+
+    Source_Interface_RL(env, Source)
+
+    for s in 1:Source.num_sources
+
+        if Source.Modes[Source.Source_Modes[s]] == 1
+
+            Swing_Mode(Source, s)
+        elseif Source.Modes[Source.Source_Modes[s]] == 2
+
+            Voltage_Control_Mode(Source, s)
+        elseif Source.Modes[Source.Source_Modes[s]] == 3
+
+            PQ_Control_Mode(Source, s, Source.pq0_set[s,:])
+        elseif Source.Modes[Source.Source_Modes[s]] == 4
+
+            Droop_Control_Mode(Source, s)
+        elseif Source.Modes[Source.Source_Modes[s]] == 5
+
+            Synchronverter_Mode(Source, s)
+        end
+
+    end
+
+    Action = Env_Interface_RL(env, Source)
+    #Measurements(Source)
+
+    return Action
+end
+
+function Source_Interface_RL(env, Source::Source_Controller)
+
+    i = env.steps + 1
+    Source.steps = i
+    ω = 2*π*Source.fsys
+    Source.θsys = (Source.θsys + Source.μ_cntr*ω)%(2*π)
+
+    for num_source in 1:Source.num_sources
+
+        Source.V_filt_poc[num_source, :, i] = env.state[Source.V_poc_loc[: , num_source]]
+        Source.I_filt_poc[num_source, :, i] = env.state[Source.I_poc_loc[: , num_source]]
+        Source.I_filt_inv[num_source, :, i] = env.state[Source.I_inv_loc[: , num_source]]
+        Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
+
+    end
+
+    return nothing
+end
+
+function Env_Interface_RL(env, Source::Source_Controller)
+
+    i = Source.steps
+
+    Action = zeros(length(env.B[1,:]), 1)
+
+    for s in 1:Source.num_sources
+
+        # Inverter Voltages - Control Actions
+        #_______________________________________________________
+        Action[1 + 3*(s - 1)] = Source.Vd_abc_new[s, 1, i]
+        Action[2 + 3*(s - 1)] = Source.Vd_abc_new[s, 2, i]
+        Action[3 + 3*(s - 1)] = Source.Vd_abc_new[s, 3, i]
+
+    end
+
+    return Action
+end
+
+function Collect_IDs(env, Source::Source_Controller, num_fltr_LCL, num_fltr_LC, num_fltr_L)
+
+    #Source.V_poc_loc = [3 4; 11 12; 19 20] # ID's at which nodes the sources are located
+    #Source.I_poc_loc = [5 6; 13 14; 21 22]
+    #Source.I_inv_loc = [1 2; 9 10; 17 18]
+
+    ns = length(env.A[1,:])/3 # get num of inputs
+    np = 3 # number of phases
+
+    x = 0
+    for s in 1:Source.num_sources
+        if s <= num_fltr_LCL
+
+            x += 1
+            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+            x += 2
+            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+            x += 1
+            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+        
+        elseif s <= num_fltr_LCL + num_fltr_LC
+
+            x += 1
+            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+            x += 2
+            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+        
+        elseif s <= num_fltr_LCL + num_fltr_LC + num_fltr_L
+
+            x += 1
+            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+            x += 1
+            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
+
+        end
+    end
+
+    return nothing
 end
 
 function Ramp(final, μ, i; t_end = 0.02, ramp = 0)
@@ -622,7 +835,7 @@ function Swing_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp 
 
     θt = Source.θsys
     θph = [θt + δ; θt + δ - 120π/180; θt + δ + 120π/180]
-    Vrms = V_Ramp(pu*Source.Vrms[num_source], Source.μ_cntr, i; t_end = t_end, ramp = ramp)
+    Vrms = Ramp(pu*Source.Vrms[num_source], Source.μ_cntr, i; t_end = t_end, ramp = ramp)
     Source.V_ref[num_source, :, i] = sqrt(2)*Vrms*sin.(θph)
 
     Source.Vd_abc_new[num_source, :, i] = Source.V_ref[num_source, :, i]
@@ -680,7 +893,7 @@ function PQ_Control_Mode(Source::Source_Controller, num_source, pq0)
         Voltage_Controller(Source, num_source, θt)
     end
 
-    Phase_Locked_Loop_3ph(Source, num_source)
+    #Phase_Locked_Loop_3ph(Source, num_source)
     Current_Controller(Source, num_source, θt)
 
     return nothing
@@ -709,6 +922,8 @@ function Synchronverter_Mode(Source::Source_Controller, num_source; pq0_ref = [S
         Voltage_Controller(Source, num_source, θ_S)
         Current_Controller(Source, num_source, θ_S)
     end
+
+    Phase_Locked_Loop_3ph(Source, num_source)
 
     return nothing
 end
@@ -1435,73 +1650,6 @@ function First_Order_LPF(fc, x, y, μ)
     return y_new
 end
 
-function Source_Interface(Env::Environment, Source::Source_Controller; active = 1, fc = 1000)
-
-    i = Env.steps
-    Source.steps = i
-    ω = 2*π*Source.fsys
-    Source.θsys = (Source.θsys + Source.μ_cntr*ω)%(2*π)
-
-    for num_source in 1:Env.num_sources
-
-        if active == 1
-
-            x_start = i - 2
-            if x_start < 1
-                x_start = 1
-            end
-            x_range = x_start:i
-
-            y_start = i - 2
-            y_end = i - 1
-            if y_start < 1
-                y_start = 1
-                y_end = 1
-            end
-            y_range = y_start:y_end
-
-            V_poc = Env.x[Env.V_poc_loc[: , num_source], x_range]
-            V_inv = Env.y[Env.I_inv_loc[: , num_source], x_range] .+ V_poc
-            I_poc = Env.x[Env.I_poc_loc[: , num_source], x_range]
-            I_inv = Env.x[Env.I_inv_loc[: , num_source], x_range]
-            P_Q = Env.p_q_inst[num_source, :, x_range]
-
-            Source.V_filt_poc[num_source, :, i] = Butterworth_LPF(fc, V_poc, Source.V_filt_poc[num_source, :, y_range], Source.μ_cntr)
-            Source.V_filt_inv[num_source, :, i] = Butterworth_LPF(fc, V_inv, Source.V_filt_inv[num_source, :, y_range], Source.μ_cntr)
-            Source.I_filt_poc[num_source, :, i] = Butterworth_LPF(fc, I_poc, Source.I_filt_poc[num_source, :, y_range], Source.μ_cntr)
-            Source.I_filt_inv[num_source, :, i] = Butterworth_LPF(fc, I_inv, Source.I_filt_inv[num_source, :, y_range], Source.μ_cntr)
-            Source.p_q_filt[num_source, :, i] = p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
-        else
-            Source.V_filt_poc[num_source, :, i] = Env.x[Env.V_poc_loc[: , num_source], i]
-            Source.V_filt_inv[num_source, :, i] = Env.y[Env.I_inv_loc[: , num_source], i] .+ Source.V_filt_poc[num_source, :, i]
-            Source.I_filt_poc[num_source, :, i] = Env.x[Env.I_poc_loc[: , num_source], i]
-            Source.I_filt_inv[num_source, :, i] = Env.x[Env.I_inv_loc[: , num_source], i]
-            Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
-        end
-
-    end
-
-    return nothing
-end
-
-function Env_Interface(Env::Environment, Source::Source_Controller)
-
-    i = Source.steps
-
-    Action = zeros(length(Env.B), 1)
-
-    for s in 1:Source.num_sources
-
-        # Inverter Voltages - Control Actions
-        #_______________________________________________________
-        Action[Env.I_inv_loc[1, s]] = Source.Vd_abc_new[s, 1, i]
-        Action[Env.I_inv_loc[2, s]] = Source.Vd_abc_new[s, 2, i]
-        Action[Env.I_inv_loc[3, s]] = Source.Vd_abc_new[s, 3, i]
-    end
-
-    return Action
-end
-
 function Third_Order_Integrator(y_i, μ, u)
 
     if length(u) > 2
@@ -1535,51 +1683,47 @@ end
 
 #-------------------------------------------------------------------------------
 
-function Measurements(Env::Environment)
+function Measurements(Source::Source_Controller)
 
-    i = Env.steps
+    i = Source.steps
 
-    v_loc = [3 11 19; 4 12 20]
-    i_loc = [5 13 21; 6 14 22]
-
-    t_final = (Env.N - 1)*Env.μ
-    t = 0:Env.μ:t_final # bad code
-
-    num_nodes = size(v_loc, 1)
+    Source.num_sources
 
     T_eval = 1 #number of periods to average over
-    i_sp_rms = convert(Int64, round((1/(Env.μ*Env.T_sp_rms))))
+    i_sp_rms = convert(Int64, round((1/(Source.μ_cntr*Source.T_sp_rms))))
 
-    i_start = i - convert(Int64, round(T_eval/(Env.fsys*Env.μ)))
+    i_start = i - convert(Int64, round(T_eval/(Source.fsys*Source.μ_cntr)))
 
     i_range = i_start:i_sp_rms:i
 
-    for n in 1:num_nodes
+    for ns in 1:Source.num_sources
 
-        V_poc = [Env.x[v_loc[n,1], i]; Env.x[v_loc[n,2], i]; Env.x[v_loc[n,3], i]] # a, b, c components
-        I_poc = [Env.x[i_loc[n,1], i]; Env.x[i_loc[n,2], i]; Env.x[i_loc[n,3], i]]
+        V_poc = Source.V_filt_poc[ns, :, i]
+        I_poc = Source.I_filt_poc[ns, :, i]
 
-        Env.p_q_inst[n, :, i] = p_q_theory(V_poc, I_poc)
+        Source.p_q_inst[ns, :, i] = p_q_theory(V_poc, I_poc) # real and imaginary powers
 
-        Env.p_inst[n, :, i] = V_poc.*I_poc
+        Source.p_inst[ns, :, i] = V_poc.*I_poc
 
         # Phasors
         if i_range[1] >= 1 #waiting for one evaluation cycle to pass
 
+                θ = Source.θpll[ns, 1, i_range]
+                #θ = Env.θs[i_range]
+
                 # Voltages
-                v_signals = [Env.x[v_loc[n,1], i_range] Env.x[v_loc[n,2], i_range] Env.x[v_loc[n,3], i_range]]
+                v_signals = transpose(Source.V_filt_poc[ns, :, i_range])
+                Source.V_ph[ns,  :, :, i] = RMS(θ, v_signals) .+ π/2
 
                 # Currents
-                i_signals = [Env.x[i_loc[n,1], i_range] Env.x[i_loc[n,2], i_range] Env.x[i_loc[n,3], i_range]]
+                i_signals = transpose(Source.I_filt_poc[ns, :, i_range])
+                Source.I_ph[ns, :, :, i] = RMS(θ, i_signals) .+ π/2
 
-                Env.V_ph[n,  :, :, i] = RMS(Env.θs[i_range], v_signals, Env.T_sp_rms)
-
-                Env.I_ph[n, :, :, i] = RMS(Env.θs[i_range], i_signals, Env.T_sp_rms)
-
-                Env.P[n, 1:3, i] = (Env.V_ph[n, :, 2, i].*Env.I_ph[n, :, 2, i]).*cos.(Env.V_ph[n, :, 3, i] .- Env.I_ph[n, :, 3, i])
-                Env.P[n, 4, i] = sum(Env.P[n, 1:3, i])
-                Env.Q[n, 1:3, i] = (Env.V_ph[n, :, 2, i].*Env.I_ph[n, :, 2, i]).*sin.(Env.V_ph[n, :, 3, i] .- Env.I_ph[n, :, 3, i])
-                Env.Q[n, 4, i] = sum(Env.Q[n, 1:3, i])
+                # Per phase (and total) Active and Reactiv Powers
+                Source.Pm[ns, 1:3, i] = (Source.V_ph[ns, :, 2, i].*Source.I_ph[ns, :, 2, i]).*cos.(Source.V_ph[ns, :, 3, i] .- Source.I_ph[ns, :, 3, i])
+                Source.Pm[ns, 4, i] = sum(Source.Pm[ns, 1:3, i])
+                Source.Qm[ns, 1:3, i] = (Source.V_ph[ns, :, 2, i].*Source.I_ph[ns, :, 2, i]).*sin.(Source.V_ph[ns, :, 3, i] .- Source.I_ph[ns, :, 3, i])
+                Source.Qm[ns, 4, i] = sum(Source.Qm[ns, 1:3, i])
 
         end
     end

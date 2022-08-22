@@ -1,7 +1,8 @@
-function RMS(θ, t_signals, T_sp)
+function RMS(θ, t_signals)
 
     # Calcutates the DC offset, RMS magnitude, and phase angle relative to the
     # frequency (θ = 2*π*t[:]) for a three phase system
+    # note that the reference is a cosine - subtract 90 degrees for sine.
     i = 1
     i_length = size(t_signals, 1)
 

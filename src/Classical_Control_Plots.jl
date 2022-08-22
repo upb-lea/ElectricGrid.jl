@@ -1,11 +1,14 @@
-function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller, Env::Environment; num_source = 1)
+function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
     p_I_dq0_d = plot(t[N_range], Source.I_ref_dq0[num_source, 1, N_range],
@@ -60,14 +63,17 @@ function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller, Env::En
     return nothing
 end
 
-function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller, Env::Environment; num_source = 1)
+function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
     p_V_dq0_d = plot(t[N_range], Source.V_ref_dq0[num_source, 1, N_range], label = "ref d-axis",
@@ -116,39 +122,47 @@ function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller, Env::En
     return nothing
 end
 
-function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, Env::Environment; num_source = 1, num_node = 1)
+function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    V_inv = Env.x[Env.V_poc_loc[:, num_source], N_range]
-    #V_inv = Env.x[Env.I_inv_loc[:, num_source], N_range] + V_inv
+    #V_inv = env.x[Source.V_poc_loc[:, num_source], N_range]
+    #V_inv = env.x[Source.I_inv_loc[:, num_source], N_range] + V_inv
+
+    V_inv = Source.V_filt_poc[num_source, :, N_range]
 
     Fund = Array{Float64, 2}(undef, 3, length(N_range))
     PLL = Array{Float64, 2}(undef, 3, length(N_range))
 
-    Fund[1,:] = sqrt(2)*Env.V_ph[num_node, 1, 2, N_range].*sin.(50*2π.*t[N_range]
-    + Env.V_ph[num_node, 1, 3, N_range])
-    Fund[2,:] = sqrt(2)*Env.V_ph[num_node, 2, 2, N_range].*sin.(50*2π.*t[N_range]
-    + Env.V_ph[num_node, 2, 3, N_range])
-    Fund[3,:] = sqrt(2)*Env.V_ph[num_node, 3, 2, N_range].*sin.(50*2π.*t[N_range]
-    + Env.V_ph[num_node, 3, 3, N_range])
+    fa = Source.fpll[num_source, 1 , N_range]
+    fb = Source.fpll[num_source, 2 , N_range]
+    fc = Source.fpll[num_source, 3 , N_range]
+    Fund[1,:] = sqrt(2)*Source.V_ph[num_source, 1, 2, N_range].*sin.(fa*2π.*t[N_range]
+    + Source.V_ph[num_source, 1, 3, N_range])
+    Fund[2,:] = sqrt(2)*Source.V_ph[num_source, 2, 2, N_range].*sin.(fb*2π.*t[N_range]
+    + Source.V_ph[num_source, 2, 3, N_range])
+    Fund[3,:] = sqrt(2)*Source.V_ph[num_source, 3, 2, N_range].*sin.(fc*2π.*t[N_range]
+    + Source.V_ph[num_source, 3, 3, N_range])
 
-    PLL[1,:] = sqrt(2)*Env.V_ph[num_node, 1, 2, N_range].*sin.(Source.θpll[num_source, 1, N_range])
-    PLL[2,:] = sqrt(2)*Env.V_ph[num_node, 2, 2, N_range].*sin.(Source.θpll[num_source, 2, N_range])
-    PLL[3,:] = sqrt(2)*Env.V_ph[num_node, 3, 2, N_range].*sin.(Source.θpll[num_source, 3, N_range])
+    PLL[1,:] = sqrt(2)*Source.V_ph[num_source, 1, 2, N_range].*sin.(Source.θpll[num_source, 1, N_range])
+    PLL[2,:] = sqrt(2)*Source.V_ph[num_source, 2, 2, N_range].*sin.(Source.θpll[num_source, 2, N_range])
+    PLL[3,:] = sqrt(2)*Source.V_ph[num_source, 3, 2, N_range].*sin.(Source.θpll[num_source, 3, N_range])
 
     # Phase a Control Signals
     p_cntr_a = plot(t[N_range], Source.V_ref[num_source, 1, N_range],
         label = "Reference_a",
         xlabel = "Time [s]",
         ylabel = "Voltage [V]",
-        title = "DC-AC Converter Control Phase A")
+        title = "DC-AC Converter Control Phase A\nSource = "*string(num_source))
     p_cntr_a = plot!(t[N_range], V_inv[1,:], label = "Inverter Phase a")
     p_cntr_a = plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
     p_cntr_a = plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
@@ -161,7 +175,7 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, Env
         title = "DC-AC Converter Control Phase B")
     p_cntr_b = plot!(t[N_range], V_inv[2,:], label = "Inverter Phase b")
     p_cntr_b = plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
-    p_cntr_a = plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
+    p_cntr_b = plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
 
     # Phase c Control Signals
     p_cntr_c = plot(t[N_range], Source.V_ref[num_source, 3, N_range],
@@ -171,7 +185,7 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, Env
         title = "DC-AC Converter Control Phase C")
     p_cntr_c = plot!(t[N_range], V_inv[3,:], label = "Inverter Phase c")
     p_cntr_c = plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
-    p_cntr_a = plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
+    p_cntr_c = plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
 
     p_v_cntr = plot(p_cntr_a, p_cntr_b, p_cntr_c,
         layout = (3, 1),
@@ -183,33 +197,36 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, Env
     return nothing
 end
 
-function Plot_Irms(T_plot_start, T_plot_end, Env::Environment; num_node = 1)
+function Plot_Irms(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    p_i_rms = plot(t[N_range], Env.I_ph[num_node,1,2,N_range],
+    p_i_rms = plot(t[N_range], Source.I_ph[num_source, 1, 2, N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
         ylabel = "Current [A]",
-        title = "Source = "*string(num_node)*"\nRMS Inverter Currents",
+        title = "Source = "*string(num_source)*"\nRMS Inverter Currents",
         grid = true,
         foreground_color_grid = :black,
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_i_rms = plot!(t[N_range], Env.I_ph[num_node,2,2,N_range],
+    p_i_rms = plot!(t[N_range], Source.I_ph[num_source,2,2,N_range],
         label = "Inverter Phase b")
-    p_i_rms = plot!(t[N_range], Env.I_ph[num_node,3,2,N_range],
+    p_i_rms = plot!(t[N_range], Source.I_ph[num_source,3,2,N_range],
         label = "Inverter Phase c")
 
-    p_i_ang = plot(t[N_range], (180/π)*Env.I_ph[num_node,1,3,N_range],
+    p_i_ang = plot(t[N_range], (180/π)*Source.I_ph[num_source,1,3,N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
@@ -220,9 +237,9 @@ function Plot_Irms(T_plot_start, T_plot_end, Env::Environment; num_node = 1)
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_i_ang = plot!(t[N_range], (180/π)*Env.I_ph[num_node,2,3,N_range],
+    p_i_ang = plot!(t[N_range], (180/π)*Source.I_ph[num_source,2,3,N_range],
         label = "Inverter Phase b")
-    p_i_ang = plot!(t[N_range], (180/π)*Env.I_ph[num_node,3,3,N_range],
+    p_i_ang = plot!(t[N_range], (180/π)*Source.I_ph[num_source,3,3,N_range],
         label = "Inverter Phase c")
 
     p_i_rms_ang = plot(p_i_rms, p_i_ang,
@@ -235,18 +252,21 @@ function Plot_Irms(T_plot_start, T_plot_end, Env::Environment; num_node = 1)
     return nothing
 end
 
-function Plot_Vrms(T_plot_start, T_plot_end, Env::Environment, Source::Source_Controller; num_node = 1, num_source = 1)
+function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
 
     N_range = N_plot_start:N_plot_end
 
-    p_v_rms = plot(t[N_range], Env.V_ph[num_node, 1,2,N_range],
+    p_v_rms = plot(t[N_range], Source.V_ph[num_source, 1,2,N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
@@ -257,12 +277,12 @@ function Plot_Vrms(T_plot_start, T_plot_end, Env::Environment, Source::Source_Co
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_v_rms = plot!(t[N_range], Env.V_ph[num_node, 2,2,N_range],
+    p_v_rms = plot!(t[N_range], Source.V_ph[num_source, 2,2,N_range],
         label = "Inverter Phase b")
-    p_v_rms = plot!(t[N_range], Env.V_ph[num_node, 3,2,N_range],
+    p_v_rms = plot!(t[N_range], Source.V_ph[num_source, 3,2,N_range],
         label = "Inverter Phase c")
 
-    p_v_ang = plot(t[N_range], (180/π)*Env.V_ph[num_node, 1,3,N_range],
+    p_v_ang = plot(t[N_range], (180/π)*Source.V_ph[num_source, 1,3,N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
@@ -273,19 +293,22 @@ function Plot_Vrms(T_plot_start, T_plot_end, Env::Environment, Source::Source_Co
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_v_ang = plot!(t[N_range], (180/π)*Env.V_ph[num_node, 2,3,N_range],
+    p_v_ang = plot!(t[N_range], (180/π)*Source.V_ph[num_source, 2,3,N_range],
         label = "Inverter Phase b")
-    p_v_ang = plot!(t[N_range], (180/π)*Env.V_ph[num_node, 3,3,N_range],
+    p_v_ang = plot!(t[N_range], (180/π)*Source.V_ph[num_source, 3,3,N_range],
         label = "Inverter Phase c")
 
-    PLL_ph_a = Source.θpll[num_source, 1, N_range] .- 2*π*50*t[N_range]#Source.fpll[num_source, 1, N_range].*t[N_range]
-    PLL_ph_b = Source.θpll[num_source, 2, N_range] .- 2*π*50*t[N_range]#Source.fpll[num_source, 2, N_range].*t[N_range]
-    PLL_ph_c = Source.θpll[num_source, 3, N_range] .- 2*π*50*t[N_range]#Source.fpll[num_source, 3, N_range].*t[N_range]
+    f = Source.fsys
+    f = Source.fpll[num_source, 1, N_range]
+    PLL_ph_a = Source.θpll[num_source, 1, N_range] .- 2*π*f.*t[N_range]
+    PLL_ph_b = Source.θpll[num_source, 2, N_range] .- 2*π*f.*t[N_range]
+    PLL_ph_c = Source.θpll[num_source, 3, N_range] .- 2*π*f.*t[N_range]
 
     for i in 1:length(PLL_ph_a)
         PLL_ph_a[i] = (PLL_ph_a[i] + 2*π*floor(t[i]/0.02))*180/pi
         PLL_ph_b[i] = (PLL_ph_b[i] + 2*π*floor(t[i]/0.02))*180/pi
         PLL_ph_c[i] = (PLL_ph_c[i] + 2*π*floor(t[i]/0.02))*180/pi
+        
         if PLL_ph_a[i] > 180
             PLL_ph_a[i] = PLL_ph_a[i] - 360
         end
@@ -304,6 +327,7 @@ function Plot_Vrms(T_plot_start, T_plot_end, Env::Environment, Source::Source_Co
         if PLL_ph_c[i] < -180
             PLL_ph_c[i] = PLL_ph_c[i] + 360
         end
+        
     end
 
     p_v_ang = plot!(t[N_range], PLL_ph_a,
@@ -329,18 +353,19 @@ function Plot_Vrms(T_plot_start, T_plot_end, Env::Environment, Source::Source_Co
     return nothing
 end
 
-function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env::Environment; num_source = 1, num_node = 1)
+function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
 
     N_range = N_plot_start:N_plot_end
-
-    Env.I_inv_loc[num_source, 1]
 
     # Phase a Control Signals
     p_cntr_a = plot(t[N_range], Source.I_ref[num_source, 1, N_range],
@@ -348,8 +373,8 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase A")
-    p_cntr_a = plot!(t[N_range], Env.x[Env.I_inv_loc[1, num_source], N_range],
-        label = "Inverter Phase a")
+    #p_cntr_a = plot!(t[N_range], Env.x[Source.I_inv_loc[1, num_source], N_range],
+        #label = "Inverter Phase a")
 
     # Phase b Control Signals
     p_cntr_b = plot(t[N_range], Source.I_ref[num_source, 2, N_range],
@@ -357,8 +382,8 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase B")
-    p_cntr_b = plot!(t[N_range], Env.x[Env.I_inv_loc[2, num_source], N_range],
-        label = "Inverter Phase b")
+    #p_cntr_b = plot!(t[N_range], Env.x[Source.I_inv_loc[2, num_source], N_range],
+        #label = "Inverter Phase b")
 
     # Phase c Control Signals
     p_cntr_c = plot(t[N_range], Source.I_ref[num_source, 3, N_range],
@@ -366,8 +391,8 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase C")
-    p_cntr_c = plot!(t[N_range], Env.x[Env.I_inv_loc[3, num_source], N_range],
-        label = "Inverter Phase c")
+    #p_cntr_c = plot!(t[N_range], Env.x[Source.I_inv_loc[3, num_source], N_range],
+        #label = "Inverter Phase c")
 
     p_i_cntr = plot(p_cntr_a, p_cntr_b, p_cntr_c,
         layout = (3, 1),
@@ -379,14 +404,17 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
     return nothing
 end
 
-function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env::Environment; num_source = 1, ph = 1)
+function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env; num_source = 1, ph = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
     p_pll_f = plot(t[N_range], Source.fpll[num_source, ph , N_range], label = "PLL Frequency",
@@ -397,11 +425,12 @@ function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env::Envi
         grid = true,
         foreground_color_grid = :black,
         minorgrid = true,
-        thickness_scaling = 1.5,
-        legendfont = font(5))
-    p_pll_f = plot!(t[N_range], Env.fs[N_range], label = "System Frequency")
+        #thickness_scaling = 1.5,
+        #legendfont = font(5)
+        )
+    #p_pll_f = plot!(t[N_range], Source.fs[N_range], label = "System Frequency")
 
-    N_range = N_plot_start:N_plot_end
+    #=N_range = N_plot_start:N_plot_end
     Source.θ_droop[num_source, ph, N_range]
     θe = sin.(Env.θs[N_range] .- Source.θpll[num_source, ph, N_range] .- 120π/180)
     θe = (180/π).*asin.(θe)
@@ -415,29 +444,33 @@ function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env::Envi
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    #=p_pll_θ = plot!(t_cntr[N_range_cntr], (180/π).θPLL[N_range_cntr],
+    p_pll_θ = plot!(t_cntr[N_range_cntr], (180/π).θPLL[N_range_cntr],
         label = "PLL Phase Angle")
     p_pll_θ = plot!(t[N_range], (180/π).θs[N_range],
         label = "Source Phase Angle")=#
 
-    p_pll = plot(p_pll_f, p_pll_θ,
-        layout = (2, 1),
+    p_pll = plot(p_pll_f, #p_pll_θ,
+        layout = (1, 1),
+        #size = (900,900),
         legend = true,
-        size = (900,900))
+        )
 
     display(p_pll)
 
     return nothing
 end
 
-function Plot_P_inst(num_node, T_plot_start, T_plot_end, Env::Environment)
+function Plot_P_inst(T_plot_start, T_plot_end, Env)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
     Uc = 0.001 # unit conversion
@@ -496,19 +529,22 @@ function Plot_P_inst(num_node, T_plot_start, T_plot_end, Env::Environment)
     return nothing
 end
 
-function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Env::Environment, Source::Source_Controller; num_node = 1, num_source = 1)
+function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
-    N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
-    N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
+    N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
+    N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
     Uc = 0.001 # unit conversion
 
-    p_p_r_a = plot(t[N_range], Uc*Env.p_q_inst[num_node, 1, N_range],
+    p_p_r_a = plot(t[N_range], Uc*Source.p_q_inst[num_source, 1, N_range],
         legend = :bottomright,
         label = "Real Power",
         xlabel = "Time [s]",
@@ -520,9 +556,9 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Env::Environme
         thickness_scaling = 1.5,
         legendfont = font(5))
     #p_p_r_a = plot!(t[N_range], Uc*Source.p_q_filt[num_source, 1, N_range], label = "Filtered Real Power")
-    p_p_r_a = plot!(t[N_range], Uc*Env.P[num_node, 4, N_range], label = "Active Power", lw = 1)
+    p_p_r_a = plot!(t[N_range], Uc*Source.Pm[num_source, 4, N_range], label = "Active Power", lw = 1)
 
-    p_p_i_q = plot(t[N_range], Uc*Env.p_q_inst[num_node, 2 ,N_range], label = "Imaginary Power",
+    p_p_i_q = plot(t[N_range], Uc*Source.p_q_inst[num_source, 2 ,N_range], label = "Imaginary Power",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Power [kVAi / kVAr]",
@@ -533,7 +569,7 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Env::Environme
         thickness_scaling = 1.5,
         legendfont = font(5))
     #p_p_i_q = plot!(t[N_range], Uc*Source.p_q_filt[num_source, 2, N_range], label = "Filtered Imaginary Power")
-    p_p_i_q = plot!(t[N_range], Uc*Env.Q[num_node, 4, N_range], label = "Reactive Power", lw = 1)
+    p_p_i_q = plot!(t[N_range], Uc*Source.Qm[num_source, 4, N_range], label = "Reactive Power", lw = 1)
 
     p_p_real_imag_act_react = plot(p_p_r_a, p_p_i_q,
         legend = :bottomright,
@@ -545,11 +581,14 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Env::Environme
     return nothing
 end
 
-function Plot_fft(T_plot_start, T_plot_end, Env::Environment, Source::Source_Controller; num_node = 1, num_source = 1)
+function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
     x_lim = (-1500, +1500)
     x_ticks = -1500:250:1500
@@ -637,11 +676,14 @@ function Plot_fft(T_plot_start, T_plot_end, Env::Environment, Source::Source_Con
     return nothing
 end
 
-function Plot_Droop(T_plot_start, T_plot_end, Source::Source_Controller, Env::Environment; num_source = 1)
+function Plot_Droop(T_plot_start, T_plot_end, Source::Source_Controller, Env, num_source = 1)
 
-    if T_plot_end > Env.t_final*Env.fsys
-        T_plot_end = Env.t_final*Env.fsys
+    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+
+    if T_plot_end > t_final*Source.fsys
+        T_plot_end = t_final*Source.fsys
     end
+    
     Nps = Source.f_cntr
     N_plot_start = convert(Int64, round((T_plot_start/Env.fsys  + 1/Nps)*Nps))
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))

@@ -89,15 +89,6 @@ Rt2 = 0.222*l
 # State space representation
 A, B, C, D, B2, D2 = Two_Sources_One_Load(Source, Vo_rms, SL1, pf1, SL2, pf2, Lt1, Lt2, Rt1, Rt2)
 
-#=
-    CM = [ 0  0  1
-        0  0  2
-        -1 -2  0]
-
-    power_grid = NodeConstructor(num_sources = 2, num_loads = 1, S2S_p = 1, S2L_p = 1)
-    A, B, C, D = get_sys(power_grid)
-=#
-
 Env = Environment(t_final, Ts, A, B, C, D, num_sources, num_loads)
 Env.V_poc_loc = [3 4; 11 12; 19 20] # ID's at which nodes the sources are located
 Env.I_poc_loc = [5 6; 13 14; 21 22]
@@ -105,12 +96,12 @@ Env.I_inv_loc = [1 2; 9 10; 17 18]
 
 ns = length(A[1,:]) # get num of states
 x0 = [0.0 for i = 1:ns] # initial conditions
-env = SimEnv(A = A, B = B2, C = C, D = D2, x0 = x0)
+#env = SimEnv(A = A, B = B2, C = C, D = D2, x0 = x0)
 
 #%% Starting time simulation
 println("\nHere we go.\n")
 
-reset!(env) 
+#reset!(env) 
 
 #run(policy, env, StopAfterStep(10))
 # reset source as well.
@@ -142,7 +133,7 @@ reset!(env)
 
         #-----------------------------------------------------------------------
 
-        Action = Classical_Policy(Source, Env)
+        Action = Classical_Control(Source, Env)
 
         #=
             num_srce = 1
