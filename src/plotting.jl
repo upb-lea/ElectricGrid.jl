@@ -24,14 +24,14 @@ function plot_rewards_3d(hook)
     display(p)
 end
 
-function plot_best_results(;agent, env, hook, state_ids_to_plot)
+function plot_best_results(;agent, env, hook, state_ids_to_plot, plot_reward = true, plot_reference = false)
     reset!(env)
 
     act_noise_old = agent.policy.act_noise
     agent.policy.act_noise = 0.0
     copyto!(agent.policy.behavior_actor, hook.bestNNA)
     
-    temphook = DataHook(collect_state_ids = state_ids_to_plot)
+    temphook = DataHook(collect_state_ids = state_ids_to_plot, collect_reference = true)
     
     run(agent.policy, env, StopAfterEpisode(1), temphook)
     
@@ -58,20 +58,33 @@ function plot_best_results(;agent, env, hook, state_ids_to_plot)
             height = 650,
             margin=attr(l=100, r=80, b=80, t=100, pad=10)
         )
+
+
+    traces = []
+
+    for state_id in state_ids_to_plot
+        push!(traces, scatter(temphook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
+    end
+
+    if plot_reward
+        push!(traces, scatter(temphook.df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward"))
+    end
+
+    if plot_reference
+        push!(traces, scatter(temphook.df, x = :time, y = :reference, mode="lines", name = "Reference"))
+    end
+
+    traces = Array{GenericTrace}(traces)
     
-    trace1 = scatter(temphook.df, x = :time, y = :u_f1, mode="lines", name = "U f1")
-    trace2 = scatter(temphook.df, x = :time, y = :u_1, mode="lines", name = "U 1")
-    trace3 = scatter(temphook.df, x = :time, y = :u_2, mode="lines", name = "U 2")
-    trace4 = scatter(temphook.df, x = :time, y = :u_l1, mode="lines", name = "U l1")
-    trace5 = scatter(temphook.df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward")
-    
-    p = plot([trace1, trace2, trace3, trace4, trace5], layout, config = PlotConfig(scrollZoom=true))
+    p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
     display(p)
     
     copyto!(agent.policy.behavior_actor, hook.currentNNA)
     agent.policy.act_noise = act_noise_old
     
     reset!(env)
+
+    return nothing
 end
 
 function get_data(episode)

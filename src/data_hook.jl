@@ -24,6 +24,8 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     bestepisode = 0
     currentNNA = nothing
 
+    collect_reference = false
+
 end
 
 function (hook::DataHook)(::PreExperimentStage, agent, env)
@@ -42,6 +44,10 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
+
+    if hook.collect_reference
+        insertcols!(hook.tmp, :reference => reference(env.t))
+    end
 
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
