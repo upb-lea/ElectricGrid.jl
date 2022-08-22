@@ -14,6 +14,7 @@ using IntervalSets
 using TimerOutputs
 using JSON
 using PlotlyJS
+using DataFrames
 
 import ReinforcementLearning.update!
 
@@ -115,16 +116,12 @@ function train_ddpg(timer::TimerOutput,
 
     hook = TotalRewardPerEpisode()
     
-    # time parts of the algorithm
-    @timeit timer "Overall run" begin
-        run(
-            agent,
-            env,
-            timer,
-            StopAfterEpisode(No_Episodes),
-            hook
-        )
-        end
+    # time parts of the algorithm (2 times to be sure)
+    reset_timer!(to)
+    @timeit timer "Overall run" run(agent, env, timer, StopAfterEpisode(1), hook)
+    reset_timer!(to)
+    @timeit timer "Overall run" run(agent, env, timer, StopAfterEpisode(No_Episodes), hook)
+        
     
     nothing
 end
@@ -169,17 +166,48 @@ function collect_results!(timer::TimerOutput, node::Int)
     append!(prepare_data, TimerOutputs.time(timer["Overall run"]["inside run"]["Agent prepare data"]))
 end
 
+function collectresults(timer::TimerOutput, node::Int)
+
+    global sections = [
+            "Env calculation", "gradients for Actor", "gradients for Critic",
+            "policy - transfer of data to device", "update Critic network", "update Actor network", "Agent prepare data"
+            ]
+    
+    global results_time[!, string(node)] = [
+        TimerOutputs.time(timer["Overall run"]["inside run"]["Env calculation"]),
+        TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["gradients for Actor"]),
+        TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["gradients for Critic"]),
+        TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["policy - transfer of data to device"]),
+        TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["update Critic network"]),
+        TimerOutputs.time(timer["Overall run"]["inside run"]["Agent policy update"]["update Actor network"]),
+        TimerOutputs.time(timer["Overall run"]["inside run"]["Agent prepare data"])
+    ]
+
+    global results_allocated[!, string(node)] = [
+        TimerOutputs.allocated(timer["Overall run"]["inside run"]["Env calculation"]),
+        TimerOutputs.allocated(timer["Overall run"]["inside run"]["Agent policy update"]["gradients for Actor"]),
+        TimerOutputs.allocated(timer["Overall run"]["inside run"]["Agent policy update"]["gradients for Critic"]),
+        TimerOutputs.allocated(timer["Overall run"]["inside run"]["Agent policy update"]["policy - transfer of data to device"]),
+        TimerOutputs.allocated(timer["Overall run"]["inside run"]["Agent policy update"]["update Critic network"]),
+        TimerOutputs.allocated(timer["Overall run"]["inside run"]["Agent policy update"]["update Actor network"]),
+        TimerOutputs.allocated(timer["Overall run"]["inside run"]["Agent prepare data"])
+    ]
+end
 
 
 # collect_results!(timer, 1)
 
-env_cuda = true
-agent_cuda = true
+env_cuda = false
+agent_cuda = false
 
-batch_sizes = [16, 32]
-nodes = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
-No_Episodes = 20
+batch_sizes = [16] #, 32]
+nodes = [1, 5, 10, 15, 20, 25, 30, 35] #, 40, 45, 50, 55, 60
+No_Episodes = 10
 
+to = TimerOutput()
+sections = []
+results_time = DataFrame()
+results_allocated = DataFrame()
 
 train_ddpg(reset_timer!(TimerOutput()), env_cuda, agent_cuda, 1, 10, 64)
 
@@ -197,10 +225,9 @@ for batch in batch_sizes
     global prepare_data = []
 
     for i = 1:length(nodes)
-        to = TimerOutput()
-        reset_timer!(to)
         train_ddpg(to, env_cuda, agent_cuda, nodes[i], No_Episodes, batch)
         collect_results!(to, nodes[i])
+        collectresults(to, nodes[i])
     end
 
 
