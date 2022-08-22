@@ -15,6 +15,10 @@ end
 
 Rlr = eigvals(R)
 Rlr0 = maximum(real.(Rlr))
+RVl = eigvecs(transpose(R))
+_, ilr0 = findmax(real.(Rlr))
+
+Stat_dist_R = abs.(RVl[1:end, ilr0])/abs(sum(RVl[1:end, ilr0]))
 
 h = (1/(1-a))*log(2, Rlr0)
 
@@ -25,30 +29,25 @@ index = findfirst( ==(1.0), real(round.(lr, digits = 1)))
 
 Stat_dist = abs.(Vl[1:end, index])/abs(sum(Vl[1:end, index]))
 
-he = 0
-ha = 0
-hu = 0
 hg = 0
 for v in 1:size(T,2)
-    global he, ha, hu, hg
+    global hg
 
-    he = 0
     for vd in 1:size(T,2)
   
         if T[v,vd] != 0
-            he = he + (T[v,vd]^a)
-            hg = hg + ((Stat_dist[v])/(sum(Stat_dist.^a)))^a*T[v, vd]
 
-            hu = hu - Stat_dist[v]*T[v,vd]*log(2, T[v,vd])
+            hg = hg + Stat_dist_R[v]*R[v, vd]
         end
     end
 
-    ha = ha + ((1 - a)^-1)*Stat_dist[v]*log(2, he)
 end
 
 hg = ((1 - a)^-1)*log(2, hg)
 
-println("hu = ", hu)
-println("\nha = ", ha)
-#println("hg = ", hg)
-println("h = ", h)
+println("α = ", a, "\n")
+
+println("hu = ", hu,"\n") # Shannon Entropy rate
+
+println("hg = ", hg) # Closed form weighted expression of Renyi entropy rate
+println("h = ", h) # Renyi entropy rate in terms of the dominant eigenvalue of the perturbed matrix - spectral radius
