@@ -10,32 +10,27 @@ include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("plotting.jl"))
 
-function featurize(env)
-    push!(env.state, reference(env.t))
-end
 
 function reference(t)
     230 * sin(2*pi*50 * t)
 end
 
 function reward(env)
-    #implement your reward function here
-
-    P_required = 466 # W
-    V_required = reference(env.t) # V
-
     u_l1_index = findfirst(x -> x == "u_load1", env.state_ids)
-
     u_l1 = env.state[u_l1_index]
 
-    P_load = (env.norm_array[u_l1_index] * u_l1)^2 / 14
-    
-    # P_diff = -abs(P_required - P_load) 
-    # reward = exp(P_diff/130) - 1
+    return -(abs(reference(env.t) - (env.norm_array[u_l1_index] * u_l1))/300)
+end
 
-    reward = -(abs(V_required - (env.norm_array[u_l1_index] * u_l1))/300)
-
-    return reward
+function featurize(x0 = nothing, t0 = nothing; env = nothing) 
+    if isnothing(env)
+        state = copy(x0)
+        push!(state, reference(t0))
+    else
+        state = copy(env.x)
+        push!(state, reference(env.t))
+    end
+    return state
 end
 
 env_cuda = false
@@ -60,37 +55,13 @@ parameters = Dict{Any, Any}(
     "grid"   => Dict{Any, Any}("fs"=>10000.0, "phase"=>1, "v_rms"=>230)
 )
 
-nc = NodeConstructor(num_sources = 1, num_loads = 1, CM = CM, parameters = parameters)
-
-A, B, C, D = get_sys(nc)
-
-limits = Dict("i_lim" => 20, "v_lim" => 600)
-
-states = get_state_ids(nc)
-norm_array = []
-for state_name in states
-    if startswith(state_name, "i")
-        push!(norm_array, limits["i_lim"])
-    elseif startswith(state_name, "u")
-        push!(norm_array, limits["v_lim"])
-    end
-end
 
 # time step
 ts = 1e-4
 
 V_source = 300
 
-x0 = [ 0.0 for i = 1:length(A[1,:]) ]
-
-if env_cuda
-    A = CuArray(A)
-    B = CuArray(B)
-    C = CuArray(C)
-    x0 = CuArray(x0)
-end
-
-env = SimEnv(A=A, B=B, C=C, state_space = Space([ -1.0..1.0 for i = 1:(length(A[1,:]) + 1) ], ), norm_array=norm_array, state_ids = states, rewardfunction = reward, featurize = featurize, x0=x0, v_dc=V_source, ts=ts, convert_state_to_cpu=true, maxsteps=2500)
+env = SimEnv(reward_function = reward, featurize = featurize, v_dc=V_source, ts=ts, use_gpu=env_cuda, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters)
 
 ns = length(env.state_space)
 na = length(env.action_space)

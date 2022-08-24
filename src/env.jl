@@ -10,60 +10,82 @@ include("./nodeconstructor.jl")
 
 mutable struct SimEnv <: AbstractEnv
     nc
+    sys_d
     action_space
     state_space
     done
+    featurize
+    prepare_action
+    reward_function
     x0
     x
-    maxsteps
-    steps
+    t0
     t
     ts
-    sys_d
-    state_ids
-    prepare_data
-    featurize
-    rewardfunction
-    norm_array
-    v_dc
-    reward
-    convert_state_to_cpu
     state
+    maxsteps
+    steps
+    state_ids
+    v_dc
+    norm_array
+    convert_state_to_cpu
+    reward
     action
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_data = nothing, featurize = nothing, rewardfunction = nothing, sys_d = nothing, Ad = nothing, Bd = nothing, A = nothing, B = nothing, C = nothing, D = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t = 0.0)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, sys_d = nothing, Ad = nothing, Bd = nothing, A = nothing, B = nothing, C = nothing, D = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing)
     
-    # TODO: Shall we store nc in env to make it accessible later on to check parameters? (@janstenner)
     if !(isnothing(sys_d))
-        # take sys_d... what to do here?
+        
+        nc = nothing
+
     elseif !(isnothing(Ad) || isnothing(Bd) || isnothing(C) || isnothing(D))
 
+        nc = nothing
         sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
 
     elseif !(isnothing(A) || isnothing(B) || isnothing(C) || isnothing(D))
 
+        nc = nothing
         Ad = exp(A*ts)
         Bd = A \ (Ad - C) * B
         sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
 
     elseif !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
 
-        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM)
+        if isnothing(parameters)
+            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM)
+        else
+            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
+        end
 
         A, B, C, D = get_sys(nc)
         Ad = exp(A*ts)
         Bd = A \ (Ad - C) * B
+
+        if use_gpu
+            Ad = CuArray(A)
+            Bd = CuArray(B)
+            C = CuArray(C)
+            if isa(D, Array)
+                D = CuArray(D)
+            end
+        end
+
         sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
 
     else
         # Construct standard env with 2 sources, 1 load
-        println("Three phase electric power grid with 2 sources and 1 load is created! Parameters are drwan randomly! To change, please define parameters (see nodeconstructor)")
+        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drwan randomly! To change, please define parameters (see nodeconstructor)")
         CM = [ 0. 0. 1.
                0. 0. 2
               -1. -2. 0.]
 
-        nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM)
+        if isnothing(parameters)
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM)
+        else
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters)
+        end
 
         A, B, C, D = get_sys(nc)
         Ad = exp(A*ts)
@@ -72,30 +94,102 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
     end
 
-    A
-    B
-    C
-    D = 0
-    action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(B[1,:]) ], )
-    state_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(A[1,:]) ], )
-    done::Bool = false
-    x0 = [ 0.0 for i = 1:length(A[1,:]) ]
+    if isnothing(action_space)
+        action_space = Space([ -1.0..1.0 for i = 1:length(sys_d.B[1,:]) ], )
+    end
+
+    if isnothing(featurize)
+        featurize = function(x0 = nothing, t0 = nothing; env = nothing) 
+            if isnothing(env)
+                return x0
+            else
+                return env.x
+            end
+        end
+    end
+
+    if isnothing(prepare_action)
+        prepare_action = function(env) 
+            env.action
+        end
+    end
+
+    if isnothing(reward_function)
+        reward_function = function(env) 
+            return 0.0
+        end
+    end
+
+    if isnothing(x0)
+        x0 = [ 0.0 for i = 1:length(sys_d.A[1,:]) ]
+    end
+
     x = x0
-    maxsteps::Int = 300
-    steps::Int = 0
-    t = 0
-    ts = 1/10_000
-    Ad = exp(A*ts)
-    Bd = A \ (Ad - C) * B
-    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
-    state_ids::Vector{String}
-    rewardfunction
-    featurize = [ 0.0 for i = 1:length(state_space) ]
-    norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
-    v_dc::Float64 = 300
-    reward::Float64 = 0
-    convert_state_to_cpu::Bool = true
-    state = convert_state_to_cpu ? Array(featurize(env)) : 
+    t = t0
+
+    state = featurize(x0,t0)
+
+    if isnothing(state_space)
+        state_space = Space([ -1.0..1.0 for i = 1:length(state) ], )
+    end
+
+    if use_gpu
+        if isa(x0, Array)
+            x0 = CuArray(x0)
+        end
+        if !(convert_state_to_cpu) && isa(state, Array)
+            state = CuArray(state)
+        end
+    end
+
+    if isnothing(state_ids)
+        if isnothing(nc)
+            state_ids = []
+            println("WARNING: No state_ids array specified - observing states with DataHook not possible")
+        else
+            state_ids = get_state_ids(nc)
+        end
+    end
+
+    if isnothing(v_dc)
+        println("INFO: v_dc = 350V will get applied to all sources")
+        v_dc = 350 * ones(length(action_space))
+    elseif isa(v_dc, Number)
+        println("INFO: v_dc = $(v_dc)V will get applied to all sources")
+        v_dc = v_dc * ones(length(action_space))
+    end
+    
+    #TODO: norm_array from parameters Dict
+    if isnothing(norm_array)
+        if isnothing(nc)
+            println("INFO: norm_array set to ones - if neccessary please define norm_array in env initialization")
+            norm_array = ones(length(A[1,:]))
+        else
+            println("INFO: Generating standard norm_array from nodeconstructor")
+            states = get_state_ids(nc)
+            norm_array = []
+            println("WARNING: limits set to fixed value - define in nc.parameters")
+            for state_name in states
+                if startswith(state_name, "i")
+                    #push!(norm_array, limits["i_lim"])
+                    push!(norm_array, 20.0)
+                elseif startswith(state_name, "u")
+                    #push!(norm_array, limits["v_lim"])
+                    push!(norm_array, 600.0)
+                end
+            end
+        end
+    end
+
+    if isnothing(reward)
+        reward = 0.0
+    end
+
+    if isnothing(action)
+        action = zeros(length(action_space))
+    end
+
+    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, norm_array, convert_state_to_cpu, reward, action)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -107,14 +201,11 @@ RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
 
 function RLBase.reset!(env::SimEnv)
-    env.state = env.convert_state_to_cpu ? Array(env.x0) : env.x0
+    env.state = env.convert_state_to_cpu ? Array(featurize(env.x0, env.t0)) : featurize(env.x0, env.t0)
     env.x = env.x0
-    if !(isnothing(featurize))
-        featurize(env)
-    end
-    env.t = 0
+    env.t = env.t0
     env.steps = 0
-    env.reward = 0
+    env.reward = 0.0
     env.done = false
     nothing
 end
@@ -128,10 +219,11 @@ function (env::SimEnv)(action)
     env.t = tt[2]
 
     env.action = action
-    prepare_data(env)
+    env.action = env.action .* env.v_dc
 
-    env.action *= env.v_dc
-    if env.Ad isa CuArray && !(env.action isa CuArray)
+    env.action = env.prepare_action(env)
+    
+    if env.sys_d.A isa CuArray && !(env.action isa CuArray)
         if env.action isa Array
             env.action = CuArray(env.action)
         else
@@ -151,7 +243,7 @@ function (env::SimEnv)(action)
         env.state = xout_d'[2,:] ./ env.norm_array
     end
 
-    featurize(env)
+    env.state = env.featurize(; env = env)
 
     # reward
     # loss_error = 1e-1
@@ -163,7 +255,7 @@ function (env::SimEnv)(action)
 
     # env.reward = -sqrt((P_source - (P_R + P_load + loss_error))^2)
     # Power constraint
-    env.reward = env.rewardfunction(env)
+    env.reward = env.reward_function(env)
 
     env.done = env.steps >= env.maxsteps
 end
