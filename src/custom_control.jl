@@ -33,9 +33,9 @@ function custom_lsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVe
     end
 
     x = custom_ltitr(dsys.A, dsys.B, u, x0)
-    y = sys.C * x + sys.D * u
+    #y = sys.C * x + sys.D * u
     #return SimResult(y, t, x, u, dsys) # saves the system that actually produced the simulation
-    return y
+    return x
 end
 
 @views function custom_ltitr(A::AbstractMatrix, B::AbstractMatrix, u::AbstractVecOrMat,
