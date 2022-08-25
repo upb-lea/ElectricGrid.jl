@@ -5,77 +5,13 @@ include("Complexity.jl")
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
-function Draw_Graph(Deus::ϵ_Machine, Net, nodekey, N)
-
-    cm = SimpleGraph(Net) # create graph object from Connecitivity Matrix
-
-    x = LinRange(0, 10, 100)
-    y = sin.(x)
-
-    fig = Figure(resolution=(1600, 800))
-
-    fig[1, 1:2] = title = Label(fig, "Topological Complexity", textsize = 30)
-    title.tellwidth = false
-
-    Cμ_t_ax = Axis(fig[2, 2], title = "Time Dependent Complexity - Knowledge Relaxation", xlabel = "Time [seconds]", ylabel = "Cμ [bits]")
-    lines!(Cμ_t_ax, Deus.t_m, Deus.Cμ_t, color = :red)
-
-    fig[2, 1] = graph_ax = Axis(fig)
-    
-    nodecolours = Array{Symbol, 1}(undef, L)
-    nodecolours = fill!(nodecolours, :blue)
-       
-    #set_theme!(resolution = (800, 800))
-    p = graphplot!(graph_ax, cm;
-            edge_color = [RGBAf(0,0,0,0) for i in 1:ne(cm)], #RGBAf(0,0,0,0)
-            node_size = 20,
-            node_marker = :rect,
-            fontsize = 1,
-            node_color = nodecolours,
-            #curve_distance =-.5,
-            #curve_distance_usage = true
-            )
-    
-    #Circular_Layout(p, graph_ax, L)
-    Plane_Layout(p, graph_ax, L)
-    #p.layout = Spring(Ptype = Float32)
-    hidedecorations!(graph_ax)
-    #hidespines!(ax)
-    #ax.aspect = DataAspect()
-    display(fig)
-
-    for t in 1:N
-
-        for n in 1:L
-
-            if nodekey[n, t] == 0
-                nodecolours[n] = :green4   
-            elseif nodekey[n, t] == 1
-                nodecolours[n] = :dodgerblue
-            elseif nodekey[n, t] == 2
-                nodecolours[n] = :royalblue4
-            elseif nodekey[n, t] == 3
-                nodecolours[n] = :navyblue
-            else
-                nodecolours[n, t] = :blue
-            end
-        end
-
-        p.node_color[][:] = nodecolours[:]
-        p.node_color[] = p.node_color[]
-
-        sleep(0.05)
-
-    end
-    
-    return nothing
-end
-
 #_______________________________________________________________________________
 # Parameters - Time simulation
-fsys = 2000 # Hz
+
 Timestep = 10 # time step in μs
-t_final = 10 # time in seconds, total simulation run time
+t_final = 0.005 #0.75 # time in seconds, total simulation run time
+fsys = 2000 # Hz, fundamental frequency of system
+fsys = 1/(10e-6)
 
 #_______________________________________________________________________________
 # Environment Calcs
@@ -87,55 +23,77 @@ t = 0:μ_s:t_final # time
 
 #_______________________________________________________________________________
 # Machine Parameters
-D = 8
-δ = 0.005
 
 #= Every other one
     D = 5
     Timestep = 10
     t_final = 10
     δ = 0.005
+    ϵ[:] = 0.5
 =#
 #= Logistic Map
-    D = 12
+    D = 12 - or 16
     Timestep = 10
-    t_final = 10
-    δ = 0.035
+    t_final = 0.75 - or 3.75
+    δ = 0.05
+    ϵ[:] = 0.5
 =#
 #= CCA
     T = 1    T = 2   T = 3      T = 4
     Cμ = 2   Cμ = 3  Cμ = 8.5   Cμ = 0 
 
-    dim = 20
+    dim = 1
     1:200:3801
     L = 5000
-    D = 10 - 160
+    D = 150
     Timestep = 10
     t_final = 0.005
     δ = 0.05
+    ϵ[:] = 0.25
+    0.0 <= x_range <= 4.0
+=#
+#= periodic
+    fsys = 2000
+    t_final = 0.05
+    D = 4
+    δ = 0.05
+    dim = 1
+    ϵ[:] = [0.5
+    x_range[:,1] = [1.0
+    x_range[:,2] = [0.0
+    L = 1
 =#
 
 dim = 1 # dimensions of state space
-#μ_m = 0.25/150 #sampling timestep
+#hl = 0.125 # lower frequency - harmonic order
+#hf = 1 # upper frequency - harmonic order
+#μ_m = 0.5/(hf*fsys) #sampling timestep
 μ_m = μ_s #sampling timestep
-t_m = 0:μ_m:t_final
+
+#= 
+    ϵ = 0.5
+    P = 2        P = 4        P = 8          P = 16
+    hl = 1       hl = 0.5     hl = 0.25      hl = 0.125       
+    D0           D0 + 3       D0 + 7         D0 + 15
+=#
+
+#D0 = 4*hf
+D = 150 #convert(Int, ceil(D0 + 2/hl - 1)) + 120
 
 x_range = Array{Float64, 2}(undef, dim, 2) # State space limits
 ϵ = Array{Float64, 1}(undef, dim) # Instrument resolution
 
-ϵ[:] = [0.5 for i in 1:dim]
+ϵ[:] = [0.25 for i in 1:dim]
 
-x_range[:,1] = [1.0 for i in 1:dim] # maximum
-
+x_range[:,1] = [4.0 for i in 1:dim] # maximum
 x_range[:,2] = [0.0 for i in 1:dim] # minimum
-#_range[1,2] = -1.1 # minimum
 
-Deus = ϵ_Machine(N, D, δ, ϵ, x_range, μ_m, μ_s)
+Deus = ϵ_Machine(N, D, ϵ, x_range, μ_m, μ_s)
 
 #_______________________________________________________________________________
 ## Generating Connectivity Matrix
 
-L = 1 #5000 # number of agents
+L = 5000 # number of agents
 
 Z = 2 # coordination number, if Z = L, then we have a fully connected graph. If Z = 2, p = 0 then circular
 p = 0.4 # the fraction of random connections
@@ -171,14 +129,24 @@ x[:, 1] = initialise_CCA(x[:, 1])
     capture the statistical properties of the Logistic map. In other words, there is
     a one-to-one mapping between infinite binary sequences and almost all points on
     the attractor.
-    =#
+
+    #er = 0.01
+    #r = er + 3.0 # period 2
+    #r = er + 3.449490 # period 4
+    #r = er + 3.544090 # period 8
+    #r = er + 3.564407 # period 16?
+    #r = er + 3.568750 # period 32?
+    #r = er + 3.56969 # period 64?
+    #r = er + 3.56989 # period 128?
+=#
 
 # Misiurewicz point:
 r = 3.9277370017867516
+# Accumulation board - onset of chaos
+#r = 3.5699456718695445
 
-xc = 1/2
+#x[1] = 1/2 # initial conditions
 
-x[1] = xc # initial conditions
 #x[1] = 0
 
 #_______________________________________________________________________________
@@ -194,62 +162,71 @@ println("\nHere we go.\n")
         # Progress Bar
         if i > 1 && floor((10*t[i]/t_final)) != floor((10*t[i - 1]/t_final))
             flush(stdout)
-            #println("Progress : ", 10*floor((10*t[i]/t_final)), " %")
+            println("Progress : ", 10*floor((10*t[i]/t_final)), " %")
         end
 
-        #= CCA #
-            Sampling(Deus, x[1:200:3801, i], i, μ_s)   
-            x[:, i + 1] = CCA_dynamics(Net, x[:, i]; T = 2)
-        # =#
+        # CCA #
+        #Sampling(Deus, x[1:200:3801, i], i, μ_s)   
+        #Sampling(Deus, x[1:1, i], i, μ_s)  
+        x[:, i + 1] = CCA_dynamics(Net, x[:, i]; T = 3)
+        #
+
         #= Map
-        Sampling(Deus, x[:, i], i, μ_s) 
         x[1, i + 1] = r*x[1, i]*(1 - x[1, i])
         =#
 
         #= periodic
-            x[1, i + 1] = sin(2π*fsys*t[i+1]) + 0.5*sin(2π*3*fsys*t[i+1])
+        x[1, i + 1] = 1*sin(2π*hf*fsys*t[i+1]) + 1*sin(2π*hl*fsys*t[i+1])
         =#
 
-        # Every other One
+        #= Every other One
         if i%2 == 0
-            Deus.s[i] = 0
+            Deus.s[i] = 1
         else
             b = rand()
-            if b > 0.15
+            if b > 0.5
                 Deus.s[i] = 0
             else
                 Deus.s[i] = 1
             end
         end
-        #
+        =#
         
     end
-
+    #Sampling(Deus, x[:, N], N, μ_s) 
     println("Progress : 100.0 %\n")
 end
 
-Cranking(Deus)
+Cranking(Deus, x[1:1, :], μ_s)
 
-#=
+T_plot_end = 30
 
-    T_plot_end = 5
+N_plot_end = convert(Int64, round((T_plot_end/fsys  - 1/N_s)*N_s))
+N_range = 1:N_plot_end + 2
+Nm_plot_end = convert(Int64, round((T_plot_end/fsys  - μ_m)*1/μ_m))
+Nm_range = 1:Nm_plot_end + 2
 
-    N_plot_end = convert(Int64, round((T_plot_end/fsys  - 1/N_s)*N_s))
-    N_range = 1:N_plot_end+2
-    Nm_plot_end = convert(Int64, round((T_plot_end/fsys  - μ_m)*1/μ_m))
-    Nm_range = 1:Nm_plot_end+2
+fig = Figure()
+p = Axis(fig[1, 1])
+lines!(p, t[N_range], x[1, N_range])
+#lines!(p, Deus.t_m[Nm_range], Deus.s[Nm_range])
+lines!(p, Deus.t_m[Nm_range], Deus.x_m[1, Nm_range])
+#lines!(p, N_range, x[1, N_range])
+#lines!(p, Nm_range, Deus.s[Nm_range])
+#lines!(p, Nm_range, Deus.x_m[1, Nm_range])
 
-    #p = plot(t[N_range], x[1, N_range])
-    #p = plot!(t_m[Nm_range], Deus.s[Nm_range])
-    #p = plot!(Deus.t_m[Nm_range], Deus.x_m[1, Nm_range])
-
-    display(p)
-=#
+#display(fig)
+#
 
 #_______________________________________________________________________________
 ## Draw Graph
+Draw_Plots(Deus)
+#Draw_Graph(Net, x, N, run = 0)
 
-#Draw_Graph(Deus, Net, x, N)
+println("Cμ_t[end] = ", Deus.Cμ_t[end])
+println("Hα[end] = ", Deus.Hα[end])
+println("Period = ", 2^(Deus.Hα[end]))
+println("hl = ", 2/2^(Deus.Hα[end]))
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
-println(Deus.Cμ_t[end])
+

@@ -113,8 +113,8 @@ for i in 1:N
     # Logg one example actiona and an exemplary state
     # toDo: shfit logging and plotting into "History" using hooks
     mess_a[i] = env.state[3]
-    mess_b[i] = env.state[23]
-    mess_c[i] = env.state[13]
+    mess_b[i] = env.state[13]
+    mess_c[i] = env.state[23]
     u_a[i] = action[1]
     u_b[i] = action[2]
     u_c[i] = action[3]

@@ -764,10 +764,6 @@ end
 
 function Collect_IDs(env, Source::Source_Controller, num_fltr_LCL, num_fltr_LC, num_fltr_L)
 
-    #Source.V_poc_loc = [3 4; 11 12; 19 20] # ID's at which nodes the sources are located
-    #Source.I_poc_loc = [5 6; 13 14; 21 22]
-    #Source.I_inv_loc = [1 2; 9 10; 17 18]
-
     ns = length(env.A[1,:])/3 # get num of inputs
     np = 3 # number of phases
 

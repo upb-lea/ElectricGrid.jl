@@ -98,12 +98,28 @@ mutable struct Parse_Tree
         and from this construct the tree with links up to level D that are labeled
         with individual symbols up to that time. We refer to length D subsequences
         as D-cylinders. Hence an D level tree has a length D path corresponding to
-        each distinct observed D-cylinder.
+        each distinct observed D-cylinder. That is, we refer to length D subsequences 
+        as D-cylinders. Hence an D level tree has a length D path corresponding to each 
+        distinct name for that bundle of underlying process's orbits each of which 
+        visited the sequence of measurement partition elements indexed by the D-cylinder. 
+        The basic assumption in building a tree is that symbol sequences observed at 
+        different times in the data stream approximate the same process state. Nonstationary 
+        processes are examples for which this assumption fails.
+
+        The tree is built usin a sliding window to move through the data stream. It 
+        captures in this way the distinct sequences and summarises their occurrence at 
+        different points in the data stream via a count or probability.
 
         1. Get sequence of past D symbols
         2. Add probabilistic structure to the tree by recording for each node ni the
         number Ni(L) of occurrences of the associated L-cylinder relative to the
         total number N(L) observed.
+
+        A partition is "generating" if sufficiently long binary sequences come from 
+        arbitrarily small invervals of initial conditions. If the partition is generating 
+        the resulting binary sequences capture the statistical properties of the map. 
+        In other words, there is a one-to-one mapping between infinite binary sequences and 
+        almost all points on the attractor.
     =#
 
     Nodes::Vector{Node}
@@ -150,7 +166,7 @@ mutable struct ϵ_Machine
         to neural networks when finding a causal pattern in data, except that in the
         case of neural network, the discovered causal pattern is hidden from the
         modeler. In contrast, the reconstructed machine displays the computational
-        structuer of the process being modeled. Probabilistic and deterministic
+        structure of the process being modeled. Probabilistic and deterministic
         structure is discovered rather than imprinted onto the data. The machine
         representations captures pattern and regularities in the data in a way that
         reflects the causal structure of the process.
@@ -202,6 +218,11 @@ mutable struct ϵ_Machine
         probability. That is, two states are in the same equivalence class, if their
         subtrees adhere to a similarity relation.
 
+        The meaning of a measurement is the selected morph, the distribution associated 
+        with the causal state to which the agent transitions, and the degree of meaning 
+        is determined by the latter's probability. That is, it is the information flow 
+        towards the new causal state.
+
         The state-to-state transition structure is obtained by looking at how the
         morphs change into one another upon moving down the parse tree. Subtree
         equivalence means that the link structure is identical. Furthermore, two
@@ -237,7 +258,7 @@ mutable struct ϵ_Machine
         morph is a set of cylinders.
     =#
 
-    CM::Vector{Matrix{Float64}} # The connectivity matrix / transition matrix - probability and symbol elements
+    Ts::Vector{Matrix{Float64}} # The connectivity matrix / transition matrix - probability and symbol elements
     Tree::Parse_Tree
     δ::Float64 # Conditional Probability Margin - 3rd Approximation Parameter
     μ_m::Float64 # Sampling timestep / interval of the machine
@@ -260,17 +281,17 @@ mutable struct ϵ_Machine
     r_eigvecs::Matrix{ComplexF64} # right eigenvectors
     l_eigvecs::Matrix{ComplexF64} # left eigenvectors
     D::Matrix{ComplexF64} # diagonal matrix
-    Stat_dist::Vector{Float64} # stationary state probability distribution
+    pv::Vector{Float64} # stationary state probability distribution
     
     α::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
 
-    Tα::Vector{Matrix{Float64}} # paramatrized stochastic connection matrix of order α
+    Tα::Vector{Matrix{Float64}} # paramatrized stochastic connection matrix of order α - perturbed matrix, αth Hadamar power of T
     Iα::Vector{Matrix{Float64}} #Information flow between states
     eigval_α::Vector{Vector{ComplexF64}} #eigen values of T
     r_eigvecs_α::Vector{Matrix{ComplexF64}} # right eigenvectors
     l_eigvecs_α::Vector{Matrix{ComplexF64}} # left eigenvectors
     Dα::Vector{Matrix{ComplexF64}} # diagonal matrix
-    Stat_dist_α::Vector{Vector{Float64}} # stationary state probability distribution
+    pv_α::Vector{Vector{Float64}} # stationary state probability distribution
 
     Zα::Vector{Float64} # Partition function of order α
     Hα::Vector{Float64} # total Renyi entropy or "free information"
@@ -281,43 +302,43 @@ mutable struct ϵ_Machine
     Cμ_t::Vector{Float64} # Time Series of Statistical Complexity
     h::Float64 # Topological Entropy
     hμ::Float64 # Entropy rate - growth rate of Shannon information in subsequences
+    C::Float64 # State (recurrent) topological Complexity
     Cμ::Float64 # Statistical Complexity - measures amount of memory in the source
-    Cμe::Float64 # Statistical Edge Complexity
-    C::Float64 # State topological (Finitary) Complexity
     Ce::Float64 # Transition topological Complexity
+    Cμe::Float64 # Statistical Edge Complexity
 
-    function ϵ_Machine(CM::Vector{Matrix{Float64}}, Tree::Parse_Tree,
+    function ϵ_Machine(Ts::Vector{Matrix{Float64}}, Tree::Parse_Tree,
         δ::Float64, μ_m::Float64, ϵ::Array{Float64, 1}, x_range::Array{Float64, 2}, k::Int64,
         s::Array{Int64, 1}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
         C_states::Matrix{Int64}, start_state::Int64, Dang_States::Vector{Int64}, IG::Float64,
         T::Matrix{Float64}, I::Matrix{Float64}, eigval::Vector{ComplexF64},
         r_eigvecs::Matrix{ComplexF64}, l_eigvecs::Matrix{ComplexF64},
-        D::Matrix{ComplexF64}, Stat_dist::Vector{Float64}, 
+        D::Matrix{ComplexF64}, pv::Vector{Float64}, 
         α::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
         Tα::Vector{Matrix{Float64}}, Iα::Vector{Matrix{Float64}}, 
         eigval_α::Vector{Vector{ComplexF64}}, r_eigvecs_α::Vector{Matrix{ComplexF64}}, 
-        l_eigvecs_α::Vector{Matrix{ComplexF64}}, Dα::Vector{Matrix{ComplexF64}}, Stat_dist_α::Vector{Vector{Float64}},
+        l_eigvecs_α::Vector{Matrix{ComplexF64}}, Dα::Vector{Matrix{ComplexF64}}, pv_α::Vector{Vector{Float64}},
         Zα::Vector{Float64}, Hα::Vector{Float64}, hα::Vector{Float64}, Cα::Vector{Float64}, Cαe::Vector{Float64}, 
-        Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, Cμ::Float64, Cμe::Float64, C::Float64, Ce::Float64)     
+        Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, C::Float64, Cμ::Float64, Ce::Float64, Cμe::Float64)     
 
-        new(CM, Tree, δ, μ_m, ϵ, x_range, k, 
+        new(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
         s, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
-        r_eigvecs, l_eigvecs, D, Stat_dist,  
+        r_eigvecs, l_eigvecs, D, pv,  
         α,
         Tα, Iα, 
         eigval_α, r_eigvecs_α, l_eigvecs_α, 
-        Dα, Stat_dist_α,
+        Dα, pv_α,
         Zα, Hα, hα, Cα, Cαe,
-        Cμ_t, h, hμ, Cμ, Cμe, C, Ce)
+        Cμ_t, h, hμ, C, Cμ, Ce, Cμe)
 
     end
 
-    function ϵ_Machine(N, D, δ, ϵ, x_range, μ_m, μ_s)
+    function ϵ_Machine(N, D, ϵ, x_range, μ_m, μ_s; δ = 0.05)
 
         # Stochastic transitions on a Multigraph
-        CM = Vector{Matrix{Float64}}(undef, 0)
+        Ts = Vector{Matrix{Float64}}(undef, 0)
         C_states = Array{Int64, 2}(undef, 0, 4)
         Tree = Parse_Tree(N, D)
         start_state = 0
@@ -325,10 +346,10 @@ mutable struct ϵ_Machine
         IG = 0.0
 
         μ_m = round(μ_m/μ_s)*μ_s # correction to prevent overflow of vectors
-        k = 0
+        k = 0 # machine step
         t_final = N*μ_s - μ_s
         
-        N = convert(Int64, Int(floor(N*μ_s/μ_m)))
+        N = convert(Int64, Int(ceil(N*μ_s/μ_m)))
 
         dim = length(ϵ)
         s = Array{Int64, 1}(undef, N)
@@ -343,7 +364,7 @@ mutable struct ϵ_Machine
         r_eigvecs = Array{ComplexF64, 2}(undef, 0, 0)
         l_eigvecs = Array{ComplexF64, 2}(undef, 0, 0)
         D = Array{ComplexF64, 2}(undef, 0, 0)
-        Stat_dist = Array{Float64, 1}(undef, 0)
+        pv = Array{Float64, 1}(undef, 0)
 
         Cμ_t = Array{Float64, 1}(undef, length(t_m))
         h = 0.0
@@ -362,7 +383,7 @@ mutable struct ϵ_Machine
         r_eigvecs_α = Vector{Matrix{ComplexF64}}(undef, lα)
         l_eigvecs_α = Vector{Matrix{ComplexF64}}(undef, lα)
         Dα = Vector{Matrix{ComplexF64}}(undef, lα)
-        Stat_dist_α = Vector{Vector{Float64}}(undef, lα)
+        pv_α = Vector{Vector{Float64}}(undef, lα)
 
         Zα = Array{Float64, 1}(undef, lα)
         Zα = fill!(Zα, 0.0)
@@ -375,18 +396,17 @@ mutable struct ϵ_Machine
         Cαe = Array{Float64, 1}(undef, lα)
         Cαe = fill!(Cαe, 0.0)
 
-        ϵ_Machine(CM, Tree, δ, μ_m, ϵ, x_range, k, 
+        ϵ_Machine(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
         s, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
-        r_eigvecs, l_eigvecs, D, Stat_dist,  
+        r_eigvecs, l_eigvecs, D, pv,  
         α,
-        Tα, Iα,
+        Tα, Iα, 
         eigval_α, r_eigvecs_α, l_eigvecs_α, 
-        Dα, Stat_dist_α,
+        Dα, pv_α,
         Zα, Hα, hα, Cα, Cαe,
-        Cμ_t, h, hμ, Cμ, Cμe, C, Ce)
-        
+        Cμ_t, h, hμ, C, Cμ, Ce, Cμe)
     end
 end
 
@@ -467,14 +487,17 @@ function Dimensioning(Deus::ϵ_Machine, s)
     return x
 end
 
-function Sampling(Deus::ϵ_Machine, x, i, μ_s)
+function Sampling(Deus::ϵ_Machine, x, μ_s)
 
-    if i%round(Deus.μ_m/μ_s) == 0
+    for i in axes(x, 2)
 
-        Deus.k = Deus.k + 1
-            
-        Deus.s[Deus.k], _ = Partitioning(Deus, x)
-        Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
+        if i%round(Deus.μ_m/μ_s) == 0
+
+            Deus.k = Deus.k + 1
+                
+            Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i])
+            Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
+        end
     end
 
     return nothing
@@ -628,7 +651,7 @@ end
 
 function Reconstruction(Deus::ϵ_Machine, Node)
 
-    num_states = length(Deus.CM)
+    num_states = length(Deus.Ts)
     l_vals = length(Deus.Tree.Nodes[Node].morph_vals)
     num_children = length(Deus.Tree.Nodes[Node].child_vals)
     parent = Deus.Tree.Nodes[Node].parent
@@ -638,8 +661,8 @@ function Reconstruction(Deus::ϵ_Machine, Node)
 
         Deus.C_states = cat([Node; parent; l_vals; num_children], dims = 2)
         Deus.Tree.Nodes[Node].state = 1 # this will be a dangling state
-        Deus.CM = push!(Deus.CM, Matrix{Float64}(undef, 3, 0))
-        Deus.CM[1] = cat([1; -1; 1.0], dims = 2)
+        Deus.Ts = push!(Deus.Ts, Matrix{Float64}(undef, 3, 0))
+        Deus.Ts[1] = cat([1; -1; 1.0], dims = 2)
         Deus.Dang_States = [Deus.Dang_States; Deus.Tree.Nodes[Node].state]
     else
         for n in 1:num_states
@@ -654,12 +677,16 @@ function Reconstruction(Deus::ϵ_Machine, Node)
 
                     state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].morph_dist
                     node_dist = Deus.Tree.Nodes[Node].morph_dist
-                    Pr_d = maximum(abs.(node_dist .- state_dist))
+                    #Pr_d = maximum(abs.(node_dist .- state_dist))
 
-                    #state_cn = Deus.Tree.Nodes[Deus.C_states[1, n]].cn
-                    #node_cn = Deus.Tree.Nodes[Node].cn
+                    #state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
+                    #node_dist = Deus.Tree.Nodes[Node].Pr_c
+                    #Pr_d = maximum(abs.(node_dist .- state_dist))
 
-                    if Pr_d <= Deus.δ # χ2_test(state_dist, node_dist, state_cn, node_cn; α = Deus.δ) #
+                    state_cn = Deus.Tree.Nodes[Deus.C_states[1, n]].cn
+                    node_cn = Deus.Tree.Nodes[Node].cn
+
+                    if  χ2_test(state_dist, node_dist, state_cn, node_cn; α = Deus.δ) # Pr_d <= Deus.δ #
 
                         flag = 1 # don't create new causal state
                         Deus.Tree.Nodes[Node].state = Deus.Tree.Nodes[Deus.C_states[1, n]].state
@@ -670,8 +697,8 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                         cn_total = cn_state + cn_comp
 
                         new_dist = cn_state*(Deus.Tree.Nodes[Deus.C_states[1, n]].morph_dist) .+ cn_comp*(Deus.Tree.Nodes[Node].morph_dist)
-                        #Deus.Tree.Nodes[Deus.C_states[1, n]].morph_dist = new_dist./cn_total
-                        #Deus.Tree.Nodes[Deus.C_states[1, n]].cn = cn_total
+                        Deus.Tree.Nodes[Deus.C_states[1, n]].morph_dist = new_dist./cn_total
+                        Deus.Tree.Nodes[Deus.C_states[1, n]].cn = cn_total
 
                         # making sure start state appears in table
                         if Node == 1 
@@ -686,7 +713,7 @@ function Reconstruction(Deus::ϵ_Machine, Node)
 
                         state_test = Deus.Tree.Nodes[Deus.C_states[1, n]].generation - Deus.Tree.D + Deus.Tree.L # state is at bottom
 
-                        if state_test == 0 && Deus.CM[Deus.Tree.Nodes[Node].state][2, 1] == -1
+                        if state_test == 0 && Deus.Ts[Deus.Tree.Nodes[Node].state][2, 1] == -1
                             
                             Add_Transitions(Deus, Node, n, num_children, overwrite = 1)
 
@@ -695,7 +722,7 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                             # check if the new compare state has transitions to other states other than those of the current causal state
                             # if yes, then add those transitions, because they contribute to the graph indeterminacy
 
-                            trans_states = Deus.CM[n][1, :]
+                            trans_states = Deus.Ts[n][1, :]
                             child_locs = Deus.Tree.Nodes[Node].child_locs
 
                             for c in eachindex(child_locs)
@@ -712,7 +739,7 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                                         Add_Transitions(Deus, Node, n, num_children)
                                         break
 
-                                    elseif findfirst(x->x == comp_val, Deus.CM[n][2, found_states]) == nothing
+                                    elseif findfirst(x->x == comp_val, Deus.Ts[n][2, found_states]) == nothing
 
                                         Add_Transitions(Deus, Node, n, num_children)
                                         break
@@ -733,7 +760,7 @@ function Reconstruction(Deus::ϵ_Machine, Node)
             Deus.C_states = cat(Deus.C_states, [Node; parent; l_vals; num_children], dims = 2)
             state_from = num_states + 1
             Deus.Tree.Nodes[Node].state = state_from
-            Deus.CM = push!(Deus.CM, Matrix{Float64}(undef, 3, 0))
+            Deus.Ts = push!(Deus.Ts, Matrix{Float64}(undef, 3, 0))
 
             if Node == 1
                 Deus.start_state = Deus.Tree.Nodes[Node].state
@@ -753,7 +780,7 @@ function Add_Transitions(Deus::ϵ_Machine, Node, state_from, num_children; overw
     if state_test < 0
 
         if overwrite == 1
-            Deus.CM[state_from] = Matrix{Float64}(undef, 3, 0)
+            Deus.Ts[state_from] = Matrix{Float64}(undef, 3, 0)
             Deus.Dang_States = deleteat!(Deus.Dang_States, findfirst(==(state_from), Deus.Dang_States))
         end
 
@@ -765,11 +792,11 @@ function Add_Transitions(Deus::ϵ_Machine, Node, state_from, num_children; overw
             symbol = Deus.Tree.Nodes[child_locs[n]].value
             state_Pr_c = Deus.Tree.Nodes[Node].Pr_c[n]
 
-            Deus.CM[state_from] = cat(Deus.CM[state_from], [state_to; symbol; state_Pr_c], dims = 2)
+            Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_to; symbol; state_Pr_c], dims = 2)
         end
     elseif state_test == 0 && overwrite == 0# dangling state
 
-        Deus.CM[state_from] = cat(Deus.CM[state_from], [state_from; -1; 1.0], dims = 2)
+        Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_from; -1; 1.0], dims = 2)
         Deus.Dang_States = [Deus.Dang_States; Deus.Tree.Nodes[Node].state]
     end
 
@@ -780,46 +807,53 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
     # parametrized stochastic connection matrix
 
+    Deus.IG = 0.0 # do this if other stat mech was run
+
     num_edges = 0
-    num_states = length(Deus.CM)
+    num_states = length(Deus.Ts)
     T = Array{Float64, 2}(undef, num_states, num_states)
     T = fill!(T, 0.0)
 
+    id = length(Deus.α)
+    Deus.Tα[id] = cat(T, dims = 2)
+
+    for v in 1:num_states
+
+        if Deus.Ts[v][2, 1] == -1
+            Surgeon(Deus, v)
+        end
+
+        num_trans = length(Deus.Ts[v][1,:])
+        num_edges = num_edges + num_trans
+
+        trans = unique(Deus.Ts[v][1:2, :], dims = 2)
+        num_trans = length(Deus.Ts[v][1,:])
+
+        #normalise probabilities - only necessary if IG does not vanish
+        pt = sum(Deus.Ts[v][3, :])  
+        if pt != 1
+            Deus.Ts[v][3, :] =  Deus.Ts[v][3, :]./pt
+        end  
+        
+        for vd in axes(trans, 2)
+
+            vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.Ts[v][1:2, :][j,i], 1:2), 1:num_trans)
+
+            pt = sum(Deus.Ts[v][3, vloc])
+
+            state_to = Int(Deus.Ts[v][1, vloc[1]])
+            Deus.Tα[id][v, state_to] = Deus.Tα[id][v, state_to] + pt
+        end
+
+        #Deus.Tα[id][v, :] = Deus.Tα[id][v, :]./sum(Deus.Tα[id][v, :])
+    end
+
     for (id, α) in enumerate(Deus.α)
 
-        Deus.Tα[id] = cat(T, dims = 2)
-
-        for v in 1:num_states
-
-            num_trans = length(Deus.CM[v][1,:])
-            num_edges = num_edges + num_trans
-
-            trans = unique(Deus.CM[v][1:2, :], dims = 2)
-            num_trans = length(Deus.CM[v][1,:])
-
-            if id == 1
-                if Deus.CM[v][2, 1] == -1
-                    Surgeon(Deus, v)
-                end
-        
-                #normalise probabilities - only necessary if IG does not vanish
-                pt = sum(Deus.CM[v][3, :])  
-                if pt != 1
-                    Deus.CM[v][3, :] =  Deus.CM[v][3, :]./pt
-                end  
-            end
-            
-            for vd in axes(trans, 2)
-
-                vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.CM[v][1:2, :][j,i], 1:2), 1:num_trans)
-
-                pt = sum(Deus.CM[v][3, vloc])
-
-                state_to = Int(Deus.CM[v][1, vloc[1]])
-                Deus.Tα[id][v, state_to] = Deus.Tα[id][v, state_to] + exp(α*log(pt))
-            end
-
-            #Deus.Tα[id][v, :] = Deus.Tα[id][v, :]./sum(Deus.Tα[id][v, :])
+        if α == 0
+            Deus.Tα[id] = Float64.(Deus.Tα[end] .!= 0) # the connectivity / adjacency matrix of T
+        else
+            Deus.Tα[id] = Deus.Tα[end].^α
         end
 
         Deus.Iα[id] = -log.(2, Deus.Tα[id]) # Information flow between nodes
@@ -828,92 +862,88 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
         Deus.r_eigvecs_α[id] = eigvecs(Deus.Tα[id])
         Deus.Dα[id] = Diagonal(Deus.eigval_α[id])
 
-        index = findfirst( ==(1.0), real(round.(Deus.eigval_α[id], digits = 1)))
+        _, index = findmax(real.(Deus.eigval_α[id]))
 
-        if index !== nothing || true
+        if real(Deus.eigval_α[id][index]) >= 0.99
 
-            Deus.Stat_dist_α[id] = abs.(Deus.l_eigvecs_α[id][1:end, end])/abs(sum(Deus.l_eigvecs_α[id][1:end, end]))
+            Deus.pv_α[id] = abs.(Deus.l_eigvecs_α[id][1:end, index])/abs(sum(Deus.l_eigvecs_α[id][1:end, index]))
 
             p = 0
             for v in 1:num_states
 
-                psn = (Deus.Stat_dist_α[id][v]).*(Deus.Tree.Nodes[Deus.C_states[1, v]].morph_dist)
-                Deus.Zα[id] = Deus.Zα[id] + sum(exp.(α.*log.(psn)))
+                if Deus.pv_α[id][v] != 0
 
-                if α == 1
-                    
-                    sum_psn = sum(psn.*log.(psn))
+                    psn = (Deus.pv_α[id][v]).*(Deus.Tree.Nodes[Deus.C_states[1, v]].morph_dist)
+                    sum_psn = sum(psn.^α)
 
-                    if isnan(sum_psn)
-                        locs = findall( !=(0), psn) # remove all zeros
-                        sum_psn = sum(psn[locs].*log.(psn[locs]))
-                    end  
+                    Deus.Zα[id] = Deus.Zα[id] + sum(psn.^α) #sum(exp.(α.*log.(psn)))
 
-                    Deus.Hα[id] = Deus.Hα[id] - sum_psn
-
-                    if Deus.Stat_dist_α[id][v] != 0   
-                        Deus.Cα[id] = Deus.Cα[id] - Deus.Stat_dist_α[id][v]*log(2, Deus.Stat_dist_α[id][v])  
-                    end    
-                else
-                    Deus.Cα[id] = Deus.Cα[id] + (Deus.Stat_dist_α[id][v])^α 
-                    #Deus.Hα[id] = Deus.Hα[id] + sum(psn.^α) # as a check
-                end
-
-                syms = unique!(Deus.CM[v][2, :])
-                psv = Array{Float64, 1}(undef, length(syms))
-
-                for s in eachindex(syms)
-                    sloc = findall( ==(syms[s]), Deus.CM[v][2, :])
-                    psv[s] = sum(Deus.CM[v][3, sloc])
-                end
-
-                trans = unique(Deus.CM[v][1:2, :], dims = 2)
-                num_trans = length(Deus.CM[v][1,:])
-
-                he = 0.0
-
-                for vd in axes(trans, 2)
-
-                    vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.CM[v][1:2, :][j,i], 1:2), 1:num_trans)
-
-                    pt = sum(Deus.CM[v][3, vloc])
-                    pe = Deus.Stat_dist_α[id][v]*pt
-
-                    if α == 1 && pe != 0
- 
-                        p = pe*log(2, pt)
-                        Deus.hα[id] = Deus.hα[id] - p
-                        Deus.Cαe[id] = Deus.Cαe[id] - pe*log(2, pe)
+                    if α == 1
                         
-                        sym = Deus.CM[v][2, vd]
-                        sloc = findfirst( ==(sym), syms)
+                        sum_psn = sum(psn.*log.(2, psn))
 
-                        Deus.IG = Deus.IG + Deus.Stat_dist[v]*pt*log(2, pt/psv[sloc])
+                        if isnan(sum_psn)
+                            locs = findall( !=(0), psn) # remove all zeros
+                            sum_psn = sum(psn[locs].*log.(psn[locs]))
+                        end  
+
+                        Deus.Hα[id] = Deus.Hα[id] - sum_psn
+
+                        Deus.Cα[id] = Deus.Cα[id] - Deus.pv_α[id][v]*log(2, Deus.pv_α[id][v])  
+                           
                     else
-                        he = he + (pt^α)
-                        Deus.Cαe[id] = Deus.Cαe[id] + pe^α
+                        Deus.Cα[id] = Deus.Cα[id] + (Deus.pv_α[id][v])^α 
+                        #Deus.Hα[id] = Deus.Hα[id] + sum(psn.^α) # as a check
                     end
-                end
-                
-                if α != 1
-                    Deus.hα[id] = Deus.hα[id] + ((1 - α)^-1)*Deus.Stat_dist_α[id][v]*log(2, he)
+
+                    syms = unique!(Deus.Ts[v][2, :])
+                    psv = Array{Float64, 1}(undef, length(syms))
+
+                    for s in eachindex(syms)
+                        sloc = findall( ==(syms[s]), Deus.Ts[v][2, :])
+                        psv[s] = sum(Deus.Ts[v][3, sloc])
+                    end
+
+                    trans = unique(Deus.Ts[v][1:2, :], dims = 2)
+                    num_trans = length(Deus.Ts[v][1,:])
+
+                    for vd in axes(trans, 2)
+
+                        vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.Ts[v][1:2, :][j,i], 1:2), 1:num_trans)
+
+                        pt = sum(Deus.Ts[v][3, vloc])
+                        pe = Deus.pv_α[id][v]*pt
+
+                        if α == 1
+    
+                            Deus.hα[id] = Deus.hα[id] - pe*log(2, pt)
+                            Deus.Cαe[id] = Deus.Cαe[id] - pe*log(2, pe)
+                            
+                            sym = Deus.Ts[v][2, vd]
+                            sloc = findfirst( ==(sym), syms)
+
+                            Deus.IG = Deus.IG - pe*log(2, pt/psv[sloc])
+                        else
+
+                            Deus.hα[id] = Deus.hα[id] + Deus.pv_α[id][v]*pt^α
+
+                            Deus.Cαe[id] = Deus.Cαe[id] + pe^α
+                        end
+                    end
                 end
 
             end
 
             if α != 1
 
-                #Deus.hα[id] = ((1 - α)^-1)*log(2, maximum(abs.(Deus.eigval_α[id])))
-                #Deus.hα[id] = ((1 - α)^-1)*log(2, Deus.hα[id]/(Deus.Cα[id]^α))
-                Deus.Hα[id] = ((1 - α)^-1)*log(Deus.Zα[id])
+                Deus.hα[id] = ((1 - α)^-1)*log(2, Deus.hα[id])
+                Deus.Hα[id] = ((1 - α)^-1)*log(2, Deus.Zα[id])
                 #Deus.Hα[id] = ((1 - α)^-1)*log(Deus.Hα[id]) # as a check
 
                 Deus.Cαe[id] = ((1 - α)^-1)*log(2, Deus.Cαe[id])
                 Deus.Cα[id] = ((1 - α)^-1)*log(2, Deus.Cα[id])
             end
-
-        end
-       
+        end    
     end
 
     return nothing
@@ -1011,7 +1041,11 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         Markov entropy rate is also the entropy rate of the original source. Thus,
         one a machine is reconstructed from a data stream, its entropy is an estimate
         of the underlying process's entropy rate. If the entropy rate is low then we
-        gain certainty as the process proceeds.
+        gain certainty as the process proceeds. The entropy rate, is the rate in bits per 
+        time step at which information is produced.
+
+        An ϵ-machine's entropy rate hμ(M) is the transition uncertainty averaged over all 
+        of the causal states.
 
         The Markov matrix, a stochastic matrix, always has an eigenvalue that is
         equal to 1. The eigenvector associated with λ = 1 can be chosen to be strictly
@@ -1019,7 +1053,7 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
 
         A common type of Markov chain with transient states is an absorbing one. An
         absorbing Markov chain is a Markov chain in which it is impossible to leave
-        some states, and sany state state could(after some number of steps, with
+        some states, and any state could (after some number of steps, with
         positive probability) reach such a state. It follows that all non-absorbing
         states in an absorbing Markov chain are transient. A Markov chain that is
         aperiodic and positive recurrent is known as ergodic. Ergodic Markov chains
@@ -1041,6 +1075,15 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         expected to return within a finite number of steps, and null recurrent
         otherwise. A state is known as ergodic if it is positive recurrent and
         aperiodic. A Markov chain is ergodic if all its states are ergodic.
+
+        The states of a Markov process are either recurrent, i.e., returned to 
+        infinitely often, or transient, visited only finitely often with positive 
+        probability. For us, here, the recurrent states represent the actual causal 
+        structure of the process and, as such, they are what we are truly interested in. 
+        the most important class of transient states, and indeed the only ones encountered 
+        in practice, are the synchronization states, which can never be returned to, once 
+        a recurrent state has been visited. The synchronization states represent observational 
+        histories that are insufficient to fix the process in a definite recurrent state.  
 
         Ergodic Markov chains have a unique stationary distribution, and absorbing
         Markov chains have stationary distributions with nonzero elements only in
@@ -1087,6 +1130,9 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         past observations. It is the information about a system's causal state required for 
         maximal accurate prediction.
 
+        The causal states are the minimal states that have a homogeneous distribution for
+        the next sequence of symbols and are deterministic. 
+
         For completeness, note that there is an edge-complexity, Cμe that is the
         information contained in the asymptotic edge distribution. These quantities
         are not independent. From the principle of conservation of information leads
@@ -1096,7 +1142,10 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         stochastic finite automaton. The entropy, hμ, as a measure of the diversity
         of patterns, and the complexity Cμ, as a measure of memory, have been taken
         as the two elementary "information processing" coordinates with which to
-        analyze a range of sources.
+        analyze a range of sources. The net result of using just the complexity and 
+        entropy rate is that the original equations of motion and any nonlinearity (bifurcation)
+        parameter are simply forgotten. All that is of interest is how the complexity Cμ of 
+        the data stream depends on the rate hμ of information production.
 
         There is another set of quantities that derive from the skeletal structure
         of the machine. If we drop all probabilistic structure on the machine, we can
@@ -1108,13 +1157,28 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         complexity is the size of the minimal DFA description, or "program", required to 
         produce sequences in the observed measurement language of which s is a member. 
         This topological complexity counts all of the reconstructed states. Another 
-        related topological complexity would count just the recurrent states. 
+        related topological complexity would count just the recurrent states. This is 
+        the one commonly used in practice. The topological entropy;for a system given 
+        by an iterated function, represents the exponential growth rate of the number 
+        of distinguishabe orbits of the iterates.
 
         A measure of knowledge relaxation on finitary machines is given by the time-
         dependent finitary complexity. Where knowledge of a process consists of a 
         data stream, an agent's current model, how the information used to build the 
         model was obtained, and the method or algorithm which constructs the model.
         The trajectory of complexity captures the dynamics of knowledge relaxation.
+
+        The finitary complexity is a measure of an ϵ-machine's information processing 
+        capacity in terms of the amount of information stored in the morphs. It is 
+        directly related to the mutual information of the past and future semi-infinite 
+        sequences and the convergence of the entropy enstimates hα(L). It can be interpreted, 
+        then, as a measure of the amount of mathematical work necessary to produce a fluctuation 
+        form asymptotic statistics. The units for complexity measures are bits of information. 
+        However, at this level we see that the complexity begins to more strongly reflect 
+        the degree of computational capability and so we refer to the units as Turings, rather 
+        than bits. At this low lever the difference between bits and Turings is not as dramatic 
+        as at higher levels where each unit of machine structure is clearly associated with 
+        sophisticated computation. 
 
         A measure of the "goodness of fit" that can be used to evaluate ϵ, μ, δ, and 
         the level L of subtree approximation can be given by the graph indeterminacy. 
@@ -1193,33 +1257,59 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         information that flows is the negative logarithm of the connecting transition probability 
         -log(2, Deus.T[A, B])
 
+        HShannon measues the number of distinct sequences (possible futures). That number increases 
+        if there is branchin as one moves down the tree and forward in time. At the other end, the 
+        Hartley entropy is given simply by the total number of distinct sequences independent of their 
+        probability. If the probability distributin is uniform on the nonzero probability cylinders then 
+        these two entropies are equal. Any difference is thus a measure of deviation of the cylinder from 
+        uniformity. The latter observation leads to a parametrized generalization of the entropy introduced 
+        by Renyi. This we put into a statistical mechanical formalism by defining a partition function for the 
+        tree. 
+
+        The average branching rate in the tree measures the growth rate of the number of new sequences 
+        of increasing length. And as such it is a measure of unpredictability in that a periodic process will 
+        at some length give rise to no more new cylinders and a random one will. The Renyi specific entropy, i.e. 
+        entropy per measurement, can be approximation from the L-cylinder distribution by hα. The growth rate of 
+        total Shannon entropy is often referred to in information theory as the source entropy and in dynamical 
+        systems as the metric entropy. The corresponding Hartley entropy growth rate is called the topological entropy. 
+
+        If a tree representation is good, then the information gain, or entropy rate, at some depth will vanish. 
+        This indicates that no further information need be stored to represent the process. This happens for a 
+        periodic process for trees deeper than the period. If the process is chaotic, with positive entropy, then 
+        the information contained in the tree representation will grow exponentially fast with modelling longer 
+        subsequences in the data stream. This indicates that the tree representation is inadequate and suggests  
+        that the modeler innovate a new class of representations. 
+
         These quantities are probabilistic, and referred to Turing machines with a 
         random internal register. 
     =#
+
+    Deus.IG = 0
+
     num_edges = 0
-    num_states = length(Deus.CM)
+    num_states = length(Deus.Ts)
     T = Array{Float64, 2}(undef, num_states, num_states)
     T = fill!(T, 0.0)
     Deus.T = cat(T, dims = 2)
 
     for v in 1:num_states
 
-        if Deus.CM[v][2, 1] == -1
+        if Deus.Ts[v][2, 1] == -1
             Surgeon(Deus, v)
         end
 
         #normalise probabilities - only necessary if IG does not vanish
-        pt = sum(Deus.CM[v][3, :])  
+        pt = sum(Deus.Ts[v][3, :])  
         if pt != 1
-            Deus.CM[v][3, :] =  Deus.CM[v][3, :]./pt
+            Deus.Ts[v][3, :] =  Deus.Ts[v][3, :]./pt
         end  
 
-        num_trans = length(Deus.CM[v][1,:])
+        num_trans = length(Deus.Ts[v][1,:])
 
         for vd in 1:num_trans
 
-            state_to = Int(Deus.CM[v][1, vd])
-            Deus.T[v, state_to] = Deus.T[v, state_to] + Deus.CM[v][3, vd]
+            state_to = Int(Deus.Ts[v][1, vd])
+            Deus.T[v, state_to] = Deus.T[v, state_to] + Deus.Ts[v][3, vd]
         end
     end
 
@@ -1229,63 +1319,72 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
     Deus.r_eigvecs = eigvecs(Deus.T)
     Deus.D = Diagonal(Deus.eigval)
 
-    Deus.C = log(2, num_states) # state topological complexity
-
     T0 = Float64.(Deus.T .!= 0) # the connectivity / adjacency matrix of T
-    λ0 = maximum(abs.(eigvals(T0))) # principal eigenvalue of T0
-    Deus.h = log(2, λ0) # topological entropy - the growth rate of the raw number of sequences 
-    # - does this only work if the principal eigenvalue is unique?
+    eigval_0 = eigvals(T0)
+    l_eigvecs_0 = eigvecs(transpose(T0))
+    _, id0 = findmax(real.(eigval_0))
+    pv_0 = abs.(l_eigvecs_0[1:end, id0])/abs(sum(l_eigvecs_0[1:end, id0]))
 
-    index = findfirst( ==(1.0), real(round.(Deus.eigval, digits = 1)))
+    Deus.C = log(2, sum(pv_0 .!= 0)) # state topological complexity - only counting recurrent states
 
-    if index !== nothing
+    _, index = findmax(real.(Deus.eigval))
 
-        Deus.Stat_dist = abs.(Deus.l_eigvecs[1:end, end])/abs(sum(Deus.l_eigvecs[1:end, end]))
+    if real(Deus.eigval[index]) >= 0.99
+
+        Deus.pv = abs.(Deus.l_eigvecs[1:end, index])/abs(sum(Deus.l_eigvecs[1:end, index]))
 
         for v in 1:num_states
 
-            if Deus.Stat_dist[v] != 0
+            if pv_0[v] != 0.0
 
-                Deus.Cμ = Deus.Cμ + Deus.Stat_dist[v]*log(2, Deus.Stat_dist[v])
+                trans = unique(Deus.Ts[v][1:2, :], dims = 2)
+                num_trans = length(Deus.Ts[v][1,:])
+
+                num_edges = num_edges + size(trans, 2)
+
+                Deus.h = Deus.h + pv_0[v]*size(trans, 2)
+
+            elseif Deus.pv[v] != 0
+
+                trans = unique(Deus.Ts[v][1:2, :], dims = 2)
+                num_trans = length(Deus.Ts[v][1,:])
+            end
+
+            if Deus.pv[v] != 0
+
+                Deus.Cμ = Deus.Cμ - Deus.pv[v]*log(2, Deus.pv[v])
                 
-                syms = unique!(Deus.CM[v][2, :])
+                syms = unique!(Deus.Ts[v][2, :])
                 psv = Array{Float64, 1}(undef, length(syms))
 
                 for s in eachindex(syms)
-                    sloc = findall( ==(syms[s]), Deus.CM[v][2, :])
-                    psv[s] = sum(Deus.CM[v][3, sloc])
+                    sloc = findall( ==(syms[s]), Deus.Ts[v][2, :])
+                    psv[s] = sum(Deus.Ts[v][3, sloc])
                 end
-
-                trans = unique(Deus.CM[v][1:2, :], dims = 2)
-                num_trans = length(Deus.CM[v][1,:])
-                num_edges = num_edges + size(trans, 2)
                 
                 for vd in axes(trans, 2)
 
-                    vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.CM[v][1:2, :][j,i], 1:2), 1:num_trans)
+                    vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.Ts[v][1:2, :][j,i], 1:2), 1:num_trans)
 
-                    pt = sum(Deus.CM[v][3, vloc])
+                    pt = sum(Deus.Ts[v][3, vloc])
+                    pe = Deus.pv[v]*pt
+ 
+                    Deus.hμ = Deus.hμ - pe*log(2, pt)
+                    Deus.Cμe = Deus.Cμe - pe*log(2, pe)
 
-                    pe = Deus.Stat_dist[v]*pt
-                    p = pe*log(2, pt)
-                    Deus.hμ = Deus.hμ + p
-                    Deus.Cμe = Deus.Cμe + pe*log(2, pe)
-
-                    sym = Deus.CM[v][2, vd]
+                    sym = Deus.Ts[v][2, vd]
                     sloc = findfirst( ==(sym), syms)
 
-                    Deus.IG = Deus.IG + Deus.Stat_dist[v]*pt*log(2, pt/psv[sloc])
-                    #Deus.IG = Deus.IG + Deus.Stat_dist[v]*psv[sloc]*pt*log(pt)
+                    Deus.IG = Deus.IG - pe*log(2, pt/psv[sloc])
                 end
             end
         end
 
-        Deus.IG = -Deus.IG
-        Deus.hμ = -Deus.hμ
-        Deus.Cμ = -Deus.Cμ
-        Deus.Cμe = -Deus.Cμe
+        if Deus.h != 0
+            Deus.h = log(2, Deus.h)
+        end
 
-        Deus.Ce = log(2, num_edges) # transition topological complexity - not right need to 
+        Deus.Ce = log(2, num_edges) # transition topological complexity
     else
 
         println("\nError. The eigenvalue with value of 1 could not be found
@@ -1295,14 +1394,31 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
     return nothing
 end
 
-function Markov_Evolution(Deus::ϵ_Machine, n; start_ic = zeros(1, length(Deus.CM)))
+function Load_values(Deus::ϵ_Machine)
+
+    Deus.T = Deus.Tα[end]
+    Deus.I = Deus.Iα[end]
+    Deus.D = Deus.Dα[end]
+    Deus.pv = Deus.pv_α[end]
+
+    Deus.h = Deus.hα[1]
+    Deus.hμ = Deus.hα[end]
+    Deus.C = Deus.Cα[1]
+    Deus.Cμ = Deus.Cα[end]
+    Deus.Ce = Deus.Cαe[1]
+    Deus.Cμe = Deus.Cαe[end]
+
+    return nothing
+end
+
+function Markov_Evolution(Deus::ϵ_Machine, n; start_ic = zeros(1, length(Deus.Ts)))
 
     # n is the number of steps
 
-    num_states = length(Deus.CM)
+    num_states = length(Deus.Ts)
     index = findfirst(==(1), Deus.C_states[1,:]) # finding starting state
 
-    if index != nothing && length(start_ic) == num_states
+    if index !== nothing && length(start_ic) == num_states
 
         if sum(start_ic) == 0
 
@@ -1336,11 +1452,11 @@ function Complexity_Series(Deus::ϵ_Machine)
     # n is the number of steps
 
     N = length(Deus.t_m)
-    num_states = length(Deus.CM)
-    start_ic = zeros(1, length(Deus.CM))
+    num_states = length(Deus.Ts)
+    start_ic = zeros(1, length(Deus.Ts))
     index = findfirst(==(1), Deus.C_states[1,:]) # finding starting state
 
-    if index != nothing && length(start_ic) == num_states
+    if index !== nothing && length(start_ic) == num_states
 
         if sum(start_ic) == 0
 
@@ -1378,24 +1494,34 @@ function χ2_test(dist_1, dist_2, N1, N2; α = 0.05, IND = 2)
     # IND = 1 means 6 significant digit, and IND = 2 means only 3 digit accuracy
 
     K = length(dist_1) - 1 # degrees of freedom
+    
+    if K > 1
 
-    pa = 0.0
-    for i in eachindex(dist_1)
-        pa = pa + (dist_1[i]*N1)^2/(dist_1[i]*N1 + dist_2[i]*N2)
+        pa = 0.0
+        for i in eachindex(dist_1)
+            pa = pa + (dist_1[i]*N1)^2/(dist_1[i]*N1 + dist_2[i]*N2)
+        end
+
+        χ_2 = (pa - N1^2/(N1 + N2))/(N1*N2/(N1 + N2)^2)
+
+        if χ_2 < 0 
+            χ_2 = 0
+        end
+
+        p, _ = (1/gamma(K/2)).*gamma_inc(K/2 ,(χ_2)/2, IND)
+    else
+
+        p = maximum(abs.(dist_1 .- dist_2))
     end
 
-    χ_2 = (pa - N1^2/(N1 + N2))/(N1*N2/(N1 + N2)^2)
-
-    p, _ = (1/gamma(K/2)).*gamma_inc(K/2 ,(χ_2)/2, IND)
-
-    return 1-p < α #outcome # true or false
+    return p < α #outcome # true or false
 end
 
 function Surgeon(Deus::ϵ_Machine, state_from)
 
     # Identifying the transitions of any dangling states with the start state, since both have elements of ignorance
 
-    Deus.CM[state_from] = Matrix{Float64}(undef, 3, 0)
+    Deus.Ts[state_from] = Matrix{Float64}(undef, 3, 0)
     Node = Deus.C_states[1, state_from]
     num_children = length(Deus.Tree.Nodes[Node].child_vals)
     child_locs = Deus.Tree.Nodes[Node].child_locs
@@ -1406,17 +1532,17 @@ function Surgeon(Deus::ϵ_Machine, state_from)
         symbol = Deus.Tree.Nodes[child_locs[n]].value
         state_Pr_c = Deus.Tree.Nodes[Node].Pr_c[n]
 
-        Deus.CM[state_from] = cat(Deus.CM[state_from], [state_to; symbol; state_Pr_c], dims = 2)
+        Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_to; symbol; state_Pr_c], dims = 2)
     end
 
     return nothing
 end
 
-function Cranking(Deus::ϵ_Machine)
+function Cranking(Deus::ϵ_Machine, x, μ_s)
 
-    N_m = length(Deus.s)
+    Sampling(Deus, x, μ_s)
 
-    for i in 1:N_m - D# + 1
+    for i in 1:Deus.k - D# + 1
         add_Nodes(Deus.Tree, Deus.s[i : i + D - 1])
     end
 
@@ -1424,6 +1550,7 @@ function Cranking(Deus::ϵ_Machine)
 
     Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
+    #Load_values(Deus::ϵ_Machine)
 
     Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
 
@@ -1977,4 +2104,246 @@ function initialise_CCA(x0)
     end
 
     return x0
+end
+
+#_______________________________________________________________________________
+# Plotting functions
+
+function Draw_Plots(Deus::ϵ_Machine)
+
+    fig = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution=(1600, 800))
+    G_heading = fig[1, 1:3] = GridLayout()
+    Label(G_heading[1,1], "Statistical Mechanics of Networks", 
+            textsize = 30,
+            font = "TeX Gyre Heros Bold")
+
+    G_A = fig[2, 1] = GridLayout()
+    G_B = fig[2, 2] = GridLayout()
+    G_C = fig[2, 3] = GridLayout()
+    G_D = fig[3, 2] = GridLayout()
+
+    display(fig)
+
+    #_______________________________________________________________________________   
+
+    fnd = findall(x->x != (0.00), Deus.pv)
+    rel_dangs = sum(Deus.pv[Deus.Dang_States] .!= 0.0)
+    Ergodicity = 100 - 100*rel_dangs/length(fnd)
+
+    Label(G_A[1,1], 
+            textsize = 20, 
+            halign = :center,
+            valign = :center,
+            justification = :left,
+            lineheight = 1.2,
+            "Digraph Indeterminacy\n"*
+            "Ergodicity\n\n"*
+            "Hartley Entropy Rate\n"*
+            "Kolmogorov-Sinai Entropy Rate\n"*
+            "Topological State Complexity\n"*
+            "Metric State Complexity\n"*
+            "Topological transition Complexity\n"*
+            "Metric transition Complexity")
+
+    Label(G_A[1,2], 
+    textsize = 20, 
+    halign = :center,
+    valign = :center,
+    justification = :left,
+    lineheight = 1.2,
+            "Ig\n"*
+            "ℸ\n\n"*
+            "h\n"*
+            "hμ\n"*
+            "C\n"*
+            "Cμ\n"*
+            "Ce\n"*
+            "Cμe")
+    
+    vals = Array{Float64, 1}(undef, 8)
+    vals[1] = Deus.IG
+    vals[2] = Ergodicity
+    vals[3] = Deus.h
+    vals[4] = Deus.hμ
+    vals[5] = Deus.C
+    vals[6] = Deus.Cμ
+    vals[7] = Deus.Ce
+    vals[8] = Deus.Cμe
+    vals = round.(vals, digits = 3)
+    str = Array{string, 1}
+    str = string.(vals)
+
+    Label(G_A[1,3], 
+    textsize = 20, 
+    halign = :center,
+    valign = :center,
+    justification = :left,
+    lineheight = 1.2,
+            str[1]*"\n"*
+            str[2]*"\n\n"*
+            str[3]*"\n"*
+            str[4]*"\n"*
+            str[5]*"\n"*
+            str[6]*"\n"*
+            str[7]*"\n"*
+            str[8])
+
+    Label(G_A[1,4], 
+    textsize = 20, 
+    halign = :center,
+    valign = :center,
+    justification = :left,
+    lineheight = 1.2,
+            "[bits]\n"*
+            "[%]\n\n"*
+            "[bits/sym]\n"*
+            "[bits/sym]\n"*
+            "[Turings]\n"*
+            "[Turings]\n"*
+            "[Turings]\n"*
+            "[Turings]")
+
+    pv_ax = Axis(G_A[2, 1:4], 
+                    title = "Stationary Probability Distribution", 
+                    xlabel = "States", 
+                    ylabel = "Probability")
+
+    barplot!(pv_ax, 1:length(fnd), sort(Deus.pv[fnd]), color = :teal, strokecolor = :black, strokewidth = 0)
+    lfnd = convert(Int64, ceil(length(fnd)/10))
+    minfnd = minimum(fnd)
+    maxfnd = maximum(fnd)
+    pv_ax.xticks = 1:lfnd:length(fnd)
+
+    rowsize!(G_A, 1, Fixed(300))
+    rowsize!(G_A, 2, Fixed(300))
+
+    colsize!(G_A, 1, Fixed(300))
+    colsize!(G_A, 2, Fixed(50))
+    colsize!(G_A, 3, Fixed(50))
+    colsize!(G_A, 4, Fixed(125))
+
+    #_______________________________________________________________________________
+
+    hα_ax = Axis(G_B[1, 1], 
+                    title = "Rényi Entropy Rate", 
+                    xlabel = "α", 
+                    ylabel = "hα [bits/symbol]")
+    lines!(hα_ax, Deus.α, Deus.hα, color = :green4)
+    hα_ax.xticks = 0:0.1:1.0
+
+    Cα_ax = Axis(G_B[2, 1], 
+                    title = "State Complexity of Order - α", 
+                    xlabel = "α", 
+                    ylabel = "Cα [Turings]")
+    lines!(Cα_ax, Deus.α, Deus.Cα, color = :dodgerblue)
+    Cα_ax.xticks = 0:0.1:1.0
+
+    Cαe_ax = Axis(G_B[3, 1], 
+                    title = "Transition Complexity of Order - α", 
+                    xlabel = "α", 
+                    ylabel = "Cαe [Turings]")
+    lines!(Cαe_ax, Deus.α, Deus.Cα, color = :navyblue)
+    Cαe_ax.xticks = 0:0.1:1.0
+
+    colsize!(G_B, 1, Fixed(400))
+    rowsize!(G_B, 1, Fixed(150))
+    rowsize!(G_B, 2, Fixed(150))
+    rowsize!(G_B, 3, Fixed(150))
+    
+    #_______________________________________________________________________________
+
+    Zα_ax = Axis(G_C[1, 1], 
+                    title = "Cylinder Partition Function", 
+                    xlabel = "α", 
+                    ylabel = "Ζα [bits]")
+    lines!(Zα_ax, Deus.α, Deus.Zα, color = :purple)
+    Zα_ax.xticks = 0:0.1:1.0
+
+    Hα_ax = Axis(G_C[2, 1], 
+                    title = "Cylinder Rényi Entropy", 
+                    xlabel = "α", 
+                    ylabel = "Hα [bits]")
+    lines!(Hα_ax, Deus.α, Deus.Hα, color = :turquoise3)
+    Hα_ax.xticks = 0:0.1:1.0
+
+    Cμ_t_ax = Axis(G_C[3, 1], 
+                    title = "Knowledge Relaxation", 
+                    xlabel = "Time [seconds]", 
+                    ylabel = "Cμ [bits]")
+    lines!(Cμ_t_ax, Deus.t_m, Deus.Cμ_t, color = :red)
+    minfnd = minimum(Deus.t_m)
+    maxfnd = maximum(Deus.t_m)
+    Cμ_t_ax.xticks = minfnd:(maxfnd-minfnd)/5:maxfnd
+
+    colsize!(G_C, 1, Fixed(300))
+
+    #_______________________________________________________________________________
+    
+    return nothing
+end
+
+function Draw_Graph(Net, nodekey, N; run = 0)
+
+    Graph_fig = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution=(800, 800))
+
+    Ts = SimpleGraph(Net) # create graph object from Connecitivity Matrix
+
+    Graph_fig[1, 1] = graph_ax = Axis(Graph_fig)
+    
+    nodecolours = Array{Symbol, 1}(undef, L)
+    nodecolours = fill!(nodecolours, :blue)
+
+    #set_theme!(resolution = (800, 800))
+    p = graphplot!(graph_ax, Ts;
+            edge_color = [RGBAf(0,0,0,0) for i in 1:ne(Ts)], #RGBAf(0,0,0,0)
+            node_size = 20,
+            node_marker = :rect,
+            fontsize = 1,
+            node_color = nodecolours,
+            #curve_distance =-.5,
+            #curve_distance_usage = true
+            )
+    
+    #Circular_Layout(p, graph_ax, L)
+    Plane_Layout(p, graph_ax, L)
+    #p.layout = Spring(Ptype = Float32)
+    hidedecorations!(graph_ax)
+    #hidespines!(ax)
+    #ax.aspect = DataAspect()
+
+    display(Graph_fig)
+
+    #_______________________________________________________________________________
+    # Graph Animation
+
+    start = N
+    if run == 1
+        start = 1
+    end
+    for t in start:N
+
+        for n in 1:L
+
+            if nodekey[n, t] == 0
+                nodecolours[n] = :green4   
+            elseif nodekey[n, t] == 1
+                nodecolours[n] = :dodgerblue
+            elseif nodekey[n, t] == 2
+                nodecolours[n] = :royalblue4
+            elseif nodekey[n, t] == 3
+                nodecolours[n] = :navyblue
+            else
+                nodecolours[n, t] = :blue
+            end
+        end
+
+        p.node_color[][:] = nodecolours[:]
+        p.node_color[] = p.node_color[]
+
+        if run == 1
+            sleep(0.05)
+        end
+    end
+       
+    return nothing
 end
