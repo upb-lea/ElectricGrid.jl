@@ -201,7 +201,7 @@ RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
 
 function RLBase.reset!(env::SimEnv)
-    env.state = env.convert_state_to_cpu ? Array(featurize(env.x0, env.t0)) : featurize(env.x0, env.t0)
+    env.state = env.convert_state_to_cpu ? Array(env.featurize(env.x0, env.t0)) : env.featurize(env.x0, env.t0)
     env.x = env.x0
     env.t = env.t0
     env.steps = 0
