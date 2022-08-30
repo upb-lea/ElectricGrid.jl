@@ -29,9 +29,3 @@ StipplePlotly = "ec984513-233d-481d-95b0-a3b58b97af2b"
 StippleUI = "a3c5d34a-b254-4859-a8fa-b86abb7e84a3"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
-
-[compat]
-OrdinaryDiffEq = "5.71.2"
-SciMLBase = "1.47.0"
-DiffEqBase = "6.84.0"
-ReinforcementLearning = "0.10.1"

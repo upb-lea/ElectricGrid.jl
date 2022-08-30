@@ -17,7 +17,7 @@ function reward(env)
     P_required = 466 # W
     V_required = 230 # V
 
-    u_l1_index = findfirst(x -> x == "u_l1", env.state_ids)
+    u_l1_index = findfirst(x -> x == "u_load1", env.state_ids)
 
     u_l1 = env.state[u_l1_index]
 
@@ -87,7 +87,7 @@ if env_cuda
     x0 = CuArray(x0)
 end
 
-env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, rewardfunction = reward, x0=x0, v_dc=V_source, ts=ts, convert_state_to_cpu=true, maxsteps=600)
+env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, reward_function = reward, x0=x0, v_dc=V_source, ts=ts, convert_state_to_cpu=true, maxsteps=600)
 agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 hook = DataHook(save_best_NNA = true, plot_rewards = true)
@@ -106,5 +106,5 @@ plot_rewards_3d(hook)
 
 # PLOT a test run with the best behavior_actor NNA so far
 
-plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1", "u_2", "u_l1"])
+plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1", "u_2", "u_load1"])
 

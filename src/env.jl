@@ -40,12 +40,16 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         
         nc = nothing
 
-    elseif !(isnothing(Ad) || isnothing(Bd) || isnothing(C) || isnothing(D))
+    elseif !(isnothing(Ad) || isnothing(Bd) || isnothing(C))
+
+        if(isnothing(D)) D = 0 end
 
         nc = nothing
         sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
 
-    elseif !(isnothing(A) || isnothing(B) || isnothing(C) || isnothing(D))
+    elseif !(isnothing(A) || isnothing(B) || isnothing(C))
+
+        if(isnothing(D)) D = 0 end
 
         nc = nothing
         Ad = exp(A*ts)

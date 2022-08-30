@@ -10,7 +10,6 @@ sessions/*
 
 
 pre_investigations/julia/Manifest.toml
-Manifest.toml
 
 # Vagrant
 .vagrant
