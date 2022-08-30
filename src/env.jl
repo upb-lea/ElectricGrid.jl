@@ -31,9 +31,10 @@ mutable struct SimEnv <: AbstractEnv
     convert_state_to_cpu
     reward
     action
+    action_ids
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, sys_d = nothing, Ad = nothing, Bd = nothing, A = nothing, B = nothing, C = nothing, D = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, sys_d = nothing, Ad = nothing, Bd = nothing, A = nothing, B = nothing, C = nothing, D = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing)
     
     if !(isnothing(sys_d))
         
@@ -103,7 +104,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             if isnothing(env)
                 return x0
             else
-                return env.x
+                return env.state
             end
         end
     end
@@ -151,6 +152,15 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         end
     end
 
+    if isnothing(action_ids)
+        if isnothing(nc)
+            action_ids = []
+            println("WARNING: No state_ids array specified - observing states with DataHook not possible")
+        else
+            action_ids = get_action_ids(nc)
+        end
+    end
+
     if isnothing(v_dc)
         println("INFO: v_dc = 350V will get applied to all sources")
         v_dc = 350 * ones(length(action_space))
@@ -189,7 +199,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         action = zeros(length(action_space))
     end
 
-    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, norm_array, convert_state_to_cpu, reward, action)
+    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, norm_array, convert_state_to_cpu, reward, action, action_ids)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -219,6 +229,7 @@ function (env::SimEnv)(action)
     env.t = tt[2]
 
     env.action = action
+
     env.action = env.action .* env.v_dc
 
     env.action = env.prepare_action(env)

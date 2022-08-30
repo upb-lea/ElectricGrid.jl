@@ -6,7 +6,8 @@ using IntervalSets
 using LinearAlgebra
 using ControlSystems
 using CUDA
-using Plots
+using PlotlyJS
+
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"));
@@ -19,59 +20,58 @@ function reward(env)
     return 1
 end
 
-CM = [ 0. 0. 1.
-        0. 0. 2
-        -1. -2. 0.]
+#CM = [ 0. 0. 1.
+#        0. 0. 2
+#        -1. -2. 0.]
+
+CM = [0. 1.
+    -1. 0.]
 
 
 parameters = Dict()
 source_list = []
 source = Dict()
 
-source["pwr"] = 45000.0
-source["v_rip"] = 0.01556109320329396
-source["vdc"] = 750
-source["i_rip"] = 0.10108821490394984
+#source["pwr"] = 45000.0
+#source["v_rip"] = 0.01556109320329396
+#source["vdc"] = 750
+#source["i_rip"] = 0.10108821490394984
 source["fltr"] = "LC"
-source["R1"] = 0.4022094955070556
-source["R_C"] = 0.0006447094780419011
-source["L1"] = 0.001005523738767639
+source["R1"] = 0.4
+source["R_C"] = 0.0006
+source["L1"] = 2.3e-3
 #source["R2"] = 0.4022094955070556   # needed for LCL
 #source["L2"] = 0.001005523738767639
-source["C"] = 2.302533850149647e-5;
+source["C"] = 1e-6;
 
-push!(source_list, source, source);
+push!(source_list, source)#, source);
 
 load_list = []
 load = Dict()
 
-load["impedance"] = "RLC"
-load["R"] = 30236.0;
-load["L"] = 57.042;
-load["C"] = 39.18;
+#load["impedance"] = "RLC"
+load["impedance"] = "R"
+load["R"] = 14.0;
+#load["L"] = 57.042;
+#load["C"] = 39.18;
 push!(load_list, load);
 
 cable_list = []
 
 cable = Dict()
-cable["R"] = 6.84059
-cable["L"] = 0.00250127
-cable["C"] = 3.7898e-6;
-push!(cable_list, cable, cable);
+cable["R"] = 0.722
+cable["L"] = 0.264e-3
+cable["C"] = 0.4e-6;
+push!(cable_list, cable)#, cable);
 
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => 10000.0, "phase" => 3, "v_rms" => 230);
 
-#######################################################################################
-# Define grid using random initialization
-power_grid = NodeConstructor(num_sources=2, num_loads=1, S2S_p=1, S2L_p=1, CM = CM, parameters = parameters);
-A, B, C, D = get_sys(power_grid)
-ns = length(A[1,:]) # get num of states
-ni = length(B[1,:]) # get num of inputs
-x0 = [0.0 for i = 1:ns]
-env = SimEnv(A=A, B=B, C=C, D=D, x0=x0, state_ids=get_state_ids(power_grid), rewardfunction = reward)
+ts = 1e-4
+env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
+, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 100)
 
 
 #######################################################################################
@@ -90,31 +90,59 @@ policy = sin_policy(action_space=action_space(env))
 
 #######################################################################################
 # Define data-logging hook
-hook = DataHook(collect_state_ids = ["u_f1", "u_1", "u_l1", "i_f2"])
+# define which states to store, to check what states are avalible type get_state_ids(env.nc) into command line
+plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c"]  
+# define which states to store, to check what states are avalible type get_action_ids(env.nc) into command line 
+plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
 #######################################################################################
 # GOAL: Use run function provided by ReinforcementLearning.jl to be able to interact 
 #       with our env in the RL-interface kind of manner to be able to use standard 
 #       RL-Algorithms
 # 
-run(policy, env, StopAfterStep(N), hook)
+run(policy, env, StopAfterEpisode(1), hook)
 
-#= # For running without run()-command
-reset!(env)
-for i in 1:N
-    action = policy(env)  
-    env(action)
-    
-    #######################
-    # Logg one example actiona and an exemplary state
-    # toDo: shfit logging and plotting into "History" using hooks
-    mess[i] = env.state[1]
-    u[i] = action[1]
+#TODO
+# this will be shifted to plotting.jl soon
+ layout = Layout(
+    plot_bgcolor="#f1f3f7",
+    #title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * string(hook.bestepisode) * "</sub>",
+    xaxis_title = "Time in Seconds",
+    yaxis_title = "State values",
+    yaxis2 = attr(
+        title="Action values",
+        overlaying="y",
+        side="right",
+        titlefont_color="orange",
+        #range=[-1, 1]
+    ),
+    legend = attr(
+        x=1,
+        y=1.02,
+        yanchor="bottom",
+        xanchor="right",
+        orientation="h"
+    ),
+    width = 1000,
+    height = 650,
+    margin=attr(l=100, r=80, b=80, t=100, pad=10)
+)
 
+
+traces = []
+
+for state_id in hook.collect_state_ids
+    push!(traces, scatter(hook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
 end
 
-display(plot(mess, xlabel="time", ylabel="state_no_1"))
-display(plot(u, xlabel="time", ylabel="action_no_1"))
- =#
+for action_id in hook.collect_action_ids
+    push!(traces, scatter(hook.df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
+end
 
+
+traces = Array{GenericTrace}(traces)
+
+p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
+display(p)
 

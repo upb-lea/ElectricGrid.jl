@@ -9,6 +9,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
 
     collect_state_ids = []
     collect_next_state_ids = []
+    collect_action_ids = []
 
     df = DataFrame()
     tmp = DataFrame()
@@ -53,6 +54,12 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
         insertcols!(hook.tmp, state_id => (env.state[state_index] * env.norm_array[state_index]))
+    end
+
+    for action_id in hook.collect_action_ids
+        action_index = findfirst(x -> x == action_id, env.action_ids)
+
+        insertcols!(hook.tmp, action_id => (env.action[action_index]))
     end
 
     insertcols!(hook.tmp, :action => Ref(action))
