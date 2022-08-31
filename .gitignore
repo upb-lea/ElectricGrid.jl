@@ -1,3 +1,51 @@
-pre_investigations/python/
-saves/
-.idea/
+# App
+dev/*
+build/*
+cache/*
+config/secrets.jl
+docs/build
+log/*
+sessions/*
+!*.gitkeep
+
+
+pre_investigations/julia/Manifest.toml
+
+# Vagrant
+.vagrant
+Vagrantfile
+
+# Numerous always-ignore extensions
+*.diff
+*.err
+*.orig
+*.log
+*.rej
+*.swo
+*.swp
+*.vi
+*~
+*.sass-cache
+
+# OS or Editor folders
+.DS_Store
+.cache
+.project
+.settings
+.tmproj
+nbproject
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.vscode
+.tags*
+.tags
+
+# NPM packages folder.
+node_modules/
+
+# Database
+db/*.sqlite
+
+# Notebook helper
+.idea/*

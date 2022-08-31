@@ -4,6 +4,7 @@ using StableRNGs
 using IntervalSets
 
 # also in a sep src
+
 global rngg = StableRNG(123)
 global initt = Flux.glorot_uniform(rngg)
 
@@ -19,7 +20,7 @@ global create_critic(na, ns) = Chain(
     Dense(30, 1; init = initt),
 )
 
-function create_agent(na, ns, use_gpu = true)
+function create_agent(na, ns, batch_size, use_gpu = true)
     Agent(
         policy = DDPGPolicy(
             behavior_actor = NeuralNetworkApproximator(
@@ -41,17 +42,17 @@ function create_agent(na, ns, use_gpu = true)
             γ = 0.99f0,
             ρ = 0.995f0,
             na = na,
-            batch_size = 64,
+            batch_size = batch_size,
             start_steps = 0,
             start_policy = RandomPolicy(-1.0..1.0; rng = rngg),
             update_after = 150, #1000 
-            update_freq = 1,
+            update_freq = 10,
             act_limit = 1.0,
             act_noise = 0.1,
             rng = rngg,
         ),
         trajectory = CircularArraySARTTrajectory(
-            capacity = 10000,
+            capacity = 1000,
             state = Vector{Float32} => (ns,),
             action = Float32 => (na, ),
         ),

@@ -1,9 +1,7 @@
 using Distributions
 using LinearAlgebra
 using StatsBase
-using Graphs
-using GLMakie
-using GraphMakie
+# using Intervals
 mutable struct NodeConstructor
     num_connections 
     num_sources
@@ -20,13 +18,13 @@ mutable struct NodeConstructor
     num_loads_R
     num_impedance
     num_fltr
+    num_spp
     cntr
     tot_ele
     CM
     parameters
     S2S_p
     S2L_p
-    net_para
 end
 
 
@@ -45,9 +43,7 @@ Create a mutable struct NodeConstructor, which serves as a basis for the creatio
 function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8)
 
     tot_ele = num_sources + num_loads
-    net_para = Dict()
-    net_para["fs"] =  10e3
-    net_para["v_rms"] = 230
+
     cntr = 0
     num_connections = 0
 
@@ -84,10 +80,12 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         num_loads_RLC =  num_loads - (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC + num_loads_LC)
 
         parameters = generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
-                                        num_loads_L, num_loads_C, num_loads_R, net_para)
+                                        num_loads_L, num_loads_C, num_loads_R)
 
     elseif isa(parameters, Dict)
-        @assert length(keys(parameters)) == 3 "Expect parameters to have the three entries 'cable', 'load' and 'source' but got $(keys(parameters))"
+        @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
+
+        @assert length(keys(parameters["grid"])) == 3 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms' and 'phase' but got $(keys(parameters))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -101,20 +99,24 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         @assert num_fltr_LCL + num_fltr_LC + num_fltr_L == num_sources "Expect the number of sources to be identical to the sum of the filter types, but the number of sources is $num_sources and the sum of the filters is $(num_fltr_LCL + num_fltr_LC + num_fltr_L)"
 
         @assert num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R == num_loads "Expect the number of loads to be identical to the sum of the loads types, but the number of loads is $num_loads and the sum of the loads is $(num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R)"
+        
+        
+        # valid_realistic_para(parameters) TODO: revise that values are checked independently of network parameters, if necessary only via A-matrix
+
     else
         throw("Expect parameters to be a dict or nothing, not $(typeof(parameters))")
     end
 
-    num_fltr = 4 * num_fltr_LCL + 2 * num_fltr_LC + 2 * num_fltr_L
+    num_fltr = 4 * num_fltr_LCL + 3 * num_fltr_LC + 2 * num_fltr_L
     num_impedance = (2 * (num_loads_RLC
                         + num_loads_LC
                         + num_loads_RL
                         + num_loads_L)
                         + num_loads_RC + num_loads_C + num_loads_R)
 
-    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L,
-                num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R,
-                num_impedance, num_fltr, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, net_para)
+    num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R)
+
+    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p)
 end
 
 
@@ -136,22 +138,28 @@ end
 Function that samples the parameters for the individual elements if no parameters are entered. 
 """
 function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
-                            num_loads_L, num_loads_C, num_loads_R, net_para)
+                            num_loads_L, num_loads_C, num_loads_R)
 
     source_list = []
     cable_list = []
     load_list = []
+    
+    grid_properties = Dict()
+    grid_properties["fs"] =  10e3
+    grid_properties["v_rms"] = 230
+    grid_properties["phase"] = 1
+
 
     for s in 1:num_fltr_LCL
-        push!(source_list, _sample_fltr_LCL(net_para))
+        push!(source_list, _sample_fltr_LCL(grid_properties))
     end
     
     for s in 1:num_fltr_LC
-        push!(source_list, _sample_fltr_LC(net_para))
+        push!(source_list, _sample_fltr_LC(grid_properties))
     end
     
     for s in 1:num_fltr_L
-        push!(source_list, _sample_fltr_L(net_para))
+        push!(source_list, _sample_fltr_L(grid_properties))
     end
 
     for c in 1:num_connections
@@ -190,10 +198,61 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
     parameters["source"] = source_list
     parameters["cable"] = cable_list
     parameters["load"] = load_list
+    parameters["grid"] = grid_properties
 
     parameters
 end
 
+
+# """
+#     valid_realistic_para(para)
+
+# Checks if the passed parameters e.g. for the filters have logical and realistic values.
+# """
+# function valid_realistic_para(para)
+
+#     para["source"] = source_list
+#     para["net"] = net_para
+
+#     for (i, source) in enumerate(source_list)
+
+#         ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
+#         i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+#         ilfmax = source["i_rip"] * i_peak
+#         vcfmax = source["v_rip"] * sqrt(2)*net_para["v_rms"]
+
+#         if source["fltr"] == "LCL"
+#             In_L = Interval{Closed, Closed}(0.001*(0.5*source["vdc"]*(4*net_para["fs"]*ilfmax)^-1),(0.5*source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)*1000)
+#             In_C = Interval{Closed, Closed}(0.001*(ilfmax*(8*net_para["fs"]*vcfmax)^-1),(ilfmax*(8*net_para["fs"]*vcfmax)^-1)*1000)
+#             In_R_L = Interval{Closed, Closed}(0.001*(400 * source["L1"]),(400 * source["L1"])*1000)
+#             In_R_C = Interval{Closed, Closed}(0.001*(28* source["C"]),(28* source["C"])*1000)
+
+#             if (!(source["L1"] in In_L) || !(source["L2"] in In_L) || !(source["C"] in In_C) || !(source["R1"] in In_R_L) || !(source["R2"] in In_R_L) || !(source["R_C"] in In_R_C))
+#                 @warn " Source $i contains filter parameters that are not recommended."
+#             end
+
+#         elseif source["fltr"] == "LC"
+#             In_L = Interval{Closed, Closed}(0.001*(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1),(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)*1000)
+#             In_C = Interval{Closed, Closed}(0.001*(ilfmax*(8*net_para["fs"]*vcfmax)^-1),(ilfmax*(8*net_para["fs"]*vcfmax)^-1)*1000)
+#             In_R_L = Interval{Closed, Closed}(0.001*(400 * source["L1"]),(400 * source["L1"])*1000)
+#             In_R_C = Interval{Closed, Closed}(0.001*(28* source["C"]),(28* source["C"])*1000)
+
+#             if (!(source["L1"] in In_L) || !(source["C"] in In_C) || !(source["R1"] in In_R_L) || !(source["R_C"] in In_R_C))
+#                 @warn " Source $i contains filter parameters that are not recommended."
+#             end
+
+#         elseif source["fltr"] == "L"
+#             In_L = Interval{Closed, Closed}(0.001*(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1),(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)*1000)
+#             In_R_L = Interval{Closed, Closed}(0.001*(400 * source["L1"]),(400 * source["L1"])*1000)
+
+#             if (!(source["L1"] in In_L) || !(source["R1"] in In_R_L))
+#                 @warn " Source $i contains filter parameters that are not recommended."
+#             end
+
+#         end
+#     end
+
+# end
 
 """
     cntr_fltrs(source_list)
@@ -260,7 +319,7 @@ end
 
 Sample parameters for the LCL filter.
 """
-function _sample_fltr_LCL(net_para)
+function _sample_fltr_LCL(grid_properties)
 
     source = Dict()
     source["fltr"] = "LCL"
@@ -270,15 +329,15 @@ function _sample_fltr_LCL(net_para)
     source["i_rip"] = rand(Uniform(0.1, 0.15))
     source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
-    i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+    ZL= 3*(grid_properties["v_rms"])^2 *(source["pwr"])^-1
+    i_peak = sqrt(2)*grid_properties["v_rms"]*(ZL)^-1
     ilfmax = source["i_rip"] * i_peak
-    vcfmax = source["v_rip"] * sqrt(2)*net_para["v_rms"]
+    vcfmax = source["v_rip"] * sqrt(2)*grid_properties["v_rms"]
 
 
-    source["L1"] = 0.5*(source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)
+    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ilfmax)^-1)
     source["L2"] = deepcopy(source["L1"]) 
-    source["C"] = ilfmax*(8*net_para["fs"]*vcfmax)^-1
+    source["C"] = ilfmax*(8*grid_properties["fs"]*vcfmax)^-1
     source["R1"] = 400 * source["L1"]
     source["R2"] = deepcopy(source["R1"])
     source["R_C"] = 28* source["C"]
@@ -292,7 +351,7 @@ end
 
 Sample parameters for the LC filter.
 """
-function _sample_fltr_LC(net_para)  
+function _sample_fltr_LC(grid_properties)  
 
     source = Dict()
     source["fltr"] = "LC"
@@ -302,14 +361,14 @@ function _sample_fltr_LC(net_para)
     source["i_rip"] = rand(Uniform(0.1, 0.15))
     source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
-    i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+    ZL= 3*(grid_properties["v_rms"])^2 *(source["pwr"])^-1
+    i_peak = sqrt(2)*grid_properties["v_rms"]*(ZL)^-1
     ilfmax = source["i_rip"] * i_peak
-    vcfmax = source["v_rip"] * sqrt(2)*net_para["v_rms"]
+    vcfmax = source["v_rip"] * sqrt(2)*grid_properties["v_rms"]
 
 
-    source["L1"] = (source["vdc"]*(4*net_para["fs"]*ilfmax)^-1)
-    source["C"] = ilfmax*(8*net_para["fs"]*vcfmax)^-1
+    source["L1"] = (source["vdc"]*(4*grid_properties["fs"]*ilfmax)^-1)
+    source["C"] = ilfmax*(8*grid_properties["fs"]*vcfmax)^-1
     source["R1"] = 400 * source["L1"]
     source["R_C"] = 28* source["C"]
 
@@ -322,7 +381,7 @@ end
 
 Sample parameters for the L filter.
 """
-function _sample_fltr_L(net_para)  
+function _sample_fltr_L(grid_properties)  
 
     source = Dict()
     source["fltr"] = "L"
@@ -332,12 +391,12 @@ function _sample_fltr_L(net_para)
     source["i_rip"] = rand(Uniform(0.1, 0.15))
     source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    ZL= 3*(net_para["v_rms"])^2 *(source["pwr"])^-1
-    i_peak = sqrt(2)*net_para["v_rms"]*(ZL)^-1
+    ZL= 3*(grid_properties["v_rms"])^2 *(source["pwr"])^-1
+    i_peak = sqrt(2)*grid_properties["v_rms"]*(ZL)^-1
     ilfmax = source["i_rip"] * i_peak
 
 
-    source["L1"] = (source["vdc"]*(4*net_para["fs"]*ilfmax)^-1) 
+    source["L1"] = (source["vdc"]*(4*grid_properties["fs"]*ilfmax)^-1) 
     source["R1"] = 400 * source["L1"] 
 
     source
@@ -1265,7 +1324,13 @@ function generate_A(self::NodeConstructor)
         A_src_trn_l           A_trn  A_tran_load_l
         A_load_zeros_t  A_tran_load_c   A_load_diag]
 
-    return A
+    if self.parameters["grid"]["phase"] === 1
+            return A
+        elseif self.parameters["grid"]["phase"] === 3
+            z = zeros(size(A))
+            A_ = [A z z; z A z; z z A]
+            return A_
+        end
 end
 
 
@@ -1307,8 +1372,13 @@ function generate_B(self::NodeConstructor)
             B[start:stop,i:i] = ele
         end
     end
-
-    return B
+    if self.parameters["grid"]["phase"] === 1
+        return B
+    elseif self.parameters["grid"]["phase"] === 3
+        z = zeros(size(B))
+        B_ = [B z z ; z B z; z z B]
+        return B_
+    end
 end
 
 
@@ -1323,7 +1393,16 @@ function generate_C(self::NodeConstructor)
     Retruns:
         C: Identity matrix (2*num_sources+num_connections)
     """
-    return Diagonal(ones(self.num_fltr + self.num_connections + self.num_impedance))
+    C =  Diagonal(ones(self.num_fltr + self.num_connections + self.num_impedance))
+    if self.parameters["grid"]["phase"] === 1
+        return C
+    elseif self.parameters["grid"]["phase"] === 3
+        z = zeros(size(C))
+        C_ = [C z z;
+              z C z;
+              z z C]
+        return C_
+    end
 end
 
 """
@@ -1356,6 +1435,8 @@ end
 
 Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
 """
+
+
 function get_states(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
@@ -1399,23 +1480,32 @@ function draw_graph(self::NodeConstructor)
     """
 
     # edges = []
-    # for i in 1:self.num_connections
-    #      ci = findall(x->x==i, self.CM)[1]
-    #      push!(edges, (ci[1], ci[2]))
+    # color = []
+    # for i in range(1, self.num_connections+1):
+    #     (row, col) = np.where(self.CM==i)
+    #     (row_idx, col_idx) = (row[0]+1, col[0]+1)
+    #     edges.append((row_idx, col_idx))
+    #     if row_idx <= self.num_sources:
+    #         color.append('red')
+    #     else:
+    #         color.append('blue')
+    #     end
     # end
 
-    CM = abs.(self.CM)
-    g = SimpleGraph(CM)
+    # G = nx.Graph(edges)
 
-    color_map = []
+    # color_map = []
 
-    for i in 1:length(g.fadjlist)
-        if i <= self.num_source
-            push!(color_map, :red)
-        else
-            push!(color_map, :lightblue)
-        end
-    end
+    # for node in G:
+    #     if node <= self.num_sources:
+    #         color_map.append("red")
+    #     else:
+    #         color_map.append("lightblue")
+    #     end
+    # end
 
-    graphplot(g, node_color=color_map)
+    # nx.draw(G, node_color=color_map, with_labels = True)
+    # plt.show()
+
+    # pass
 end

@@ -6,9 +6,12 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
 
     save_data_to_hd = false
     dir = "episode_data/"
+    A = nothing
+    collect_state_paras = nothing
 
     collect_state_ids = []
     collect_next_state_ids = []
+    collect_action_ids = []
 
     df = DataFrame()
     tmp = DataFrame()
@@ -24,6 +27,8 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     bestepisode = 0
     currentNNA = nothing
 
+    collect_reference = false
+
 end
 
 function (hook::DataHook)(::PreExperimentStage, agent, env)
@@ -31,7 +36,9 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     # rest
     #hook.df = DataFrame()
     #hook.ep = 1
-    
+    hook.A,_ ,_ ,_ = get_sys(env.nc)
+    hook.collect_state_paras = get_state_paras(env.nc)
+
     if hook.save_best_NNA && hook.currentNNA === nothing
         hook.currentNNA = deepcopy(agent.policy.behavior_actor)
         hook.bestNNA = deepcopy(agent.policy.behavior_actor)
@@ -43,12 +50,26 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
 
+    if hook.collect_reference
+        insertcols!(hook.tmp, :reference => reference(env.t))
+    end
+
+    states_x = Vector( env.state .* env.norm_array)
+    opstates=(hook.A * states_x ) .* (hook.collect_state_paras)
+
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
         insertcols!(hook.tmp, state_id => (env.state[state_index] * env.norm_array[state_index]))
-    end
+        insertcols!(hook.tmp, "op_$state_id" => opstates[state_index,1])
+    end 
 
+    for action_id in hook.collect_action_ids
+        action_index = findfirst(x -> x == action_id, env.action_ids)
+
+        insertcols!(hook.tmp, action_id => (env.action[action_index]))
+    end
+    
     insertcols!(hook.tmp, :action => Ref(action))
     
 end
@@ -67,9 +88,7 @@ function (hook::DataHook)(::PostActStage, agent, env)
     append!(hook.df, hook.tmp)
     hook.tmp = DataFrame()
     
-    if hook.plot_rewards
-        hook.reward += env.reward
-    end
+    hook.reward += env.reward
 end
 
 function (hook::DataHook)(::PostEpisodeStage, agent, env)
@@ -84,10 +103,8 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env)
 
     hook.ep += 1
 
-    if hook.plot_rewards
-        push!(hook.rewards, hook.reward)
-        hook.reward = 0
-    end
+    push!(hook.rewards, hook.reward)
+    hook.reward = 0
 
     if hook.save_best_NNA
         copyto!(hook.currentNNA, agent.policy.behavior_actor)
