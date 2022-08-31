@@ -164,8 +164,8 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase A\nSource = "*string(num_source))
     p_cntr_a = plot!(t[N_range], V_inv[1,:], label = "Inverter Phase a")
-    p_cntr_a = plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
-    p_cntr_a = plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
+    #p_cntr_a = plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
+    #p_cntr_a = plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
 
     # Phase b Control Signals
     p_cntr_b = plot(t[N_range], Source.V_ref[num_source, 2, N_range],
@@ -174,8 +174,8 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase B")
     p_cntr_b = plot!(t[N_range], V_inv[2,:], label = "Inverter Phase b")
-    p_cntr_b = plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
-    p_cntr_b = plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
+    #p_cntr_b = plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
+    #p_cntr_b = plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
 
     # Phase c Control Signals
     p_cntr_c = plot(t[N_range], Source.V_ref[num_source, 3, N_range],
@@ -184,8 +184,8 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase C")
     p_cntr_c = plot!(t[N_range], V_inv[3,:], label = "Inverter Phase c")
-    p_cntr_c = plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
-    p_cntr_c = plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
+    #p_cntr_c = plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
+    #p_cntr_c = plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
 
     p_v_cntr = plot(p_cntr_a, p_cntr_b, p_cntr_c,
         layout = (3, 1),
@@ -367,14 +367,16 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
 
     N_range = N_plot_start:N_plot_end
 
+    I_inv = Source.I_filt_inv[num_source, :, N_range]
+
     # Phase a Control Signals
     p_cntr_a = plot(t[N_range], Source.I_ref[num_source, 1, N_range],
         label = "Reference_a",
         xlabel = "Time [s]",
         ylabel = "Current [A]",
-        title = "DC-AC Converter Control Phase A")
-    #p_cntr_a = plot!(t[N_range], Env.x[Source.I_inv_loc[1, num_source], N_range],
-        #label = "Inverter Phase a")
+        title = "DC-AC Converter Control Phase A\nSource = "*string(num_source))
+    p_cntr_a = plot!(t[N_range], I_inv[1, :],
+        label = "Inverter Phase a")
 
     # Phase b Control Signals
     p_cntr_b = plot(t[N_range], Source.I_ref[num_source, 2, N_range],
@@ -382,8 +384,8 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase B")
-    #p_cntr_b = plot!(t[N_range], Env.x[Source.I_inv_loc[2, num_source], N_range],
-        #label = "Inverter Phase b")
+    p_cntr_b = plot!(t[N_range], I_inv[2, :],
+        label = "Inverter Phase b")
 
     # Phase c Control Signals
     p_cntr_c = plot(t[N_range], Source.I_ref[num_source, 3, N_range],
@@ -391,8 +393,8 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase C")
-    #p_cntr_c = plot!(t[N_range], Env.x[Source.I_inv_loc[3, num_source], N_range],
-        #label = "Inverter Phase c")
+    p_cntr_c = plot!(t[N_range], I_inv[3, :],
+        label = "Inverter Phase c")
 
     p_i_cntr = plot(p_cntr_a, p_cntr_b, p_cntr_c,
         layout = (3, 1),

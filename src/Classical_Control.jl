@@ -719,7 +719,7 @@ function Classical_Control_RL(Source::Source_Controller, env)
     end
 
     Action = Env_Interface_RL(env, Source)
-    #Measurements(Source)
+    Measurements(Source)
 
     return Action
 end
@@ -747,28 +747,30 @@ function Env_Interface_RL(env, Source::Source_Controller)
 
     i = Source.steps
 
-    Action = zeros(length(env.B[1,:]), 1)
+    _, B, _, _ = get_sys(env.nc)
+    Action = zeros(length(B[1,:]), 1)
 
-    for s in 1:Source.num_sources
+    for ph in 1:3
+        
+        for s in 1:Source.num_sources
 
-        # Inverter Voltages - Control Actions
-        #_______________________________________________________
-        Action[1 + 3*(s - 1)] = Source.Vd_abc_new[s, 1, i]
-        Action[2 + 3*(s - 1)] = Source.Vd_abc_new[s, 2, i]
-        Action[3 + 3*(s - 1)] = Source.Vd_abc_new[s, 3, i]
-
+            # Inverter Voltages - Control Actions
+            #_______________________________________________________
+            Action[s + Source.num_sources*(ph - 1)] = Source.Vd_abc_new[s, ph, i]
+        end
     end
 
     return Action
 end
 
-function Collect_IDs(env, Source::Source_Controller, num_fltr_LCL, num_fltr_LC, num_fltr_L)
+function Collect_IDs(env, Source::Source_Controller)
 
-    #Source.V_poc_loc = [3 4; 11 12; 19 20] # ID's at which nodes the sources are located
-    #Source.I_poc_loc = [5 6; 13 14; 21 22]
-    #Source.I_inv_loc = [1 2; 9 10; 17 18]
+    A, _, _, _ = get_sys(env.nc)
+    num_fltr_LCL = env.nc.num_fltr_LCL
+    num_fltr_LC = env.nc.num_fltr_LC
+    num_fltr_L = env.nc.num_fltr_L
 
-    ns = length(env.A[1,:])/3 # get num of inputs
+    ns = length(A[1,:])/3 # get num of inputs
     np = 3 # number of phases
 
     x = 0
