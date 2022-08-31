@@ -1521,6 +1521,10 @@ function get_state_paras(self::NodeConstructor)
         end
     end
 
+    if self.parameters["grid"]["phase"] === 3
+        state_paras = vcat([state_paras for i in 1:3]...)
+    end
+
     return state_paras
 end
 
