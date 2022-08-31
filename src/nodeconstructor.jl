@@ -1480,6 +1480,64 @@ function get_state_ids(self::NodeConstructor)
     return states
 end
 
+function get_state_paras(self::NodeConstructor)
+    state_paras = []
+    for s in 1:self.num_sources
+        if s <= self.num_fltr_LCL
+            push!(state_paras, self.parameters["source"][s]["L1"]) 
+            push!(state_paras, self.parameters["source"][s]["C"]) 
+            push!(state_paras, self.parameters["source"][s]["L2"])
+            push!(state_paras, get_C_sum_cable_node(s,self))
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+            push!(state_paras, self.parameters["source"][s]["L1"])
+            push!(state_paras, self.parameters["source"][s]["C"])
+            push!(state_paras, get_C_sum_cable_node(s,self))  
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+            push!(state_paras, self.parameters["source"][s]["L1"])
+            push!(state_paras, get_C_sum_cable_node(s,self))
+        end
+    end
+
+    for c in 1:self.num_connections
+        push!(state_paras, self.parameters["cable"][c]["L"]) 
+    end
+
+    for l in 1:self.num_loads
+        if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+            c=0
+                if haskey(self.parameters["load"][l], "C")
+                    c= self.parameters["load"][l]["C"]
+                end
+            push!(state_paras, get_C_sum_cable_node(self.num_sources+l,self) + c) 
+            push!(state_paras, self.parameters["load"][l]["L"])  
+        elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+            c=0
+            if haskey(self.parameters["load"][l], "C")
+                c= self.parameters["load"][l]["C"]
+            end
+            push!(state_paras, get_C_sum_cable_node(self.num_sources+l,self) + c)  
+        end
+    end
+
+    return state_paras
+end
+
+function get_C_sum_cable_node(node_i,self::NodeConstructor)
+    CM_row = self.CM[node_i,:]
+    C_sum=0
+    indizes = CM_row[CM_row .!= 0]
+    signs = [sign(x) for x in indizes] # get signs
+    indizes_ = indizes .* signs # delet signs from indices
+        
+    for idx in indizes_
+        idx = Int(idx)
+        C_sum += self.parameters["cable"][idx]["C"] * 0.5
+    end
+    return C_sum
+end
+
 """
     get_action_ids(self::NodeConstructor)
 
