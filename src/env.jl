@@ -166,10 +166,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
 
     if isnothing(v_dc)
-        println("INFO: v_dc = 350V will get applied to all sources")
+        println("INFO: v_dc = 350V will get applied to all actions")
         v_dc = 350 * ones(length(action_space))
     elseif isa(v_dc, Number)
-        println("INFO: v_dc = $(v_dc)V will get applied to all sources")
+        println("INFO: v_dc = $(v_dc)V will get applied to all actions")
         v_dc = v_dc * ones(length(action_space))
     end
     
@@ -177,7 +177,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     if isnothing(norm_array)
         if isnothing(nc)
             println("INFO: norm_array set to ones - if neccessary please define norm_array in env initialization")
-            norm_array = ones(length(A[1,:]))
+            norm_array = ones(length(sys_d.A[1,:]))
         else
             println("INFO: Generating standard norm_array from nodeconstructor")
             states = get_state_ids(nc)
