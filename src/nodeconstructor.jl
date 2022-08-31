@@ -146,7 +146,7 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
     grid_properties = Dict()
     grid_properties["fs"] =  10e3
     grid_properties["v_rms"] = 230
-    grid_properties["phase"] = 1
+    grid_properties["phase"] = 3
 
 
     for s in 1:num_fltr_LCL
@@ -1426,18 +1426,53 @@ function get_state_ids(self::NodeConstructor)
     end
 
     for c in 1:self.num_connections
-        push!(states, "i_c$c")
+        push!(states, "i_cable$c")
     end
 
     for l in 1:self.num_loads
         if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-            push!(states, "u_l$l")
-            push!(states, "i_l$l")
+            push!(states, "u_load$l")
+            push!(states, "i_load$l")
         elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
-            push!(states, "u_l$l")
+            push!(states, "u_load$l")
         end
     end
+
+    if self.parameters["grid"]["phase"] === 3
+        A = ["_a", "_b", "_c"]
+        states = vcat([broadcast(*, states, A[i]) for i in 1:3]...)
+    end
+    
     return states
+end
+
+"""
+    get_action_ids(self::NodeConstructor)
+Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
+"""
+
+function get_action_ids(self::NodeConstructor)
+    actions = []
+    
+    for s in 1:self.num_sources
+        if s <= self.num_fltr_LCL
+            push!(actions, "u_v$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+            push!(actions, "u_v$s")
+        
+        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+            push!(actions, "u_v$s")
+        end
+    end
+
+    if self.parameters["grid"]["phase"] === 3
+        A = ["_a", "_b", "_c"]
+        actions = vcat([broadcast(*, actions, A[i]) for i in 1:3]...)
+    end
+    
+
+    return actions
 end
 
 function draw_graph(self::NodeConstructor)

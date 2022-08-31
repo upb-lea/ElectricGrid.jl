@@ -108,6 +108,16 @@ mutable struct Parse_Tree
 
         The tree is built usin a sliding window to move through the data stream. It 
         captures in this way the distinct sequences and summarises their occurrence at 
+        different points in the data stream via a count or probability. That is, we refer to length D subsequences 
+        as D-cylinders. Hence an D level tree has a length D path corresponding to each 
+        distinct name for that bundle of underlying process's orbits each of which 
+        visited the sequence of measurement partition elements indexed by the D-cylinder. 
+        The basic assumption in building a tree is that symbol sequences observed at 
+        different times in the data stream approximate the same process state. Nonstationary 
+        processes are examples for which this assumption fails.
+
+        The tree is built usin a sliding window to move through the data stream. It 
+        captures in this way the distinct sequences and summarises their occurrence at 
         different points in the data stream via a count or probability.
 
         1. Get sequence of past D symbols
@@ -234,6 +244,11 @@ mutable struct ϵ_Machine
         is determined by the latter's probability. That is, it is the information flow 
         towards the new causal state.
 
+        The meaning of a measurement is the selected morph, the distribution associated 
+        with the causal state to which the agent transitions, and the degree of meaning 
+        is determined by the latter's probability. That is, it is the information flow 
+        towards the new causal state.
+
         The state-to-state transition structure is obtained by looking at how the
         morphs change into one another upon moving down the parse tree. Subtree
         equivalence means that the link structure is identical. Furthermore, two
@@ -296,7 +311,7 @@ mutable struct ϵ_Machine
     
     α::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
 
-    Tα::Vector{Matrix{Float64}} # paramatrized stochastic connection matrix of order α - perturbed matrix, αth Hadamar power of T
+    Tα::Vector{Matrix{Float64}} # paramatrized stochastic connection matrix of order α - perturbed matrix, αth Hadamar power of T - perturbed matrix, αth Hadamar power of T
     Iα::Vector{Matrix{Float64}} #Information flow between states
     eigval_α::Vector{Vector{ComplexF64}} #eigen values of T
     r_eigvecs_α::Vector{Matrix{ComplexF64}} # right eigenvectors
@@ -314,8 +329,10 @@ mutable struct ϵ_Machine
     h::Float64 # Topological Entropy
     hμ::Float64 # Entropy rate - growth rate of Shannon information in subsequences
     C::Float64 # State (recurrent) topological Complexity
+    C::Float64 # State (recurrent) topological Complexity
     Cμ::Float64 # Statistical Complexity - measures amount of memory in the source
     Ce::Float64 # Transition topological Complexity
+    Cμe::Float64 # Statistical Edge Complexity
     Cμe::Float64 # Statistical Edge Complexity
 
     function ϵ_Machine(Ts::Vector{Matrix{Float64}}, Tree::Parse_Tree,
@@ -357,7 +374,7 @@ mutable struct ϵ_Machine
         IG = 0.0
 
         μ_m = round(μ_m/μ_s)*μ_s # correction to prevent overflow of vectors
-        k = 0 # machine step
+        k = 0 # machine step # machine step
         t_final = N*μ_s - μ_s
         
         N = convert(Int64, Int(ceil(N*μ_s/μ_m)))
@@ -413,7 +430,7 @@ mutable struct ϵ_Machine
         T, I, eigval, 
         r_eigvecs, l_eigvecs, D, pv,  
         α,
-        Tα, Iα, 
+        Tα, Iα,  
         eigval_α, r_eigvecs_α, l_eigvecs_α, 
         Dα, pv_α,
         Zα, Hα, hα, Cα, Cαe,
@@ -512,13 +529,14 @@ function Sampling(Deus::ϵ_Machine, x, μ_s)
 
     for i in axes(x, 2)
 
-        if i%round(Deus.μ_m/μ_s) == 0
+            if i%round(Deus.μ_m/μ_s) == 0
 
-            Deus.k = Deus.k + 1
-                
-            Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i])
-            Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
-        end
+                Deus.k = Deus.k + 1
+                    
+                Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i][:, i])
+                Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
+            end
+    end
     end
 
     return nothing
@@ -698,6 +716,10 @@ function Reconstruction(Deus::ϵ_Machine, Node)
 
                     #state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
                     #node_dist = Deus.Tree.Nodes[Node].Pr_c
+                    ##Pr_d = maximum(abs.(node_dist .- state_dist))
+
+                    state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
+                    node_dist = Deus.Tree.Nodes[Node].Pr_c
                     #Pr_d = maximum(abs.(node_dist .- state_dist))
 
                     state_cn = Deus.Tree.Nodes[Deus.C_states[1, n]].cn
@@ -829,6 +851,8 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
     Deus.IG = 0.0 # do this if other stat mech was run
 
+    Deus.IG = 0.0 # do this if other stat mech was run
+
     num_edges = 0
     num_states = length(Deus.Ts)
     T = Array{Float64, 2}(undef, num_states, num_states)
@@ -897,16 +921,16 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
                     Deus.Zα[id] = Deus.Zα[id] + sum(psn.^α) #sum(exp.(α.*log.(psn)))
 
-                    if α == 1
-                        
-                        sum_psn = sum(psn.*log.(2, psn))
+                        if α == 1
+                            
+                            sum_psn = sum(psn.*log.(2, 2, psn))
 
                         if isnan(sum_psn)
                             locs = findall( !=(0), psn) # remove all zeros
                             sum_psn = sum(psn[locs].*log.(psn[locs]))
                         end  
 
-                        Deus.Hα[id] = Deus.Hα[id] - sum_psn
+                            Deus.Hα[id] = Deus.Hα[id] - sum_psn
 
                         Deus.Cα[id] = Deus.Cα[id] - Deus.pv_α[id][v]*log(2, Deus.pv_α[id][v])  
                            
@@ -926,7 +950,7 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
                     trans = unique(Deus.Ts[v][1:2, :], dims = 2)
                     num_trans = length(Deus.Ts[v][1,:])
 
-                    for vd in axes(trans, 2)
+                        for vd in axes(trans, 2)
 
                         vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.Ts[v][1:2, :][j,i], 1:2), 1:num_trans)
 
@@ -1114,6 +1138,15 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         a recurrent state has been visited. The synchronization states represent observational 
         histories that are insufficient to fix the process in a definite recurrent state.  
 
+        The states of a Markov process are either recurrent, i.e., returned to 
+        infinitely often, or transient, visited only finitely often with positive 
+        probability. For us, here, the recurrent states represent the actual causal 
+        structure of the process and, as such, they are what we are truly interested in. 
+        the most important class of transient states, and indeed the only ones encountered 
+        in practice, are the synchronization states, which can never be returned to, once 
+        a recurrent state has been visited. The synchronization states represent observational 
+        histories that are insufficient to fix the process in a definite recurrent state.  
+
         Ergodic Markov chains have a unique stationary distribution, and absorbing
         Markov chains have stationary distributions with nonzero elements only in
         absorbing states. The stationary distribution gives information about the
@@ -1158,6 +1191,9 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         distribution of the future. It is the information contained in the causal states, given 
         past observations. It is the information about a system's causal state required for 
         maximal accurate prediction.
+
+        The causal states are the minimal states that have a homogeneous distribution for
+        the next sequence of symbols and are deterministic. 
 
         The causal states are the minimal states that have a homogeneous distribution for
         the next sequence of symbols and are deterministic. 
@@ -1213,6 +1249,9 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         analyze a range of sources. The net result of using just the complexity and 
         entropy rate is that the original equations of motion and any nonlinearity (bifurcation)
         parameter are simply forgotten. All that is of interest is how the complexity Cμ of 
+        the data stream depends on the rate hμ of information production. The net result of using just the complexity and 
+        entropy rate is that the original equations of motion and any nonlinearity (bifurcation)
+        parameter are simply forgotten. All that is of interest is how the complexity Cμ of 
         the data stream depends on the rate hμ of information production.
 
         There is another set of quantities that derive from the skeletal structure
@@ -1228,6 +1267,9 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         related topological complexity would count just the recurrent states. This is 
         the one commonly used in practice. The topological entropy;for a system given 
         by an iterated function, represents the exponential growth rate of the number 
+        of distinguishabe orbits of the iterates.This is 
+        the one commonly used in practice. The topological entropy;for a system given 
+        by an iterated function, represents the exponential growth rate of the number 
         of distinguishabe orbits of the iterates.
 
         A measure of knowledge relaxation on finitary machines is given by the time-
@@ -1235,6 +1277,18 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         data stream, an agent's current model, how the information used to build the 
         model was obtained, and the method or algorithm which constructs the model.
         The trajectory of complexity captures the dynamics of knowledge relaxation.
+
+        The finitary complexity is a measure of an ϵ-machine's information processing 
+        capacity in terms of the amount of information stored in the morphs. It is 
+        directly related to the mutual information of the past and future semi-infinite 
+        sequences and the convergence of the entropy enstimates hα(L). It can be interpreted, 
+        then, as a measure of the amount of mathematical work necessary to produce a fluctuation 
+        form asymptotic statistics. The units for complexity measures are bits of information. 
+        However, at this level we see that the complexity begins to more strongly reflect 
+        the degree of computational capability and so we refer to the units as Turings, rather 
+        than bits. At this low lever the difference between bits and Turings is not as dramatic 
+        as at higher levels where each unit of machine structure is clearly associated with 
+        sophisticated computation. 
 
         The finitary complexity is a measure of an ϵ-machine's information processing 
         capacity in terms of the amount of information stored in the morphs. It is 
@@ -1348,9 +1402,35 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         subsequences in the data stream. This indicates that the tree representation is inadequate and suggests  
         that the modeler innovate a new class of representations. 
 
+        HShannon measues the number of distinct sequences (possible futures). That number increases 
+        if there is branchin as one moves down the tree and forward in time. At the other end, the 
+        Hartley entropy is given simply by the total number of distinct sequences independent of their 
+        probability. If the probability distributin is uniform on the nonzero probability cylinders then 
+        these two entropies are equal. Any difference is thus a measure of deviation of the cylinder from 
+        uniformity. The latter observation leads to a parametrized generalization of the entropy introduced 
+        by Renyi. This we put into a statistical mechanical formalism by defining a partition function for the 
+        tree. 
+
+        The average branching rate in the tree measures the growth rate of the number of new sequences 
+        of increasing length. And as such it is a measure of unpredictability in that a periodic process will 
+        at some length give rise to no more new cylinders and a random one will. The Renyi specific entropy, i.e. 
+        entropy per measurement, can be approximation from the L-cylinder distribution by hα. The growth rate of 
+        total Shannon entropy is often referred to in information theory as the source entropy and in dynamical 
+        systems as the metric entropy. The corresponding Hartley entropy growth rate is called the topological entropy. 
+
+        If a tree representation is good, then the information gain, or entropy rate, at some depth will vanish. 
+        This indicates that no further information need be stored to represent the process. This happens for a 
+        periodic process for trees deeper than the period. If the process is chaotic, with positive entropy, then 
+        the information contained in the tree representation will grow exponentially fast with modelling longer 
+        subsequences in the data stream. This indicates that the tree representation is inadequate and suggests  
+        that the modeler innovate a new class of representations. 
+
         These quantities are probabilistic, and referred to Turing machines with a 
         random internal register. 
     =#
+
+    Deus.IG = 0
+
 
     Deus.IG = 0
 
@@ -1486,7 +1566,7 @@ function Markov_Evolution(Deus::ϵ_Machine, n; start_ic = zeros(1, length(Deus.T
     num_states = length(Deus.Ts)
     index = findfirst(==(1), Deus.C_states[1,:]) # finding starting state
 
-    if index !== nothing && length(start_ic) == num_states
+    if index !=== nothing && length(start_ic) == num_states
 
         if sum(start_ic) == 0
 
@@ -1524,7 +1604,7 @@ function Complexity_Series(Deus::ϵ_Machine)
     start_ic = zeros(1, length(Deus.Ts))
     index = findfirst(==(1), Deus.C_states[1,:]) # finding starting state
 
-    if index !== nothing && length(start_ic) == num_states
+    if index !=== nothing && length(start_ic) == num_states
 
         if sum(start_ic) == 0
 
@@ -1570,7 +1650,7 @@ function χ2_test(dist_1, dist_2, N1, N2; α = 0.05, IND = 2)
             pa = pa + (dist_1[i]*N1)^2/(dist_1[i]*N1 + dist_2[i]*N2)
         end
 
-        χ_2 = (pa - N1^2/(N1 + N2))/(N1*N2/(N1 + N2)^2)
+            χ_2 = (pa - N1^2/(N1 + N2))/(N1*N2/(N1 + N2)^2)
 
         if χ_2 < 0 
             χ_2 = 0
@@ -1697,6 +1777,7 @@ function Cranking(Deus::ϵ_Machine, x, μ_s)
 
     Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
+    #Load_values(Deus::ϵ_Machine)
     #Load_values(Deus::ϵ_Machine)
 
     Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation

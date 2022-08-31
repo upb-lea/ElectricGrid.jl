@@ -16,5 +16,7 @@ end
 function (p::sin_policy)(env)
     p.t = p.t + p.ts
     u = [sqrt(2)*230 * sin.((50*2*π)*p.t .- 2/3*π*(i-1)) for i = 1:length(p.action_space)]
+    u[1] = 0.0
+    u[3] = -100.0
     return u    
 end
