@@ -105,5 +105,5 @@ run(policy, env, StopAfterEpisode(1), hook)
 
 #TODO
 # this will be shifted to plotting.jl soon
-plot_hook_results(hook=hook, asd=5)
+plot_hook_results(hook=hook)
 
