@@ -86,3 +86,63 @@ function plot_best_results(;agent, env, hook, state_ids_to_plot, plot_reward = t
 
     return nothing
 end
+
+function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false)
+
+    if isnothing(states_to_plot)
+        states_to_plot = hook.collect_state_ids
+    end
+
+    if isnothing(actions_to_plot)
+        actions_to_plot = hook.collect_action_ids
+    end
+
+    layout = Layout(
+        plot_bgcolor="#f1f3f7",
+        #title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * string(hook.bestepisode) * "</sub>",
+        xaxis_title = "Time in Seconds",
+        yaxis_title = "State values",
+        yaxis2 = attr(
+            title="Action values",
+            overlaying="y",
+            side="right",
+            titlefont_color="orange",
+            #range=[-1, 1]
+        ),
+        legend = attr(
+            x=1,
+            y=1.02,
+            yanchor="bottom",
+            xanchor="right",
+            orientation="h"
+        ),
+        width = 1000,
+        height = 650,
+        margin=attr(l=100, r=80, b=80, t=100, pad=10)
+    )
+    
+    
+    traces = []
+    
+    for state_id in states_to_plot
+        push!(traces, scatter(hook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
+    end
+    
+    for action_id in actions_to_plot
+        push!(traces, scatter(hook.df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
+    end
+    
+    if plot_reference
+        push!(traces, scatter(temphook.df, x = :time, y = :reference, mode="lines", name = "Reference"))
+    end
+
+    if plot_reward
+        push!(traces, scatter(temphook.df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward"))
+    end
+    
+    traces = Array{GenericTrace}(traces)
+    
+    p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
+    display(p)
+
+end
