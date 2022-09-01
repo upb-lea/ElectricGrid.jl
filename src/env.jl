@@ -34,29 +34,9 @@ mutable struct SimEnv <: AbstractEnv
     action_ids
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, sys_d = nothing, Ad = nothing, Bd = nothing, A = nothing, B = nothing, C = nothing, D = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing)
     
-    if !(isnothing(sys_d))
-        
-        nc = nothing
-
-    elseif !(isnothing(Ad) || isnothing(Bd) || isnothing(C))
-
-        if(isnothing(D)) D = 0 end
-
-        nc = nothing
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
-
-    elseif !(isnothing(A) || isnothing(B) || isnothing(C))
-
-        if(isnothing(D)) D = 0 end
-
-        nc = nothing
-        Ad = exp(A*ts)
-        Bd = A \ (Ad - C) * B
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
-
-    elseif !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
+    if !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
 
         if isnothing(parameters)
             nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM)
@@ -81,7 +61,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
     else
         # Construct standard env with 2 sources, 1 load
-        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drwan randomly! To change, please define parameters (see nodeconstructor)")
+        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)")
         CM = [ 0. 0. 1.
                0. 0. 2
               -1. -2. 0.]
