@@ -19,7 +19,7 @@ end
 
 #_______________________________________________________________________________
 # Parameters - Time simulation
-Timestep = 75 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+Timestep = 10 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_final = 0.4 #time in seconds, total simulation run time
 
 #_______________________________________________________________________________
@@ -66,8 +66,7 @@ parameters["cable"] = cable_list
 parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => 10000.0, "phase" => 3, "v_rms" => 230);
 
-ts = 1e-4
-env = SimEnv(reward_function = reward,  v_dc = 1000, ts=ts, use_gpu=false
+env = SimEnv(reward_function = reward,  v_dc = 1000, ts = ts, use_gpu=false
 , CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 100)
 
 #######################################################################################
