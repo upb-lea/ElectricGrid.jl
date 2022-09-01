@@ -20,12 +20,12 @@ function reward(env)
     return 1
 end
 
-#CM = [ 0. 0. 1.
-#        0. 0. 2
-#        -1. -2. 0.]
+CM = [ 0. 0. 1.
+        0. 0. 2
+        -1. -2. 0.]
 
-CM = [0. 1.
-    -1. 0.]
+#CM = [0. 1.
+#    -1. 0.]
 
 
 parameters = Dict()
@@ -44,16 +44,16 @@ source["L1"] = 2.3e-3
 #source["L2"] = 0.001005523738767639
 source["C"] = 1e-6;
 
-push!(source_list, source)#, source);
+push!(source_list, source, source);
 
 load_list = []
 load = Dict()
 
-#load["impedance"] = "RLC"
-load["impedance"] = "R"
+load["impedance"] = "RLC"
+#load["impedance"] = "R"
 load["R"] = 14.0;
-#load["L"] = 57.042;
-#load["C"] = 39.18;
+load["L"] = 57.042;
+load["C"] = 39.18;
 push!(load_list, load);
 
 cable_list = []
@@ -62,7 +62,7 @@ cable = Dict()
 cable["R"] = 0.722
 cable["L"] = 0.264e-3
 cable["C"] = 0.4e-6;
-push!(cable_list, cable)#, cable);
+push!(cable_list, cable, cable);
 
 parameters["source"] = source_list
 parameters["cable"] = cable_list
@@ -71,7 +71,7 @@ parameters["grid"] = Dict("fs" => 10000.0, "phase" => 3, "v_rms" => 230);
 
 ts = 1e-4
 env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
-, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 100)
+, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 100)
 
 
 #######################################################################################
@@ -91,9 +91,9 @@ policy = sin_policy(action_space=action_space(env))
 #######################################################################################
 # Define data-logging hook
 # define which states to store, to check what states are avalible type get_state_ids(env.nc) into command line
-plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c"]  
+plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"]  
 # define which states to store, to check what states are avalible type get_action_ids(env.nc) into command line 
-plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
+plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
 #######################################################################################
@@ -105,44 +105,5 @@ run(policy, env, StopAfterEpisode(1), hook)
 
 #TODO
 # this will be shifted to plotting.jl soon
- layout = Layout(
-    plot_bgcolor="#f1f3f7",
-    #title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * string(hook.bestepisode) * "</sub>",
-    xaxis_title = "Time in Seconds",
-    yaxis_title = "State values",
-    yaxis2 = attr(
-        title="Action values",
-        overlaying="y",
-        side="right",
-        titlefont_color="orange",
-        #range=[-1, 1]
-    ),
-    legend = attr(
-        x=1,
-        y=1.02,
-        yanchor="bottom",
-        xanchor="right",
-        orientation="h"
-    ),
-    width = 1000,
-    height = 650,
-    margin=attr(l=100, r=80, b=80, t=100, pad=10)
-)
-
-
-traces = []
-
-for state_id in hook.collect_state_ids
-    push!(traces, scatter(hook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
-end
-
-for action_id in hook.collect_action_ids
-    push!(traces, scatter(hook.df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
-end
-
-
-traces = Array{GenericTrace}(traces)
-
-p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
-display(p)
+plot_hook_results(hook)
 

@@ -164,7 +164,8 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             action_ids = get_action_ids(nc)
         end
     end
-
+    # TODO: take vdc per source from the nc.parameters[] something like:
+    # v_dc = [env.nc.parameters["sources"][n] for n = 1:env.nc.num_sources]
     if isnothing(v_dc)
         println("INFO: v_dc = 350V will get applied to all actions")
         v_dc = 350 * ones(length(action_space))
