@@ -1,8 +1,6 @@
 using DataFrames
 using PlotlyJS
 
-include(srcdir("data_hook.jl"))
-
 function plot_rewards_3d(hook)
     layout = Layout(
             plot_bgcolor="#f1f3f7",
