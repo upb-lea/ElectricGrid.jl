@@ -8,7 +8,6 @@ include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("plotting.jl"))
 
 
 function reference(t)

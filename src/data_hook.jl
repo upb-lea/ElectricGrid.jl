@@ -2,6 +2,8 @@ using ReinforcementLearning
 using DataFrames
 using UnicodePlots
 
+include(srcdir("plotting.jl"))
+
 Base.@kwdef mutable struct DataHook <: AbstractHook
 
     save_data_to_hd = false
