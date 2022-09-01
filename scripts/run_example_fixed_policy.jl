@@ -6,54 +6,51 @@ using IntervalSets
 using LinearAlgebra
 using ControlSystems
 using CUDA
-using PlotlyJS
-
+using Plots
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"));
-include(srcdir("sin_policy.jl"))
 include(srcdir("data_hook.jl"))
-
 
 function reward(env)
     #implement your reward function here
     return 1
 end
 
-#CM = [ 0. 0. 1.
-#        0. 0. 2
-#        -1. -2. 0.]
+#_______________________________________________________________________________
+# Parameters - Time simulation
+Timestep = 75 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+t_final = 0.4 #time in seconds, total simulation run time
 
-CM = [0. 1.
-    -1. 0.]
+#_______________________________________________________________________________
+# Environment Calcs
 
+ts = Timestep*1e-6
+t = 0:ts:t_final # time
+
+N = length(t)
+
+CM = [ 0. 0. 1.
+        0. 0. 2
+        -1. -2. 0.]
 
 parameters = Dict()
 source_list = []
 source = Dict()
 
-#source["pwr"] = 45000.0
-#source["v_rip"] = 0.01556109320329396
-#source["vdc"] = 750
-#source["i_rip"] = 0.10108821490394984
 source["fltr"] = "LC"
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = 2.3e-3
-#source["R2"] = 0.4022094955070556   # needed for LCL
-#source["L2"] = 0.001005523738767639
 source["C"] = 1e-6;
 
-push!(source_list, source)#, source);
+push!(source_list, source, source);
 
 load_list = []
 load = Dict()
 
-#load["impedance"] = "RLC"
 load["impedance"] = "R"
 load["R"] = 14.0;
-#load["L"] = 57.042;
-#load["C"] = 39.18;
 push!(load_list, load);
 
 cable_list = []
@@ -62,7 +59,7 @@ cable = Dict()
 cable["R"] = 0.722
 cable["L"] = 0.264e-3
 cable["C"] = 0.4e-6;
-push!(cable_list, cable)#, cable);
+push!(cable_list, cable, cable);
 
 parameters["source"] = source_list
 parameters["cable"] = cable_list
@@ -70,79 +67,83 @@ parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => 10000.0, "phase" => 3, "v_rms" => 230);
 
 ts = 1e-4
-env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
-, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 100)
-
-
-#######################################################################################
-# Helper logging definitions till history works
-N = 1000
-mess = zeros(N)
-u = zeros(N)
-
-
-#######################################################################################
-# load simple example policy which is able to interact with env in the RL-framwork
-# policy has to enherit from AbstractPolicy.
-# If learner wanted: replace policy by agent (agent has policy, which will be learned)
-policy = sin_policy(action_space=action_space(env))
-
-
-#######################################################################################
-# Define data-logging hook
-# define which states to store, to check what states are avalible type get_state_ids(env.nc) into command line
-plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c"]  
-# define which states to store, to check what states are avalible type get_action_ids(env.nc) into command line 
-plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
+env = SimEnv(reward_function = reward,  v_dc = 1000, ts=ts, use_gpu=false
+, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 100)
 
 #######################################################################################
 # GOAL: Use run function provided by ReinforcementLearning.jl to be able to interact 
 #       with our env in the RL-interface kind of manner to be able to use standard 
 #       RL-Algorithms
 # 
-run(policy, env, StopAfterEpisode(1), hook)
+#%% Starting time simulation
 
-#TODO
-# this will be shifted to plotting.jl soon
- layout = Layout(
-    plot_bgcolor="#f1f3f7",
-    #title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * string(hook.bestepisode) * "</sub>",
-    xaxis_title = "Time in Seconds",
-    yaxis_title = "State values",
-    yaxis2 = attr(
-        title="Action values",
-        overlaying="y",
-        side="right",
-        titlefont_color="orange",
-        #range=[-1, 1]
-    ),
-    legend = attr(
-        x=1,
-        y=1.02,
-        yanchor="bottom",
-        xanchor="right",
-        orientation="h"
-    ),
-    width = 1000,
-    height = 650,
-    margin=attr(l=100, r=80, b=80, t=100, pad=10)
-)
+reset!(env)
 
+input_action_a = zeros(N-1)
+input_action_b = zeros(N-1)
+input_action_c = zeros(N-1)
 
-traces = []
+env_action_a = zeros(N-1)
+env_action_b = zeros(N-1)
+env_action_c = zeros(N-1)
 
-for state_id in hook.collect_state_ids
-    push!(traces, scatter(hook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
+vout_a = zeros(N-1)
+vout_b = zeros(N-1)
+vout_c = zeros(N-1)
+
+V_poc_loc = [3 6; 12 15; 21 24]
+
+for i in 1:N-1
+
+    u = [1*sin.(50*2*pi*t[i]) for j = 1:3]
+    action = vcat(u,u)
+
+    env(action)
+
+    s = 1 # select source
+    num_sources = 2 # total sources
+    input_action_a[i] = action[s + num_sources*(1 - 1)]
+    input_action_b[i] = action[s + num_sources*(2 - 1)]
+    input_action_c[i] = action[s + num_sources*(3 - 1)]
+
+    env_action_a[i] = env.action[s + num_sources*(1 - 1)]
+    env_action_b[i] = env.action[s + num_sources*(2 - 1)]
+    env_action_c[i] = env.action[s + num_sources*(3 - 1)]
+
+    vout_a[i] = env.state[V_poc_loc[1, s]]
+    vout_b[i] = env.state[V_poc_loc[2, s]]
+    vout_c[i] = env.state[V_poc_loc[3, s]]
+
 end
 
-for action_id in hook.collect_action_ids
-    push!(traces, scatter(hook.df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
+T_plot_start = 0
+T_plot_end = 10
+fsys = 50
+
+if T_plot_end > t_final*fsys
+    T_plot_end = t_final*fsys
 end
 
+Nps = 1/ts
+N_plot_start = convert(Int64, round((T_plot_start/fsys  + 1/Nps)*Nps))
+N_plot_end = convert(Int64, round((T_plot_end/fsys  - 1/Nps)*Nps))
+range = N_plot_start:N_plot_end
 
-traces = Array{GenericTrace}(traces)
+v_out = plot(t[range], vout_a[range], label = "a",
+            xlabel = "time", ylabel = "V poc", title = "Env.State")
+v_out = plot!(t[range], vout_b[range], label = "b")
+v_out = plot!(t[range], vout_c[range], label = "c")
+display(v_out)
+ 
+u = plot(t[range], input_action_a[range], label = "a",
+            xlabel = "time", ylabel = "V inv", title = "Policy Action")
+u = plot!(t[range], input_action_b[range], label = "b")
+u = plot!(t[range], input_action_c[range], label = "c")
+display(u)
 
-p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
-display(p)
+u = plot(t[range], env_action_a[range], label = "a",
+            xlabel = "time", ylabel = "V inv", title = "Env.Action")
+u = plot!(t[range], env_action_b[range], label = "b")
+u = plot!(t[range], env_action_c[range], label = "c")
+display(u)
 

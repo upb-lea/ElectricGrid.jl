@@ -55,10 +55,10 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 
 #%% Cable/trasmission line parameters
 #_______________________________________________________________________________
-F = 0.01:0.01:0.05 #don't remove decimal points
-l = 0.2 #km, length of the cable/transmission line in km
+F = 49:1:50 #don't remove decimal points
+l = 1.0 #km, length of the cable/transmission line in km
 
-num_conductors = 1
+num_conductors = 3
 num_neutrals = 0
 
 transposed = 0 # 1 if transposed
@@ -83,16 +83,16 @@ earth_resistance = Array{Float64, 1}(undef, length(F))
 
 # Conductors #current data for 19strand 4/0 hard drawn copper
 num_bundles[1] = 1
-gmr_cond[1] = 2.4 #mm, geometric mean radius of stranded conductor
-r_cond[1] = 2.4 #mm, outside radius of (stranded) conductor
+gmr_cond[1] = 5.084064  #mm, geometric mean radius of stranded conductor
+r_cond[1] = 6.7056  #mm, outside radius of (stranded) conductor
 
-#= num_bundles[2] = 1
+num_bundles[2] = 1
 gmr_cond[2] = 5.084064 #mm, gmr radius of conductor
 r_cond[2] = 6.7056 #mm, outside radius of (stranded) conductor
 
 num_bundles[3] = 1
 gmr_cond[3] = 5.084064 #mm, gmr radius of conductor
-r_cond[3] = 6.7056 #mm, outside radius of (stranded) conductor =#
+r_cond[3] = 6.7056 #mm, outside radius of (stranded) conductor
 
 #= Neutral #should be 0.375 EBB steel
 num_bundles[4] = 1
@@ -108,15 +108,15 @@ y_pos_m = fill!(y_pos, +100)
 
 # Conductor Positions # current dat for 69kV circuit
 # y_pos = y_pos - 2/3*y_sag
-x_pos[1,1] = -0.0 #m
-y_pos[1,1,1] = 3.0 #m
+x_pos[1,1] = -3.048 #m
+y_pos[1,1,1] = 13.716 #m
 #[conductor/neutral number, bundle number, reserved for earth frequency]
 
-#= x_pos[2,1] = 0 #m
+x_pos[2,1] = 0 #m
 y_pos[2,1,1] = 13.716 #m
 
 x_pos[3,1] = 3.048 #m
-y_pos[3,1,1] = 13.716 #m =#
+y_pos[3,1,1] = 13.716 #m
 
 #= Neutral Positions
 x_pos[4,1] = 0 #m

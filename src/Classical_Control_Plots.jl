@@ -169,7 +169,7 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
 
     # Phase b Control Signals
     p_cntr_b = plot(t[N_range], Source.V_ref[num_source, 2, N_range],
-        label = "V_ref b",
+        label = "Reference_b",
         xlabel = "Time [s]",
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase B")
