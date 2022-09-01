@@ -1,6 +1,8 @@
 #using DrWatson
 #@quickactivate "dare"
 
+using Plots
+
 include("Complexity.jl")
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
@@ -9,7 +11,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 # Parameters - Time simulation
 
 Timestep = 10 # time step in μs
-t_final = 10 #0.75 # time in seconds, total simulation run time
+t_final = 0.1 #0.75 # time in seconds, total simulation run time
 fsys = 2000 # Hz, fundamental frequency of system
 fsys = 1/(10e-6) 
 
@@ -94,17 +96,6 @@ dim = 1 # dimensions of state space
 =#
 
 #D0 = 4*hf
-D = 18 #convert(Int, ceil(D0 + 2/hl - 1)) + 120
-
-x_range = Array{Float64, 2}(undef, dim, 2) # State space limits
-ϵ = Array{Float64, 1}(undef, dim) # Instrument resolution
-
-ϵ[:] = [0.5 for i in 1:dim]
-
-x_range[:,1] = [1.0 for i in 1:dim] # maximum
-x_range[:,2] = [0.0 for i in 1:dim] # minimum
-
-Deus = ϵ_Machine(N, D, ϵ, x_range, μ_m, μ_s, δ = 0.05)
 
 #_______________________________________________________________________________
 ## Generating Connectivity Matrix
@@ -155,12 +146,12 @@ x[:, 1] = initialise_CCA(x[:, 1])
 r = 3.9277370017867516
 # Accumulation board - onset of chaos
 #r = 3.5699456718695445
-#r = 3.95
-r = 4.0
+#r = 3.567
+#r = 4.0
 
 #x[:,1] = 1/2 # initial conditions
 
-x[:,1] .= 0.4
+x[:, 1] .= 0.4
 logdFdx = log.(2, abs.(r .- 2*r*x[:,1]))
 
 #_______________________________________________________________________________
@@ -265,7 +256,19 @@ even = 0
 
     println("Progress : 100.0 %\n")
 
-Cranking(Deus, x[1:1, :], μ_s)
+    D = 32 #convert(Int, ceil(D0 + 2/hl - 1)) + 120
+
+    ϵ = Array{Float64, 1}(undef, dim) # Instrument resolution
+    ep = sum(x[1:1, :])/N
+    ϵ[:] = [0.5 for i in 1:dim]
+
+    x_range = Array{Float64, 2}(undef, dim, 2) # State space limits
+    x_range[:, 1] = [1.0 for i in 1:dim] # maximum
+    x_range[:, 2] = [0.0 for i in 1:dim] # minimum
+
+    Deus = ϵ_Machine(N, D, ϵ, x_range, μ_m, μ_s, δ = 0.05)
+
+    Cranking(Deus, x[1:1, D:end], μ_s)
 end
 
 T_plot_end = 30
@@ -275,22 +278,21 @@ N_range = 1:N_plot_end + 2
 Nm_plot_end = convert(Int64, round((T_plot_end/fsys  - μ_m)*1/μ_m))
 Nm_range = 1:Nm_plot_end + 2
 
-fig = Figure()
-p = Axis(fig[1, 1])
-lines!(p, t[N_range], x[1, N_range])
-#lines!(p, Deus.t_m[Nm_range], Deus.s[Nm_range])
-lines!(p, Deus.t_m[Nm_range], Deus.x_m[1, Nm_range])
-#lines!(p, N_range, x[1, N_range])
-#lines!(p, Nm_range, Deus.s[Nm_range])
-#lines!(p, Nm_range, Deus.x_m[1, Nm_range])
+p1 = plot(t[N_range], x[1, N_range], label = "x")
+#p1 = plot!(Deus.t_m[Nm_range], Deus.s[Nm_range])
+p1 = plot!(Deus.t_m[Nm_range], Deus.x_m[1, Nm_range], label = "xm")
+#plot!(N_range, x[1, N_range])
+#plot!(Nm_range, Deus.s[Nm_range])
+#plot!(Nm_range, Deus.x_m[1, Nm_range])
 
-#display(fig)
+display(p1)
 #
 
 #_______________________________________________________________________________
 ## Draw Graph
-Draw_Plots(Deus)
+#Draw_Plots(Deus)
 #Draw_Graph(Net, x, N, run = 0)
+#All_Plots(Deus)
 
 #=
     Rlr = eigvals(Deus.Tα[1])
@@ -302,9 +304,6 @@ Draw_Plots(Deus)
     a = 0
     h = (1/(1-a))*log(2, Rlr0)
 
-    println("Cμ_t[end] = ", Deus.Cμ_t[end])
-    println("Hα[end] = ", Deus.Hα[end])
-    println("Period = ", 2^(Deus.Hα[end]))
     println("hl = ", 2/2^(Deus.Hα[end]))
     println("Zα[1]/L = ", log(2, Deus.Zα[1])/Deus.Tree.L)
     println("logdFdx/N = ", logdFdx/N)
@@ -320,6 +319,10 @@ Draw_Plots(Deus)
     end
     println("Zα[1]/L = ", log(2, g)/Deus.Tree.D)
 =#
+
+println("Cμ_t[end] = ", Deus.Cμ_t[end])
+println("Hα[end] = ", Deus.Hα[end])
+println("Period = ", 2^(Deus.Hα[end]))
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
 

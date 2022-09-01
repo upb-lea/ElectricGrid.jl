@@ -1,8 +1,11 @@
 using LinearAlgebra
 using SpecialFunctions
 
+#using Plots
 using Graphs
 using NetworkLayout
+using GraphMakie
+using GLMakie
 
 mutable struct Node
 
@@ -105,16 +108,6 @@ mutable struct Parse_Tree
 
         The tree is built usin a sliding window to move through the data stream. It 
         captures in this way the distinct sequences and summarises their occurrence at 
-        different points in the data stream via a count or probability. That is, we refer to length D subsequences 
-        as D-cylinders. Hence an D level tree has a length D path corresponding to each 
-        distinct name for that bundle of underlying process's orbits each of which 
-        visited the sequence of measurement partition elements indexed by the D-cylinder. 
-        The basic assumption in building a tree is that symbol sequences observed at 
-        different times in the data stream approximate the same process state. Nonstationary 
-        processes are examples for which this assumption fails.
-
-        The tree is built usin a sliding window to move through the data stream. It 
-        captures in this way the distinct sequences and summarises their occurrence at 
         different points in the data stream via a count or probability.
 
         1. Get sequence of past D symbols
@@ -126,15 +119,7 @@ mutable struct Parse_Tree
         arbitrarily small invervals of initial conditions. If the partition is generating 
         the resulting binary sequences capture the statistical properties of the map. 
         In other words, there is a one-to-one mapping between infinite binary sequences and 
-        almost all points on the attractor. 
-
-        This partition is generating and the resulting binary sequences completely
-        capture the statistical properties of the Logistic map. In other words, there is
-        a one-to-one mapping between infinite binary sequences and almost all points on
-        the attractor.
-
-        The generating partition is defined as a partition for which the topological 
-        entropy achieves its supremum. 
+        almost all points on the attractor.
     =#
 
     Nodes::Vector{Node}
@@ -162,9 +147,6 @@ end
 mutable struct ϵ_Machine
 
     #=
-        Minimal hidden unifilar Markov Chain. A graph that is non-unifilar is a graph
-        that has more than one link with the same label. Minimal deterministic automata
-
         An ϵ-machine is a stochastic automaton of the minimal computational power
         yielding a finite description of the data stream. Minimality is essential.
         It restricts the scope of properties detected in the ϵ-machine to be no
@@ -241,11 +223,6 @@ mutable struct ϵ_Machine
         is determined by the latter's probability. That is, it is the information flow 
         towards the new causal state.
 
-        The meaning of a measurement is the selected morph, the distribution associated 
-        with the causal state to which the agent transitions, and the degree of meaning 
-        is determined by the latter's probability. That is, it is the information flow 
-        towards the new causal state.
-
         The state-to-state transition structure is obtained by looking at how the
         morphs change into one another upon moving down the parse tree. Subtree
         equivalence means that the link structure is identical. Furthermore, two
@@ -308,7 +285,7 @@ mutable struct ϵ_Machine
     
     α::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}
 
-    Tα::Vector{Matrix{Float64}} # paramatrized stochastic connection matrix of order α - perturbed matrix, αth Hadamar power of T - perturbed matrix, αth Hadamar power of T
+    Tα::Vector{Matrix{Float64}} # paramatrized stochastic connection matrix of order α - perturbed matrix, αth Hadamar power of T
     Iα::Vector{Matrix{Float64}} #Information flow between states
     eigval_α::Vector{Vector{ComplexF64}} #eigen values of T
     r_eigvecs_α::Vector{Matrix{ComplexF64}} # right eigenvectors
@@ -369,7 +346,7 @@ mutable struct ϵ_Machine
         IG = 0.0
 
         μ_m = round(μ_m/μ_s)*μ_s # correction to prevent overflow of vectors
-        k = 0 # machine step # machine step
+        k = 0 # machine step
         t_final = N*μ_s - μ_s
         
         N = convert(Int64, Int(ceil(N*μ_s/μ_m)))
@@ -425,7 +402,7 @@ mutable struct ϵ_Machine
         T, I, eigval, 
         r_eigvecs, l_eigvecs, D, pv,  
         α,
-        Tα, Iα,  
+        Tα, Iα, 
         eigval_α, r_eigvecs_α, l_eigvecs_α, 
         Dα, pv_α,
         Zα, Hα, hα, Cα, Cαe,
@@ -461,17 +438,7 @@ function Partitioning(Deus::ϵ_Machine, x)
         probes required by the instrument. The (unknowable) exact states of the
         observed system are translated into a sequence of symbols via a measurement
         channel. This process is described by a parametrized partition of the state
-        space. A generating partition requires infinite sequences of cell indices 
-        to be in a finite-to-one correspondence with the process's states. The notion 
-        of generating partitions gives an operational definition of a good instrument 
-        that is useful if the instrument can be altered. For an instrument with a
-        generating partition Shannon's noiseless coding theorem says that the measurement 
-        channel must have a capacity higher than the process's entropy rate. A theorem 
-        of Kolmogorov says that the entropy rate is maximised for a given process if 
-        partition is generating.
-
-        The notion of generating partition in symbolic dynamics is based on the "splitting" 
-        of the phase space in terms of measureable sets. 
+        space.
     =#
 
     m = length(x) # number of dimensions
@@ -527,7 +494,7 @@ function Sampling(Deus::ϵ_Machine, x, μ_s)
         if i%round(Deus.μ_m/μ_s) == 0
 
             Deus.k = Deus.k + 1
-  
+                
             Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i])
             Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
         end
@@ -556,7 +523,7 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
         Tree.Nodes[parent].cn = Tree.Nodes[parent].cn + 1
         Tree.Nodes[parent].Pr = Tree.Nodes[parent].cn/(Tree.N - Tree.D)
 
-        if parent_loc !== nothing
+        if parent_loc != nothing
 
             new_parent = Int(Tree.Nodes[parent].child_locs[parent_loc])
 
@@ -579,7 +546,7 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
 
         children = Tree.Nodes[parent].child_locs
 
-        for i in eachindex(children)
+        for i in 1:length(children)
             Tree.Nodes[parent].Pr_c[i] = Tree.Nodes[children[i]].cn./Tree.Nodes[parent].cn
         end
     end
@@ -634,6 +601,7 @@ function Tree_Isomorphism(Deus::ϵ_Machine; Ancest::Vector{Int64} = [1], d = 0)
             ancest_branches = sum(child_branches)
             all_vals = [all_vals; sorted_vals; child_morph_vals]
             all_Pr_c = [all_Pr_c; sorted_Pr_c; child_morph_Pr_c]
+            #all_branches = [all_branches; sum(num_child_morph)]
             all_branches = [all_branches; ancest_branches]
             all_num_childs = [all_num_childs; num_children; num_child_morph]
             dist = empty!(dist)
@@ -660,9 +628,13 @@ function Tree_Isomorphism(Deus::ϵ_Machine; Ancest::Vector{Int64} = [1], d = 0)
                 Deus.Tree.Nodes[Ancest[i]].morph_dist = [Deus.Tree.Nodes[Ancest[i]].morph_dist; dist]
 
                 if Deus.Tree.Nodes[Ancest[i]].generation - Deus.Tree.D + Deus.Tree.L <= 0
-
                     Reconstruction(Deus, Ancest[i])
+                    if sum(dist) < 0.95 || sum(dist) > 1.05
+                        println("\nError. Node = ", Ancest[i])
+                    end
                 end
+
+                
             end
         else
 
@@ -693,7 +665,6 @@ function Reconstruction(Deus::ϵ_Machine, Node)
         Deus.Ts[1] = cat([1; -1; 1.0], dims = 2)
         Deus.Dang_States = [Deus.Dang_States; Deus.Tree.Nodes[Node].state]
     else
-
         for n in 1:num_states
 
             if l_vals == Deus.C_states[3, n] && num_children == Deus.C_states[4, n]
@@ -715,7 +686,7 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                     state_cn = Deus.Tree.Nodes[Deus.C_states[1, n]].cn
                     node_cn = Deus.Tree.Nodes[Node].cn
 
-                    if  χ2_test(state_dist, node_dist, state_cn, node_cn; α = Deus.δ) # Pr_d <= Deus.δ # 
+                    if  χ2_test(state_dist, node_dist, state_cn, node_cn; α = Deus.δ) # Pr_d <= Deus.δ #
 
                         flag = 1 # don't create new causal state
                         Deus.Tree.Nodes[Node].state = Deus.Tree.Nodes[Deus.C_states[1, n]].state
@@ -731,12 +702,9 @@ function Reconstruction(Deus::ϵ_Machine, Node)
 
                         # making sure start state appears in table
                         if Node == 1 
-                            
                             Deus.C_states[1, n] = 1
                             Deus.C_states[2, n] = 0
                             Deus.Tree.Nodes[1].morph_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].morph_dist
-                            Deus.Tree.Nodes[1].morph_Pr_c = Deus.Tree.Nodes[Deus.C_states[1, n]].morph_Pr_c
-                            Deus.Tree.Nodes[1].Pr_c = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
                             Deus.start_state = Deus.Tree.Nodes[1].state
                         end
 
@@ -749,7 +717,7 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                             
                             Add_Transitions(Deus, Node, n, num_children, overwrite = 1)
 
-                        elseif state_test <= 0# && 1 == 2
+                        elseif state_test <= 0
 
                             # check if the new compare state has transitions to other states other than those of the current causal state
                             # if yes, then add those transitions, because they contribute to the graph indeterminacy
@@ -771,10 +739,11 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                                         Add_Transitions(Deus, Node, n, num_children)
                                         break
 
-                                    elseif findfirst(x->x == comp_val, Deus.Ts[n][2, found_states]) === nothing
+                                    elseif findfirst(x->x == comp_val, Deus.Ts[n][2, found_states]) == nothing
 
                                         Add_Transitions(Deus, Node, n, num_children)
                                         break
+
                                     end
                                 end
                             end
@@ -824,9 +793,7 @@ function Add_Transitions(Deus::ϵ_Machine, Node, state_from, num_children; overw
             state_Pr_c = Deus.Tree.Nodes[Node].Pr_c[n]
 
             Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_to; symbol; state_Pr_c], dims = 2)
-
         end
-
     elseif state_test == 0 && overwrite == 0# dangling state
 
         Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_from; -1; 1.0], dims = 2)
@@ -842,8 +809,6 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
     Deus.IG = 0.0 # do this if other stat mech was run
 
-    Deus.IG = 0.0 # do this if other stat mech was run
-
     num_edges = 0
     num_states = length(Deus.Ts)
     T = Array{Float64, 2}(undef, num_states, num_states)
@@ -855,15 +820,8 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
     for v in 1:num_states
 
         if Deus.Ts[v][2, 1] == -1
-
             Surgeon(Deus, v)
-            num_states = length(Deus.Ts)
         end
-    end
-
-    num_states = length(Deus.Ts)
-
-    for v in 1:num_states
 
         num_trans = length(Deus.Ts[v][1,:])
         num_edges = num_edges + num_trans
@@ -910,6 +868,7 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
             Deus.pv_α[id] = abs.(Deus.l_eigvecs_α[id][1:end, index])/abs(sum(Deus.l_eigvecs_α[id][1:end, index]))
 
+            p = 0
             for v in 1:num_states
 
                 if Deus.pv_α[id][v] != 0
@@ -919,16 +878,16 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
                     Deus.Zα[id] = Deus.Zα[id] + sum(psn.^α) #sum(exp.(α.*log.(psn)))
 
-                        if α == 1
-                            
-                            sum_psn = sum(psn.*log.(2, psn))
+                    if α == 1
+                        
+                        sum_psn = sum(psn.*log.(2, psn))
 
                         if isnan(sum_psn)
                             locs = findall( !=(0), psn) # remove all zeros
                             sum_psn = sum(psn[locs].*log.(psn[locs]))
                         end  
 
-                            Deus.Hα[id] = Deus.Hα[id] - sum_psn
+                        Deus.Hα[id] = Deus.Hα[id] - sum_psn
 
                         Deus.Cα[id] = Deus.Cα[id] - Deus.pv_α[id][v]*log(2, Deus.pv_α[id][v])  
                            
@@ -948,7 +907,7 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
                     trans = unique(Deus.Ts[v][1:2, :], dims = 2)
                     num_trans = length(Deus.Ts[v][1,:])
 
-                        for vd in axes(trans, 2)
+                    for vd in axes(trans, 2)
 
                         vloc = findall(i -> all(j -> trans[:, vd][j] == Deus.Ts[v][1:2, :][j,i], 1:2), 1:num_trans)
 
@@ -965,9 +924,7 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
                             Deus.IG = Deus.IG - pe*log(2, pt/psv[sloc])
                         else
-                            if α == 0
-                                #Deus.pv_α[id][v] = 1/length(Deus.pv_α[id])
-                            end
+
                             Deus.hα[id] = Deus.hα[id] + Deus.pv_α[id][v]*pt^α
 
                             Deus.Cαe[id] = Deus.Cαe[id] + pe^α
@@ -1088,15 +1045,7 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         time step at which information is produced.
 
         An ϵ-machine's entropy rate hμ(M) is the transition uncertainty averaged over all 
-        of the causal states. μ is a normalised invariant measure for a symbolic dynamical 
-        system.
-
-        If M is an axiom-A attractor, there is a prescription for constructing a partition 
-        which is generating, and the equality of the metric entropy rate and the sum of 
-        the positive Lyapunov characteristic exponents can be proven. In fact, whenever 
-        an absolutely continuous invariant measure exists, a theorem due to Piesin shows 
-        that the metric entropy of a diffeomorphism is equal to the sum of the positive 
-        exponents. 
+        of the causal states.
 
         The Markov matrix, a stochastic matrix, always has an eigenvalue that is
         equal to 1. The eigenvector associated with λ = 1 can be chosen to be strictly
@@ -1126,15 +1075,6 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         expected to return within a finite number of steps, and null recurrent
         otherwise. A state is known as ergodic if it is positive recurrent and
         aperiodic. A Markov chain is ergodic if all its states are ergodic.
-
-        The states of a Markov process are either recurrent, i.e., returned to 
-        infinitely often, or transient, visited only finitely often with positive 
-        probability. For us, here, the recurrent states represent the actual causal 
-        structure of the process and, as such, they are what we are truly interested in. 
-        the most important class of transient states, and indeed the only ones encountered 
-        in practice, are the synchronization states, which can never be returned to, once 
-        a recurrent state has been visited. The synchronization states represent observational 
-        histories that are insufficient to fix the process in a definite recurrent state.  
 
         The states of a Markov process are either recurrent, i.e., returned to 
         infinitely often, or transient, visited only finitely often with positive 
@@ -1193,61 +1133,16 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         The causal states are the minimal states that have a homogeneous distribution for
         the next sequence of symbols and are deterministic. 
 
-        The causal states are the minimal states that have a homogeneous distribution for
-        the next sequence of symbols and are deterministic. 
-
         For completeness, note that there is an edge-complexity, Cμe that is the
         information contained in the asymptotic edge distribution. These quantities
         are not independent. From the principle of conservation of information leads
         to the relation Cμe = Cμ + hμ. 
-
-        One of the primary roles of entropy in dynamical systems theory is that it is an invariant,
-        which is to say that any two dynamical systems have the same metric entropy 
-        if they are related by a isomorphism that preserves measure. 
-
-        Topological entropy is related to measure entorpy by the variational principle 
-        which asserts that for a continuous action on a compact space the topological 
-        entropy equalts the supremum of the measure entropy taken over all the invariant 
-        probability measures. Heuristically, the topological entropy of a dynamical 
-        system measures the asymptotic growth rate of the number of resolvable orbits 
-        (using a given measurement partition) whose initial conditions are all close. 
-        Equivalently, the topological entropy quantifies the average time-rate of spreading 
-        a subset over nearby subsets. This process is most easily illustrated by considering 
-        a collection of subsets which form a "cover" of the state space M. The dynamic f 
-        spreads a single cover element over other elements after some time t. The number of new 
-        cover elements N(t) visited by points in the original cover element can be written as,
-        N(t)~e^ht. Where h > 0 for chaotic dynamical systems. The supremum of h is obtained only 
-        if the measurement partition is "good" in that there is an unambiguous correspondence 
-        between orbits and symbol sequences. Only with such a good partition is the topological 
-        entropy of the admissable symbol sequences obtained using partition. For the topological 
-        entropy, the supremem is obtained only for special partitions; Kolmogorov proved that 
-        the desired requirement is that the partition be generating. A partition is generating
-        if, as the length of all sequences become large, the sequences label individual points.
-
-        The topological entropy gives essentially no information about attractors, it indicates, 
-        when positive, a sensitivity of the dynamical system to external noise.
-
-        It is noted that, typically, the number of cells k required for a minimal generating 
-        partition is not known a priori. A lower bound can be obtained if we know the topological 
-        entropy of an attractor under consideration. In particular k >= 2^h, where the topological 
-        entropy, h (in bits per iteration), quantifies the exponential rate of growth of the 
-        number of observed "orbits" (symbol sequences) of increasing length. Alternatively, the 
-        number of low period UPOs provides a lower bound on k which can sometimes be tighter than that 
-        found using topological entropy. 
-
-        In a sense the metric entropy is a generalization of the topological entropy: the 
-        metric entropy also measures the asymptotic growth rate of the number of resolvable 
-        orbits (using a given measurement partition) having close initial conditions, but 
-        weights each orbit with its probability of occurence. 
 
         Thus, there are only two independent quantities when modelling a source as a
         stochastic finite automaton. The entropy, hμ, as a measure of the diversity
         of patterns, and the complexity Cμ, as a measure of memory, have been taken
         as the two elementary "information processing" coordinates with which to
         analyze a range of sources. The net result of using just the complexity and 
-        entropy rate is that the original equations of motion and any nonlinearity (bifurcation)
-        parameter are simply forgotten. All that is of interest is how the complexity Cμ of 
-        the data stream depends on the rate hμ of information production. The net result of using just the complexity and 
         entropy rate is that the original equations of motion and any nonlinearity (bifurcation)
         parameter are simply forgotten. All that is of interest is how the complexity Cμ of 
         the data stream depends on the rate hμ of information production.
@@ -1265,9 +1160,6 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         related topological complexity would count just the recurrent states. This is 
         the one commonly used in practice. The topological entropy;for a system given 
         by an iterated function, represents the exponential growth rate of the number 
-        of distinguishabe orbits of the iterates.This is 
-        the one commonly used in practice. The topological entropy;for a system given 
-        by an iterated function, represents the exponential growth rate of the number 
         of distinguishabe orbits of the iterates.
 
         A measure of knowledge relaxation on finitary machines is given by the time-
@@ -1275,18 +1167,6 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         data stream, an agent's current model, how the information used to build the 
         model was obtained, and the method or algorithm which constructs the model.
         The trajectory of complexity captures the dynamics of knowledge relaxation.
-
-        The finitary complexity is a measure of an ϵ-machine's information processing 
-        capacity in terms of the amount of information stored in the morphs. It is 
-        directly related to the mutual information of the past and future semi-infinite 
-        sequences and the convergence of the entropy enstimates hα(L). It can be interpreted, 
-        then, as a measure of the amount of mathematical work necessary to produce a fluctuation 
-        form asymptotic statistics. The units for complexity measures are bits of information. 
-        However, at this level we see that the complexity begins to more strongly reflect 
-        the degree of computational capability and so we refer to the units as Turings, rather 
-        than bits. At this low lever the difference between bits and Turings is not as dramatic 
-        as at higher levels where each unit of machine structure is clearly associated with 
-        sophisticated computation. 
 
         The finitary complexity is a measure of an ϵ-machine's information processing 
         capacity in terms of the amount of information stored in the morphs. It is 
@@ -1400,35 +1280,9 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         subsequences in the data stream. This indicates that the tree representation is inadequate and suggests  
         that the modeler innovate a new class of representations. 
 
-        HShannon measues the number of distinct sequences (possible futures). That number increases 
-        if there is branchin as one moves down the tree and forward in time. At the other end, the 
-        Hartley entropy is given simply by the total number of distinct sequences independent of their 
-        probability. If the probability distributin is uniform on the nonzero probability cylinders then 
-        these two entropies are equal. Any difference is thus a measure of deviation of the cylinder from 
-        uniformity. The latter observation leads to a parametrized generalization of the entropy introduced 
-        by Renyi. This we put into a statistical mechanical formalism by defining a partition function for the 
-        tree. 
-
-        The average branching rate in the tree measures the growth rate of the number of new sequences 
-        of increasing length. And as such it is a measure of unpredictability in that a periodic process will 
-        at some length give rise to no more new cylinders and a random one will. The Renyi specific entropy, i.e. 
-        entropy per measurement, can be approximation from the L-cylinder distribution by hα. The growth rate of 
-        total Shannon entropy is often referred to in information theory as the source entropy and in dynamical 
-        systems as the metric entropy. The corresponding Hartley entropy growth rate is called the topological entropy. 
-
-        If a tree representation is good, then the information gain, or entropy rate, at some depth will vanish. 
-        This indicates that no further information need be stored to represent the process. This happens for a 
-        periodic process for trees deeper than the period. If the process is chaotic, with positive entropy, then 
-        the information contained in the tree representation will grow exponentially fast with modelling longer 
-        subsequences in the data stream. This indicates that the tree representation is inadequate and suggests  
-        that the modeler innovate a new class of representations. 
-
         These quantities are probabilistic, and referred to Turing machines with a 
         random internal register. 
     =#
-
-    Deus.IG = 0
-
 
     Deus.IG = 0
 
@@ -1648,7 +1502,7 @@ function χ2_test(dist_1, dist_2, N1, N2; α = 0.05, IND = 2)
             pa = pa + (dist_1[i]*N1)^2/(dist_1[i]*N1 + dist_2[i]*N2)
         end
 
-            χ_2 = (pa - N1^2/(N1 + N2))/(N1*N2/(N1 + N2)^2)
+        χ_2 = (pa - N1^2/(N1 + N2))/(N1*N2/(N1 + N2)^2)
 
         if χ_2 < 0 
             χ_2 = 0
@@ -1665,125 +1519,37 @@ end
 
 function Surgeon(Deus::ϵ_Machine, state_from)
 
+    # Identifying the transitions of any dangling states with the start state, since both have elements of ignorance
+
     Deus.Ts[state_from] = Matrix{Float64}(undef, 3, 0)
-    node = Deus.C_states[1, state_from]
-
-    num_children = length(Deus.Tree.Nodes[node].child_vals)
-
-    perm = sortperm(Deus.Tree.Nodes[node].child_vals)
-
-    symbols = Deus.Tree.Nodes[node].child_vals[perm]
-    state_Pr_c = Deus.Tree.Nodes[node].Pr_c[perm]
-    ancest = Deus.Tree.Nodes[node].parent
-    cn = Deus.Tree.Nodes[node].cn
-
-    state_ref = The_Wire(Deus, symbols, ancest, state_Pr_c, cn)
-
-    if state_ref != -1
-
-        perm = sortperm(Deus.Ts[state_ref][1, :])
-        state_to = Deus.Ts[state_ref][1, perm]
-
-        #parent_state = Deus.Tree.Nodes[ancest].state
-        #fnd = findall(x->x == (state_from), Deus.Ts[parent_state][1,:])
-
-        #Deus.Ts[parent_state][1, fnd] = ones(length(fnd))*state_ref
-        
-        #deleteat!(Deus.Ts, state_from)
-    end
+    Node = Deus.C_states[1, state_from]
+    num_children = length(Deus.Tree.Nodes[Node].child_vals)
+    child_locs = Deus.Tree.Nodes[Node].child_locs
 
     for n in 1:num_children
 
-        if state_ref ==  -1
+        state_to = Deus.start_state
+        symbol = Deus.Tree.Nodes[child_locs[n]].value
+        state_Pr_c = Deus.Tree.Nodes[Node].Pr_c[n]
 
-            Deus.Ts[state_from] = cat(Deus.Ts[state_from], [Deus.start_state; symbols[n]; state_Pr_c[n]], dims = 2)
-        else
-
-            Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_to[n]; symbols[n]; state_Pr_c[n]], dims = 2)
-        end
+        Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_to; symbol; state_Pr_c], dims = 2)
     end
-
-    #= 
-        # Identifying the transitions of any dangling states with the start state, since both have elements of ignorance
-        # Or they should be removed
-
-        Deus.Ts[state_from] = Matrix{Float64}(undef, 3, 0)
-        Node = Deus.C_states[1, state_from]
-
-        num_children = length(Deus.Tree.Nodes[Node].child_vals)
-        child_locs = Deus.Tree.Nodes[Node].child_locs
-
-        for n in 1:num_children
-
-            symbol = Deus.Tree.Nodes[child_locs[n]].value
-
-            state_to = Deus.start_state
-            state_Pr_c = Deus.Tree.Nodes[Node].Pr_c[n]
-
-            Deus.Ts[state_from] = cat(Deus.Ts[state_from], [state_to; symbol; state_Pr_c], dims = 2)
-        end
-    =#
 
     return nothing
-end
-
-function The_Wire(Deus::ϵ_Machine, symbols, ancest, Pr_c, cn)
-    
-    if ancest != 0
-
-        perm = sortperm(Deus.Tree.Nodes[ancest].child_vals)
-
-        sorted_vals = Deus.Tree.Nodes[ancest].child_vals[perm]
-
-        val_test = (sorted_vals == symbols)
-
-        if length(Pr_c) > 1 && val_test
-
-            ancest_dist = Deus.Tree.Nodes[ancest].Pr_c[perm]
-            ancest_cn = Deus.Tree.Nodes[ancest].cn
-            Pr_test = χ2_test(Pr_c, ancest_dist, cn, ancest_cn; α = Deus.δ) 
-
-        elseif val_test
-
-            Pr_test = abs(Deus.Tree.Nodes[ancest].Pr_c[1] - Pr_c[1]) <= Deus.δ
-        end
-
-        if !val_test
-
-            # go up one more node until we hit the root
-            ancest = Deus.Tree.Nodes[ancest].parent
-            state_ref = The_Wire(Deus, symbols, ancest, Pr_c, cn)
-
-        elseif !Pr_test
-
-            ancest = Deus.Tree.Nodes[ancest].parent
-            state_ref = The_Wire(Deus, symbols, ancest, Pr_c, cn)
-        else
-
-            state_ref = Deus.Tree.Nodes[ancest].state
-        end
-
-    else
-
-        state_ref = -1
-    end
-
-    return state_ref
 end
 
 function Cranking(Deus::ϵ_Machine, x, μ_s)
 
     Sampling(Deus, x, μ_s)
 
-    for i in 1:Deus.k - Deus.Tree.D + 1
-        add_Nodes(Deus.Tree, Deus.s[i : (i + Deus.Tree.D - 1)])
+    for i in 1:Deus.k - D# + 1
+        add_Nodes(Deus.Tree, Deus.s[i : i + D - 1])
     end
 
     Tree_Isomorphism(Deus)
 
     Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
-    #Load_values(Deus::ϵ_Machine)
     #Load_values(Deus::ϵ_Machine)
 
     Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
@@ -2476,7 +2242,7 @@ function Draw_Plots(Deus::ϵ_Machine)
                     title = "Transition Complexity of Order - α", 
                     xlabel = "α", 
                     ylabel = "Cαe [Turings]")
-    lines!(Cαe_ax, Deus.α, Deus.Cαe, color = :navyblue)
+    lines!(Cαe_ax, Deus.α, Deus.Cα, color = :navyblue)
     Cαe_ax.xticks = 0:0.1:1.0
 
     colsize!(G_B, 1, Fixed(400))
@@ -2507,66 +2273,12 @@ function Draw_Plots(Deus::ϵ_Machine)
     lines!(Cμ_t_ax, Deus.t_m, Deus.Cμ_t, color = :red)
     minfnd = minimum(Deus.t_m)
     maxfnd = maximum(Deus.t_m)
-    interval = round((maxfnd-minfnd)/5, digits = 3)
     Cμ_t_ax.xticks = minfnd:(maxfnd-minfnd)/5:maxfnd
 
     colsize!(G_C, 1, Fixed(300))
 
     #_______________________________________________________________________________
     
-    return nothing
-end
-
-function All_Plots(Deus::ϵ_Machine)
-
-    fnd = findall(x->x != (0.00), Deus.pv)
-    rel_dangs = sum(Deus.pv[Deus.Dang_States] .!= 0.0)
-    Ergodicity = 100 - 100*rel_dangs/length(fnd)
-
-    minfnd = minimum(fnd)
-    maxfnd = maximum(fnd)
-    lfnd = convert(Int64, ceil(length(fnd)/10))
-
-    p1 = bar(1:length(fnd), sort(Deus.pv[fnd]), 
-        xticks = 1:lfnd:length(fnd),
-        title = "Stationary Probability Distribution", 
-        xlabel = "States", 
-        ylabel = "Probability",
-        linecolor = :turquoise3,
-        color = :turquoise3,
-        legend = false)
-    display(p1)
-
-    p2 = plot(Deus.α, Deus.hα,
-            title = "Rényi Entropy Rate", 
-            xlabel = "α", 
-            ylabel = "hα [bits/symbol]",
-            color = :green4,
-            legend = false,
-            grid = true,
-            gridlinewidth = 2)
-    display(p2)
-
-    p3 = plot(Deus.α, Deus.Cα,
-            title = "State Complexity of Order - α", 
-            xlabel = "α", 
-            ylabel = "Cα [Turings]",
-            color = :dodgerblue,
-            legend = false,
-            grid = true,
-            gridlinewidth = 2)
-    display(p3)
-
-    p4 = plot(Deus.α, Deus.Cαe,
-            title = "Transition Complexity of Order - α", 
-            xlabel = "α", 
-            ylabel = "Cαe [Turings]",
-            color = :dodgerblue,
-            legend = false,
-            grid = true,
-            gridlinewidth = 2)
-    display(p4)
-        
     return nothing
 end
 

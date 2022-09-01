@@ -3,7 +3,7 @@
 # add OrdinaryDiffEq@5.71.2 SciMLBase@1.47.0 DiffEqBase@6.84.0 ReinforcementLearning@0.10.1
 
 using DrWatson
-@quickactivate (@__DIR__, "dare")
+@quickactivate ("dare")
 
 using ControlSystems
 using Plots
@@ -130,9 +130,9 @@ ni = length(B[1,:]) # get num of inputs
 
 # find the indices in the state vector that correspond to the inverters
 Collect_IDs(env, Source)
-#Source.V_poc_loc = [3 6; 13 16; 23 26] # ID's at which nodes the sources are located
-#Source.I_poc_loc = [1 4; 11 14; 21 24]
-#Source.I_inv_loc = [1 4; 11 14; 21 24]
+# Source.V_poc_loc = [3 6; 13 16; 23 26] # ID's at which nodes the sources are located
+# Source.I_poc_loc = [1 4; 11 14; 21 24]
+# Source.I_inv_loc = [1 4; 11 14; 21 24]
 
 Animo = Classical_Policy(action_space = action_space(env), Source = Source)
 
@@ -190,6 +190,7 @@ u = plot!(t[range], Animo.Source.Vd_abc_new[num_source, 2, range], label = "b")
 u = plot!(t[range], Animo.Source.Vd_abc_new[num_source, 3, range], label = "c")
 #display(u)
 
+#=
 #Plot_I_dq0(0, 5000, Animo.Source, num_source = 2)
 
 #Plot_V_dq0(0, 5000, Animo.Source, num_source = 2)
@@ -213,7 +214,7 @@ Inst_Iout_Iref(0, 20, Animo.Source, env, num_source = 2)
 # Save plots
 #_______________________________________________________________________________
 
-#=
+
 savefig(p_I_dq0, "p_I_dq0.png")
 savefig(p_V_dq0, "p_V_dq0.png")
 savefig(p_v_cntr, "p_v_cntr.png")
