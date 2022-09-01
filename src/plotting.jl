@@ -314,8 +314,8 @@ function plot_p_load(;env, hook, episode, load_ids)
 
             elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC+ env.nc.num_loads_C
                 power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_a")])
-                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_b")])
-                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_c")])
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_b")])
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_c")])
                 push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
 
             elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC+ env.nc.num_loads_C+ env.nc.num_loads_R
