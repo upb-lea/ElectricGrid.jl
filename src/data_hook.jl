@@ -9,6 +9,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     save_data_to_hd = false
     dir = "episode_data/"
     A = nothing
+    B= nothing
     collect_state_paras = nothing
 
     collect_state_ids = []
@@ -38,7 +39,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     # rest
     #hook.df = DataFrame()
     #hook.ep = 1
-    hook.A,_ ,_ ,_ = get_sys(env.nc)
+    hook.A,hook.B ,_ ,_ = get_sys(env.nc)
     hook.collect_state_paras = get_state_paras(env.nc)
 
     if hook.save_best_NNA && hook.currentNNA === nothing
@@ -57,7 +58,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     end
 
     states_x = Vector( env.state .* env.norm_array)
-    opstates=(hook.A * states_x ) .* (hook.collect_state_paras)
+    opstates=(hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
 
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
