@@ -22,14 +22,22 @@ function plot_rewards_3d(hook)
     display(p)
 end
 
-function plot_best_results(;agent, env, hook, state_ids_to_plot, plot_reward = true, plot_reference = false)
+function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_to_plot = nothing, plot_reward = true, plot_reference = false)
     reset!(env)
+
+    if isnothing(states_to_plot)
+        states_to_plot = hook.collect_state_ids
+    end
+
+    if isnothing(actions_to_plot)
+        actions_to_plot = hook.collect_action_ids
+    end
 
     act_noise_old = agent.policy.act_noise
     agent.policy.act_noise = 0.0
     copyto!(agent.policy.behavior_actor, hook.bestNNA)
     
-    temphook = DataHook(collect_state_ids = state_ids_to_plot, collect_reference = true)
+    temphook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
     
     run(agent.policy, env, StopAfterEpisode(1), temphook)
     
@@ -60,8 +68,12 @@ function plot_best_results(;agent, env, hook, state_ids_to_plot, plot_reward = t
 
     traces = []
 
-    for state_id in state_ids_to_plot
+    for state_id in states_to_plot
         push!(traces, scatter(temphook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
+    end
+
+    for action_id in actions_to_plot
+        push!(traces, scatter(temphook.df, x = :time, y = Symbol(action_id), mode="lines", name = action_id))
     end
 
     if plot_reward
@@ -69,7 +81,7 @@ function plot_best_results(;agent, env, hook, state_ids_to_plot, plot_reward = t
     end
 
     if plot_reference
-        push!(traces, scatter(temphook.df, x = :time, y = :reference, mode="lines", name = "Reference"))
+        push!(traces, scatter(temphook.df, x = :time, y = :reference_1, mode="lines", name = "Reference"))
     end
 
     traces = Array{GenericTrace}(traces)
@@ -85,7 +97,7 @@ function plot_best_results(;agent, env, hook, state_ids_to_plot, plot_reward = t
     return nothing
 end
 
-function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false)
+function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing)
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -93,6 +105,12 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
 
     if isnothing(actions_to_plot)
         actions_to_plot = hook.collect_action_ids
+    end
+
+    if isnothing(episode)
+        df = hook.df
+    else
+        df = hook.df[hook.df.episode .== episode, :]
     end
 
     layout = Layout(
@@ -123,19 +141,22 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
     traces = []
     
     for state_id in states_to_plot
-        push!(traces, scatter(hook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
+        push!(traces, scatter(df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
     end
     
     for action_id in actions_to_plot
-        push!(traces, scatter(hook.df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
+        push!(traces, scatter(df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
     end
     
     if plot_reference
-        push!(traces, scatter(temphook.df, x = :time, y = :reference, mode="lines", name = "Reference"))
+        #TODO: how to check which refs to plot? 
+        push!(traces, scatter(df, x = :time, y = :reference_1, mode="lines", name = "Reference"))
+        push!(traces, scatter(df, x = :time, y = :reference_2, mode="lines", name = "Reference"))
+        push!(traces, scatter(df, x = :time, y = :reference_3, mode="lines", name = "Reference"))
     end
 
     if plot_reward
-        push!(traces, scatter(temphook.df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward"))
+        push!(traces, scatter(df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward"))
     end
     
     traces = Array{GenericTrace}(traces)

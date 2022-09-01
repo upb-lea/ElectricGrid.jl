@@ -54,16 +54,20 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     insertcols!(hook.tmp, :time => Float32(env.t))
 
     if hook.collect_reference
-        insertcols!(hook.tmp, :reference => reference(env.t))
+        #insertcols!(hook.tmp, :reference => reference(env.t))
+        refs = reference(env.t)
+        for i = 1:length(refs)
+            insertcols!(hook.tmp, "reference_$i" => refs[i])
+        end
     end
 
-    states_x = Vector( env.state .* env.norm_array)
+    states_x = Vector( env.x )
     opstates=(hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
 
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
-        insertcols!(hook.tmp, state_id => (env.state[state_index] * env.norm_array[state_index]))
+        insertcols!(hook.tmp, state_id => (env.x[state_index]))
         insertcols!(hook.tmp, "op_$state_id" => opstates[state_index,1])
     end 
 
