@@ -95,7 +95,7 @@ V_poc_loc = [3 6; 12 15; 21 24]
 #state_index = findfirst(x -> x == "u_1_a", env.state_ids)
 
 #######################################################################################
-plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"] 
+plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
 plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
