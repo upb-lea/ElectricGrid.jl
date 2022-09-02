@@ -101,7 +101,9 @@ iout_b = zeros(N-1)
 iout_c = zeros(N-1)
 
 ns = Int(size(env.sys_d.A, 2)/3) # system size
-unbalance = maximum((env.sys_d.A)[1:ns, 1:ns] .- (env.sys_d.A)[(ns + 1):2*ns, (ns + 1):2*ns] .- (env.sys_d.A)[(2*ns + 1):3*ns, (2*ns + 1):3*ns]) 
+unbalance_ab = maximum((env.sys_d.A)[1:5, 1:5] .- (env.sys_d.A)[6:10, 6:10]) 
+unbalance_bc = maximum((env.sys_d.A)[6:10, 6:10] .- (env.sys_d.A)[11:15, 11:15]) 
+unbalance_ac = maximum((env.sys_d.A)[1:5, 1:5] .- (env.sys_d.A)[11:15, 11:15]) 
 
 #get_state_ids(env.nc)
 V_poc_loc = [2; 7; 12]
