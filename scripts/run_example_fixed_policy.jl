@@ -6,7 +6,8 @@ using IntervalSets
 using LinearAlgebra
 using ControlSystems
 using CUDA
-using Plots
+#using Plots
+using PlotlyJS
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"));
@@ -66,7 +67,7 @@ parameters["cable"] = cable_list
 parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => 10000.0, "phase" => 3, "v_rms" => 230);
 
-env = SimEnv(reward_function = reward,  v_dc = 1000, ts = ts, use_gpu=false
+env = SimEnv(reward_function = reward,  v_dc = 1000, ts = ts, use_gpu = false
 , CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 100)
 
 #######################################################################################
@@ -91,6 +92,12 @@ vout_b = zeros(N-1)
 vout_c = zeros(N-1)
 
 V_poc_loc = [3 6; 12 15; 21 24]
+#state_index = findfirst(x -> x == "u_1_a", env.state_ids)
+
+#######################################################################################
+plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"] 
+plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
 for i in 1:N-1
 
@@ -115,7 +122,9 @@ for i in 1:N-1
 
 end
 
-T_plot_start = 0
+plot_hook_results(hook=hook)
+
+#= T_plot_start = 0
 T_plot_end = 10
 fsys = 50
 
@@ -134,8 +143,8 @@ v_out = plot!(t[range], vout_b[range], label = "b")
 v_out = plot!(t[range], vout_c[range], label = "c")
 display(v_out)
  
-u = plot(t[range], input_action_a[range], label = "a",
-            xlabel = "time", ylabel = "V inv", title = "Policy Action")
+u = plot(t[range], input_action_a[range], label = "a", 
+        xlabel = "time", ylabel = "V inv", title = "Policy Action")
 u = plot!(t[range], input_action_b[range], label = "b")
 u = plot!(t[range], input_action_c[range], label = "c")
 display(u)
@@ -144,5 +153,5 @@ u = plot(t[range], env_action_a[range], label = "a",
             xlabel = "time", ylabel = "V inv", title = "Env.Action")
 u = plot!(t[range], env_action_b[range], label = "b")
 u = plot!(t[range], env_action_c[range], label = "c")
-display(u)
+display(u) =#
 

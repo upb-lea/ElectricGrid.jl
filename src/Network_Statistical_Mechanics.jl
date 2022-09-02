@@ -256,7 +256,7 @@ even = 0
 
     println("Progress : 100.0 %\n")
 
-    D = 32 #convert(Int, ceil(D0 + 2/hl - 1)) + 120
+    D = 16 #convert(Int, ceil(D0 + 2/hl - 1)) + 120
 
     ϵ = Array{Float64, 1}(undef, dim) # Instrument resolution
     ep = sum(x[1:1, :])/N
