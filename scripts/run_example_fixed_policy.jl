@@ -122,7 +122,7 @@ for i in 1:N-1
 
 end
 
-plot_hook_results(hook=hook)
+plot_hook_results(hook = hook)
 
 #= T_plot_start = 0
 T_plot_end = 10
