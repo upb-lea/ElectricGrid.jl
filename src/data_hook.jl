@@ -2,11 +2,14 @@ using ReinforcementLearning
 using DataFrames
 using UnicodePlots
 
+include(srcdir("plotting.jl"))
+
 Base.@kwdef mutable struct DataHook <: AbstractHook
 
     save_data_to_hd = false
     dir = "episode_data/"
     A = nothing
+    B= nothing
     collect_state_paras = nothing
 
     collect_state_ids = []
@@ -36,7 +39,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     # rest
     #hook.df = DataFrame()
     #hook.ep = 1
-    hook.A,_ ,_ ,_ = get_sys(env.nc)
+    hook.A,hook.B ,_ ,_ = get_sys(env.nc)
     hook.collect_state_paras = get_state_paras(env.nc)
 
     if hook.save_best_NNA && hook.currentNNA === nothing
@@ -51,16 +54,20 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     insertcols!(hook.tmp, :time => Float32(env.t))
 
     if hook.collect_reference
-        insertcols!(hook.tmp, :reference => reference(env.t))
+        #insertcols!(hook.tmp, :reference => reference(env.t))
+        refs = reference(env.t)
+        for i = 1:length(refs)
+            insertcols!(hook.tmp, "reference_$i" => refs[i])
+        end
     end
 
-    states_x = Vector( env.state .* env.norm_array)
-    opstates=(hook.A * states_x ) .* (hook.collect_state_paras)
+    states_x = Vector( env.x )
+    opstates=(hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
 
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
-        insertcols!(hook.tmp, state_id => (env.state[state_index] * env.norm_array[state_index]))
+        insertcols!(hook.tmp, state_id => (env.x[state_index]))
         insertcols!(hook.tmp, "op_$state_id" => opstates[state_index,1])
     end 
 
