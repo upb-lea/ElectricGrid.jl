@@ -100,7 +100,8 @@ iout_a = zeros(N-1)
 iout_b = zeros(N-1)
 iout_c = zeros(N-1)
 
-ns = size(env.sys_d.A, 2) # system size
+ns = Int(size(env.sys_d.A, 2)/3) # system size
+unbalance = maximum((env.sys_d.A)[1:ns, 1:ns] .- (env.sys_d.A)[(ns + 1):2*ns, (ns + 1):2*ns] .- (env.sys_d.A)[(2*ns + 1):3*ns, (2*ns + 1):3*ns]) 
 
 #get_state_ids(env.nc)
 V_poc_loc = [2; 7; 12]
