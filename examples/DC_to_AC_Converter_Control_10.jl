@@ -38,7 +38,7 @@ f_cntr = 1/Ts # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
 #_______________________________________________________________________________
 # Setting up the Sources
 
-num_sources = 2
+num_sources = 1
 
 Source = Source_Controller(t_final, f_cntr, num_sources, delay = 1)
 
@@ -65,7 +65,7 @@ Mode_Keys = collect(keys(Source.Modes))
 =#
 
 Source_Initialiser(Source, Mode_Keys[5], num_source = 1, Srated = 150e3)
-Source_Initialiser(Source, Mode_Keys[5], num_source = 2, Srated = 150e3)
+#Source_Initialiser(Source, Mode_Keys[5], num_source = 2, Srated = 150e3)
 
 #_______________________________________________________________________________
 # Circuit Elements Calcs
@@ -73,31 +73,35 @@ Source_Initialiser(Source, Mode_Keys[5], num_source = 2, Srated = 150e3)
 #_______________________________________________________________________________
 # State space representation
 
-CM = [ 0. 0. 1.
+#= CM = [ 0. 0. 1.
         0. 0. 2
-        -1. -2. 0.]
+        -1. -2. 0.] =#
+
+CM = [0. 1.
+   -1. 0.]
 
 parameters = Dict()
 source_list = []
 source = Dict()
 
-source["fltr"] = "LC"
-source["R1"] = 0.4 #Source.Rf[1]
+source["fltr"] = "L"
+source["R1"] = Source.Rf[1]
 source["R_C"] = 0.0006
-source["L1"] = 2.3e-3#0.001*Source.Lf[1]
-source["C"] = 1e-6 #0.001*Source.Cf[1]
+source["L1"] = Source.Lf[1]
+#source["C"] = Source.Cf[1]
 
-push!(source_list, source, source)
+#push!(source_list, source, source)
+push!(source_list, source)
 
 load_list = []
 load = Dict()
 
-R1, L, X, Z = Load_Impedance(50e3, 0.9999, 230)
-R2, C, X, Z = Load_Impedance(50e3, -0.9999, 230)
-load["impedance"] = "R"
-load["R"] = 1000000;
-#load["L"] = L;
-#load["C"] = 0.1;
+R1, L, X, Z = Load_Impedance_2(50e3, 0.6, 230)
+#R2, C, X, Z = Load_Impedance(50e3, -0.9999, 230)
+load["impedance"] = "RL"
+load["R"] = R1;
+load["L"] = L;
+#load["C"] = 0.0000000001;
 push!(load_list, load);
 
 cable_list = []
@@ -105,10 +109,11 @@ cable_list = []
 # Network Cable Impedances
 l = 0.01 # length in km
 cable = Dict()
-cable["R"] = 0.722# 0.222*l # Ω, line resistance 0.722#
-cable["L"] = 0.264e-3# 0.0024*l # H, line inductance 0.264e-3#
-cable["C"] = 0.4e-6# 7.3077e-9*l # 0.4e-6#
-push!(cable_list, cable, cable)
+cable["R"] = 0.222*l # Ω, line resistance 0.722#
+cable["L"] = 0.0024*l # H, line inductance 0.264e-3#
+cable["C"] = 7.3077e-9*l # 0.4e-6#
+#push!(cable_list, cable, cable)
+push!(cable_list, cable)
 
 parameters["source"] = source_list
 parameters["cable"] = cable_list
@@ -116,7 +121,7 @@ parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => f_cntr, "phase" => 3, "v_rms" => 230);
 
 # Define environment
-env = SimEnv(reward_function = reward,  v_dc = 1000, ts = Ts, use_gpu = false, 
+env = SimEnv(reward_function = reward,  v_dc = 1, ts = Ts, use_gpu = false, 
 CM = CM, num_sources = num_sources, num_loads = 1, parameters = parameters, maxsteps = Source.N_cntr - 1)
 
 A, B, C, D = get_sys(env.nc)
@@ -126,9 +131,9 @@ ni = length(B[1,:]) # get num of inputs
 
 # find the indices in the state vector that correspond to the inverters
 Collect_IDs(env, Source)
-# Source.V_poc_loc = [3 6; 13 16; 23 26] # ID's at which nodes the sources are located
-# Source.I_poc_loc = [1 4; 11 14; 21 24]
-# Source.I_inv_loc = [1 4; 11 14; 21 24]
+#state_index = findfirst(x -> x == "i_1_a", env.state_ids)
+#get_state_ids(env.nc)
+#state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
 
 Animo = Classical_Policy(action_space = action_space(env), Source = Source)
 
@@ -149,6 +154,10 @@ env_action_c = zeros(Source.N_cntr-1)
 vout_a = zeros(Source.N_cntr-1)
 vout_b = zeros(Source.N_cntr-1)
 vout_c = zeros(Source.N_cntr-1)
+
+iout_a = zeros(Source.N_cntr-1)
+iout_b = zeros(Source.N_cntr-1)
+iout_c = zeros(Source.N_cntr-1)
 
 @time begin
 
@@ -174,10 +183,10 @@ vout_c = zeros(Source.N_cntr-1)
 
         # System Dynamics ______________________________________________________
 
-        #action = Animo(env)
-
-        u = [1*sin.(50*2*pi*t[i]) for j = 1:3]
-        action = vcat(u,u)
+        action = Animo(env)
+        u = [230*sqrt(2)*sin.(50*2*pi*t[i] .- 2/3*pi*(j-1)) for j = 1:3]
+        #action = vcat(u,u)
+        action = u
 
         env(action)
 
@@ -186,13 +195,17 @@ vout_c = zeros(Source.N_cntr-1)
         input_action_b[i] = action[s + Source.num_sources*(2 - 1)]
         input_action_c[i] = action[s + Source.num_sources*(3 - 1)]
 
-        env_action_a[i] = env.action[1 + 3*(s - 1)]
-        env_action_b[i] = env.action[2 + 3*(s - 1)]
-        env_action_c[i] = env.action[3 + 3*(s - 1)]
+        env_action_a[i] = env.action[s + Source.num_sources*(1 - 1)]
+        env_action_b[i] = env.action[s + Source.num_sources*(2 - 1)]
+        env_action_c[i] = env.action[s + Source.num_sources*(3 - 1)]
 
-        vout_a[i] = env.state[Source.V_poc_loc[1, s]]
-        vout_b[i] = env.state[Source.V_poc_loc[2, s]]
-        vout_c[i] = env.state[Source.V_poc_loc[3, s]]
+        vout_a[i] = env.x[Source.V_poc_loc[1, s]]
+        vout_b[i] = env.x[Source.V_poc_loc[2, s]]
+        vout_c[i] = env.x[Source.V_poc_loc[3, s]]
+
+        iout_a[i] = env.x[Source.I_poc_loc[1, s]]
+        iout_b[i] = env.x[Source.I_poc_loc[2, s]]
+        iout_c[i] = env.x[Source.I_poc_loc[3, s]]
 
     end
 
@@ -215,10 +228,16 @@ N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
 range = N_plot_start:N_plot_end
 
 v_out = plot(t[range], vout_a[range], label = "a",
-            xlabel = "time", ylabel = "V poc", title = "Env.State")
+            xlabel = "time", ylabel = "V poc", title = "Env.x")
 v_out = plot!(t[range], vout_b[range], label = "b")
 v_out = plot!(t[range], vout_c[range], label = "c")
 display(v_out)
+
+i_out = plot(t[range], iout_a[range], label = "a",
+            xlabel = "time", ylabel = "I poc", title = "Env.x")
+i_out = plot!(t[range], iout_b[range], label = "b")
+i_out = plot!(t[range], iout_c[range], label = "c")
+display(i_out)
  
 u = plot(t[range], input_action_a[range], label = "a",
             xlabel = "time", ylabel = "V inv", title = "Policy Action")
@@ -232,40 +251,28 @@ u = plot!(t[range], env_action_b[range], label = "b")
 u = plot!(t[range], env_action_c[range], label = "c")
 display(u)
 
-#= v_out = plot(t[range], Source.V_filt_poc[num_source, 1, range], label = "a",
-            xlabel = "time", ylabel = "V poc", title = "Inverter Output")
-v_out = plot!(t[range], Source.V_filt_poc[num_source, 2, range], label = "b")
-v_out = plot!(t[range], Source.V_filt_poc[num_source, 3, range], label = "c")
-display(v_out)
- 
-u = plot(t[range], Animo.Source.Vd_abc_new[num_source, 1, range], label = "a",
-            xlabel = "time", ylabel = "V inv", title = "Action")
-u = plot!(t[range], Animo.Source.Vd_abc_new[num_source, 2, range], label = "b")
-u = plot!(t[range], Animo.Source.Vd_abc_new[num_source, 3, range], label = "c")
-display(u) =#
+#= Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
 
-#Plot_I_dq0(0, 5000, Animo.Source, num_source = 2)
+Plot_V_dq0(0, 5000, Animo.Source, num_source = 1)
 
-#Plot_V_dq0(0, 5000, Animo.Source, num_source = 2)
-
-#Inst_Vout_Vref(0, 20, Animo.Source, env, num_source = 1)
+Inst_Vout_Vref(5, 5000, Animo.Source, env, num_source = 1)
 #Inst_Vout_Vref(0, 20, Animo.Source, env, num_source = 2)
 
-#Inst_Iout_Iref(0, 20, Animo.Source, env, num_source = 1)
+Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 1)
 #Inst_Iout_Iref(0, 20, Animo.Source, env, num_source = 2)
 
-#Plot_PLL(0, 500, Animo.Source, env, num_source = 2, ph = 2)
+Plot_PLL(0, 500, Animo.Source, env, num_source = 1, ph = 1)
 
-#Plot_Irms(0, 5000, Animo.Source, num_source = 2)
+Plot_Irms(0, 5000, Animo.Source, num_source = 1)
 
-#Plot_Vrms(0, 5000, Animo.Source, num_source = 1)
+Plot_Vrms(0, 5000, Animo.Source, num_source = 1)
 #Plot_Vrms(0, 5000, Animo.Source, num_source = 2)
 
-#Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 1)
+Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 1)
 #Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 2)
 
 #Plot_fft(0, 1, Env, Source, num_node = 2, num_source = 2)
-
+ =#
 # Save plots
 #_______________________________________________________________________________
 
@@ -283,3 +290,15 @@ savefig(p_fft, "p_fft.png")
 =#
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
+
+#= v_out = plot(t[range], Source.V_filt_poc[num_source, 1, range], label = "a",
+            xlabel = "time", ylabel = "V poc", title = "Inverter Output")
+v_out = plot!(t[range], Source.V_filt_poc[num_source, 2, range], label = "b")
+v_out = plot!(t[range], Source.V_filt_poc[num_source, 3, range], label = "c")
+display(v_out)
+ 
+u = plot(t[range], Animo.Source.Vd_abc_new[num_source, 1, range], label = "a",
+            xlabel = "time", ylabel = "V inv", title = "Action")
+u = plot!(t[range], Animo.Source.Vd_abc_new[num_source, 2, range], label = "b")
+u = plot!(t[range], Animo.Source.Vd_abc_new[num_source, 3, range], label = "c")
+display(u) =#

@@ -733,9 +733,9 @@ function Source_Interface_RL(env, Source::Source_Controller)
 
     for num_source in 1:Source.num_sources
 
-        Source.V_filt_poc[num_source, :, i] = env.state[Source.V_poc_loc[: , num_source]]
-        Source.I_filt_poc[num_source, :, i] = env.state[Source.I_poc_loc[: , num_source]]
-        Source.I_filt_inv[num_source, :, i] = env.state[Source.I_inv_loc[: , num_source]]
+        Source.V_filt_poc[num_source, :, i] = env.x[Source.V_poc_loc[: , num_source]]
+        Source.I_filt_poc[num_source, :, i] = env.x[Source.I_poc_loc[: , num_source]]
+        Source.I_filt_inv[num_source, :, i] = env.x[Source.I_inv_loc[: , num_source]]
         Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
 
     end
@@ -757,12 +757,9 @@ function Env_Interface_RL(env, Source::Source_Controller)
             # Inverter Voltages - Control Actions
             #_______________________________________________________
             Action[s + Source.num_sources*(ph - 1)] = Source.Vd_abc_new[s, ph, i]
-            Source.Vd_abc_new[s, ph, i] = 0
         end
     end
 
-    u = [sqrt(2)*230*sin.(50*2*pi*Source.μ_cntr*i .- 2/3*pi*(j-1)) for j = 1:3]
-    Action = vcat(u,u)
     return Action
 end
 
@@ -834,7 +831,7 @@ function D_Ramp(D, μ, i; t_end = 0.02, ramp = 0)
     return Dout
 end
 
-function Swing_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp = 1, t_end = 0.08)
+function Swing_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp = 0, t_end = 0.08)
 
     i = Source.steps
 

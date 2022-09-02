@@ -16,6 +16,7 @@ function (p::sin_policy)(env)
     p.t = p.t + p.ts
     #u = [230 * sin.(50*2*pi*p.t .+ 2/3*pi*(i-1)) for i = 1:length(p.action_space)]
     #u = [0.5 for i = 1:length(p.action_space)]
-    u = [0.5, 0, -0.5, 0.7, 0.2, -0.2]
+    u = [230*sqrt(2)*sin.(50*2*pi*p.t .- 2/3*pi*(j-1)) for j = 1:3]
+    action = vcat(u,u)
     return u    
 end

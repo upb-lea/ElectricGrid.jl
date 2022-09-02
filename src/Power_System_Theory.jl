@@ -336,3 +336,39 @@ function Load_Impedance(S, pf, vrms; fsys = 50)
 
     return R, L_C, X, Z
 end
+
+function Load_Impedance_2(S, pf, vrms; fsys = 50)
+
+    ω = 2*π*fsys
+
+    if pf > 0
+
+        P = pf*S #W, Active Power
+        Q = sqrt(S^2 - P^2) #VAr, Reactive Power
+
+        Z = conj(3*vrms^2/(P + 1im*Q)) #Load Impedance
+
+        Y = 1/Z # Impedance in parallel
+
+        R = real(Y)^-1
+        X = -imag(Y)^-1
+
+        L_C = X/ω
+
+    else
+        P = -pf*S #W, Active Power - average instance power
+        Q = -sqrt(S^2 - P^2) #VAr, Reactive Power
+
+        Z = conj(3*vrms^2/(P + 1im*Q))
+
+        Y = 1/Z # Impedance in parallel
+
+        R = real(Y)^-1
+        X = imag(Y)^-1
+
+        L_C = 1/(X*ω)
+
+    end
+
+    return R, L_C, X, Z
+end
