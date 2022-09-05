@@ -6,8 +6,8 @@ using IntervalSets
 using LinearAlgebra
 using ControlSystems
 using CUDA
-using Plots
-#using PlotlyJS
+#using Plots
+using PlotlyJS
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"));
@@ -22,7 +22,7 @@ end
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 75 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.4 #time in seconds, total simulation run time
+t_final = 0.04 #time in seconds, total simulation run time
 
 #_______________________________________________________________________________
 # Environment Calcs
@@ -46,7 +46,7 @@ source_list = []
 source = Dict()
 
 source["fltr"] = "L"
-source["R1"] = 0.001
+source["R1"] = 0.4
 source["L1"] = 0.00034
 
 push!(source_list, source);
@@ -62,7 +62,7 @@ push!(load_list, load);
 cable_list = []
 
 cable = Dict()
-cable["R"] = 0.00222
+cable["R"] = 0.722
 cable["L"] = 0.000024
 cable["C"] = 0.4e-9;
 push!(cable_list, cable);
@@ -112,14 +112,16 @@ I_poc_loc = [1; 6; 11]
 #state_index = findfirst(x -> x == "i_1_a", env.state_ids)
 
 #######################################################################################
-plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
-plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
+plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"] 
+#plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
+#plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
+#plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
+hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
 
 policy = sin_policy(action_space = action_space(env), ts = ts)
-#run(policy, env, StopAfterEpisode(1), hook)
+run(policy, env, StopAfterEpisode(1), hook)
 
-for i in 1:N-1
+#= for i in 1:N-1
 
     #u = [1*sin.(50*2*pi*t[i]) for j = 1:3]
     #action = vcat(u,u)
@@ -145,11 +147,11 @@ for i in 1:N-1
     iout_b[i] = env.x[I_poc_loc[2, s]]
     iout_c[i] = env.x[I_poc_loc[3, s]]
 
-end
+end =#
 
-#plot_hook_results(hook = hook)
+plot_hook_results(hook = hook)
 
-T_plot_start = 0
+#= T_plot_start = 0
 T_plot_end = 10
 fsys = 50
 
@@ -184,5 +186,5 @@ u = Plots.plot(t[range], env_action_a[range], label = "a",
             xlabel = "time", ylabel = "V inv", title = "Env.Action")
 u = Plots.plot!(t[range], env_action_b[range], label = "b")
 u = Plots.plot!(t[range], env_action_c[range], label = "c")
-display(u)
+display(u) =#
 

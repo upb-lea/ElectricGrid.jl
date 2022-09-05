@@ -235,7 +235,7 @@ mutable struct Source_Controller
         Cf = Array{Float64, 1}(undef, num_sources)
         Cf = fill!(Cf, 0)
         Rf = Array{Float64, 1}(undef, num_sources)
-        Rf = fill!(Rf, 0.001)
+        Rf = fill!(Rf, 0.4)
 
         #---------------------------------------------------------------------------
         # Measurements
@@ -247,7 +247,7 @@ mutable struct Source_Controller
         fsys = 50.0
         θsys = 0.0
 
-        T_sp_rms = 5*fsys #samples in a second for rms calcs, x*fsys = x samples in a cycle
+        T_sp_rms = 10*fsys #samples in a second for rms calcs, x*fsys = x samples in a cycle
 
         # RMS Phasors
         V_ph = Array{Float64, 4}(undef, num_sources, 3, 3, N_cntr)
@@ -291,9 +291,9 @@ mutable struct Source_Controller
         # Phase Locked Loops
 
         vd = Array{Float64, 3}(undef, num_sources, 3, N_cntr) #3 for 3 phases
-        vd = fill!(vd, 00.0)
+        vd = fill!(vd, 0.0)
         qvd = Array{Float64, 3}(undef, num_sources, 3, N_cntr) #3 for 3 phases
-        qvd = fill!(qvd, 00.0)
+        qvd = fill!(qvd, 0.0)
 
         fpll = Array{Float64, 3}(undef, num_sources, 3, N_cntr) #3 for 3 phases
         fpll = fill!(fpll, fsys)
@@ -838,7 +838,7 @@ function Swing_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp 
     θt = Source.θsys
     θph = [θt + δ; θt + δ - 120π/180; θt + δ + 120π/180]
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.μ_cntr, i; t_end = t_end, ramp = ramp)
-    Source.V_ref[num_source, :, i] = sqrt(2)*Vrms*sin.(θph)
+    Source.V_ref[num_source, :, i] = sqrt(2)*Vrms*cos.(θph)
 
     Source.Vd_abc_new[num_source, :, i] = Source.V_ref[num_source, :, i]
     Phase_Locked_Loop_3ph(Source, num_source)
@@ -918,7 +918,7 @@ function Synchronverter_Mode(Source::Source_Controller, num_source; pq0_ref = [S
     Dq_sync = sqrt(2)/(Source.D[num_source, 2])
     Source.K_sync[num_source] = Source.τv*Source.fsys*2π*Dq_sync
 
-    if i*Source.μ_cntr > 3/Source.fsys
+    if i*Source.μ_cntr > 1/Source.fsys
         Synchronverter_Control(Source, num_source; pq0_ref = pq0_ref)
         θ_S = Source.θ_sync[num_source, i]
         Voltage_Controller(Source, num_source, θ_S)
@@ -1295,90 +1295,90 @@ end
 function Synchronverter_Control(Source::Source_Controller, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Vrms = Source.Vrms[num_source])
 
     #=
-    A synchronverter is an inverter that mimics synchronous generators, which
-    offers a mechanism for power systems to control grid-connected renewable energy
-    and facilitates smart grid integration. Similar to other grid-connected inverters,
-    it typically needs a dedicated synchronizing unit, e.g. a phase-locked loop,
-    to provide a the phase, frequency, and amplitude of the grid voltages as
-    references. However, in this implementation the synchronizing unit has been
-    removed. It can automatically synchronize itself with the grid before connection
-    and tracks the grid frequency after connection. All the function of the original
-    synchronverter, such as frequency and voltage regulation, real power, and
-    reactive power control, are maintained.
+        A synchronverter is an inverter that mimics synchronous generators, which
+        offers a mechanism for power systems to control grid-connected renewable energy
+        and facilitates smart grid integration. Similar to other grid-connected inverters,
+        it typically needs a dedicated synchronizing unit, e.g. a phase-locked loop,
+        to provide a the phase, frequency, and amplitude of the grid voltages as
+        references. However, in this implementation the synchronizing unit has been
+        removed. It can automatically synchronize itself with the grid before connection
+        and tracks the grid frequency after connection. All the function of the original
+        synchronverter, such as frequency and voltage regulation, real power, and
+        reactive power control, are maintained.
 
-    Synchronverters are grid-friendly inverters that mimic synchronous generatons.
-    A synchronverter includes the mathematical model of a synchronous machines and
-    behaves in the same way, mathematically, as a synchronous generator to provide
-    a voltage supply. Its controller is in principle a power controller with integrated
-    capability of voltage and frequency regulation so it is able to achieve real
-    power control, reactive power control, frequency regulation,a nd voltage regulation.
-    Because of the embedded mathematical model, a utility is able to control a
-    synchronverter in the same way as controlling synchronous generators, which
-    consideratbly facilitates the grid connection of renewable energy and smart
-    grid integration. Since a synchronous machine is inherently able to synchronize
-    with the grid, it should be possible to integrate synchronization function
-    into the power controller and make a synchronverter to synchronize with the
-    grid without a dedicated PLL. This would remove the slow element in the closed
-    loop system consisteing of the PLL, the inverter controller and the power
-    system, and removes a major nonlinear element that affects the speed and
-    accuracy of synchronization.
+        Synchronverters are grid-friendly inverters that mimic synchronous generatons.
+        A synchronverter includes the mathematical model of a synchronous machines and
+        behaves in the same way, mathematically, as a synchronous generator to provide
+        a voltage supply. Its controller is in principle a power controller with integrated
+        capability of voltage and frequency regulation so it is able to achieve real
+        power control, reactive power control, frequency regulation,a nd voltage regulation.
+        Because of the embedded mathematical model, a utility is able to control a
+        synchronverter in the same way as controlling synchronous generators, which
+        consideratbly facilitates the grid connection of renewable energy and smart
+        grid integration. Since a synchronous machine is inherently able to synchronize
+        with the grid, it should be possible to integrate synchronization function
+        into the power controller and make a synchronverter to synchronize with the
+        grid without a dedicated PLL. This would remove the slow element in the closed
+        loop system consisteing of the PLL, the inverter controller and the power
+        system, and removes a major nonlinear element that affects the speed and
+        accuracy of synchronization.
 
-    A synchronverter will have all the good and bad properties of an SG, which is
-    nonlinear system. For example, the undesirable phenomena, such as loss of
-    stability due to underexcitation as well as hunting (oscillations around the
-    synchronous frequency), could occur in a synchronverter. An advantage is that
-    we can choose the parameters, such as intertia, friction coefficient, field
-    inductance, and mutual inductances. (The energy that would be lost in the
-    virtual mechanical friction is not lost in reality; it is directed back to
-    the DC bus). Moreover, we can (and do) choose to have no magnetic saturation
-    and no eddy currents. If we want, we can choose parameter values that are
-    impossible in a real SG, and we can also vary the parameters while the system
-    is operating. Synchronverters can alos be operated as synchronous motors based
-    on the same mathematical derivation.
+        A synchronverter will have all the good and bad properties of an SG, which is
+        nonlinear system. For example, the undesirable phenomena, such as loss of
+        stability due to underexcitation as well as hunting (oscillations around the
+        synchronous frequency), could occur in a synchronverter. An advantage is that
+        we can choose the parameters, such as intertia, friction coefficient, field
+        inductance, and mutual inductances. (The energy that would be lost in the
+        virtual mechanical friction is not lost in reality; it is directed back to
+        the DC bus). Moreover, we can (and do) choose to have no magnetic saturation
+        and no eddy currents. If we want, we can choose parameter values that are
+        impossible in a real SG, and we can also vary the parameters while the system
+        is operating. Synchronverters can alos be operated as synchronous motors based
+        on the same mathematical derivation.
 
-    In this model, the number of pairs of poles for each phase is 1 and hence the
-    mechanical speed of the machine is the same as the electrical speed of the
-    electromagnetic field.
+        In this model, the number of pairs of poles for each phase is 1 and hence the
+        mechanical speed of the machine is the same as the electrical speed of the
+        electromagnetic field.
 
-    Similarly to the control of a synchronous generator, the controller of a
-    synchronverter has two channels: one for the real power and the other for
-    reactive power. The real power is controlled by a frequency droop loop,
-    using the virtual mechanical friction coefficient Dp as the feedback gain.
-    The loop regulated the virtual speed, ω, of the synchronous machine and creates
-    the phase angle, θ, for the control signal, e.
+        Similarly to the control of a synchronous generator, the controller of a
+        synchronverter has two channels: one for the real power and the other for
+        reactive power. The real power is controlled by a frequency droop loop,
+        using the virtual mechanical friction coefficient Dp as the feedback gain.
+        The loop regulated the virtual speed, ω, of the synchronous machine and creates
+        the phase angle, θ, for the control signal, e.
 
-    The reactive power is controlled by a voltage droop loop, using the voltage
-    droop coefficient Dq. This loop regulates the field excitation Mf*if, which
-    is proportional to the amplitude of the voltage generated. Hence, the frequency
-    control, voltage control, real power control, and reactive power control are
-    all integrated in one compact controller with only four parameters (Dp, Dq,
-    K, and J)
+        The reactive power is controlled by a voltage droop loop, using the voltage
+        droop coefficient Dq. This loop regulates the field excitation Mf*if, which
+        is proportional to the amplitude of the voltage generated. Hence, the frequency
+        control, voltage control, real power control, and reactive power control are
+        all integrated in one compact controller with only four parameters (Dp, Dq,
+        K, and J)
 
-    For grid-connected applications, a synchronization unit is needed to provide the
-    grid information for the synchronverter to synchronize with the grid before
-    connection and for the synchronverter to deliver the desired real and reactive
-    powers after connection. If P and Q are controlled to be zero, then the
-    generated voltage e is the same as the grid voltage vg. This condition is not
-    common in the normal operation of an SG, but when it is satisfied, the SG
-    can be connected to or disconnected from the grid without causing large
-    transient dynamics. The same applies to a synchronverter to synchronize with
-    the grid before connection. However, by making some changes to the core of
-    the model the synchronverter can be connected to the grid safely and operated
-    without the need of a dedicated PLL.
+        For grid-connected applications, a synchronization unit is needed to provide the
+        grid information for the synchronverter to synchronize with the grid before
+        connection and for the synchronverter to deliver the desired real and reactive
+        powers after connection. If P and Q are controlled to be zero, then the
+        generated voltage e is the same as the grid voltage vg. This condition is not
+        common in the normal operation of an SG, but when it is satisfied, the SG
+        can be connected to or disconnected from the grid without causing large
+        transient dynamics. The same applies to a synchronverter to synchronize with
+        the grid before connection. However, by making some changes to the core of
+        the model the synchronverter can be connected to the grid safely and operated
+        without the need of a dedicated PLL.
 
-    When the VSG is operated in P-droop mode the real power is not the same as Pset,
-    but deviated from the value. This is because preference is given to maintaining
-    a minimum frequency deviation of the SVG from the nominal frequency. The same
-    holds for Q-droop mode, where the reactive power is not the same as Qset, but
-    deviated from the Qset. In this case preference is given to voltage deviation.
+        When the VSG is operated in P-droop mode the real power is not the same as Pset,
+        but deviated from the value. This is because preference is given to maintaining
+        a minimum frequency deviation of the SVG from the nominal frequency. The same
+        holds for Q-droop mode, where the reactive power is not the same as Qset, but
+        deviated from the Qset. In this case preference is given to voltage deviation.
 
-    Typical values for the frequency droop are a 100% increase in power for a
-    frequency decrease between 3% and 5%.
+        Typical values for the frequency droop are a 100% increase in power for a
+        frequency decrease between 3% and 5%.
 
-    τv = 0.002 # s
-    τf = 0.002 # s
-    Dp = 0.2026
-    Dq = 117.88
+        τv = 0.002 # s
+        τf = 0.002 # s
+        Dp = 0.2026
+        Dq = 117.88
     =#
     i = Source.steps
 
@@ -1711,22 +1711,22 @@ function Measurements(Source::Source_Controller)
         if i_range[1] >= 1 #waiting for one evaluation cycle to pass
 
                 θ = Source.θpll[ns, 1, i_range]
-                #θ = Env.θs[i_range]
 
                 # Voltages
                 v_signals = transpose(Source.V_filt_poc[ns, :, i_range])
-                Source.V_ph[ns,  :, :, i] = RMS(θ, v_signals) .+ π/2
+                Source.V_ph[ns,  :, :, i] = RMS(θ, v_signals)
+                Source.V_ph[ns,  :, 3, i] = Source.V_ph[ns,  :, 3, i] .+ π/2
 
                 # Currents
                 i_signals = transpose(Source.I_filt_poc[ns, :, i_range])
-                Source.I_ph[ns, :, :, i] = RMS(θ, i_signals) .+ π/2
+                Source.I_ph[ns, :, :, i] = RMS(θ, i_signals)
+                Source.I_ph[ns, :, 3, i] = Source.I_ph[ns, :, 3, i] .+ π/2
 
                 # Per phase (and total) Active and Reactiv Powers
                 Source.Pm[ns, 1:3, i] = (Source.V_ph[ns, :, 2, i].*Source.I_ph[ns, :, 2, i]).*cos.(Source.V_ph[ns, :, 3, i] .- Source.I_ph[ns, :, 3, i])
                 Source.Pm[ns, 4, i] = sum(Source.Pm[ns, 1:3, i])
                 Source.Qm[ns, 1:3, i] = (Source.V_ph[ns, :, 2, i].*Source.I_ph[ns, :, 2, i]).*sin.(Source.V_ph[ns, :, 3, i] .- Source.I_ph[ns, :, 3, i])
                 Source.Qm[ns, 4, i] = sum(Source.Qm[ns, 1:3, i])
-
         end
     end
 

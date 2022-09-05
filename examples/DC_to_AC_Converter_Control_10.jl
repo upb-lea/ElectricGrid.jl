@@ -27,20 +27,17 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 Timestep = 75 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_final = 0.4 #time in seconds, total simulation run time
 
-#_______________________________________________________________________________
-# Environment Calcs
+ts = Timestep*1e-6
+t = 0:ts:t_final # time
 
-Ts = Timestep*1e-6
-t = 0:Ts:t_final # time
-
-f_cntr = 1/Ts # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
+fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
 
 #_______________________________________________________________________________
 # Setting up the Sources
 
-num_sources = 1
+num_sources = 2
 
-Source = Source_Controller(t_final, f_cntr, num_sources, delay = 1)
+Source = Source_Controller(t_final, fs, num_sources, delay = 1)
 
 #=
     Typical values for the frequency droop are a 100% increase in power for a
@@ -49,7 +46,7 @@ Source = Source_Controller(t_final, f_cntr, num_sources, delay = 1)
 
 Source.Δfmax = 0.03*50/100 # The drop in frequency, Hz, which will cause a 100% increase in active power
 Source.ΔEmax = 0.05*230/100 # The drop in rms voltage, which will cause a 100% decrease in reactive power
-τ = 1.0
+τ = 0.02
 
 Source.τv = τ # time constant of the voltage loop
 Source.τf = τ
@@ -64,8 +61,8 @@ Mode_Keys = collect(keys(Source.Modes))
     5 -> "Swing Mode"
 =#
 
-Source_Initialiser(Source, Mode_Keys[5], num_source = 1, Srated = 150e3)
-#Source_Initialiser(Source, Mode_Keys[5], num_source = 2, Srated = 150e3)
+Source_Initialiser(Source, Mode_Keys[4], num_source = 1, Srated = 150e3)
+Source_Initialiser(Source, Mode_Keys[4], num_source = 2, Srated = 150e3)
 
 #_______________________________________________________________________________
 # Circuit Elements Calcs
@@ -73,12 +70,12 @@ Source_Initialiser(Source, Mode_Keys[5], num_source = 1, Srated = 150e3)
 #_______________________________________________________________________________
 # State space representation
 
-#= CM = [ 0. 0. 1.
+CM = [ 0. 0. 1.
         0. 0. 2
-        -1. -2. 0.] =#
+        -1. -2. 0.]
 
-CM = [0. 1.
-   -1. 0.]
+#= CM = [0. 1.
+   -1. 0.] =#
 
 parameters = Dict()
 source_list = []
@@ -88,15 +85,15 @@ source["fltr"] = "L"
 source["R1"] = Source.Rf[1]
 source["R_C"] = 0.0006
 source["L1"] = Source.Lf[1]
-#source["C"] = Source.Cf[1]
+source["C"] = Source.Cf[1]
 
-#push!(source_list, source, source)
-push!(source_list, source)
+push!(source_list, source, source)
+#push!(source_list, source)
 
 load_list = []
 load = Dict()
 
-R1, L, X, Z = Load_Impedance_2(50e3, 0.6, 230)
+R1, L, X, Z = Load_Impedance_2(100e3, 0.6, 230)
 #R2, C, X, Z = Load_Impedance(50e3, -0.9999, 230)
 load["impedance"] = "RL"
 load["R"] = R1;
@@ -107,22 +104,23 @@ push!(load_list, load);
 cable_list = []
 
 # Network Cable Impedances
-l = 0.01 # length in km
+l = 0.5 # length in km
 cable = Dict()
-cable["R"] = 0.222*l # Ω, line resistance 0.722#
-cable["L"] = 0.0024*l # H, line inductance 0.264e-3#
-cable["C"] = 7.3077e-9*l # 0.4e-6#
-#push!(cable_list, cable, cable)
-push!(cable_list, cable)
+cable["R"] = 0.208*l # Ω, line resistance 0.722#
+cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
+cable["C"] = 0.4e-6*l # 0.4e-6#
+push!(cable_list, cable, cable)
+#push!(cable_list, cable)
 
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list;
-parameters["grid"] = Dict("fs" => f_cntr, "phase" => 3, "v_rms" => 230);
+parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230);
 
 # Define environment
-env = SimEnv(reward_function = reward,  v_dc = 1, ts = Ts, use_gpu = false, 
-CM = CM, num_sources = num_sources, num_loads = 1, parameters = parameters, maxsteps = Source.N_cntr - 1)
+env = SimEnv(reward_function = reward,  v_dc = 1, ts = ts, use_gpu = false, 
+CM = CM, num_sources = num_sources, num_loads = 1, 
+parameters = parameters, maxsteps = Source.N_cntr - 1)
 
 A, B, C, D = get_sys(env.nc)
 
@@ -184,9 +182,9 @@ iout_c = zeros(Source.N_cntr-1)
         # System Dynamics ______________________________________________________
 
         action = Animo(env)
-        u = [230*sqrt(2)*sin.(50*2*pi*t[i] .- 2/3*pi*(j-1)) for j = 1:3]
+        #u = [230*sqrt(2)*sin.(50*2*pi*t[i] .- 2/3*pi*(j-1)) for j = 1:3]
         #action = vcat(u,u)
-        action = u
+        #action = u
 
         env(action)
 
@@ -222,7 +220,7 @@ if T_plot_end > t_final*Source.fsys
     T_plot_end = t_final*Source.fsys
 end
 
-Nps = Source.f_cntr
+#= Nps = Source.f_cntr
 N_plot_start = convert(Int64, round((T_plot_start/Source.fsys  + 1/Nps)*Nps))
 N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
 range = N_plot_start:N_plot_end
@@ -250,29 +248,29 @@ u = plot(t[range], env_action_a[range], label = "a",
 u = plot!(t[range], env_action_b[range], label = "b")
 u = plot!(t[range], env_action_c[range], label = "c")
 display(u)
-
-#= Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
+ =#
+Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
 
 Plot_V_dq0(0, 5000, Animo.Source, num_source = 1)
 
 Inst_Vout_Vref(5, 5000, Animo.Source, env, num_source = 1)
-#Inst_Vout_Vref(0, 20, Animo.Source, env, num_source = 2)
+Inst_Vout_Vref(5, 5000, Animo.Source, env, num_source = 2)
 
 Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 1)
-#Inst_Iout_Iref(0, 20, Animo.Source, env, num_source = 2)
+Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 2)
 
 Plot_PLL(0, 500, Animo.Source, env, num_source = 1, ph = 1)
 
 Plot_Irms(0, 5000, Animo.Source, num_source = 1)
 
 Plot_Vrms(0, 5000, Animo.Source, num_source = 1)
-#Plot_Vrms(0, 5000, Animo.Source, num_source = 2)
+Plot_Vrms(0, 5000, Animo.Source, num_source = 2)
 
 Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 1)
-#Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 2)
+Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 2)
 
 #Plot_fft(0, 1, Env, Source, num_node = 2, num_source = 2)
- =#
+
 # Save plots
 #_______________________________________________________________________________
 

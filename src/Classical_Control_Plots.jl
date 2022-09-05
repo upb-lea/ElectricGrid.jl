@@ -164,8 +164,8 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase A\nSource = "*string(num_source))
     p_cntr_a = plot!(t[N_range], V_inv[1,:], label = "Inverter Phase a")
-    #p_cntr_a = plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
-    #p_cntr_a = plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
+    p_cntr_a = plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
+    p_cntr_a = plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
 
     # Phase b Control Signals
     p_cntr_b = plot(t[N_range], Source.V_ref[num_source, 2, N_range],
@@ -174,8 +174,8 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase B")
     p_cntr_b = plot!(t[N_range], V_inv[2,:], label = "Inverter Phase b")
-    #p_cntr_b = plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
-    #p_cntr_b = plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
+    p_cntr_b = plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
+    p_cntr_b = plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
 
     # Phase c Control Signals
     p_cntr_c = plot(t[N_range], Source.V_ref[num_source, 3, N_range],
@@ -184,8 +184,8 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase C")
     p_cntr_c = plot!(t[N_range], V_inv[3,:], label = "Inverter Phase c")
-    #p_cntr_c = plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
-    #p_cntr_c = plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
+    p_cntr_c = plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
+    p_cntr_c = plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
 
     p_v_cntr = plot(p_cntr_a, p_cntr_b, p_cntr_c,
         layout = (3, 1),
@@ -299,7 +299,7 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         label = "Inverter Phase c")
 
     f = Source.fsys
-    f = Source.fpll[num_source, 1, N_range]
+    #f = Source.fpll[num_source, 1, N_range]
     PLL_ph_a = Source.θpll[num_source, 1, N_range] .- 2*π*f.*t[N_range]
     PLL_ph_b = Source.θpll[num_source, 2, N_range] .- 2*π*f.*t[N_range]
     PLL_ph_c = Source.θpll[num_source, 3, N_range] .- 2*π*f.*t[N_range]
@@ -309,22 +309,22 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         PLL_ph_b[i] = (PLL_ph_b[i] + 2*π*floor(t[i]/0.02))*180/pi
         PLL_ph_c[i] = (PLL_ph_c[i] + 2*π*floor(t[i]/0.02))*180/pi
         
-        if PLL_ph_a[i] > 180
+        if PLL_ph_a[i] > 270
             PLL_ph_a[i] = PLL_ph_a[i] - 360
         end
-        if PLL_ph_b[i] > 180
+        if PLL_ph_b[i] > 270
             PLL_ph_b[i] = PLL_ph_b[i] - 360
         end
-        if PLL_ph_c[i] > 180
+        if PLL_ph_c[i] > 270
             PLL_ph_c[i] = PLL_ph_c[i] - 360
         end
-        if PLL_ph_a[i] < -180
+        if PLL_ph_a[i] < -90
             PLL_ph_a[i] = PLL_ph_a[i] + 360
         end
-        if PLL_ph_b[i] < -180
+        if PLL_ph_b[i] < -90
             PLL_ph_b[i] = PLL_ph_b[i] + 360
         end
-        if PLL_ph_c[i] < -180
+        if PLL_ph_c[i] < -90
             PLL_ph_c[i] = PLL_ph_c[i] + 360
         end
         
