@@ -24,8 +24,8 @@ CM = [ 0. 0. 1.
         0. 0. 2
         -1. -2. 0.]
 
-#CM = [0. 1.
-#    -1. 0.]
+CM = [0. 1.
+    -1. 0.]
 
 
 parameters = Dict()
@@ -36,7 +36,7 @@ source = Dict()
 #source["v_rip"] = 0.01556109320329396
 #source["vdc"] = 750
 #source["i_rip"] = 0.10108821490394984
-source["fltr"] = "LC"
+source["fltr"] = "L"
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = 2.3e-3
@@ -44,7 +44,7 @@ source["L1"] = 2.3e-3
 #source["L2"] = 0.001005523738767639
 source["C"] = 1e-6;
 
-push!(source_list, source, source);
+push!(source_list, source);
 
 load_list = []
 load = Dict()
@@ -62,7 +62,7 @@ cable = Dict()
 cable["R"] = 0.722
 cable["L"] = 0.264e-3
 cable["C"] = 0.4e-6;
-push!(cable_list, cable, cable);
+push!(cable_list, cable);
 
 parameters["source"] = source_list
 parameters["cable"] = cable_list
@@ -71,7 +71,7 @@ parameters["grid"] = Dict("fs" => 10000.0, "phase" => 3, "v_rms" => 230);
 
 ts = 1e-4
 env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
-, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 100)
+, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 500)
 
 
 #######################################################################################
@@ -91,9 +91,10 @@ policy = sin_policy(action_space=action_space(env))
 #######################################################################################
 # Define data-logging hook
 # define which states to store, to check what states are avalible type get_state_ids(env.nc) into command line
-plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"]  
+#plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c", "i_f1_a", "i_f1_b", "i_f1_c", "i_f2_a", "i_f2_b", "i_f2_c"]  
+plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"]#, "i_2_a", "i_2_b", "i_2_c"]  
 # define which states to store, to check what states are avalible type get_action_ids(env.nc) into command line 
-plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
+plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]#, "u_v2_a", "u_v2_b", "u_v2_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
 #######################################################################################
