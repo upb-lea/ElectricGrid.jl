@@ -6,7 +6,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 Ir = 15/100 # i_rip in %
 Vr = 1.537/100 # v_rip in %
 
-Sr = 150e3 # Srated, apparent power in VA
+Sr = 50e6 # Srated, apparent power in VA
 fs = 10e3 # Hz, switching frequency
 Vdc = 800 # V, dc voltage
 
@@ -97,6 +97,7 @@ Ir_d = Vdc/(4*fs*Lf*Iop)
 Vr_d = Ir_d*Iop/(8*fs*Cf*Vop)
 
 println("Vr_d = ", round(Vr_d*100, digits = 3), " % @ Vpoc = ", Vorms/Vrms, " p.u.")
+
 if round(Vr_d, digits = 3) <= round(Vr, digits = 3)
     println("Cf has been correctly designed.\n")
 else
