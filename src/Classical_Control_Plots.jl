@@ -11,7 +11,7 @@ function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
     N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    p_I_dq0_d = plot(t[N_range], Source.I_ref_dq0[num_source, 1, N_range],
+    p_I_dq0_d = Plots.plot(t[N_range], Source.I_ref_dq0[num_source, 1, N_range],
         label = "ref d-axis",
         legend = :bottomright,
         xlabel = "Time [s]",
@@ -25,7 +25,7 @@ function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
     p_I_dq0_d = plot!(t[N_range], Source.I_dq0[num_source, 1, N_range],
         label = "d-axis")
 
-    p_I_dq0_q = plot(t[N_range], Source.I_ref_dq0[num_source, 2, N_range],
+    p_I_dq0_q = Plots.plot(t[N_range], Source.I_ref_dq0[num_source, 2, N_range],
             label = "ref q-axis",
             legend = :bottomright,
             xlabel = "Time [s]",
@@ -36,10 +36,10 @@ function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
             minorgrid = true,
             thickness_scaling = 1.5,
             legendfont = font(5))
-    p_I_dq0_q = plot!(t[N_range], Source.I_dq0[num_source, 2, N_range],
+    p_I_dq0_q = Plots.plot!(t[N_range], Source.I_dq0[num_source, 2, N_range],
             label = "q-axis")
 
-    p_I_dq0_0 = plot(t[N_range], Source.I_ref_dq0[num_source, 3, N_range],
+    p_I_dq0_0 = Plots.plot(t[N_range], Source.I_ref_dq0[num_source, 3, N_range],
             label = "ref 0-axis",
             legend = :bottomright,
             xlabel = "Time [s]",
@@ -50,10 +50,10 @@ function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
             minorgrid = true,
             thickness_scaling = 1.5,
             legendfont = font(5))
-    p_I_dq0_0 = plot!(t[N_range], Source.I_dq0[num_source, 3, N_range],
+    p_I_dq0_0 = Plots.plot!(t[N_range], Source.I_dq0[num_source, 3, N_range],
             label = "0-axis")
 
-    p_I_dq0 = plot(p_I_dq0_d, p_I_dq0_q, #p_I_dq0_0,
+    p_I_dq0 = Plots.plot(p_I_dq0_d, p_I_dq0_q, #p_I_dq0_0,
         layout = (2, 1),
         legend = true,
         size = (850,900))
@@ -76,7 +76,7 @@ function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
     N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    p_V_dq0_d = plot(t[N_range], Source.V_ref_dq0[num_source, 1, N_range], label = "ref d-axis",
+    p_V_dq0_d = Plots.plot(t[N_range], Source.V_ref_dq0[num_source, 1, N_range], label = "ref d-axis",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Voltage [V]",
@@ -86,9 +86,9 @@ function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_V_dq0_d = plot!(t[N_range], Source.V_dq0[num_source, 1, N_range], label = "d-axis")
+    p_V_dq0_d = Plots.plot!(t[N_range], Source.V_dq0[num_source, 1, N_range], label = "d-axis")
 
-    p_V_dq0_q = plot(t[N_range], Source.V_ref_dq0[num_source, 2, N_range], label = "ref q-axis",
+    p_V_dq0_q = Plots.plot(t[N_range], Source.V_ref_dq0[num_source, 2, N_range], label = "ref q-axis",
             legend = :bottomright,
             xlabel = "Time [s]",
             ylabel = "Voltage [V]",
@@ -98,9 +98,9 @@ function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
             minorgrid = true,
             thickness_scaling = 1.5,
             legendfont = font(5))
-    p_V_dq0_q = plot!(t[N_range], Source.V_dq0[num_source, 2, N_range], label = "q-axis")
+    p_V_dq0_q = Plots.plot!(t[N_range], Source.V_dq0[num_source, 2, N_range], label = "q-axis")
 
-    p_V_dq0_0 = plot(t[N_range], Source.V_ref_dq0[num_source, 3, N_range], label = "ref 0-axis",
+    p_V_dq0_0 = Plots.plot(t[N_range], Source.V_ref_dq0[num_source, 3, N_range], label = "ref 0-axis",
             legend = :bottomright,
             xlabel = "Time [s]",
             ylabel = "Voltage [V]",
@@ -110,9 +110,9 @@ function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
             minorgrid = true,
             thickness_scaling = 1.5,
             legendfont = font(5))
-    p_V_dq0_0 = plot!(t[N_range], Source.V_dq0[num_source, 3, N_range], label = "0-axis")
+    p_V_dq0_0 = Plots.plot!(t[N_range], Source.V_dq0[num_source, 3, N_range], label = "0-axis")
 
-    p_V_dq0 = plot(p_V_dq0_d, p_V_dq0_q, #p_V_dq0_0,
+    p_V_dq0 = Plots.plot(p_V_dq0_d, p_V_dq0_q, #p_V_dq0_0,
         layout = (2, 1),
         legend = true,
         size = (850,900))
@@ -158,36 +158,36 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
     PLL[3,:] = sqrt(2)*Source.V_ph[num_source, 3, 2, N_range].*sin.(Source.θpll[num_source, 3, N_range])
 
     # Phase a Control Signals
-    p_cntr_a = plot(t[N_range], Source.V_ref[num_source, 1, N_range],
+    p_cntr_a = Plots.plot(t[N_range], Source.V_ref[num_source, 1, N_range],
         label = "Reference_a",
         xlabel = "Time [s]",
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase A\nSource = "*string(num_source))
-    p_cntr_a = plot!(t[N_range], V_inv[1,:], label = "Inverter Phase a")
-    p_cntr_a = plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
-    p_cntr_a = plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
+    p_cntr_a = Plots.plot!(t[N_range], V_inv[1,:], label = "Inverter Phase a")
+    p_cntr_a = Plots.plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
+    p_cntr_a = Plots.plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
 
     # Phase b Control Signals
-    p_cntr_b = plot(t[N_range], Source.V_ref[num_source, 2, N_range],
+    p_cntr_b = Plots.plot(t[N_range], Source.V_ref[num_source, 2, N_range],
         label = "Reference_b",
         xlabel = "Time [s]",
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase B")
-    p_cntr_b = plot!(t[N_range], V_inv[2,:], label = "Inverter Phase b")
-    p_cntr_b = plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
-    p_cntr_b = plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
+    p_cntr_b = Plots.plot!(t[N_range], V_inv[2,:], label = "Inverter Phase b")
+    p_cntr_b = Plots.plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
+    p_cntr_b = Plots.plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
 
     # Phase c Control Signals
-    p_cntr_c = plot(t[N_range], Source.V_ref[num_source, 3, N_range],
+    p_cntr_c = Plots.plot(t[N_range], Source.V_ref[num_source, 3, N_range],
         label = "Reference_c",
         xlabel = "Time [s]",
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase C")
-    p_cntr_c = plot!(t[N_range], V_inv[3,:], label = "Inverter Phase c")
-    p_cntr_c = plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
-    p_cntr_c = plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
+    p_cntr_c = Plots.plot!(t[N_range], V_inv[3,:], label = "Inverter Phase c")
+    p_cntr_c = Plots.plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
+    p_cntr_c = Plots.plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
 
-    p_v_cntr = plot(p_cntr_a, p_cntr_b, p_cntr_c,
+    p_v_cntr = Plots.plot(p_cntr_a, p_cntr_b, p_cntr_c,
         layout = (3, 1),
         legend = true,
         size = (850,900))
@@ -210,7 +210,7 @@ function Plot_Irms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
     N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    p_i_rms = plot(t[N_range], Source.I_ph[num_source, 1, 2, N_range],
+    p_i_rms = Plots.plot(t[N_range], Source.I_ph[num_source, 1, 2, N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
@@ -221,12 +221,12 @@ function Plot_Irms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_i_rms = plot!(t[N_range], Source.I_ph[num_source,2,2,N_range],
+    p_i_rms = Plots.plot!(t[N_range], Source.I_ph[num_source,2,2,N_range],
         label = "Inverter Phase b")
-    p_i_rms = plot!(t[N_range], Source.I_ph[num_source,3,2,N_range],
+    p_i_rms = Plots.plot!(t[N_range], Source.I_ph[num_source,3,2,N_range],
         label = "Inverter Phase c")
 
-    p_i_ang = plot(t[N_range], (180/π)*Source.I_ph[num_source,1,3,N_range],
+    p_i_ang = Plots.plot(t[N_range], (180/π)*Source.I_ph[num_source,1,3,N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
@@ -237,12 +237,12 @@ function Plot_Irms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_i_ang = plot!(t[N_range], (180/π)*Source.I_ph[num_source,2,3,N_range],
+    p_i_ang = Plots.plot!(t[N_range], (180/π)*Source.I_ph[num_source,2,3,N_range],
         label = "Inverter Phase b")
-    p_i_ang = plot!(t[N_range], (180/π)*Source.I_ph[num_source,3,3,N_range],
+    p_i_ang = Plots.plot!(t[N_range], (180/π)*Source.I_ph[num_source,3,3,N_range],
         label = "Inverter Phase c")
 
-    p_i_rms_ang = plot(p_i_rms, p_i_ang,
+    p_i_rms_ang = Plots.plot(p_i_rms, p_i_ang,
         layout = (2, 1),
         legend = true,
         size = (900,900))
@@ -266,7 +266,7 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
 
     N_range = N_plot_start:N_plot_end
 
-    p_v_rms = plot(t[N_range], Source.V_ph[num_source, 1,2,N_range],
+    p_v_rms = Plots.plot(t[N_range], Source.V_ph[num_source, 1,2,N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
@@ -277,12 +277,12 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_v_rms = plot!(t[N_range], Source.V_ph[num_source, 2,2,N_range],
+    p_v_rms = Plots.plot!(t[N_range], Source.V_ph[num_source, 2,2,N_range],
         label = "Inverter Phase b")
-    p_v_rms = plot!(t[N_range], Source.V_ph[num_source, 3,2,N_range],
+    p_v_rms = Plots.plot!(t[N_range], Source.V_ph[num_source, 3,2,N_range],
         label = "Inverter Phase c")
 
-    p_v_ang = plot(t[N_range], (180/π)*Source.V_ph[num_source, 1,3,N_range],
+    p_v_ang = Plots.plot(t[N_range], (180/π)*Source.V_ph[num_source, 1,3,N_range],
         legend = :bottomright,
         label = "Inverter Phase a",
         xlabel = "Time [s]",
@@ -293,9 +293,9 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_v_ang = plot!(t[N_range], (180/π)*Source.V_ph[num_source, 2,3,N_range],
+    p_v_ang = Plots.plot!(t[N_range], (180/π)*Source.V_ph[num_source, 2,3,N_range],
         label = "Inverter Phase b")
-    p_v_ang = plot!(t[N_range], (180/π)*Source.V_ph[num_source, 3,3,N_range],
+    p_v_ang = Plots.plot!(t[N_range], (180/π)*Source.V_ph[num_source, 3,3,N_range],
         label = "Inverter Phase c")
 
     f = Source.fsys
@@ -330,20 +330,20 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         
     end
 
-    p_v_ang = plot!(t[N_range], PLL_ph_a,
+    p_v_ang = Plots.plot!(t[N_range], PLL_ph_a,
         label = "PLL Phase a",
         linestyle = :dash,
         linewidth = 2)
-    p_v_ang = plot!(t[N_range], PLL_ph_b,
+    p_v_ang = Plots.plot!(t[N_range], PLL_ph_b,
         label = "PLL Phase b",
         linestyle = :dash,
         linewidth = 2)
-    p_v_ang = plot!(t[N_range], PLL_ph_c,
+    p_v_ang = Plots.plot!(t[N_range], PLL_ph_c,
         label = "PLL Phase c",
         linestyle = :dash,
         linewidth = 2)
 
-    p_v_rms_ang = plot(p_v_rms, p_v_ang,
+    p_v_rms_ang = Plots.plot(p_v_rms, p_v_ang,
         layout = (2, 1),
         legend = :bottomright,
         size = (900,900))
@@ -370,33 +370,33 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
     I_inv = Source.I_filt_inv[num_source, :, N_range]
 
     # Phase a Control Signals
-    p_cntr_a = plot(t[N_range], Source.I_ref[num_source, 1, N_range],
+    p_cntr_a = Plots.plot(t[N_range], Source.I_ref[num_source, 1, N_range],
         label = "Reference_a",
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase A\nSource = "*string(num_source))
-    p_cntr_a = plot!(t[N_range], I_inv[1, :],
+    p_cntr_a = Plots.plot!(t[N_range], I_inv[1, :],
         label = "Inverter Phase a")
 
     # Phase b Control Signals
-    p_cntr_b = plot(t[N_range], Source.I_ref[num_source, 2, N_range],
+    p_cntr_b = Plots.plot(t[N_range], Source.I_ref[num_source, 2, N_range],
         label = "Reference_b",
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase B")
-    p_cntr_b = plot!(t[N_range], I_inv[2, :],
+    p_cntr_b = Plots.plot!(t[N_range], I_inv[2, :],
         label = "Inverter Phase b")
 
     # Phase c Control Signals
-    p_cntr_c = plot(t[N_range], Source.I_ref[num_source, 3, N_range],
+    p_cntr_c = Plots.plot(t[N_range], Source.I_ref[num_source, 3, N_range],
         label = "Reference_c",
         xlabel = "Time [s]",
         ylabel = "Current [A]",
         title = "DC-AC Converter Control Phase C")
-    p_cntr_c = plot!(t[N_range], I_inv[3, :],
+    p_cntr_c = Plots.plot!(t[N_range], I_inv[3, :],
         label = "Inverter Phase c")
 
-    p_i_cntr = plot(p_cntr_a, p_cntr_b, p_cntr_c,
+    p_i_cntr = Plots.plot(p_cntr_a, p_cntr_b, p_cntr_c,
         layout = (3, 1),
         legend = true,
         size = (850,900))
@@ -419,7 +419,7 @@ function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env; num_
     N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    p_pll_f = plot(t[N_range], Source.fpll[num_source, ph , N_range], label = "PLL Frequency",
+    p_pll_f = Plots.plot(t[N_range], Source.fpll[num_source, ph , N_range], label = "PLL Frequency",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Frequency [Hz]",
@@ -451,7 +451,7 @@ function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env; num_
     p_pll_θ = plot!(t[N_range], (180/π).θs[N_range],
         label = "Source Phase Angle")=#
 
-    p_pll = plot(p_pll_f, #p_pll_θ,
+    p_pll = Plots.plot(p_pll_f, #p_pll_θ,
         layout = (1, 1),
         #size = (900,900),
         legend = true,
@@ -476,7 +476,7 @@ function Plot_P_inst(T_plot_start, T_plot_end, Env)
     N_range = N_plot_start:N_plot_end
 
     Uc = 0.001 # unit conversion
-    p_p_a = plot(t[N_range], Uc*p_inv[1, N_range], label = "Inverter Phase a",
+    p_p_a = Plots.plot(t[N_range], Uc*p_inv[1, N_range], label = "Inverter Phase a",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Power [kW]",
@@ -486,8 +486,8 @@ function Plot_P_inst(T_plot_start, T_plot_end, Env)
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_p_a = plot!(t[N_range], Uc*p_net[1, N_range], label = "Network Phase a")
-    p_p_b = plot(t[N_range], Uc*p_inv[2, N_range], label = "Inverter Phase b",
+    p_p_a = Plots.plot!(t[N_range], Uc*p_net[1, N_range], label = "Network Phase a")
+    p_p_b = Plots.plot(t[N_range], Uc*p_inv[2, N_range], label = "Inverter Phase b",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Power [kW]",
@@ -496,8 +496,8 @@ function Plot_P_inst(T_plot_start, T_plot_end, Env)
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_p_b = plot!(t[N_range], Uc*p_net[2, N_range],label = "Network Phase b")
-    p_p_c = plot(t[N_range], Uc*p_inv[3, N_range], label = "Inverter Phase c",
+    p_p_b = Plots.plot!(t[N_range], Uc*p_net[2, N_range],label = "Network Phase b")
+    p_p_c = Plots.plot(t[N_range], Uc*p_inv[3, N_range], label = "Inverter Phase c",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Power [kW]",
@@ -506,11 +506,11 @@ function Plot_P_inst(T_plot_start, T_plot_end, Env)
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_p_c = plot!(t[N_range], Uc*p_net[3, N_range], label = "Network Phase c")
+    p_p_c = Plots.plot!(t[N_range], Uc*p_net[3, N_range], label = "Network Phase c")
 
     p_inv_t = p_inv[1, :] .+ p_inv[2, :] .+ p_inv[3, :]
     p_net_t = p_net[1, :] .+ p_net[2, :] .+ p_net[3, :]
-    p_p_t = plot(t[N_range], Uc*p_inv_t[N_range], label = "Inverter Total",
+    p_p_t = Plots.plot(t[N_range], Uc*p_inv_t[N_range], label = "Inverter Total",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Power [kW]",
@@ -519,9 +519,9 @@ function Plot_P_inst(T_plot_start, T_plot_end, Env)
         minorgrid = true,
         thickness_scaling = 1.5,
         legendfont = font(5))
-    p_p_t = plot!(t[N_range], Uc*p_net_t[N_range], label = "Network Total")
+    p_p_t = Plots.plot!(t[N_range], Uc*p_net_t[N_range], label = "Network Total")
 
-    p_p = plot(p_p_a, p_p_b, p_p_c, p_p_t,
+    p_p = Plots.plot(p_p_a, p_p_b, p_p_c, p_p_t,
         layout = (4, 1),
         legend = true,
         size = (900,1200))
@@ -546,7 +546,7 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Source
 
     Uc = 0.001 # unit conversion
 
-    p_p_r_a = plot(t[N_range], Uc*Source.p_q_inst[num_source, 1, N_range],
+    p_p_r_a = Plots.plot(t[N_range], Uc*Source.p_q_inst[num_source, 1, N_range],
         legend = :bottomright,
         label = "Real Power",
         xlabel = "Time [s]",
@@ -558,9 +558,9 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Source
         thickness_scaling = 1.5,
         legendfont = font(5))
     #p_p_r_a = plot!(t[N_range], Uc*Source.p_q_filt[num_source, 1, N_range], label = "Filtered Real Power")
-    p_p_r_a = plot!(t[N_range], Uc*Source.Pm[num_source, 4, N_range], label = "Active Power", lw = 1)
+    p_p_r_a = Plots.plot!(t[N_range], Uc*Source.Pm[num_source, 4, N_range], label = "Active Power", lw = 1)
 
-    p_p_i_q = plot(t[N_range], Uc*Source.p_q_inst[num_source, 2 ,N_range], label = "Imaginary Power",
+    p_p_i_q = Plots.plot(t[N_range], Uc*Source.p_q_inst[num_source, 2 ,N_range], label = "Imaginary Power",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Power [kVAi / kVAr]",
@@ -571,9 +571,9 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Source
         thickness_scaling = 1.5,
         legendfont = font(5))
     #p_p_i_q = plot!(t[N_range], Uc*Source.p_q_filt[num_source, 2, N_range], label = "Filtered Imaginary Power")
-    p_p_i_q = plot!(t[N_range], Uc*Source.Qm[num_source, 4, N_range], label = "Reactive Power", lw = 1)
+    p_p_i_q = Plots.plot!(t[N_range], Uc*Source.Qm[num_source, 4, N_range], label = "Reactive Power", lw = 1)
 
-    p_p_real_imag_act_react = plot(p_p_r_a, p_p_i_q,
+    p_p_real_imag_act_react = Plots.plot(p_p_r_a, p_p_i_q,
         legend = :bottomright,
         layout = (2, 1),
         size = (900,900))
@@ -619,7 +619,7 @@ function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_
 
     fft_p_real = (2/N_length)*fftshift(fft(Uc*Env.p_q_inst[1, 1, N_range]))
     fft_p_real_filt = (2/N_length)*fftshift(fft(Uc*Source.p_q_filt[1, 1, N_range]))
-    FFTs_p_real = plot(freqs, abs.(fft_p_real), label = "Shifted FFT",
+    FFTs_p_real = Plots.plot(freqs, abs.(fft_p_real), label = "Shifted FFT",
         seriestype = :scatter, line = :stem,
         title = "Inverter POC Real Power",
         xlim = x_lim,
@@ -628,11 +628,11 @@ function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_
         ylabel = "Real Power [W]",
         markershape = :circle, markersize = 2,
         legend = true);
-    FFTs_p_real = plot!(freqs, abs.(fft_p_real_filt), label = "Filtered FFT")
+    FFTs_p_real = Plots.plot!(freqs, abs.(fft_p_real_filt), label = "Filtered FFT")
 
     fft_p_imag = (2/N_length)*fftshift(fft(Uc*Env.p_q_inst[1, 2, N_range]))
     fft_p_imag_filt = (2/N_length)*fftshift(fft(Uc*Source.p_q_filt[1, 2, N_range]))
-    FFTs_p_imag = plot(freqs, abs.(fft_p_imag), label = "Shifted FFT",
+    FFTs_p_imag = Plots.plot(freqs, abs.(fft_p_imag), label = "Shifted FFT",
         seriestype = :scatter, line = :stem,
         title = "Inverter POC Imaginary Power",
         xlim = x_lim,
@@ -641,10 +641,10 @@ function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_
         ylabel = "Imaginary Power [VAi]",
         markershape = :circle, markersize = 2,
         legend = false);
-    FFTs_p_imag = plot!(freqs, abs.(fft_p_imag_filt), label = "Filtered FFT")
+    FFTs_p_imag = Plots.plot!(freqs, abs.(fft_p_imag_filt), label = "Filtered FFT")
 
     fft_v_poc_a = (2/N_length)*fftshift(fft(Env.x[2,N_range]))
-    FFTs_v_a = plot(freqs, abs.(fft_v_poc_a),
+    FFTs_v_a = Plots.plot(freqs, abs.(fft_v_poc_a),
         seriestype = :scatter, line = :stem,
         title = "Inverter POC Voltage",
         label = "Phase a",
@@ -656,7 +656,7 @@ function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_
         legend = false);
 
     fft_i_poc_a = (2/N_length)*fftshift(fft(Env.x[3,N_range]))
-    FFTs_i_a = plot(freqs, abs.(fft_i_poc_a),
+    FFTs_i_a = Plots.plot(freqs, abs.(fft_i_poc_a),
         seriestype = :scatter, line = :stem,
         title = "Inverter POC Current",
         label = "Phase a",
@@ -667,7 +667,7 @@ function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_
         markershape = :circle, markersize = 2,
         legend = false);
 
-    p_fft = plot(FFTs_p_real, FFTs_p_imag, FFTs_v_a, FFTs_i_a,
+    p_fft = Plots.plot(FFTs_p_real, FFTs_p_imag, FFTs_v_a, FFTs_i_a,
         layout = (2, 2),
         size = (1200,900),
         legend = true,
@@ -691,7 +691,7 @@ function Plot_Droop(T_plot_start, T_plot_end, Source::Source_Controller, Env, nu
     N_plot_end = convert(Int64, round((T_plot_end/Env.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    p_droop_f = plot(t[N_range], Source.ω_droop[num_source, 1 , N_range]./(2*π), label = "PLL Frequency",
+    p_droop_f = Plots.plot(t[N_range], Source.ω_droop[num_source, 1 , N_range]./(2*π), label = "PLL Frequency",
         legend = :bottomright,
         xlabel = "Time [s]",
         ylabel = "Frequency [Hz]",
@@ -701,7 +701,7 @@ function Plot_Droop(T_plot_start, T_plot_end, Source::Source_Controller, Env, nu
         #thickness_scaling = 1.5,
         #legendfont = font(5),
         grid = true)
-    p_droop_f = plot!(t[N_range], Env.fs[N_range], label = "System Frequency")
+    p_droop_f = Plots.plot!(t[N_range], Env.fs[N_range], label = "System Frequency")
 
     #=
     θs = (2*π*Env.fs.*t).%(2*π)
@@ -724,7 +724,7 @@ function Plot_Droop(T_plot_start, T_plot_end, Source::Source_Controller, Env, nu
     p_droop_θ = plot!(t[N_range], (180/π).θs[N_range],
         label = "Source Phase Angle")=#
 
-    p_droop = plot(p_droop_f)
+    p_droop = Plots.plot(p_droop_f)
 
     display(p_droop)
 

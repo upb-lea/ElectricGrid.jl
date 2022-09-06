@@ -25,7 +25,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 75 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.4 #time in seconds, total simulation run time
+t_final = 2.0 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -61,8 +61,8 @@ Mode_Keys = collect(keys(Source.Modes))
     5 -> "Swing Mode"
 =#
 
-Source_Initialiser(Source, Mode_Keys[4], num_source = 1, Srated = 150e3)
-Source_Initialiser(Source, Mode_Keys[4], num_source = 2, Srated = 150e3)
+Source_Initialiser(Source, Mode_Keys[3], num_source = 1, Srated = 150e3)
+Source_Initialiser(Source, Mode_Keys[2], num_source = 2, Srated = 150e3)
 
 #_______________________________________________________________________________
 # Circuit Elements Calcs
@@ -93,7 +93,7 @@ push!(source_list, source, source)
 load_list = []
 load = Dict()
 
-R1, L, X, Z = Load_Impedance_2(100e3, 0.6, 230)
+R1, L, X, Z = Load_Impedance_2(50e3, 0.6, 230)
 #R2, C, X, Z = Load_Impedance(50e3, -0.9999, 230)
 load["impedance"] = "RL"
 load["R"] = R1;
@@ -172,9 +172,9 @@ iout_c = zeros(Source.N_cntr-1)
         # Control System _______________________________________________________
 
         if t[i] > t_final/2
-            #num_source = 2 # changing the power set points of the 2nd source
-            #policy.Source.pq0_set[num_source, 1] = -50e3 # W, Real Power
-            #policy.Source.pq0_set[num_source, 2] = 30e3 # VAi, Imaginary Power
+            num_source = 2 # changing the power set points of the 2nd source
+            Animo.Source.pq0_set[num_source, 1] = -50e3 # W, Real Power
+            #Animo.Source.pq0_set[num_source, 2] = 30e3 # VAi, Imaginary Power
         end
 
         #-----------------------------------------------------------------------

@@ -307,7 +307,7 @@ mutable struct Source_Controller
         pll_err_t = fill!(pll_err_t, 0)
 
         #---------------------------------------------------------------------------
-        # Interface (e.g. filters)
+        # Interface (e.g. Digital Signal Processing filters)
 
         V_filt_poc = Array{Float64, 3}(undef, num_sources, 3, N_cntr)
         V_filt_poc = fill!(V_filt_poc, 0)
@@ -381,10 +381,15 @@ mutable struct Source_Controller
         #---------------------------------------------------------------------------
         # Droop (Classical, Synchronverter, and VSG) Mode
 
-        Δfmax = 0.25 # Hz
-        ΔEmax = 10.0 # V
-        τv = 0.002 # time constant of the voltage loop
-        τf = 0.002
+        #=
+            Typical values for the frequency droop are a 100% increase in power for a
+            frequency decrease between 3% and 5% (from nominal values)
+        =#
+
+        Δfmax = 0.03*50/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
+        ΔEmax = 0.05*230/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
+        τv = 0.02 # time constant of the voltage loop
+        τf = 0.02
 
         D = Array{Float64, 2}(undef, num_sources, 2)
         D[:,1] = fill!(D[:,1], 2π*Δfmax/P[1])
@@ -615,7 +620,7 @@ end
 
 function (Peace::Classical_Policy)(env)
 
-    Action = Classical_Control_RL(Peace.Source, env)
+    Action = Classical_Control(Peace.Source, env)
 
     return Action    
 end
@@ -625,77 +630,9 @@ function reward(env)
     return 1
 end
 
-function Classical_Control(Source::Source_Controller, Env::Environment)
+function Classical_Control(Source::Source_Controller, env)
 
-    Source_Interface(Env, Source)
-
-    for s in 1:Source.num_sources
-
-        if Source.Modes[Source.Source_Modes[s]] == 1
-
-            Swing_Mode(Source, s)
-        elseif Source.Modes[Source.Source_Modes[s]] == 2
-
-            Voltage_Control_Mode(Source, s)
-        elseif Source.Modes[Source.Source_Modes[s]] == 3
-
-            PQ_Control_Mode(Source, s, Source.pq0_set[s,:])
-        elseif Source.Modes[Source.Source_Modes[s]] == 4
-
-            Droop_Control_Mode(Source, s)
-        elseif Source.Modes[Source.Source_Modes[s]] == 5
-
-            Synchronverter_Mode(Source, s)
-        end
-    end
-
-    Action = Env_Interface(Env, Source)
-    Measurements(Source)
-
-    return Action
-end
-
-function Source_Interface(Env::Environment, Source::Source_Controller)
-
-    i = Env.steps
-    Source.steps = i
-    ω = 2*π*Source.fsys
-    Source.θsys = (Source.θsys + Source.μ_cntr*ω)%(2*π)
-
-    for num_source in 1:Source.num_sources
-
-            Source.V_filt_poc[num_source, :, i] = Env.x[Source.V_poc_loc[: , num_source], i]
-            Source.V_filt_inv[num_source, :, i] = Env.y[Source.I_inv_loc[: , num_source], i] .+ Source.V_filt_poc[num_source, :, i]
-            Source.I_filt_poc[num_source, :, i] = Env.x[Source.I_poc_loc[: , num_source], i]
-            Source.I_filt_inv[num_source, :, i] = Env.x[Source.I_inv_loc[: , num_source], i]
-            Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
-
-    end
-
-    return nothing
-end
-
-function Env_Interface(Env::Environment, Source::Source_Controller)
-
-    i = Source.steps
-
-    Action = zeros(length(Env.B), 1)
-
-    for s in 1:Source.num_sources
-
-        # Inverter Voltages - Control Actions
-        #_______________________________________________________
-        Action[Source.I_inv_loc[1, s]] = Source.Vd_abc_new[s, 1, i]
-        Action[Source.I_inv_loc[2, s]] = Source.Vd_abc_new[s, 2, i]
-        Action[Source.I_inv_loc[3, s]] = Source.Vd_abc_new[s, 3, i]
-    end
-
-    return Action
-end
-
-function Classical_Control_RL(Source::Source_Controller, env)
-
-    Source_Interface_RL(env, Source)
+    Source_Interface(env, Source)
 
     for s in 1:Source.num_sources
 
@@ -718,13 +655,13 @@ function Classical_Control_RL(Source::Source_Controller, env)
 
     end
 
-    Action = Env_Interface_RL(env, Source)
+    Action = Env_Interface(env, Source)
     Measurements(Source)
 
     return Action
 end
 
-function Source_Interface_RL(env, Source::Source_Controller)
+function Source_Interface(env, Source::Source_Controller)
 
     i = env.steps + 1
     Source.steps = i
@@ -743,19 +680,17 @@ function Source_Interface_RL(env, Source::Source_Controller)
     return nothing
 end
 
-function Env_Interface_RL(env, Source::Source_Controller)
+function Env_Interface(env, Source::Source_Controller)
 
     i = Source.steps
 
     _, B, _, _ = get_sys(env.nc)
-    Action = zeros(length(B[1,:]), 1)
+    Action = zeros(length(B[1,:]))
 
     for ph in 1:3
         
         for s in 1:Source.num_sources
 
-            # Inverter Voltages - Control Actions
-            #_______________________________________________________
             Action[s + Source.num_sources*(ph - 1)] = Source.Vd_abc_new[s, ph, i]
         end
     end
@@ -895,7 +830,6 @@ function PQ_Control_Mode(Source::Source_Controller, num_source, pq0)
         Voltage_Controller(Source, num_source, θt)
     end
 
-    #Phase_Locked_Loop_3ph(Source, num_source)
     Current_Controller(Source, num_source, θt)
 
     return nothing
@@ -919,7 +853,7 @@ function Synchronverter_Mode(Source::Source_Controller, num_source; pq0_ref = [S
     Source.K_sync[num_source] = Source.τv*Source.fsys*2π*Dq_sync
 
     if i*Source.μ_cntr > 1/Source.fsys
-        Synchronverter_Control(Source, num_source; pq0_ref = pq0_ref)
+        Synchronverter_Control(Source, num_source; pq0_ref = pq0_ref, Vrms = Vrms)
         θ_S = Source.θ_sync[num_source, i]
         Voltage_Controller(Source, num_source, θ_S)
         Current_Controller(Source, num_source, θ_S)
@@ -1388,8 +1322,8 @@ function Synchronverter_Control(Source::Source_Controller, num_source; pq0_ref =
     Dp = 1/(Source.D[num_source, 1]*(2*π)*Source.fsys)
 
     range, range_end = Integrator_Prep(i)
-    Δω = Source.Δω_sync[num_source, range]
-    ΔT_t = Source.ΔT_t[num_source]
+    #Δω = Source.Δω_sync[num_source, range]
+    #ΔT_t = Source.ΔT_t[num_source]
     eq = Source.eq[num_source, range]
     Mfif = Source.Mfif[num_source, range]
 

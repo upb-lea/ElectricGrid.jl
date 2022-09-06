@@ -1,9 +1,9 @@
-Ir = 15/100
-Vr = 1.54/100
+Ir = 15/100 # i_rip in %
+Vr = 1.54/100 # v_rip in %
 
-Sr = 50e3
-fs = 15e3
-Vdc = 800
+Sr = 50e3 # Srated, apparent power in VA
+fs = 15e3 # Hz, switching frequency
+Vdc = 800 # V, dc voltage
 
 #____________________________________________________________
 # Inductor Design
