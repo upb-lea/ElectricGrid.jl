@@ -27,7 +27,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 2 #time in seconds, total simulation run time
+t_final = 0.4 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -36,6 +36,8 @@ fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz -> 50kHz
 
 #_______________________________________________________________________________
 # Setting up the Sources
+
+# srated = env.nc.parameters["source"][num_source_to_control]["pwr"]
 
 num_sources = 2
 
