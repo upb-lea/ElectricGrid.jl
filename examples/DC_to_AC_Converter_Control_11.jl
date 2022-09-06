@@ -128,7 +128,7 @@ plt_state_ids = ["i_f1_a", "i_f1_b", "i_f1_c"]
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
 hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
 
-run(Animo, env, StopAfterEpisode(1), hook)
+#run(Animo, env, StopAfterEpisode(1), hook)
 
 #= @time begin
 
@@ -164,7 +164,7 @@ end =#
 
 #%% Plots
 
-Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
+#= Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
 
 Plot_V_dq0(0, 5000, Animo.Source, num_source = 1)
 
@@ -182,7 +182,7 @@ Plot_Vrms(0, 5000, Animo.Source, num_source = 1)
 Plot_Vrms(0, 5000, Animo.Source, num_source = 2)
 
 Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 1)
-Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 2)
+Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 2) =#
 
 #Plot_fft(0, 1, Env, Source, num_node = 2, num_source = 2)
 
