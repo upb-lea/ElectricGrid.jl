@@ -184,11 +184,11 @@ Animo.Source.τf = 0.02
 println("\nHere we go.\n")
 reset!(env)
 
-plt_state_ids = ["i_f1_a", "i_f1_b", "i_f1_c"] 
+#plt_state_ids = ["i_f1_a", "i_f1_b", "i_f1_c"] 
 #plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
-hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
+#hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
 
 #run(Animo, env, StopAfterEpisode(1), hook)
 
