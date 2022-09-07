@@ -55,7 +55,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 
 #%% Cable/trasmission line parameters
 #_______________________________________________________________________________
-F = 49:1:50 #don't remove decimal points
+F = 49.0:1:50.0 #don't remove decimal points
 l = 1.0 #km, length of the cable/transmission line in km
 
 num_conductors = 3

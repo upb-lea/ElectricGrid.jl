@@ -435,7 +435,7 @@ end
 
 function Partitioning(Deus::ϵ_Machine, x)
 
-    #=
+    #= Theory:
         Every instrument implements a very basic inherent coarse-graining. Typically,
         this would be the measurement sensors and transducers. A transducer is a
         machine that not only reads symbols from some input, taking the appropriate
@@ -472,6 +472,18 @@ function Partitioning(Deus::ϵ_Machine, x)
 
         The notion of generating partition in symbolic dynamics is based on the "splitting" 
         of the phase space in terms of measureable sets. 
+
+        The theory of symbolic dynamics is a tool for the investigation of discrete time 
+        dynamical systems. The main idea is that of a partitio, that is a finite collection 
+        of disjoint subsets whose union is the state space. By identifying each point 
+        in the state space with a unique symbol, we have a sequence of symbols that correspond 
+        to each trajectory of the original system - the sequence is produced as the evolving state 
+        visits different regions of the partition. This idea is at its most powerful 
+        when the partition is chosen to be generating, that is, when the assingment of symbol 
+        sequences to trajectories is unique, up to a set of measure zero. 
+
+        When the partition is a generating partition, the original dyanmics and the 
+        symbol dynamics are conjugate, (i.e. acting or operating as if joined).
     =#
 
     m = length(x) # number of dimensions
@@ -839,9 +851,6 @@ end
 function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
 
     # parametrized stochastic connection matrix
-
-    Deus.IG = 0.0 # do this if other stat mech was run
-
     Deus.IG = 0.0 # do this if other stat mech was run
 
     num_edges = 0
@@ -1190,8 +1199,29 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         past observations. It is the information about a system's causal state required for 
         maximal accurate prediction.
 
-        The causal states are the minimal states that have a homogeneous distribution for
-        the next sequence of symbols and are deterministic. 
+        The difficulty of performing some task is usually called its complexity. Thus the 
+        Kolmogorov-Chaitin, (or algorithmic) complexity of a symbol sequence of length N 
+        is essentially the length of the shortest computer program needed to generate the 
+        sequence, divided by N. In cases where the sequence is an encoding of the trajectory 
+        of a dynamical ystem, this is just the Kolmogorov-Sinai entropy: the difficulty 
+        of specifying the entire sequence is just proportional to the amount of information 
+        which has to be given in order to specify it, and this is proportional to h for long 
+        time. But specifying a long symbol sequence is not the typical task associated with 
+        a dynamical system. Apart from deducing the underlying equations of motion and its 
+        parameters, the typical task is forecasting. We propose therefore the call 
+        forecasting complexity of a dynamical system the difficulty involved in forecasting 
+        it to the best possible extent. 
+
+        Analogous to the case of complexity of computing functions, we could distinguis between 
+        space and time complexity, depending on whether we consider limitations in storage or 
+        in CPU time as more important. We shall do neither. Instead, we shall take as our primary 
+        measure the average amount of (Shannon) information about the past sequence which has 
+        to be kept at any particular time. Notice that this is inbetween space and time complexity:
+        by concentrating on the average information instead of the maximal storage needed, we are 
+        also sensitive to how often this information is fetched into fast memory. Thus the measure 
+        is more appropriate than the common wortst-case measures, in situations where one has cheap 
+        slow and expensive fast memory, and where one is sharing resources in a computer or in a 
+        network of computers with other tasks. 
 
         The causal states are the minimal states that have a homogeneous distribution for
         the next sequence of symbols and are deterministic. 
@@ -1238,7 +1268,8 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         In a sense the metric entropy is a generalization of the topological entropy: the 
         metric entropy also measures the asymptotic growth rate of the number of resolvable 
         orbits (using a given measurement partition) having close initial conditions, but 
-        weights each orbit with its probability of occurence. 
+        weights each orbit with its probability of occurence. That is, the Kolmogorov-Sinai 
+        entropy is a quantitative measure of the impossibility of perfect forecasts. 
 
         Thus, there are only two independent quantities when modelling a source as a
         stochastic finite automaton. The entropy, hμ, as a measure of the diversity
@@ -1426,9 +1457,6 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         These quantities are probabilistic, and referred to Turing machines with a 
         random internal register. 
     =#
-
-    Deus.IG = 0
-
 
     Deus.IG = 0
 

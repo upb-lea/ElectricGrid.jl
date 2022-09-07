@@ -1,4 +1,4 @@
-mutable struct Source_Controller
+mutable struct Classical_Controls
 
     #=
         This object contains the functions and parameters that are relevant for the
@@ -139,7 +139,7 @@ mutable struct Source_Controller
     eq::Matrix{Float64}
     Mfif::Matrix{Float64}
 
-    function Source_Controller(Vdc::Vector{Float64}, Vrms::Vector{Float64},
+    function Classical_Controls(Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
         i_max::Vector{Float64}, v_max::Vector{Float64},
         Lf::Vector{Float64}, Cf::Vector{Float64}, Rf::Vector{Float64},
@@ -208,7 +208,7 @@ mutable struct Source_Controller
         Δω_sync, eq, Mfif)
     end
 
-    function Source_Controller(t_final, f_cntr, num_sources; delay = 1)
+    function Classical_Controls(t_final, f_cntr, num_sources; delay = 1)
 
         #---------------------------------------------------------------------------
         # Physical Electrical Parameters
@@ -434,7 +434,7 @@ mutable struct Source_Controller
         Mfif = Array{Float64, 2}(undef, num_sources, N_cntr)
         Mfif = fill!(Mfif, 0)
 
-        Source_Controller(Vdc, Vrms,
+        Classical_Controls(Vdc, Vrms,
         S, P, Q,
         i_max, v_max,
         Lf, Cf, Rf,
@@ -470,151 +470,16 @@ mutable struct Source_Controller
     end
 end
 
-mutable struct Environment
-
-    steps::Int64
-
-    μ::Float64 # s, sampling timestep
-    N::Int64 # number of samples
-    t_final::Float64 # total simulation time
-
-    fsys::Float64 # Mostly for plotting
-    fs::Vector{Float64}
-    θs::Vector{Float64}
-    T_sp_rms::Float64
-
-    V_ph::Array{Float64}
-    I_ph::Array{Float64}
-
-    p_q_inst::Array{Float64}
-    p_inst::Array{Float64}
-    P::Array{Float64}
-    Q::Array{Float64}
-
-    A::Matrix{Float64}
-    B::Vector{Float64}
-    C::Matrix{Float64}
-    D::Vector{Float64}
-
-    Ad::Matrix{Float64}
-    Bd::Vector{Float64}
-
-    x::Matrix{Float64}
-    y::Matrix{Float64}
-    u::Matrix{Float64}
-
-    V_poc_loc::Matrix{Int64}
-    I_poc_loc::Matrix{Int64}
-    I_inv_loc::Matrix{Int64}
-
-    V_load_loc::Matrix{Int64}
-    I_load_loc::Matrix{Int64}
-
-    num_sources::Int64
-    num_loads::Int64
-
-    function Environment(steps::Int64, μ::Float64, N::Int64, t_final::Float64,
-        fsys::Float64, fs::Vector{Float64}, θs::Vector{Float64},
-        T_sp_rms::Float64,
-        V_ph::Array{Float64}, I_ph::Array{Float64},
-        p_q_inst::Array{Float64}, p_inst::Array{Float64}, P::Array{Float64}, Q::Array{Float64},
-        A::Matrix{Float64}, B::Vector{Float64}, C::Matrix{Float64}, D::Vector{Float64},
-        Ad::Matrix{Float64}, Bd::Vector{Float64},
-        x::Matrix{Float64}, y::Matrix{Float64}, u::Matrix{Float64},
-        V_poc_loc::Matrix{Int64}, I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
-        V_load_loc::Matrix{Int64}, I_load_loc::Matrix{Int64},
-        num_sources::Int64, num_loads::Int64)
-
-        new(steps, μ, N, t_final,
-        fsys, fs, θs,
-        T_sp_rms,
-        V_ph, I_ph,
-        p_q_inst, p_inst, P, Q,
-        A, B, C, D,
-        Ad, Bd,
-        x, y, u,
-        V_poc_loc, I_poc_loc, I_inv_loc,
-        V_load_loc, I_load_loc,
-        num_sources, num_loads)
-    end
-
-    function Environment(t_final, μ, A, B, C, D, num_sources, num_loads)
-
-        steps = 1
-        N = convert(Int64, floor(t_final/μ)) + 1
-        num_nodes = num_sources + num_loads
-
-        t_final = convert(Float64, t_final)
-        fsys = 50.0
-        T_sp_rms = 5*fsys #samples in a second for rms calcs, x*fsys = x samples in a cycle
-
-        fs = Array{Float64, 1}(undef, N)
-        fs = fill!(fs, fsys)
-
-        θs = Array{Float64, 1}(undef, N)
-        θs = fill!(θs, 0)
-
-        # RMS Phasors
-        V_ph = Array{Float64, 4}(undef, num_nodes, 3, 3, N)
-        V_ph = fill!(V_ph, 0)
-        I_ph = Array{Float64, 4}(undef, num_nodes, 3, 3, N)
-        I_ph = fill!(I_ph, 0)
-
-        # Instantaneous Real, Imaginary, and Zero powers
-        p_q_inst = Array{Float64, 3}(undef, num_nodes, 3, N)
-        p_q_inst = fill!(p_q_inst, 0)
-
-        p_inst = Array{Float64, 3}(undef, num_nodes, 3, N) # instantaneous power at PCC
-        p_inst = fill!(p_inst, 0)
-
-        P = Array{Float64, 3}(undef, num_nodes, 4, N) # 4th column is total
-        P = fill!(P, 0)
-        Q = Array{Float64, 3}(undef, num_nodes, 4, N) # 4th column is total
-        Q = fill!(Q, 0)
-
-        Ad = exp(A*μ)
-        Bd = inv(A)*(Ad - Matrix(I, size(A, 1), size(A, 1)))*B
-
-        x = Array{Float64, 2}(undef, size(A, 1), N)
-        x = fill!(x, 0)
-
-        y = Array{Float64, 2}(undef, size(A, 1), N)
-        y = fill!(y, 0)
-
-        u = Array{Float64, 2}(undef, size(A, 1), N+10)
-        u = fill!(u, 0)
-
-        V_poc_loc = Array{Int64, 2}(undef, 3, num_sources)
-        V_poc_loc = fill!(V_poc_loc, 1)
-        I_poc_loc = Array{Int64, 2}(undef, 3, num_sources)
-        I_poc_loc = fill!(I_poc_loc, 1)
-        I_inv_loc = Array{Int64, 2}(undef, 3, num_sources)
-        I_inv_loc = fill!(I_inv_loc, 1)
-
-        V_load_loc = Array{Int64, 2}(undef, 3, num_loads)
-        V_load_loc = fill!(V_load_loc, 1)
-        I_load_loc = Array{Int64, 2}(undef, 3, num_loads)
-        I_load_loc = fill!(I_load_loc, 1)
-
-        Environment(steps, μ, N, t_final,
-        fsys, fs, θs,
-        T_sp_rms,
-        V_ph, I_ph,
-        p_q_inst, p_inst, P, Q,
-        A, B, C, D,
-        Ad, Bd,
-        x, y, u,
-        V_poc_loc, I_poc_loc, I_inv_loc,
-        V_load_loc, I_load_loc,
-        num_sources, num_loads)
-    end
-end
-
 Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
     n_actions = 1
+    t_final = 0.04
+    fs = 10e3
+    num_sources = 1
+    delay = 1
+
     action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:n_actions], )
-    Source::Source_Controller
+    Source::Classical_Controls = Classical_Controls(t_final, fs, num_sources, delay = 1)
 
 end
 
@@ -630,7 +495,7 @@ function reward(env)
     return 1
 end
 
-function Classical_Control(Source::Source_Controller, env)
+function Classical_Control(Source::Classical_Controls, env)
 
     Source_Interface(env, Source)
 
@@ -661,7 +526,7 @@ function Classical_Control(Source::Source_Controller, env)
     return Action
 end
 
-function Source_Interface(env, Source::Source_Controller)
+function Source_Interface(env, Source::Classical_Controls)
 
     i = env.steps + 1
     Source.steps = i
@@ -680,7 +545,7 @@ function Source_Interface(env, Source::Source_Controller)
     return nothing
 end
 
-function Env_Interface(env, Source::Source_Controller)
+function Env_Interface(env, Source::Classical_Controls)
 
     i = Source.steps
 
@@ -698,7 +563,7 @@ function Env_Interface(env, Source::Source_Controller)
     return Action
 end
 
-function Collect_IDs(env, Source::Source_Controller)
+function Collect_IDs(env, Source::Classical_Controls)
 
     A, _, _, _ = get_sys(env.nc)
     num_fltr_LCL = env.nc.num_fltr_LCL
@@ -766,7 +631,7 @@ function D_Ramp(D, μ, i; t_end = 0.02, ramp = 0)
     return Dout
 end
 
-function Swing_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp = 0, t_end = 0.08)
+function Swing_Mode(Source::Classical_Controls, num_source; δ = 0, pu = 1, ramp = 0, t_end = 0.08)
 
     i = Source.steps
 
@@ -781,7 +646,7 @@ function Swing_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp 
     return nothing
 end
 
-function Voltage_Control_Mode(Source::Source_Controller, num_source; δ = 0, pu = 1, ramp = 0, t_end = 0.04)
+function Voltage_Control_Mode(Source::Classical_Controls, num_source; δ = 0, pu = 1, ramp = 0, t_end = 0.04)
 
     i = Source.steps
 
@@ -797,7 +662,7 @@ function Voltage_Control_Mode(Source::Source_Controller, num_source; δ = 0, pu 
     return nothing
 end
 
-function Droop_Control_Mode(Source::Source_Controller, num_source; ramp = 0, t_end = 0.04)
+function Droop_Control_Mode(Source::Classical_Controls, num_source; ramp = 0, t_end = 0.04)
 
     i = Source.steps
 
@@ -817,7 +682,7 @@ function Droop_Control_Mode(Source::Source_Controller, num_source; ramp = 0, t_e
     return nothing
 end
 
-function PQ_Control_Mode(Source::Source_Controller, num_source, pq0)
+function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
 
     i = Source.steps
 
@@ -835,7 +700,7 @@ function PQ_Control_Mode(Source::Source_Controller, num_source, pq0)
     return nothing
 end
 
-function Synchronverter_Mode(Source::Source_Controller, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], ramp = 0, t_end = 0.04)
+function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], ramp = 0, t_end = 0.04)
 
     i = Source.steps
 
@@ -864,7 +729,7 @@ function Synchronverter_Mode(Source::Source_Controller, num_source; pq0_ref = [S
     return nothing
 end
 
-function Self_Synchronverter_Mode(Source::Source_Controller, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], SQ = 1, SP = 1)
+function Self_Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], SQ = 1, SP = 1)
 
     i = Source.steps
 
@@ -878,7 +743,7 @@ function Self_Synchronverter_Mode(Source::Source_Controller, num_source; pq0_ref
     return nothing
 end
 
-function Phase_Locked_Loop_3ph(Source::Source_Controller, num_source; Kp = 0.02, Ki = 0.01)
+function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; Kp = 0.02, Ki = 0.01)
 
     #= A robost 3 phase phase locked loop
 
@@ -973,7 +838,7 @@ function Phase_Locked_Loop_3ph(Source::Source_Controller, num_source; Kp = 0.02,
     return nothing
 end
 
-function Phase_Locked_Loop_1ph(Source::Source_Controller, num_source; Kp = 0.001, Ki = 1, ph = 1, k_sogi = 0.8)
+function Phase_Locked_Loop_1ph(Source::Classical_Controls, num_source; Kp = 0.001, Ki = 1, ph = 1, k_sogi = 0.8)
 
     i = Source.steps
 
@@ -1039,7 +904,7 @@ function Phase_Locked_Loop_1ph(Source::Source_Controller, num_source; Kp = 0.001
     return nothing
 end
 
-function PQ_Control(Source::Source_Controller, num_source, θ; Kp = 0.05, Ki = 5, pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
+function PQ_Control(Source::Classical_Controls, num_source, θ; Kp = 0.05, Ki = 5, pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
 
     i = Source.steps
 
@@ -1066,7 +931,7 @@ function PQ_Control(Source::Source_Controller, num_source, θ; Kp = 0.05, Ki = 5
     return nothing
 end
 
-function Droop_Control(Source::Source_Controller, num_source; Vrms = Source.Vrms[num_source])
+function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrms[num_source])
 
     #=
     The droop control method has been referred to as the independent, autonomous,
@@ -1132,7 +997,7 @@ function PI_Controller(Error_new, Error_Hist, Error_t, Kp, Ki, μ; bias = zeros(
     return Action, Err_t_new, Err_int
 end
 
-function Current_Controller(Source::Source_Controller, num_source, θ)
+function Current_Controller(Source::Classical_Controls, num_source, θ)
 
     #=
         When a grid-connected inverter is controlled as a current supply, the output
@@ -1189,7 +1054,7 @@ function Current_Controller(Source::Source_Controller, num_source, θ)
     return nothing
 end
 
-function Voltage_Controller(Source::Source_Controller, num_source, θ; Kb = 1)
+function Voltage_Controller(Source::Classical_Controls, num_source, θ; Kb = 1)
 
     i = Source.steps
 
@@ -1226,7 +1091,7 @@ function Voltage_Controller(Source::Source_Controller, num_source, θ; Kb = 1)
     return nothing
 end
 
-function Synchronverter_Control(Source::Source_Controller, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Vrms = Source.Vrms[num_source])
+function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Vrms = Source.Vrms[num_source])
 
     #=
         A synchronverter is an inverter that mimics synchronous generators, which
@@ -1389,7 +1254,7 @@ function Synchronverter_Control(Source::Source_Controller, num_source; pq0_ref =
     return nothing
 end
 
-function Self_Synchronverter_Control(Source::Source_Controller, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], SQ = 1, SP = 1, SC = 0, Kp = 0.0005, Ki = 0.01)
+function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], SQ = 1, SP = 1, SC = 0, Kp = 0.0005, Ki = 0.01)
 
 
     ##### REMEMBER TO CHANGE COS TO SINE AND VICE VERSA - DQ0 CONSISTENT
@@ -1619,7 +1484,7 @@ end
 
 #-------------------------------------------------------------------------------
 
-function Measurements(Source::Source_Controller)
+function Measurements(Source::Classical_Controls)
 
     i = Source.steps
 
@@ -1667,51 +1532,6 @@ function Measurements(Source::Source_Controller)
     return nothing
 end
 
-function Evolution(Env::Environment, Action)
-
-    i = Env.steps
-    i_next = i + 1
-
-    Env.u[:, i] = Action
-
-    # Evolving System to next state
-    #_______________________________________________________
-    k = 1 # number of steps to evolve
-
-    x0 = Env.x[:,i]
-
-    xp = Array{Float64, 1}(undef, size(Env.Ad, 1))
-    xp = fill!(xp, 0.0)
-
-    if isempty(Env.Bd)
-        xp = xp
-    else
-        for j in 0:(k-1)
-            xp = xp + (Env.Ad^((k-1) - j))*(Env.u[:,i].*Env.Bd)
-        end
-    end
-
-    Env.x[:, i_next] = (Env.Ad^k)*x0 + xp
-
-    Env.y[:, i_next] = Env.C*Env.x[:, i_next] + Env.u[:,i].*Env.D # Currents and Voltages
-
-    # Evolving System Frequency and Phase
-    #_______________________________________________________
-    i_start = i_next - 2
-    if i_start < 1
-        i_start = 1
-    end
-    i_range = i_start:i_next
-
-    ω = 2*π*Env.fs[i_range]
-
-    Env.θs[i_next] = Third_Order_Integrator(Env.θs[i], Env.μ, ω)%(2*π)
-
-    Env.steps = i_next
-
-    return nothing
-end
-
 function Simple_State_Space(u, Lf, Cf, LL, RL)
 
     a = [[0 -1/Lf 0];
@@ -1745,7 +1565,7 @@ function Simple_State_Space(u, Lf, Cf, LL, RL)
     return A, B, C, D
 end
 
-function Two_Sources_One_Load(Source::Source_Controller, Vo_rms, SL1, pf1, SL2, pf2, Lt1, Lt2, Rt1, Rt2)
+function Two_Sources_One_Load(Source::Classical_Controls, Vo_rms, SL1, pf1, SL2, pf2, Lt1, Lt2, Rt1, Rt2)
 
     Lf1 = Source.Lf[1]
     Cf1 = Source.Cf[1]
@@ -1803,105 +1623,7 @@ function Two_Sources_One_Load(Source::Source_Controller, Vo_rms, SL1, pf1, SL2, 
     return A, B, C, D, B2, D2
 end
 
-function Source_Initialiser(Source::Source_Controller, mode; num_source = 1, Prated = 0, Qrated = 0, Srated = 0, pf = 0.8)
-
-    if Prated == 0 && Qrated == 0 && Srated == 0
-        Source.S[num_source] = 50e3
-        Source.P[num_source] = 40e3
-        Source.Q[num_source] = 30e3
-    elseif Prated == 0 && Qrated == 0 && Srated != 0
-        Source.S[num_source] = Srated
-        Source.P[num_source] = pf*Srated
-        Source.Q[num_source] = sqrt(Srated^2 - Source.P[num_source]^2)
-    elseif Prated != 0 && Qrated != 0 && Srated == 0
-        Source.P[num_source] = Prated
-        Source.Q[num_source] = Qrated
-        Source.S[num_source] = sqrt(Prated^2 + Qrated^2)
-    elseif Prated != 0 && Qrated == 0 && Srated != 0
-        Source.S[num_source] = Srated
-        Source.P[num_source] = Prated
-        Source.Q[num_source] = sqrt(Srated^2 - Prated^2)
-    elseif Prated == 0 && Qrated != 0 && Srated != 0
-        Source.S[num_source] = Srated
-        Source.Q[num_source] = Qrated
-        Source.P[num_source] = sqrt(Srated^2 - Qrated^2)
-    elseif Prated != 0 && Qrated != 0 && Srated != 0
-        Source.S[num_source] = Srated
-        Source.P[num_source] = pf*Srated
-        Source.Q[num_source] = sqrt(Srated^2 - Source.P[num_source]^2)
-    elseif Prated != 0 && Qrated == 0 && Srated == 0
-        Source.S[num_source] = Prated/pf
-        Source.P[num_source] = Prated
-        Source.Q[num_source] = sqrt(Source.S[num_source]^2 - Prated^2)
-    end
-
-    Source.Source_Modes[num_source] = mode
-
-    Source.pq0_set[num_source, :] = [Source.P[num_source]; Source.Q[num_source]; 0]
-
-    Source.i_max[num_source] = 1.15*sqrt(2)*Source.S[num_source]/(3*Source.Vrms[num_source])
-
-    Filter_Design(Source, num_source, 0.15, 0.01537)
-
-    Current_PI_LoopShaping(Source, num_source)
-    Voltage_PI_LoopShaping(Source, num_source)
-
-    return nothing
-end
-
-function Filter_Design(Source::Source_Controller, num_source, ΔILf_ILf, ΔVCf_VCf)
-
-    #=
-    The filtering capacitors C should be chosen such that the resonant frequency
-    1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
-    frequency of the gird voltage, and ωs is the angular switching frequency
-    used to turn on/off the switches)
-    =#
-    Ir = ΔILf_ILf
-    Vr = ΔVCf_VCf
-
-    Sr = Source.S[num_source]
-    fs = Source.f_cntr
-    Vdc = Source.Vdc[num_source]
-
-    #____________________________________________________________
-    # Inductor Design
-    Vorms = Source.Vrms[num_source]*1.05
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/Sr
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-
-    ΔIlfmax = Ir*Iop
-
-    Lf = Vdc/(4*fs*ΔIlfmax)
-
-    #____________________________________________________________
-    # Capacitor Design
-    Vorms = Source.Vrms[num_source]*0.95
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/Sr
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-    Ir = Vdc/(4*fs*Lf*Iop)
-    ΔIlfmax = Ir*Iop
-    ΔVcfmax = Vr*Vop
-
-    Cf = ΔIlfmax/(8*fs*ΔVcfmax)
-
-    fc = 1/(2*π*sqrt(Lf*Cf))
-
-    Source.Cf[num_source] = Cf
-    Source.Lf[num_source] = Lf
-
-    return Lf, Cf, fc
-end
-
-function Current_PI_LoopShaping(Source::Source_Controller, num_source)
+function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
 
     #=
         The current controller is designed for a short circuit
@@ -1993,7 +1715,7 @@ function Current_PI_LoopShaping(Source::Source_Controller, num_source)
     return nothing
 end
 
-function Voltage_PI_LoopShaping(Source::Source_Controller, num_source)
+function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
 
     #=
         The current controller is designed for a short circuit
@@ -2064,6 +1786,89 @@ function Voltage_PI_LoopShaping(Source::Source_Controller, num_source)
             println("Source = ", num_source,"\n")
         end
     end
+
+    return nothing
+end
+
+function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+
+    #=
+    The filtering capacitors C should be chosen such that the resonant frequency
+    1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
+    frequency of the gird voltage, and ωs is the angular switching frequency
+    used to turn on/off the switches)
+    =#
+    Ir = ΔILf_ILf
+    Vr = ΔVCf_VCf
+
+    #____________________________________________________________
+    # Inductor Design
+    Vorms = Vrms*1.05
+    Vop = Vorms*sqrt(2)
+
+    Zl = 3*Vorms*Vorms/Sr
+
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+
+    ΔIlfmax = Ir*Iop
+
+    Lf = Vdc/(4*fs*ΔIlfmax)
+
+    #____________________________________________________________
+    # Capacitor Design
+    Vorms = Vrms*0.95
+    Vop = Vorms*sqrt(2)
+
+    Zl = 3*Vorms*Vorms/Sr
+
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+    Ir = Vdc/(4*fs*Lf*Iop)
+    ΔIlfmax = Ir*Iop
+    ΔVcfmax = Vr*Vop
+
+    Cf = ΔIlfmax/(8*fs*ΔVcfmax)
+
+    fc = 1/(2*π*sqrt(Lf*Cf))
+
+    return Lf, Cf, fc
+end
+
+function Source_Initialiser(env, Animo::Classical_Policy, modes; pf = 0.8)
+
+    Source = Animo.Source
+
+    Mode_Keys = collect(keys(Animo.Source.Modes))
+
+    for ns in 1:Animo.num_sources
+
+        Srated = env.nc.parameters["source"][ns]["pwr"]
+        Source.Rf[ns] = env.nc.parameters["source"][ns]["R1"]
+        Source.Lf[ns] = env.nc.parameters["source"][ns]["L1"]
+        Source.Cf[ns] = env.nc.parameters["source"][ns]["C"]
+        Source.Vdc[ns] = env.nc.parameters["source"][ns]["vdc"]
+
+        Source.S[ns] = Srated
+        Source.P[ns] = pf*Srated
+        Source.Q[ns] = sqrt(Srated^2 - Source.P[ns]^2)
+
+        if typeof(modes[ns]) == Int64
+            Source.Source_Modes[ns] = Mode_Keys[modes[ns]]
+        else
+            Source.Source_Modes[ns] = modes[ns]
+        end
+
+        Source.pq0_set[ns, :] = [Source.P[ns]; Source.Q[ns]; 0]
+
+        Source.i_max[ns] = 1.15*sqrt(2)*Source.S[ns]/(3*Source.Vrms[ns])
+
+        Current_PI_LoopShaping(Source, ns)
+        Voltage_PI_LoopShaping(Source, ns)
+    end
+
+    # find the indices in the state vector that correspond to the inverters
+    Collect_IDs(env, Animo.Source)
 
     return nothing
 end

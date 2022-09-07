@@ -131,7 +131,7 @@ end
 
 function p_q_theory(V_abc, I_abc)
 
-    #=
+    #= Theory:
         For a three-phase system with or without a neutral conductor in the steady-
         state or during transients, the three-phase instantaneous active power
         describes the total instantaneous energy flow per second between two
@@ -163,7 +163,7 @@ function p_q_theory(V_abc, I_abc)
         do not contribute to the energy transfer between two subsystems at any time.
 
         For a linear circuit with sinusoidal voltages and currents, both the instantaneous
-        powers aer constant. The real power is equal to the conventional definition of
+        powers are constant. The real power is equal to the conventional definition of
         the three-phase active power, whereas the imaginary power q is equal to the
         conventional three-phase reactive power. If the load has inductive characteristics,
         the imaginary power has a positive value, and if the load is capacitive, its

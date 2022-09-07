@@ -1,4 +1,4 @@
-function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
+function Plot_I_dq0(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -63,7 +63,7 @@ function Plot_I_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
     return nothing
 end
 
-function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
+function Plot_V_dq0(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -122,7 +122,7 @@ function Plot_V_dq0(T_plot_start, T_plot_end, Source::Source_Controller; num_sou
     return nothing
 end
 
-function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env; num_source = 1)
+function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Classical_Controls, env; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -197,7 +197,7 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Source_Controller, env
     return nothing
 end
 
-function Plot_Irms(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
+function Plot_Irms(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -252,7 +252,7 @@ function Plot_Irms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
     return nothing
 end
 
-function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
+function Plot_Vrms(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -298,8 +298,8 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
     p_v_ang = Plots.plot!(t[N_range], (180/π)*Source.V_ph[num_source, 3,3,N_range],
         label = "Inverter Phase c")
 
-    f = Source.fsys
-    #f = Source.fpll[num_source, 1, N_range]
+    #f = Source.fsys
+    f = Source.fpll[num_source, 1, N_range]
     PLL_ph_a = Source.θpll[num_source, 1, N_range] .- 2*π*f.*t[N_range]
     PLL_ph_b = Source.θpll[num_source, 2, N_range] .- 2*π*f.*t[N_range]
     PLL_ph_c = Source.θpll[num_source, 3, N_range] .- 2*π*f.*t[N_range]
@@ -330,7 +330,7 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
         
     end
 
-    p_v_ang = Plots.plot!(t[N_range], PLL_ph_a,
+    #= p_v_ang = Plots.plot!(t[N_range], PLL_ph_a,
         label = "PLL Phase a",
         linestyle = :dash,
         linewidth = 2)
@@ -341,7 +341,7 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
     p_v_ang = Plots.plot!(t[N_range], PLL_ph_c,
         label = "PLL Phase c",
         linestyle = :dash,
-        linewidth = 2)
+        linewidth = 2) =#
 
     p_v_rms_ang = Plots.plot(p_v_rms, p_v_ang,
         layout = (2, 1),
@@ -353,7 +353,7 @@ function Plot_Vrms(T_plot_start, T_plot_end, Source::Source_Controller; num_sour
     return nothing
 end
 
-function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env; num_source = 1)
+function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Classical_Controls, Env; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -406,7 +406,7 @@ function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Source_Controller, Env
     return nothing
 end
 
-function Plot_PLL(T_plot_start, T_plot_end, Source::Source_Controller, Env; num_source = 1, ph = 1)
+function Plot_PLL(T_plot_start, T_plot_end, Source::Classical_Controls, Env; num_source = 1, ph = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -531,7 +531,7 @@ function Plot_P_inst(T_plot_start, T_plot_end, Env)
     return nothing
 end
 
-function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Source_Controller; num_source = 1)
+function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -583,7 +583,7 @@ function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Source
     return nothing
 end
 
-function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_source = 1)
+function Plot_fft(T_plot_start, T_plot_end, Env, Source::Classical_Controls; num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 
@@ -678,7 +678,7 @@ function Plot_fft(T_plot_start, T_plot_end, Env, Source::Source_Controller; num_
     return nothing
 end
 
-function Plot_Droop(T_plot_start, T_plot_end, Source::Source_Controller, Env, num_source = 1)
+function Plot_Droop(T_plot_start, T_plot_end, Source::Classical_Controls, Env, num_source = 1)
 
     t_final = (Source.N_cntr - 1)*Source.μ_cntr
 

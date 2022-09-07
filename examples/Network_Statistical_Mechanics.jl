@@ -1,9 +1,9 @@
-#using DrWatson
-#@quickactivate "dare"
+using DrWatson
+@quickactivate "dare"
 
 using Plots
 
-include("Complexity.jl")
+include(srcdir("Complexity.jl"))
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
@@ -11,7 +11,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 # Parameters - Time simulation
 
 Timestep = 10 # time step in μs
-t_final = 0.1 #0.75 # time in seconds, total simulation run time
+t_final = 1.3 #0.75 # time in seconds, total simulation run time
 fsys = 2000 # Hz, fundamental frequency of system
 fsys = 1/(10e-6) 
 
@@ -129,6 +129,11 @@ x[:, 1] = initialise_CCA(x[:, 1])
     particularly well-behaved. These parameter values are determined by the condition
     that the iterates f^(n)(xc) of the map's maximum xc = 1/2 are asymptotically
     stable.
+
+    At the infinite bifurcation point a measurement of the sign of the symbols, 
+    given a generating partition, forecasting can always be slightly improved 
+    by storing a longer record in memory. Thus, although the kolmogorov-sinai 
+    entropy is zero an optimal forecast is never possible. 
 
     We can choose a partitioning {[0, xc],(xc,1)}
 
@@ -256,7 +261,7 @@ even = 0
 
     println("Progress : 100.0 %\n")
 
-    D = 16 #convert(Int, ceil(D0 + 2/hl - 1)) + 120
+    D = 14 #convert(Int, ceil(D0 + 2/hl - 1)) + 120
 
     ϵ = Array{Float64, 1}(undef, dim) # Instrument resolution
     ep = sum(x[1:1, :])/N
@@ -278,9 +283,9 @@ N_range = 1:N_plot_end + 2
 Nm_plot_end = convert(Int64, round((T_plot_end/fsys  - μ_m)*1/μ_m))
 Nm_range = 1:Nm_plot_end + 2
 
-p1 = plot(t[N_range], x[1, N_range], label = "x")
+p1 = Plots.plot(t[N_range], x[1, N_range], label = "x")
 #p1 = plot!(Deus.t_m[Nm_range], Deus.s[Nm_range])
-p1 = plot!(Deus.t_m[Nm_range], Deus.x_m[1, Nm_range], label = "xm")
+p1 = Plots.plot!(Deus.t_m[Nm_range], Deus.x_m[1, Nm_range], label = "xm")
 #plot!(N_range, x[1, N_range])
 #plot!(Nm_range, Deus.s[Nm_range])
 #plot!(Nm_range, Deus.x_m[1, Nm_range])
