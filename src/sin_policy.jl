@@ -1,5 +1,4 @@
 
-
 """
 Simple basic example policy which has internal time which is increased every call by ts
 and returns as action a three-phase sinewave (3 sinwaves shifted by 120°) with a currently fixed amplitide
