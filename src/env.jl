@@ -4,7 +4,7 @@ using LinearAlgebra
 using ControlSystems
 using CUDA
 
-include(srcdir("custom_control.jl"))
+include("./custom_control.jl")
 
 # required power at the load
 P_required = 1000 # W
@@ -16,9 +16,9 @@ PLoad = []
 # --- RL ENV ---
 
 Base.@kwdef mutable struct SimEnv <: AbstractEnv
-    A = [1.0 0.0; 0.0 1.0]
-    B = [1.0 0.0; 0.0 1.0]
-    C = [1.0 0.0; 0.0 1.0]
+    A
+    B
+    C
     D = 0
     action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(B[1,:]) ], )
     observation_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:length(A[1,:]) ], )
@@ -27,11 +27,13 @@ Base.@kwdef mutable struct SimEnv <: AbstractEnv
     x = x0
     maxsteps::Int = 300
     steps::Int = 0
-    t::Rational = 0
-    ts::Rational = 1//10_000
-    Ad::AbstractMatrix = exp(A*ts)
-    Bd::AbstractMatrix = A \ (Ad - C) * B
+    t = 0
+    ts = 1/10_000
+    Ad = exp(A*ts)
+    Bd = A \ (Ad - C) * B
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    state_ids::Vector{String}
+    rewardfunction
     norm_array::Vector{Float64} = [ 600.0 for i = 1:length(A[1,:]) ]
     v_dc::Float64 = 300
     reward::Float64 = 0
@@ -81,7 +83,7 @@ function (env::SimEnv)(action)
     env.x = xout_d[:,2]
     #env.x = xout_d'[2,:]
     if env.convert_state_to_cpu
-        env.state = Matrix(xout_d)'[2,:] ./ env.norm_array
+        env.state = Array(xout_d)'[2,:] ./ env.norm_array
     else
         env.state = xout_d'[2,:] ./ env.norm_array
     end
@@ -96,7 +98,7 @@ function (env::SimEnv)(action)
 
     # env.reward = -sqrt((P_source - (P_R + P_load + loss_error))^2)
     # Power constraint
-    env.reward = 1#reward_func("Power_exp", env)
+    env.reward = env.rewardfunction(env)
 
     env.done = env.steps >= env.maxsteps
 end
