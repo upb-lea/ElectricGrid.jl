@@ -12,6 +12,11 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     B= nothing
     collect_state_paras = nothing
 
+    collect_sources = []
+    collect_cables = []
+    collect_loads = []
+
+
     collect_state_ids = []
     collect_next_state_ids = []
     collect_action_ids = []
@@ -39,6 +44,34 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     # rest
     #hook.df = DataFrame()
     #hook.ep = 1
+    for source_id in hook.collect_sources
+        indizes = findall(x -> occursin("_f$source_id"*"_", x) ||occursin("_$source_id"*"_", x) || endswith(x , "_f$source_id") || endswith(x , "_$source_id"), env.state_ids)
+        for id in indizes
+            if !(env.state_ids[id] in hook.collect_state_ids)
+                push!(hook.collect_state_ids,env.state_ids[id])
+            end
+        end
+    end
+
+    for cable_id in hook.collect_cables
+        indizes = findall(x ->occursin("i_cable$cable_id"*"_", x) || x == "i_cable$cable_id", env.state_ids)
+        for id in indizes
+            if !(env.state_ids[id] in hook.collect_state_ids)
+                push!(hook.collect_state_ids,env.state_ids[id])
+            end
+        end
+    end
+
+    for load_id in hook.collect_loads
+        indizes = findall(x -> occursin("_load$load_id"*"_", x) || endswith(x , "_load$load_id"), env.state_ids)
+        for id in indizes
+            if !(env.state_ids[id] in hook.collect_state_ids)
+                push!(hook.collect_state_ids,env.state_ids[id])
+            end
+        end
+    end
+
+    
     hook.A,hook.B ,_ ,_ = get_sys(env.nc)
     hook.collect_state_paras = get_state_paras(env.nc)
 
