@@ -1,7 +1,16 @@
+using DrWatson
+@quickactivate "dare"
+
 using Stipple, StippleUI, StipplePlotly, PlotlyBase, DataFrames, Graphs, GraphPlot, LinearAlgebra, GenieAutoReload
 import Genie.Renderer.Html.div
 
 register_mixin(@__MODULE__)
+
+include(srcdir("nodeconstructor.jl"))
+include(srcdir("env.jl"))
+include(srcdir("agent_ddpg.jl"))
+include(srcdir("data_hook.jl"))
+include(srcdir("GUI", "agent_page.jl"))
 
 global model
 global CM
@@ -154,6 +163,8 @@ function startConfig()
   parameters["source"] = source_list
   parameters["cable"] = cable_list
   parameters["load"] = load_list
+
+  parameters["grid"] = Dict{Any, Any}("fs"=>10000.0, "phase"=>1, "v_rms"=>230)
 
   nothing
 end
@@ -314,10 +325,15 @@ end
 
 @reactive! mutable struct Setup <: ReactiveModel
   @mixin plot::PBPlotWithEvents()
+  @mixin plot_agent::PBPlotWithEvents()
   showplot::R{Bool} = true
   newSourceTrigger::R{Bool} = false
   newLoadTrigger::R{Bool} = false
   addEdgesTrigger::R{Bool} = false
+  prepareEnvTrigger::R{Bool} = false
+  runLearningTrigger::R{Bool} = false
+  showGrid::R{Bool} = true
+  showAgent::R{Bool} = false
   deleteNodeTrigger::R{Int64} = 0
   selectedNodes::R{Vector{Dict{String, Any}}} = []
   sourcemodels::R{Vector{String}} = ["LCL", "LC", "L"]
@@ -395,6 +411,32 @@ function handlers(model)
       end
     end
 
+    on(model.runLearningTrigger) do _
+      if (model.runLearningTrigger[])
+        run_learning()
+        model.runLearningTrigger[] = false
+      end
+    end
+
+    on(model.prepareEnvTrigger) do _
+      if (model.prepareEnvTrigger[])
+        prepare_env()
+        model.prepareEnvTrigger[] = false
+      end
+    end
+
+    on(model.showGrid) do _
+      if (model.showGrid[])
+        model.showAgent[] = false
+      end
+    end
+
+    on(model.showAgent) do _
+      if (model.showAgent[])
+        model.showGrid[] = false
+      end
+    end
+
     on(model.deleteNodeTrigger) do _
       println("DELETED NODE TRIGGER DETECTED!!!!!!!!!!!!!!")
       deleteNode(model.deleteNodeTrigger[])
@@ -407,9 +449,10 @@ function ui(model)
   page( model, class="container q-layout", [
       
       header(class="st-header q-pa-sm", row([
-        Stipple.image(src="logo.png")
+        Stipple.image(src="logo2.png", height="46px")
 
-        toggle("Microgrid", :showplot)
+        btn("Grid", @click("showGrid = true"))
+        btn("Agent", @click("showAgent = true"))
       ])) 
 
 
@@ -433,25 +476,41 @@ function ui(model)
             Stipple.p(StippleUI.Selects.select(:var"sn.parameters.impedance", options=:loadmodels , label="Model"), @iif("sn.type == \"load\""))
 
             Stipple.p([
-              textfield("L1", :var"sn.parameters.L1", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\" || sn.parameters.fltr == \"L\""), rules = "[val => !(isNaN(val))]")
-              textfield("L2", :var"sn.parameters.L2", @iif("sn.parameters.fltr == \"LCL\""), rules = "[val => !(isNaN(val))]")
-              textfield("C", :var"sn.parameters.C", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\""), rules = "[val => !(isNaN(val))]")
-              textfield("R1", :var"sn.parameters.R1", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\" || sn.parameters.fltr == \"L\""), rules = "[val => !(isNaN(val))]")
-              textfield("R2", :var"sn.parameters.R2", @iif("sn.parameters.fltr == \"LCL\""), rules = "[val => !(isNaN(val))]")
-              textfield("R_C", :var"sn.parameters.R_C", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\""), rules = "[val => !(isNaN(val))]")
+              textfield("L1", type="number", :var"sn.parameters.L1", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\" || sn.parameters.fltr == \"L\""), rules = "[val => !(isNaN(val))]")
+              textfield("L2", type="number", :var"sn.parameters.L2", @iif("sn.parameters.fltr == \"LCL\""), rules = "[val => !(isNaN(val))]")
+              textfield("C", type="number", :var"sn.parameters.C", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\""), rules = "[val => !(isNaN(val))]")
+              textfield("R1", type="number", :var"sn.parameters.R1", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\" || sn.parameters.fltr == \"L\""), rules = "[val => !(isNaN(val))]")
+              textfield("R2", type="number", :var"sn.parameters.R2", @iif("sn.parameters.fltr == \"LCL\""), rules = "[val => !(isNaN(val))]")
+              textfield("R_C", type="number", :var"sn.parameters.R_C", @iif("sn.parameters.fltr == \"LCL\" || sn.parameters.fltr == \"LC\""), rules = "[val => !(isNaN(val))]")
             ], @iif("sn.type == \"source\""))
 
             Stipple.p([
-              textfield("R", :var"sn.parameters.R", @iif("sn.parameters.impedance == \"RLC\" || sn.parameters.impedance == \"RL\" || sn.parameters.impedance == \"RC\" || sn.parameters.impedance == \"R\""), rules = "[val => !(isNaN(val))]")
-              textfield("L", :var"sn.parameters.L", @iif("sn.parameters.impedance == \"RLC\" || sn.parameters.impedance == \"LC\" || sn.parameters.impedance == \"RL\" || sn.parameters.impedance == \"L\""), rules = "[val => !(isNaN(val))]")
-              textfield("C", :var"sn.parameters.C", @iif("sn.parameters.impedance == \"RLC\" || sn.parameters.impedance == \"LC\" || sn.parameters.impedance == \"RC\" || sn.parameters.impedance == \"C\""), rules = "[val => !(isNaN(val))]")
+              textfield("R", type="number", :var"sn.parameters.R", @iif("sn.parameters.impedance == \"RLC\" || sn.parameters.impedance == \"RL\" || sn.parameters.impedance == \"RC\" || sn.parameters.impedance == \"R\""), rules = "[val => !(isNaN(val))]")
+              textfield("L", type="number", :var"sn.parameters.L", @iif("sn.parameters.impedance == \"RLC\" || sn.parameters.impedance == \"LC\" || sn.parameters.impedance == \"RL\" || sn.parameters.impedance == \"L\""), rules = "[val => !(isNaN(val))]")
+              textfield("C", type="number", :var"sn.parameters.C", @iif("sn.parameters.impedance == \"RLC\" || sn.parameters.impedance == \"LC\" || sn.parameters.impedance == \"RC\" || sn.parameters.impedance == \"C\""), rules = "[val => !(isNaN(val))]")
             ], @iif("sn.type == \"load\""))
 
             btn("delete", @click("deleteNodeTrigger = sn.pointIndex"))
           ], class="st-module", style="margin-bottom:20px; padding:8px;", @recur(:"sn in selectedNodes"))
         ])
 
-      ], class="flex-center", @iif("showplot"))
+      ], class="flex-center", @iif("showGrid"))
+
+
+      row([
+
+        cell(class="st-module", size=12, style="height:600px;", [
+          h4("Run Agent")
+
+          btn("Prepare Env", @click("prepareEnvTrigger = true"))
+          btn("Run Learning", @click("runLearningTrigger = true"))
+
+          plotly(:plot_agent, syncevents = true)
+        ])
+
+      ], class="flex-center", @iif("showAgent"))
+
+
 
     ]
   )
@@ -463,7 +522,7 @@ route("/") do
   global model = Setup |> init |> handlers
   global CM
   global parameters
-  if !(@isdefined CM) || !(@isdefined parameters)
+  if !(@isdefined CM) || isnothing(CM) || !(@isdefined parameters) || isnothing(parameters)
     startConfig()
   end
   drawGraph()
