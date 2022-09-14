@@ -15,7 +15,6 @@ using DrWatson
 @quickactivate ("dare")
 
 using ControlSystems
-using Plots
 using ReinforcementLearning
 using LinearAlgebra
 using FFTW
@@ -28,6 +27,7 @@ include(srcdir("Power_System_Theory.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
+include(srcdir("plotting.jl"))
 
 include(srcdir("Classical_Control_Plots.jl"))
 
@@ -36,7 +36,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 10 #time in seconds, total simulation run time
+t_final = 1 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -184,43 +184,46 @@ Animo.Source.τf = 0.02
 println("\nHere we go.\n")
 reset!(env)
 
-#plt_state_ids = ["i_f1_a", "i_f1_b", "i_f1_c"] 
+plt_state_ids = ["i_f1_a", "i_f1_b", "i_f1_c"] 
 #plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
-#hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
+hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
 
-#run(Animo, env, StopAfterEpisode(1), hook)
+run(Animo, env, StopAfterEpisode(1), hook)
 
-@time begin
 
-    println("Progress : 0.0 %")
+plot_hook_results(hook = hook)
 
-    for i in 1:env.maxsteps
+# @time begin
 
-        # Progress Bar
-        if i > 1 && floor((10*t[i]/t_final)) != floor((10*t[i - 1]/t_final))
-            flush(stdout)
-            println("Progress : ", 10*floor((10*t[i]/t_final)), " %")
-        end
+#     println("Progress : 0.0 %")
 
-        # Control System _______________________________________________________
+#     for i in 1:env.maxsteps
 
-        if t[i] > t_final/2
-            nm_src = 3 # changing the power set points of the 2nd source
-            Animo.Source.pq0_set[nm_src, 1] = 100e3 # W, Real Power
-            Animo.Source.pq0_set[nm_src, 2] = 80e3 # VAi, Imaginary Power
-        end
+#         # Progress Bar
+#         if i > 1 && floor((10*t[i]/t_final)) != floor((10*t[i - 1]/t_final))
+#             flush(stdout)
+#             println("Progress : ", 10*floor((10*t[i]/t_final)), " %")
+#         end
 
-        action = Animo(env)
+#         # Control System _______________________________________________________
 
-        # System Dynamics ______________________________________________________
+#         if t[i] > t_final/2
+#             nm_src = 3 # changing the power set points of the 2nd source
+#             Animo.Source.pq0_set[nm_src, 1] = 100e3 # W, Real Power
+#             Animo.Source.pq0_set[nm_src, 2] = 80e3 # VAi, Imaginary Power
+#         end
 
-        env(action)
-    end
+#         action = Animo(env)
 
-    println("Progress : 100.0 %\n")
-end
+#         # System Dynamics ______________________________________________________
+
+#         env(action)
+#     end
+
+#     println("Progress : 100.0 %\n")
+# end
 
 #_______________________________________________________________________________
 #%% Plots
@@ -239,12 +242,12 @@ Plot_PLL(0, 500, Animo.Source, env, num_source = 1, ph = 1)
 
 Plot_Irms(0, 5000, Animo.Source, num_source = 1) =#
 
-Plot_Vrms(10, 5000, Animo.Source, num_source = 1)
-Plot_Vrms(10, 5000, Animo.Source, num_source = 2)
-Plot_Vrms(10, 5000, Animo.Source, num_source = 3)
+# Plot_Vrms(10, 5000, Animo.Source, num_source = 1)
+# Plot_Vrms(10, 5000, Animo.Source, num_source = 2)
+# Plot_Vrms(10, 5000, Animo.Source, num_source = 3)
 
-Plot_Real_Imag_Active_Reactive(10, 5000, Animo.Source, num_source = 1)
-Plot_Real_Imag_Active_Reactive(10, 5000, Animo.Source, num_source = 2)
-Plot_Real_Imag_Active_Reactive(10, 5000, Animo.Source, num_source = 3)
+# Plot_Real_Imag_Active_Reactive(10, 5000, Animo.Source, num_source = 1)
+# Plot_Real_Imag_Active_Reactive(10, 5000, Animo.Source, num_source = 2)
+# Plot_Real_Imag_Active_Reactive(10, 5000, Animo.Source, num_source = 3)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
