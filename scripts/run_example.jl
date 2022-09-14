@@ -95,16 +95,10 @@ hook = DataHook(save_best_NNA = true, plot_rewards = true)
 run(agent, env, StopAfterEpisode(80), hook)
 
 
-
-
-
 # PLOT rewards in 3D plot over every episode
-
 plot_rewards_3d(hook)
 
 
-
 # PLOT a test run with the best behavior_actor NNA so far
-
 plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1", "u_2", "u_l1"])
 

@@ -200,15 +200,11 @@ end
 env_cuda = false
 agent_cuda = false
 
-<<<<<<< HEAD
-batch_sizes = [16, 32]
-nodes = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]#, 55, 60, 65, 70, 75, 80]
-No_Episodes = 20
-=======
+
 batch_sizes = [16] #, 32]
-nodes = [1, 5, 10, 15, 20, 25, 30, 35] #, 40, 45, 50, 55, 60
+# nodes = [1, 5, 10, 15, 20, 25, 30, 35] #, 40, 45, 50, 55, 60
+nodes = 10
 No_Episodes = 10
->>>>>>> 1bfb256c8c01f4562848b8e7c8312c4e2f3bc2a1
 
 to = TimerOutput()
 sections = []
