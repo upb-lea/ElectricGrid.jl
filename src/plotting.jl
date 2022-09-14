@@ -1,8 +1,6 @@
 using DataFrames
 using PlotlyJS
 
-include(srcdir("data_hook.jl"))
-
 function plot_rewards_3d(hook)
     layout = Layout(
             plot_bgcolor="#f1f3f7",
@@ -24,14 +22,22 @@ function plot_rewards_3d(hook)
     display(p)
 end
 
-function plot_best_results(;agent, env, hook, state_ids_to_plot)
+function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_to_plot = nothing, plot_reward = true, plot_reference = false)
     reset!(env)
+
+    if isnothing(states_to_plot)
+        states_to_plot = hook.collect_state_ids
+    end
+
+    if isnothing(actions_to_plot)
+        actions_to_plot = hook.collect_action_ids
+    end
 
     act_noise_old = agent.policy.act_noise
     agent.policy.act_noise = 0.0
     copyto!(agent.policy.behavior_actor, hook.bestNNA)
     
-    temphook = DataHook(collect_state_ids = state_ids_to_plot)
+    temphook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
     
     run(agent.policy, env, StopAfterEpisode(1), temphook)
     
@@ -58,224 +64,278 @@ function plot_best_results(;agent, env, hook, state_ids_to_plot)
             height = 650,
             margin=attr(l=100, r=80, b=80, t=100, pad=10)
         )
+
+
+    traces = []
+
+    for state_id in states_to_plot
+        push!(traces, scatter(temphook.df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
+    end
+
+    for action_id in actions_to_plot
+        push!(traces, scatter(temphook.df, x = :time, y = Symbol(action_id), mode="lines", name = action_id))
+    end
+
+    if plot_reward
+        push!(traces, scatter(temphook.df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward"))
+    end
+
+    if plot_reference
+        push!(traces, scatter(temphook.df, x = :time, y = :reference_1, mode="lines", name = "Reference"))
+    end
+
+    traces = Array{GenericTrace}(traces)
     
-    trace1 = scatter(temphook.df, x = :time, y = :u_f1, mode="lines", name = "U f1")
-    trace2 = scatter(temphook.df, x = :time, y = :u_1, mode="lines", name = "U 1")
-    trace3 = scatter(temphook.df, x = :time, y = :u_2, mode="lines", name = "U 2")
-    trace4 = scatter(temphook.df, x = :time, y = :u_l1, mode="lines", name = "U l1")
-    trace5 = scatter(temphook.df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward")
-    
-    p = plot([trace1, trace2, trace3, trace4, trace5], layout, config = PlotConfig(scrollZoom=true))
+    p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
     display(p)
     
     copyto!(agent.policy.behavior_actor, hook.currentNNA)
     agent.policy.act_noise = act_noise_old
     
     reset!(env)
+
+    return nothing
 end
 
-function get_data(episode)
+function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing)
 
-    data = CSV.read("episode_data/$(episode).csv", DataFrame)
-    data.state = eval.(Meta.parse.(data.state))
-    data.next_state = eval.(Meta.parse.(data.next_state))
-    data.action = eval.(Meta.parse.(data.action))
+    if isnothing(states_to_plot)
+        states_to_plot = hook.collect_state_ids
+    end
+
+    if isnothing(actions_to_plot)
+        actions_to_plot = hook.collect_action_ids
+    end
+
+    if isnothing(episode)
+        df = hook.df
+    else
+        df = hook.df[hook.df.episode .== episode, :]
+    end
+
+    layout = Layout(
+        plot_bgcolor="#f1f3f7",
+        #title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * string(hook.bestepisode) * "</sub>",
+        xaxis_title = "Time in Seconds",
+        yaxis_title = "State values",
+        yaxis2 = attr(
+            title="Action values",
+            overlaying="y",
+            side="right",
+            titlefont_color="orange",
+            #range=[-1, 1]
+        ),
+        legend = attr(
+            x=1,
+            y=1.02,
+            yanchor="bottom",
+            xanchor="right",
+            orientation="h"
+        ),
+        width = 1000,
+        height = 650,
+        margin=attr(l=100, r=80, b=80, t=100, pad=10)
+    )
     
-    data
+    
+    traces = []
+    
+    for state_id in states_to_plot
+        push!(traces, scatter(df, x = :time, y = Symbol(state_id), mode="lines", name = state_id))
+    end
+    
+    for action_id in actions_to_plot
+        push!(traces, scatter(df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
+    end
+    
+    if plot_reference
+        #TODO: how to check which refs to plot? 
+        push!(traces, scatter(df, x = :time, y = :reference_1, mode="lines", name = "Reference"))
+        push!(traces, scatter(df, x = :time, y = :reference_2, mode="lines", name = "Reference"))
+        push!(traces, scatter(df, x = :time, y = :reference_3, mode="lines", name = "Reference"))
+    end
+
+    if plot_reward
+        push!(traces, scatter(df, x = :time, y = :reward, yaxis = "y2", mode="lines", name = "Reward"))
+    end
+    
+    traces = Array{GenericTrace}(traces)
+    
+    p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
+    display(p)
 
 end
 
-function plotting_state(episodes, states, NodeConstructor) # also path to data
-    
-    plots = Array{Plots.Plot}(undef, length(states), length(episodes))
 
-    phase = NodeConstructor.parameters["grid"]["phase"]
-    fs = NodeConstructor.parameters["grid"]["fs"]
+function plot_p_source(;env, hook, episode, source_ids)
+    layout = Layout(
+        plot_bgcolor="#f1f3f7",
+        xaxis_title = "Time in Seconds",
+        yaxis_title = "Power / W",
+        width = 1000,
+        height = 650,
+        margin=attr(l=100, r=80, b=80, t=100, pad=10)
+    )
 
-    state_list = get_states(NodeConstructor)
+    stepinteval=((episode-1)*env.maxsteps)+1:((episode)*env.maxsteps)
+    time = hook.df[stepinteval, :time]
+    powers=[]
+    if env.nc.parameters["grid"]["phase"] === 1
 
-    for (idx_ep, episode) in enumerate(episodes)
+        
+        for id in source_ids
 
-        data = get_data(episode)
-        t = range(0, length(data.state)-1)/fs |> collect
-
-        for (idx_state, state) in enumerate(states)
+            if id <= env.nc.num_fltr_LCL
+                push!(powers, PlotlyJS.scatter(; x = time, y = hook.df[stepinteval, Symbol("i_$id")] .* hook.df[stepinteval , Symbol("u_$id")], mode="lines", name = "Power_Source_$id"*"_Ep_$episode"))
                 
-            if typeof(state) === String
-                state = findall(x->x==state, state_list)
-                state = state[1]
+            elseif id <= env.nc.num_fltr_LCL+ env.nc.num_fltr_LC
+                push!(powers, PlotlyJS.scatter(; x = time, y = (hook.df[stepinteval, Symbol("i_f$id")] - hook.df[stepinteval, Symbol("op_u_f$id")]).* hook.df[stepinteval , Symbol("u_$id")], mode="lines", name = "Power_Source_$id"))
+            
+            elseif id <= env.nc.num_fltr_LCL+ env.nc.num_fltr_LC+ env.nc.num_fltr_L
+                push!(powers, PlotlyJS.scatter(; x = time, y = hook.df[stepinteval, Symbol("i_$id")] .* hook.df[stepinteval , Symbol("u_$id")], mode="lines", name = "Power_Source_$id"))
+            else
+                throw("Expect sourc_ids to correspond to the amount of sources, not $id")
+
             end
+        end
+
+    elseif env.nc.parameters["grid"]["phase"] === 3
+       
+        for id in source_ids
+
+            if id <= env.nc.num_fltr_LCL
+                power = (hook.df[stepinteval , Symbol("i_$id"*"_a")] .* hook.df[stepinteval , Symbol("u_$id"*"_a")])+(hook.df[stepinteval, Symbol("i_$id"*"_b")] .* hook.df[stepinteval , Symbol("u_$id"*"_b")])+(hook.df[stepinteval , Symbol("i_$id"*"_c")] .* hook.df[stepinteval , Symbol("u_$id"*"_c")])
+                push!(powers, PlotlyJS.scatter(; x = time, y = power, mode="lines", name = "Power_Source_$id"))
+
+            elseif id <= env.nc.num_fltr_LCL+ env.nc.num_fltr_LC
+                power = (hook.df[stepinteval , Symbol("i_f$id"*"_a")] - hook.df[stepinteval , Symbol("op_u_f$id"*"_a")]).* hook.df[stepinteval , Symbol("u_$id"*"_a")]+ (hook.df[stepinteval , Symbol("i_f$id"*"_b")] - hook.df[stepinteval , Symbol("op_u_f$id"*"_b")]).* hook.df[stepinteval , Symbol("u_$id"*"_b")]+(hook.df[stepinteval , Symbol("i_f$id"*"_c")] - hook.df[stepinteval , Symbol("op_u_f$id"*"_c")]).* hook.df[stepinteval , Symbol("u_$id"*"_c")]
+                push!(powers, PlotlyJS.scatter(; x = time, y = power, mode="lines", name = "Power_Source_$id"))
             
-            data_state = mapreduce(permutedims, vcat, data.state)
-            
-            ns = NodeConstructor.num_spp
-            
-            plots[idx_state,idx_ep] = plot(xlabel="time", ylabel="$(state_list[state])")
-            
-            if phase == 1
-                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*0], legend=false)
-            
-            elseif phase == 3
-                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*0], label="Phase 1")
-                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*1], label="Phase 2")
-                plot!(plots[idx_state,idx_ep], t, data_state[:, state+ns*2], label="Phase 3")
-                    
+            elseif id <= env.nc.num_fltr_LCL+ env.nc.num_fltr_LC+ env.nc.num_fltr_L
+                power = hook.df[stepinteval , Symbol("i_$id"*"_a")] .* hook.df[stepinteval , Symbol("u_$id"*"_a")]+hook.df[stepinteval , Symbol("i_$id"*"_b")] .* hook.df[stepinteval , Symbol("u_$id"*"_b")]+hook.df[stepinteval, Symbol("i_$id"*"_c")] .* hook.df[stepinteval, Symbol("u_$id"*"_c")]
+                push!(powers, PlotlyJS.scatter(; x = time, y = power, mode="lines", name = "Power_Source_$id"))
+            else
+                throw("Expect source_ids to correspond to the amount of sources, not $id")
+
             end
         end
     end
 
-    plot(plots..., layout=(length(episodes), length(states)))
+    powers = Array{GenericTrace}(powers)
+    
+    p = PlotlyJS.plot(powers, layout, config = PlotConfig(scrollZoom=true))
+    display(p)
+
 
 end
 
-function plot_p_source(episode, source_id, NodeConstructor)
+function plot_p_load(;env, hook, episode, load_ids)
+    layout = Layout(
+        plot_bgcolor="#f1f3f7",
+        xaxis_title = "Time in Seconds",
+        yaxis_title = "Power / W",
+        width = 1000,
+        height = 650,
+        margin=attr(l=100, r=80, b=80, t=100, pad=10)
+    )
 
-    data = get_data(episode)
-    phase = NodeConstructor.parameters["grid"]["phase"]
-    fs = NodeConstructor.parameters["grid"]["fs"]
+    stepinteval=((episode-1)*env.maxsteps)+1:((episode)*env.maxsteps)
+    time = hook.df[stepinteval, :time]
+    powers=[]
+    if env.nc.parameters["grid"]["phase"] === 1
 
-    t = range(0, length(data.state)-1)/fs |> collect
+        for id in load_ids
 
-    data_state = mapreduce(permutedims, vcat, data.state)
-    ns = NodeConstructor.num_spp
-
-    if source_id <= NodeConstructor.num_fltr_LCL
-        LCL_source_id = source_id
-        i_state = (LCL_source_id-1)*4 + 3
-        u_state = (LCL_source_id-1)*4 + 4
-
-    elseif source_id <= NodeConstructor.num_fltr_LCL+ NodeConstructor.num_fltr_LC
-        LC_source_id = source_id - NodeConstructor.num_fltr_LCL
-        i_state = NodeConstructor.num_fltr_LCL*4+(LC_source_id-1)*4 + 1
-        u_state = NodeConstructor.num_fltr_LCL*4+(LC_source_id-1)*4 + 3
-    
-    elseif source_id <= NodeConstructor.num_fltr_LCL+ NodeConstructor.num_fltr_LC+ NodeConstructor.num_fltr_L
-        L_source_id = source_id - NodeConstructor.num_fltr_LCL - NodeConstructor.num_fltr_LC
-        i_state = NodeConstructor.num_fltr_LCL*4+NodeConstructor.num_fltr_LC*3+(L_source_id-1)*4 + 1
-        u_state = NodeConstructor.num_fltr_LCL*4+NodeConstructor.num_fltr_LC*3+(L_source_id-1)*4 + 2
-
-    else
-        throw("Expect id to be suiting to the amount of sources , not $source_id")
-
-    end
-
-    
-    state_list = get_states(NodeConstructor)
-    println(state_list[i_state])
-    println(state_list[u_state])
-    
-    # isum_computation
-
-    CM_row = NodeConstructor.CM[source_id,:]
-    indizes = CM_row[CM_row .!= 0]
-
-    i_source_list= []
-    i_source= zeros(length(data_state[:,1]))
-    for idx in indizes
-        idx = Int(idx)
-        i_source += sign(idx)*data_state[:, NodeConstructor.num_fltr + abs(idx)]
-        append!(i_source_list, (-1)*idx) 
-    end
-
-    println(i_source_list)
-    
-    power_i_sum = data_state[:, u_state] .* i_source
-
-    
-    p = plot(xlabel="time", ylabel="power_source_$source_id")
-
-
-    if phase == 1
-        
-        power= data_state[:, i_state] .* data_state[:, u_state]
-        plot!(p, t, power, label="u1*i1_computation")
-        plot!(p, t, power_i_sum, label="u1*isum_computation")
-
-    elseif phase == 3
+            if id <= env.nc.num_loads_RLC
+                power= hook.df[stepinteval, Symbol("u_load$id")] .* (hook.df[stepinteval, Symbol("i_load$id")] + hook.df[stepinteval, Symbol("u_load$id")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id")])
+                push!(powers, PlotlyJS.scatter(; x = time, y = power, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
+                
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC
+                power= hook.df[stepinteval, Symbol("u_load$id")] .* (hook.df[stepinteval, Symbol("i_load$id")] + (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id")])
+                push!(powers, PlotlyJS.scatter(; x = time, y = power , mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
             
-        power1= data_state[:, i_state+ns*0] .* data_state[:, u_state+ns*0]
-        power2= data_state[:, i_state+ns*1] .* data_state[:, u_state+ns*1]
-        power3= data_state[:, i_state+ns*2] .* data_state[:, u_state+ns*2]
-
-        plot!(p, t, power1, label="Phase 1")
-        plot!(p, t, power2, label="Phase 2")
-        plot!(p, t, power3, label="Phase 3")
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL
+                power= hook.df[stepinteval, Symbol("u_load$id")] .* (hook.df[stepinteval, Symbol("i_load$id")] + hook.df[stepinteval, Symbol("u_load$id")] *(env.nc.parameters["load"][id]["R"])^(-1))
+                push!(powers, PlotlyJS.scatter(; x = time, y = power, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
             
-    end
-end
-
-function plot_p_load(episode, load_id, NodeConstructor)
-    
-    data = get_data(episode)
-    phase = NodeConstructor.parameters["grid"]["phase"]
-    fs = NodeConstructor.parameters["grid"]["fs"]
-
-    t = range(0, length(data.state)-1)/fs |> collect
-
-    data_state = mapreduce(permutedims, vcat, data.state)
-    ns = NodeConstructor.num_spp
-    state_list = get_states(NodeConstructor)
-
-    load_startpos =  NodeConstructor.num_fltr + NodeConstructor.num_connections
-    
-    num_twostateloads = NodeConstructor.num_loads_RLC + NodeConstructor.num_loads_LC + NodeConstructor.num_loads_RL + NodeConstructor.num_loads_L
-    num_onestateloads = NodeConstructor.num_loads_RC + NodeConstructor.num_loads_C + NodeConstructor.num_loads_R
-
-    if load_id <=  num_twostateloads
-        u_state = load_startpos + (load_id-1)*2 + 1
-
-    elseif load_id <=  num_twostateloads+num_onestateloads
-        u_load_id = load_id - num_twostateloads
-        u_state = num_twostateloads*2+u_load_id
-    
-    else
-
-        throw("Expect id to be suiting to the amount of loads , not $load_id")
-    end
-    #println(state_list)
-    println(state_list[u_state])
-   
-    CM_row = NodeConstructor.CM[NodeConstructor.num_sources+load_id,:]
-    indizes = CM_row[CM_row .!= 0]
-    # signs = [sign(x) for x in indizes] # get signs
-    # indizes_ = indizes .* signs # delet signs from indices
-
-    p = plot(xlabel="time", ylabel="power_load_$load_id")
-    #println(indizes_)
-    
-
-    if phase == 1
-        
-        i_load_list= []
-        i_load= zeros(length(data_state[:,1]))
-        for idx in indizes
-            idx = Int(idx)
-            i_load += (-1)*sign(idx)*data_state[:, NodeConstructor.num_fltr + abs(idx)]
-            append!(i_load_list, (-1)*idx) 
-        end
-
-        println(i_load_list)
-        power= data_state[:, u_state] .* i_load
-        # plot(t,i_load, label="i_load")
-        # plot(t,data_state[:, u_state], label="$(state_list[u_state])")
-        plot!(p, t, power)
-    
-    elseif phase == 3
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L
+                power= hook.df[stepinteval, Symbol("u_load$id")] .* hook.df[stepinteval, Symbol("i_load$id")]
+                push!(powers, PlotlyJS.scatter(; x = time, y = power, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
             
-        for idx in indizes_
-            idx = Int(idx)
-            i_load1 += data_state[:, 0*ns+ NodeConstructor.num_fltr + idx]
-            i_load2 += data_state[:, 1*ns+NodeConstructor.num_fltr + idx]
-            i_load3 += data_state[:, 2*ns+NodeConstructor.num_fltr + idx]
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC
+                power= hook.df[stepinteval, Symbol("u_load$id")] .* (hook.df[stepinteval, Symbol("u_load$id")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id")])
+            
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC+ env.nc.num_loads_C
+                power= hook.df[stepinteval, Symbol("u_load$id")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id")])
+            
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC+ env.nc.num_loads_C+ env.nc.num_loads_R
+                power= hook.df[stepinteval, Symbol("u_load$id")] .* (hook.df[stepinteval, Symbol("u_load$id")] *(env.nc.parameters["load"][id]["R"])^(-1))
+
+            else
+                throw("Expect laod_ids to correspond to the amount of loads, not $id")
+
+            end
         end
         
-        power1= i_load1 .* data_state[:, u_state+ns*0]
-        power2= i_load2 .* data_state[:, u_state+ns*1]
-        power3= i_load3 .* data_state[:, u_state+ns*2]
 
-        plot!(p, t, power1, label="Phase 1")
-        plot!(p, t, power2, label="Phase 2")
-        plot!(p, t, power3, label="Phase 3")
+    elseif env.nc.parameters["grid"]["phase"] === 3
+        
+        for id in load_ids
+
+            if id <= env.nc.num_loads_RLC
+                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_a")] + hook.df[stepinteval, Symbol("u_load$id"*"_a")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_a")])
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_b")] + hook.df[stepinteval, Symbol("u_load$id"*"_b")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_b")])
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_c")] + hook.df[stepinteval, Symbol("u_load$id"*"_c")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_c")])
+                push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
+                
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC
+                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_a")] + (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_a")])
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_b")] + (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_b")])
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_c")] + (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+2*id-1])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_c")])
+                push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c , mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
             
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL
+                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_a")] + hook.df[stepinteval, Symbol("u_load$id"*"_a")] *(env.nc.parameters["load"][id]["R"])^(-1))
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_b")] + hook.df[stepinteval, Symbol("u_load$id"*"_b")] *(env.nc.parameters["load"][id]["R"])^(-1))
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* (hook.df[stepinteval, Symbol("i_load$id"*"_c")] + hook.df[stepinteval, Symbol("u_load$id"*"_c")] *(env.nc.parameters["load"][id]["R"])^(-1))
+                push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c , mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
+            
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L
+                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* hook.df[stepinteval, Symbol("i_load$id"*"_a")]
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* hook.df[stepinteval, Symbol("i_load$id"*"_b")]
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* hook.df[stepinteval, Symbol("i_load$id"*"_c")]
+                push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
+            
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC
+                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* (hook.df[stepinteval, Symbol("u_load$id"*"_a")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_a")])
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* (hook.df[stepinteval, Symbol("u_load$id"*"_b")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_b")])
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* (hook.df[stepinteval, Symbol("u_load$id"*"_c")] *(env.nc.parameters["load"][id]["R"])^(-1)+ (env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_c")])
+                push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
+
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC+ env.nc.num_loads_C
+                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_a")])
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_b")])
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* ((env.nc.parameters["load"][id]["C"])*(hook.collect_state_paras[env.nc.num_fltr+env.nc.num_connections+(env.nc.num_loads_RLC + env.nc.num_loads_LC + env.nc.num_loads_RL + env.nc.num_loads_L)+id])^(-1) * hook.df[stepinteval, Symbol("op_u_load$id"*"_c")])
+                push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
+
+            elseif id <= env.nc.num_loads_RLC+ env.nc.num_loads_LC+ env.nc.num_loads_RL+ env.nc.num_loads_L+ env.nc.num_loads_RC+ env.nc.num_loads_C+ env.nc.num_loads_R
+                power_a= hook.df[stepinteval, Symbol("u_load$id"*"_a")] .* (hook.df[stepinteval, Symbol("u_load$id"*"_a")] *(env.nc.parameters["load"][id]["R"])^(-1))
+                power_b= hook.df[stepinteval, Symbol("u_load$id"*"_b")] .* (hook.df[stepinteval, Symbol("u_load$id"*"_b")] *(env.nc.parameters["load"][id]["R"])^(-1))
+                power_c= hook.df[stepinteval, Symbol("u_load$id"*"_c")] .* (hook.df[stepinteval, Symbol("u_load$id"*"_c")] *(env.nc.parameters["load"][id]["R"])^(-1))
+                push!(powers, PlotlyJS.scatter(; x = time, y = power_a + power_b + power_c, mode="lines", name = "Power_Load_$id"*"_Ep_$episode"))
+                
+            else
+                throw("Expect laod_ids to correspond to the amount of loads, not $id")
+
+            end
+        end
+
+        
     end
+
+    powers = Array{GenericTrace}(powers)
+    
+    p = PlotlyJS.plot(powers, layout, config = PlotConfig(scrollZoom=true))
+    display(p)
+
 end

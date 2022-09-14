@@ -15,9 +15,10 @@ global create_actor(na, ns) = Chain(
 )
 
 global create_critic(na, ns) = Chain(
-    Dense(ns + na, 40, relu; init = initt),
-    Dense(40, 30, relu; init = initt),
-    Dense(30, 1; init = initt),
+    Dense(ns + na, 100, relu; init = initt),
+    Dense(100, 100, relu; init = initt),
+    Dense(100, 100, relu; init = initt),
+    Dense(100, 1; init = initt),
 )
 
 function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)

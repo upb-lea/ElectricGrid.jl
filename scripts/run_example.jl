@@ -1,14 +1,10 @@
 using DrWatson
 @quickactivate "dare"
 
-using ReinforcementLearning
-using PlotlyJS
-
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("plotting.jl"))
 
 
 function reward(env)
@@ -17,7 +13,7 @@ function reward(env)
     P_required = 466 # W
     V_required = 230 # V
 
-    u_l1_index = findfirst(x -> x == "u_l1", env.state_ids)
+    u_l1_index = findfirst(x -> x == "u_load1", env.state_ids)
 
     u_l1 = env.state[u_l1_index]
 
@@ -54,41 +50,13 @@ parameters = Dict{Any, Any}(
     "grid"   => Dict{Any, Any}("fs"=>10000.0, "phase"=>1, "v_rms"=>230)
 )
 
-nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters)
 
-A, B, C, D = get_sys(nc)
+env = SimEnv(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, reward_function = reward, maxsteps=600, use_gpu=env_cuda)
 
-limits = Dict("i_lim" => 20, "v_lim" => 600)
+ns = length(env.sys_d.A[1,:])
+na = length(env.sys_d.B[1,:])
 
-states = get_state_ids(nc)
-norm_array = []
-for state_name in states
-    if startswith(state_name, "i")
-        push!(norm_array, limits["i_lim"])
-    elseif startswith(state_name, "u")
-        push!(norm_array, limits["v_lim"])
-    end
-end
-
-ns = length(A[1,:])
-na = length(B[1,:])
-
-# time step
-ts = 1e-5
-
-V_source = 300
-
-x0 = [ 0.0 for i = 1:length(A[1,:]) ]
-
-if env_cuda
-    A = CuArray(A)
-    B = CuArray(B)
-    C = CuArray(C)
-    x0 = CuArray(x0)
-end
-
-env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, rewardfunction = reward, x0=x0, v_dc=V_source, ts=ts, convert_state_to_cpu=true, maxsteps=600)
-agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
+agent = create_agent_ddpg(na = na, ns = ns, use_gpu = env_cuda)
 
 hook = DataHook(save_best_NNA = true, plot_rewards = true)
 
@@ -100,5 +68,6 @@ plot_rewards_3d(hook)
 
 
 # PLOT a test run with the best behavior_actor NNA so far
-plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1", "u_2", "u_l1"])
+
+plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1", "u_2", "u_load1"])
 
