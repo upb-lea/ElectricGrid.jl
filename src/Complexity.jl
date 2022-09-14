@@ -443,6 +443,8 @@ function Partitioning(Deus::ϵ_Machine, x)
         In the graphical representation the edges of a transducer are labeled with
         both input and output symbols. The latter may come from different alphabets.
 
+        A partition is a finite collection of disjoint sets whose union is the state space.
+
         1. Simulate the measurement instrument
             a. m is the number of experimental probes
             b. An instrument that distinguishes the projected states to within a
