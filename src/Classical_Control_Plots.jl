@@ -135,23 +135,9 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Classical_Controls, en
     N_plot_end = convert(Int64, round((T_plot_end/Source.fsys  - 1/Nps)*Nps))
     N_range = N_plot_start:N_plot_end
 
-    #V_inv = env.x[Source.V_poc_loc[:, num_source], N_range]
-    #V_inv = env.x[Source.I_inv_loc[:, num_source], N_range] + V_inv
-
     V_inv = Source.V_filt_poc[num_source, :, N_range]
 
-    Fund = Array{Float64, 2}(undef, 3, length(N_range))
     PLL = Array{Float64, 2}(undef, 3, length(N_range))
-
-    fa = Source.fpll[num_source, 1 , N_range]
-    fb = Source.fpll[num_source, 2 , N_range]
-    fc = Source.fpll[num_source, 3 , N_range]
-    Fund[1,:] = sqrt(2)*Source.V_ph[num_source, 1, 2, N_range].*sin.(fa*2π.*t[N_range]
-    + Source.V_ph[num_source, 1, 3, N_range])
-    Fund[2,:] = sqrt(2)*Source.V_ph[num_source, 2, 2, N_range].*sin.(fb*2π.*t[N_range]
-    + Source.V_ph[num_source, 2, 3, N_range])
-    Fund[3,:] = sqrt(2)*Source.V_ph[num_source, 3, 2, N_range].*sin.(fc*2π.*t[N_range]
-    + Source.V_ph[num_source, 3, 3, N_range])
 
     PLL[1,:] = sqrt(2)*Source.V_ph[num_source, 1, 2, N_range].*sin.(Source.θpll[num_source, 1, N_range])
     PLL[2,:] = sqrt(2)*Source.V_ph[num_source, 2, 2, N_range].*sin.(Source.θpll[num_source, 2, N_range])
@@ -164,7 +150,6 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Classical_Controls, en
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase A\nSource = "*string(num_source))
     p_cntr_a = Plots.plot!(t[N_range], V_inv[1,:], label = "Inverter Phase a")
-    p_cntr_a = Plots.plot!(t[N_range], Fund[1,:], label = "Fundamental Phase a")
     p_cntr_a = Plots.plot!(t[N_range], PLL[1,:], label = "PLL Phase a")
 
     # Phase b Control Signals
@@ -174,7 +159,6 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Classical_Controls, en
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase B")
     p_cntr_b = Plots.plot!(t[N_range], V_inv[2,:], label = "Inverter Phase b")
-    p_cntr_b = Plots.plot!(t[N_range], Fund[2,:], label = "Fundamental Phase b")
     p_cntr_b = Plots.plot!(t[N_range], PLL[2,:], label = "PLL Phase b")
 
     # Phase c Control Signals
@@ -184,7 +168,6 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Classical_Controls, en
         ylabel = "Voltage [V]",
         title = "DC-AC Converter Control Phase C")
     p_cntr_c = Plots.plot!(t[N_range], V_inv[3,:], label = "Inverter Phase c")
-    p_cntr_c = Plots.plot!(t[N_range], Fund[3,:], label = "Fundamental Phase c")
     p_cntr_c = Plots.plot!(t[N_range], PLL[3,:], label = "PLL Phase c")
 
     p_v_cntr = Plots.plot(p_cntr_a, p_cntr_b, p_cntr_c,

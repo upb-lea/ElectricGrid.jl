@@ -4,7 +4,6 @@
 
 #= To do list
     reset Classical control as well (integrators)
-    PQ source controller tuning
     PLL tuning
     Self-synchronverter
     Single phase controllers
@@ -35,7 +34,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.734563456 #time in seconds, total simulation run time
+t_final = 1 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -109,7 +108,7 @@ push!(source_list, source) =#
 load_list = []
 load = Dict()
 
-R1_load, L_load, _, _ = Load_Impedance_2(50e3, 0.6, 230)
+R1_load, L_load, _, _ = Load_Impedance_2(100e3, 0.6, 230)
 #R2_load, C_load, _, _ = Load_Impedance_2(150e3, -0.8, 230)
 
 load["impedance"] = "RL"
@@ -125,7 +124,7 @@ push!(load_list, load)
 cable_list = []
 
 # Network Cable Impedances
-l = 2.0 # length in km
+l = 2.6 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -177,8 +176,8 @@ Source_Initialiser(env, Animo, Modes)
 Animo.Source.τv = 0.02 # time constant of the voltage loop
 Animo.Source.τf = 0.02 # time constant of the frequency loop
 
-Animo.Source.pq0_set[2, 1] = 80e3 # W, Real Power
-Animo.Source.pq0_set[2, 2] = -50e3 # VAi, Imaginary Power
+Animo.Source.pq0_set[2, 1] = 40e3 # W, Real Power
+Animo.Source.pq0_set[2, 2] = -20e3 # VAi, Imaginary Power
 
 #_______________________________________________________________________________
 #%% Starting time simulation
@@ -210,8 +209,8 @@ reset!(env)
 
         if t[i] > t_final/2
             nm_src = 2 # changing the power set points of the 2nd source
-            Animo.Source.pq0_set[nm_src, 1] = -80e3 # W, Real Power
-            Animo.Source.pq0_set[nm_src, 2] = 50e3 # VAi, Imaginary Power
+            Animo.Source.pq0_set[nm_src, 1] = -26e3 # W, Real Power
+            Animo.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
         end
 
         action = Animo(env)
@@ -227,24 +226,24 @@ end
 #_______________________________________________________________________________
 #%% Plots
 
-#= Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
+#Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
 
-Plot_V_dq0(0, 5000, Animo.Source, num_source = 1)
+Plot_V_dq0(0, 5000, Animo.Source, num_source = 2)
 
-Inst_Vout_Vref(5, 20, Animo.Source, env, num_source = 1)
-Inst_Vout_Vref(5, 20, Animo.Source, env, num_source = 2)
+#Inst_Vout_Vref(5, 20, Animo.Source, env, num_source = 1)
+#Inst_Vout_Vref(5, 20, Animo.Source, env, num_source = 2)
 
-Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 1)
-Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 2) =#
+#Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 1)
+#Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 2)
 
-Plot_PLL(0, 500, Animo.Source, env, num_source = 2, ph = 1)
+#Plot_PLL(0, 500, Animo.Source, env, num_source = 2, ph = 1)
 
 #Plot_Irms(0, 5000, Animo.Source, num_source = 2)
 
 #Plot_Vrms(10, 5000, Animo.Source, num_source = 1)
 #Plot_Vrms(10, 5000, Animo.Source, num_source = 2)
 
-Plot_Real_Imag_Active_Reactive(10, 5000, Animo.Source, num_source = 1)
+#Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 1)
 Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 2)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

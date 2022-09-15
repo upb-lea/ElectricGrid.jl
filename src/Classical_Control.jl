@@ -122,8 +122,6 @@ mutable struct Classical_Controls
     # PQ Mode
 
     pq0_set::Matrix{Float64}
-    PQ_err::Array{Float64}
-    PQ_err_t::Matrix{Float64}
 
     #---------------------------------------------------------------------------
     # Synchronverter Mode
@@ -168,7 +166,7 @@ mutable struct Classical_Controls
         I_lim::Matrix{Float64},
         Δfmax::Float64, ΔEmax::Float64, τv::Float64, τf::Float64,
         D::Matrix{Float64}, ω_droop::Array{Float64}, θ_droop::Array{Float64},
-        pq0_set::Matrix{Float64}, PQ_err::Array{Float64}, PQ_err_t::Matrix{Float64},
+        pq0_set::Matrix{Float64},
         J_sync::Vector{Float64}, K_sync::Vector{Float64}, ΔT_t::Vector{Float64},
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Matrix{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Matrix{Float64})
@@ -202,7 +200,7 @@ mutable struct Classical_Controls
         I_lim,
         Δfmax, ΔEmax, τv, τf,
         D, ω_droop, θ_droop,
-        pq0_set, PQ_err, PQ_err_t,
+        pq0_set,
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif)
@@ -407,10 +405,6 @@ mutable struct Classical_Controls
 
         pq0_set = Array{Float64, 2}(undef, num_sources, 3) # real, imaginary, and zero power set points
         pq0_set = fill!(pq0_set, 0)
-        PQ_err = Array{Float64, 3}(undef, num_sources, 3, 3) # 3 phases and 3rd order integration
-        PQ_err = fill!(PQ_err, 0)
-        PQ_err_t = Array{Float64, 2}(undef, num_sources, 3) # PLL total integrated error
-        PQ_err_t = fill!(PQ_err_t, 0)
 
         #---------------------------------------------------------------------------
         # Synchronverter Mode
@@ -464,7 +458,7 @@ mutable struct Classical_Controls
         I_lim,
         Δfmax, ΔEmax, τv, τf,
         D, ω_droop, θ_droop,
-        pq0_set, PQ_err, PQ_err_t,
+        pq0_set,
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif)
@@ -689,18 +683,14 @@ function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
     i = Source.steps
 
     Phase_Locked_Loop_3ph(Source, num_source)
+    #Phase_Locked_Loop_1ph(Source, num_source, ph = 1)
+    #Phase_Locked_Loop_1ph(Source, num_source, ph = 2)
+    #Phase_Locked_Loop_1ph(Source, num_source, ph = 3)
     θt = Source.θpll[num_source, 1 , i]
 
     if i*Source.ts > 2/Source.fsys
         PQ_Control(pq0_ref = pq0, Source, num_source, θt)
     else
-        
-        #Vrms = Ramp(Source.Vrms[num_source], Source.ts, i; t_end = 2/Source.fsys, ramp = 1)
-        #θph = [θt; θt - 120π/180; θt + 120π/180]
-
-        #Source.V_ref[num_source, :, i] = [0 0 0] #sqrt(2)*Vrms*cos.(θph)
-
-        #Voltage_Controller(Source, num_source, θt)
 
         PQ_Control(pq0_ref = [0; 0; 0], Source, num_source, θt)
     end
@@ -921,34 +911,50 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
     Kp = Source.V_kp[num_source]
     Ki = Source.V_ki[num_source]
 
+    V_err = Source.V_err[num_source, :, :]
+    V_err_t = Source.V_err_t[num_source, :]
+
     if norm(pq0_ref) > Source.S[num_source]
         pq0_ref = pq0_ref.*(Source.S[num_source]/norm(pq0_ref))
     end
 
-    i_abc = Source.I_filt_poc[num_source, :, i]
-    v_abc = Source.V_filt_poc[num_source, :, i]
-    PQ_err = Source.PQ_err[num_source, :, :]
-    PQ_err_t = Source.PQ_err_t[num_source, :]
+    V_αβγ = Clarke_Transform(Source.V_filt_poc[num_source, :, i])
+    I_αβγ = Clarke_Transform(Source.I_filt_poc[num_source, :, i])
 
-    V_αβγ = Clarke_Transform(v_abc)
-    I_αβγ = Clarke_Transform(i_abc)
+    #-------------------------------------------------------------
 
     I_αβγ_ref = Inv_p_q_v(V_αβγ, pq0_ref)
 
     I_dq0_ref = Park_Transform(I_αβγ_ref, θ)
-
     I_dq0 = Park_Transform(I_αβγ, θ)
+
+    #-------------------------------------------------------------
+
+    V_αβγ_ref = Inv_p_q_i(I_αβγ, pq0_ref)
+
+    V_dq0_ref = Park_Transform(V_αβγ_ref, θ)
+    V_dq0 = Park_Transform(V_αβγ, θ)
+
+    #-------------------------------------------------------------
+
+    Source.V_ref[num_source, :, i] = Inv_Clarke_Transform(V_αβγ_ref)
+
+    Source.V_ref_dq0[num_source, :,i] = V_dq0_ref
+    Source.V_dq0[num_source, :, i] = V_dq0
 
     if i > 1
         # Including Anti-windup - Back-calculation
-        PQ_err_new = I_dq0_ref .- I_dq0 .+ Kb*(Source.I_ref_dq0[num_source, :, i - 1] .- Source.I_lim[num_source,:])
+        #V_err_new = V_dq0_ref .- V_dq0 .+ Kb*(Source.I_ref_dq0[num_source, :, i - 1] .- Source.I_lim[num_source,:])
+        V_err_new = I_dq0_ref .- I_dq0 .+ Kb*(Source.I_ref_dq0[num_source, :, i - 1] .- Source.I_lim[num_source,:])
     else
-        PQ_err_new = I_dq0_ref .- I_dq0
+        
+        #V_err_new = V_dq0_ref .- V_dq0
+        V_err_new = I_dq0_ref .- I_dq0
     end
 
-    Source.I_lim[num_source, :], Source.PQ_err_t[num_source, :], 
-    Source.PQ_err[num_source, :, :] =
-    PI_Controller(PQ_err_new, PQ_err, PQ_err_t, Kp, Ki, Source.ts)
+    Source.I_lim[num_source,:], Source.V_err_t[num_source, :], 
+    Source.V_err[num_source, :, :] =
+    PI_Controller(V_err_new, V_err, V_err_t, Kp, Ki, Source.ts)
 
     Ip_ref = sqrt(2/3)*norm(Source.I_lim[num_source, :]) # peak set point
 
@@ -957,16 +963,6 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
     else
         Source.I_ref_dq0[num_source, :, i] = Source.I_lim[num_source,:]
     end
-
-    #= Ip_ref = sqrt(2/3)*norm(I_dq0_ref) # peak set point
-
-    if Ip_ref > Source.i_max[num_source]
-        Source.I_ref_dq0[num_source, :, i] = I_dq0_ref*Source.i_max[num_source]/Ip_ref
-    else
-        Source.I_ref_dq0[num_source, :, i] = I_dq0_ref
-    end =#
-
-    #Source.I_ref_dq0[num_source, :, i] = [-120; 206; 0.0]
 
     return nothing
 end
