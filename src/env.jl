@@ -84,8 +84,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
 
     if isnothing(featurize)
-        featurize = function(x0 = nothing, t0 = nothing; env = nothing) 
-            if isnothing(env)
+        featurize = function(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
+            if !isnothing(name)
+                return env.state
+            elseif isnothing(env)
                 return x0
             else
                 return env.state
@@ -194,6 +196,10 @@ RLBase.reward(env::SimEnv) =  env.reward
 
 RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
+
+function RLBase.state(env, name)
+    env.featurize(;env = env, name = name)
+end
 
 function RLBase.reset!(env::SimEnv)
     env.state = env.convert_state_to_cpu ? Array(env.featurize(env.x0, env.t0)) : env.featurize(env.x0, env.t0)
