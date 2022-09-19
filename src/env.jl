@@ -102,7 +102,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
 
     if isnothing(reward_function)
-        reward_function = function(env) 
+        reward_function = function(env, name = nothing) 
             return 0.0
         end
     end
@@ -191,14 +191,17 @@ end
 
 RLBase.action_space(env::SimEnv) = env.action_space
 RLBase.state_space(env::SimEnv) = env.state_space
-RLBase.reward(env::SimEnv) =  env.reward 
+RLBase.reward(env::SimEnv) =  env.reward
 
+function RLBase.reward(env::SimEnv, name::String)
+    return env.reward_function(env, name)
+end
 
 RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
 
-function RLBase.state(env, name)
-    env.featurize(;env = env, name = name)
+function RLBase.state(env::SimEnv, name::String)
+    return env.featurize(;env = env, name = name)
 end
 
 function RLBase.reset!(env::SimEnv)

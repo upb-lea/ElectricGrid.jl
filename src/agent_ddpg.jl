@@ -63,3 +63,19 @@ end
 function (::DDPGPolicy)(::AbstractStage, ::AbstractEnv)
     nothing
 end
+
+function (p::DDPGPolicy)(env::SimEnv, name::Any = nothing)
+    p.update_step += 1
+
+    if p.update_step <= p.start_steps
+        p.start_policy(env)
+    else
+        D = device(p.behavior_actor)
+        s = isnothing(name) ? state(env) : state(env, name)
+        s = Flux.unsqueeze(s, ndims(s) + 1)
+        actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
+        c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
+        p.na == 1 && return c[1]
+        c
+    end
+end
