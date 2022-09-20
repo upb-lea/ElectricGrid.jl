@@ -1,6 +1,6 @@
 function Plot_I_dq0(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -65,7 +65,7 @@ end
 
 function Plot_V_dq0(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -124,7 +124,7 @@ end
 
 function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Classical_Controls, env; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -199,7 +199,7 @@ end
 
 function Plot_Irms(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -254,7 +254,7 @@ end
 
 function Plot_Vrms(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -355,7 +355,7 @@ end
 
 function Inst_Iout_Iref(T_plot_start, T_plot_end, Source::Classical_Controls, Env; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -408,7 +408,7 @@ end
 
 function Plot_PLL(T_plot_start, T_plot_end, Source::Classical_Controls, Env; num_source = 1, ph = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -464,7 +464,7 @@ end
 
 function Plot_P_inst(T_plot_start, T_plot_end, Env)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -533,7 +533,7 @@ end
 
 function Plot_Real_Imag_Active_Reactive(T_plot_start, T_plot_end, Source::Classical_Controls; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -585,7 +585,7 @@ end
 
 function Plot_fft(T_plot_start, T_plot_end, Env, Source::Classical_Controls; num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
@@ -680,7 +680,7 @@ end
 
 function Plot_Droop(T_plot_start, T_plot_end, Source::Classical_Controls, Env, num_source = 1)
 
-    t_final = (Source.N_cntr - 1)*Source.μ_cntr
+    t_final = (Source.N - 1)*Source.ts
 
     if T_plot_end > t_final*Source.fsys
         T_plot_end = t_final*Source.fsys
