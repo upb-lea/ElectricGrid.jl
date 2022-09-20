@@ -169,7 +169,7 @@ V_source = 300
 
 env = SimEnv(reward_function = reward, featurize = featurize, 
 v_dc=V_source, ts=ts, use_gpu=env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
-maxsteps=1000)
+maxsteps=1000, action_delay=1)
 
 state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
@@ -219,12 +219,12 @@ plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = false, collect_reference = true, plot_rewards=true)
 
-run(ma, env, StopAfterEpisode(500), hook)
+run(ma, env, StopAfterEpisode(5), hook)
 
 
 ###############################
 # Plotting
-plot_hook_results(; hook=hook, states_to_plot = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"], actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 450)
+plot_hook_results(; hook=hook, states_to_plot = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"], actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 5)
 
 
 

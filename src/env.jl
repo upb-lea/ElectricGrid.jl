@@ -3,6 +3,7 @@ using IntervalSets
 using LinearAlgebra
 using ControlSystems
 using CUDA
+using DataStructures
 
 include("./custom_control.jl")
 include("./nodeconstructor.jl")
@@ -32,9 +33,10 @@ mutable struct SimEnv <: AbstractEnv
     reward
     action
     action_ids
+    action_delay_buffer
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
     
     if !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
 
@@ -186,7 +188,14 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         action = zeros(length(action_space))
     end
 
-    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, norm_array, convert_state_to_cpu, reward, action, action_ids)
+    if action_delay == 0
+        action_delay_buffer = nothing
+    else
+        action_delay_buffer = CircularBuffer{Vector{Float64}}(action_delay)
+        fill!(action_delay_buffer, zeros(length(action_space)))
+    end
+
+    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, norm_array, convert_state_to_cpu, reward, action, action_ids, action_delay_buffer)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -207,6 +216,10 @@ end
 function RLBase.reset!(env::SimEnv)
     env.state = env.convert_state_to_cpu ? Array(env.featurize(env.x0, env.t0)) : env.featurize(env.x0, env.t0)
     env.x = env.x0
+    if !isnothing(env.action_delay_buffer)
+        empty!(env.action_delay_buffer)
+        fill!(env.action_delay_buffer, zeros(length(env.action_space)))
+    end
     env.t = env.t0
     env.steps = 0
     env.reward = 0.0
@@ -222,8 +235,13 @@ function (env::SimEnv)(action)
 
     env.t = tt[2]
 
-    env.action = action
-
+    if !isnothing(env.action_delay_buffer)
+        env.action = env.action_delay_buffer[1]
+        push!(env.action_delay_buffer, action)
+    else
+        env.action = action
+    end
+    
     env.action = env.action .* env.v_dc
 
     env.action = env.prepare_action(env)

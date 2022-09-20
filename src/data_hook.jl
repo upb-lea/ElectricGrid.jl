@@ -3,6 +3,7 @@ using DataFrames
 using UnicodePlots
 
 include(srcdir("plotting.jl"))
+include(srcdir("MultiAgentGridController.jl"))
 
 Base.@kwdef mutable struct DataHook <: AbstractHook
 
@@ -26,8 +27,8 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     ep = 1
 
     plot_rewards = false
-    rewards::Vector{Float64} = Float64[]
-    reward::Float64 = 0.0
+    rewards::Vector{Vector{Float64}} = []
+    reward::Vector{Float64} = [0.0]
 
     save_best_NNA = false
     bestNNA = nothing
@@ -128,7 +129,18 @@ function (hook::DataHook)(::PostActStage, agent, env)
     append!(hook.df, hook.tmp)
     hook.tmp = DataFrame()
     
-    hook.reward += env.reward
+    if isa(agent, MultiAgentGridController)
+        if length(hook.reward) != length(agent.agents)
+            hook.reward = zeros(length(agent.agents))
+        end
+        i = 1
+        for name in keys(agent.agents)
+            hook.reward[i] = reward(env, name)
+            i += 1
+        end
+    else
+        hook.reward[1] += env.reward
+    end
 end
 
 function (hook::DataHook)(::PostEpisodeStage, agent, env)
@@ -144,7 +156,11 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env)
     hook.ep += 1
 
     push!(hook.rewards, hook.reward)
-    hook.reward = 0
+    if isa(agent, MultiAgentGridController)
+        hook.reward = zeros(length(agent.agents))
+    else
+        hook.reward[1] = 0.0
+    end
 
     if hook.save_best_NNA
         copyto!(hook.currentNNA, agent.policy.behavior_actor)
@@ -160,7 +176,12 @@ function (hook::DataHook)(::PostExperimentStage, agent, env)
     end
 
     if hook.plot_rewards
-        println(lineplot(hook.rewards, title="Total reward per episode", xlabel="Episode", ylabel="Score"))
+        matrix_to_plot = reduce(hcat, hook.rewards)
+        p = lineplot(matrix_to_plot[1,:], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        for i in 2:length(hook.rewards[1])
+            lineplot!(p, matrix_to_plot[i,:])
+        end
+        println(p)
     end
 
 end
