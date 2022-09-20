@@ -165,10 +165,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             norm_array = []
             println("WARNING: limits set to fixed value - define in nc.parameters")
             for state_name in states
-                if startswith(state_name, "i")
+                if occursin("_i", state_name)
                     #push!(norm_array, limits["i_lim"])
                     push!(norm_array, 20.0)
-                elseif startswith(state_name, "u")
+                elseif occursin("_u", state_name)
                     #push!(norm_array, limits["v_lim"])
                     push!(norm_array, 600.0)
                 end
