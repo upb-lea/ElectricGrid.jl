@@ -1553,13 +1553,13 @@ function get_action_ids(self::NodeConstructor)
     
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL
-            push!(actions, "source$s"*"_v")
+            push!(actions, "source$s"*"_u")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-            push!(actions, "source$s"*"_v")
+            push!(actions, "source$s"*"_u")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-            push!(actions, "source$s"*"_v")
+            push!(actions, "source$s"*"_u")
         end
     end
 
