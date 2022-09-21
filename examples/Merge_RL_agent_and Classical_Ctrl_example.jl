@@ -57,7 +57,7 @@ function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
             global state_ids_agent
             global state_ids
             state = state[findall(x -> x in state_ids_agent, state_ids)]
-            #state = vcat(state, reference(env.t)/600)
+            state = vcat(state, reference(env.t)/600)
         else
             global state_ids_classic
             global state_ids
@@ -190,16 +190,13 @@ na = length(env.action_space)
 agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
 agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
 
-agent = NamedPolicy(agentname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, 
-fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
+#agent = NamedPolicy(agentname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
 
 Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
 fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
-Modes = [4, 4]
 # tune controller
 Source_Initialiser(env, Animo, [5])
-Source_Initialiser(env, agent, [5])
 
 #TODO: entfernen!!!
 #Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
@@ -222,13 +219,13 @@ plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = false, collect_reference = true, plot_rewards=true)
 
-run(ma, env, StopAfterEpisode(2), hook)
+run(ma, env, StopAfterEpisode(200), hook)
 
 
 
 ###############################
 # Plotting
-plot_hook_results(; hook=hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 2)
+plot_hook_results(; hook=hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 200)
 
 
 

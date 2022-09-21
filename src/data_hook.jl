@@ -238,7 +238,7 @@ function (hook::DataHook)(::PostActStage, agent, env)
     
         i = 1
         for name in hook.policy_names
-            hook.reward[i] = reward(env, name)
+            hook.reward[i] += reward(env, name)
             i += 1
         end
     else
@@ -280,7 +280,7 @@ function (hook::DataHook)(::PostExperimentStage, agent, env)
 
     if hook.plot_rewards
         matrix_to_plot = reduce(hcat, hook.rewards)
-        p = lineplot(matrix_to_plot[1,:], name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
         for i in 2:length(hook.rewards[1])
             lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
         end
