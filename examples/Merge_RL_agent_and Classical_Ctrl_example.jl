@@ -61,7 +61,7 @@ function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
         else
             global state_ids_classic
             global state_ids
-            state = state[findall(x -> x in state_ids_classic, state_ids)]
+            state = env.x[findall(x -> x in state_ids_classic, state_ids)]
         end
     elseif isnothing(env)
         return x0
@@ -174,9 +174,9 @@ maxsteps=1000, action_delay=1)
 state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
 
-state_ids_agent = filter(x -> split(x, "_")[2] == "f1" || split(x, "_")[2] == "1", state_ids)
+state_ids_agent = filter(x -> split(x, "_")[1] == "source1", state_ids)
 action_ids_agent = filter(x -> split(x, "_")[2] == "v1", action_ids)
-state_ids_classic = filter(x -> split(x, "_")[2] == "f2" || split(x, "_")[2] == "2", state_ids)
+state_ids_classic = filter(x -> split(x, "_")[1] == "source2", state_ids)
 action_ids_classic = filter(x -> split(x, "_")[2] == "v2", action_ids)
 
 function RLBase.action_space(env::SimEnv, name::String)
@@ -191,8 +191,8 @@ na = length(env.action_space)
 agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
 
 # TODO: action_space half
-Animo = Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
-fs = fs, num_sources = 1)
+Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
+fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
 Modes = [5]
 # tune controller
