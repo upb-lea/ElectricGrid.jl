@@ -139,9 +139,9 @@ function Inst_Vout_Vref(T_plot_start, T_plot_end, Source::Classical_Controls, en
 
     PLL = Array{Float64, 2}(undef, 3, length(N_range))
 
-    PLL[1,:] = sqrt(2)*Source.V_ph[num_source, 1, 2, N_range].*sin.(Source.θpll[num_source, 1, N_range])
-    PLL[2,:] = sqrt(2)*Source.V_ph[num_source, 2, 2, N_range].*sin.(Source.θpll[num_source, 2, N_range])
-    PLL[3,:] = sqrt(2)*Source.V_ph[num_source, 3, 2, N_range].*sin.(Source.θpll[num_source, 3, N_range])
+    PLL[1,:] = sqrt(2)*Source.V_ph[num_source, 1, 2, N_range].*cos.(Source.θpll[num_source, 1, N_range])
+    PLL[2,:] = sqrt(2)*Source.V_ph[num_source, 2, 2, N_range].*cos.(Source.θpll[num_source, 2, N_range])
+    PLL[3,:] = sqrt(2)*Source.V_ph[num_source, 3, 2, N_range].*cos.(Source.θpll[num_source, 3, N_range])
 
     # Phase a Control Signals
     p_cntr_a = Plots.plot(t[N_range], Source.V_ref[num_source, 1, N_range],

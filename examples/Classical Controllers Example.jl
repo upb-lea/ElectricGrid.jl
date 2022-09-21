@@ -4,7 +4,7 @@
 
 #= To do list
     reset Classical control as well (integrators)
-    PLL tuning
+    single phase PLL tuning
     Self-synchronverter
     Single phase controllers
 =#
@@ -67,12 +67,14 @@ source = Dict()
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
-source["L1"] = Lf
+source["L1"] = Lf/2
 source["C"] = Cf
+source["L2"] = Lf/2
+source["R2"] = 0.4
 
 push!(source_list, source)
 
@@ -80,12 +82,14 @@ source = Dict()
 
 source["pwr"] = 100e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
-source["L1"] = Lf
+source["L1"] = Lf/2
 source["C"] = Cf
+source["L2"] = Lf/2
+source["R2"] = 0.4
 
 push!(source_list, source)
 
@@ -108,7 +112,7 @@ push!(source_list, source) =#
 load_list = []
 load = Dict()
 
-R1_load, L_load, _, _ = Load_Impedance_2(100e3, 0.6, 230)
+R1_load, L_load, _, _ = Load_Impedance_2(50e3, 0.999, 230)
 #R2_load, C_load, _, _ = Load_Impedance_2(150e3, -0.8, 230)
 
 load["impedance"] = "RL"
@@ -124,11 +128,11 @@ push!(load_list, load)
 cable_list = []
 
 # Network Cable Impedances
-l = 2.6 # length in km
+l = 0.01 # length in km
 cable = Dict()
-cable["R"] = 0.208*l # Ω, line resistance 0.722#
-cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
-cable["C"] = 0.4e-6*l # 0.4e-6#
+cable["R"] = 0.208*l # Ω, line resistance
+cable["L"] = 0.00025*l # H, line inductance
+cable["C"] = 0.4e-6*l # F, line capacitance
 
 #push!(cable_list, cable, cable, cable)
 
@@ -159,7 +163,7 @@ parameters = parameters, maxsteps = length(t))
 # Setting up the Sources
 
 Animo = Classical_Policy(action_space = action_space(env), t_final = t_final, 
-fs = fs, num_sources = num_sources)
+fs = env.nc.parameters["grid"]["fs"], num_sources = num_sources)
 
 Modes = [4, 2]
 
@@ -176,8 +180,8 @@ Source_Initialiser(env, Animo, Modes)
 Animo.Source.τv = 0.02 # time constant of the voltage loop
 Animo.Source.τf = 0.02 # time constant of the frequency loop
 
-Animo.Source.pq0_set[2, 1] = 40e3 # W, Real Power
-Animo.Source.pq0_set[2, 2] = -20e3 # VAi, Imaginary Power
+Animo.Source.pq0_set[2, 1] = 100e3 # W, Real Power
+Animo.Source.pq0_set[2, 2] = 20e3 # VAi, Imaginary Power
 
 #_______________________________________________________________________________
 #%% Starting time simulation
@@ -209,7 +213,7 @@ reset!(env)
 
         if t[i] > t_final/2
             nm_src = 2 # changing the power set points of the 2nd source
-            Animo.Source.pq0_set[nm_src, 1] = -26e3 # W, Real Power
+            Animo.Source.pq0_set[nm_src, 1] = 100e3 # W, Real Power
             Animo.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
         end
 
@@ -226,24 +230,25 @@ end
 #_______________________________________________________________________________
 #%% Plots
 
-#Plot_I_dq0(0, 5000, Animo.Source, num_source = 1)
+#Plot_I_dq0(0, 5000, Animo.Source, num_source = 2)
 
-Plot_V_dq0(0, 5000, Animo.Source, num_source = 2)
+#Plot_V_dq0(0, 5000, Animo.Source, num_source = 2)
 
-#Inst_Vout_Vref(5, 20, Animo.Source, env, num_source = 1)
-#Inst_Vout_Vref(5, 20, Animo.Source, env, num_source = 2)
+#Inst_Vout_Vref(0, 10, Animo.Source, env, num_source = 1)
+#Inst_Vout_Vref(0, 10, Animo.Source, env, num_source = 2)
 
-#Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 1)
-#Inst_Iout_Iref(10, 20, Animo.Source, env, num_source = 2)
+#Inst_Iout_Iref(0, 10, Animo.Source, env, num_source = 1)
+#Inst_Iout_Iref(0, 10, Animo.Source, env, num_source = 2)
 
 #Plot_PLL(0, 500, Animo.Source, env, num_source = 2, ph = 1)
 
+#Plot_Irms(0, 5000, Animo.Source, num_source = 1)
 #Plot_Irms(0, 5000, Animo.Source, num_source = 2)
 
-#Plot_Vrms(10, 5000, Animo.Source, num_source = 1)
-#Plot_Vrms(10, 5000, Animo.Source, num_source = 2)
+Plot_Vrms(5, 5000, Animo.Source, num_source = 1)
+Plot_Vrms(5, 5000, Animo.Source, num_source = 2)
 
-#Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 1)
+Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 1)
 Plot_Real_Imag_Active_Reactive(0, 5000, Animo.Source, num_source = 2)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
