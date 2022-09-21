@@ -473,17 +473,16 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
     action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:n_actions], )
     Source::Classical_Controls = Classical_Controls(t_final, fs, num_sources, delay = 1, phase = phase)
 
-    state_ids
-    action_ids
+    state_ids = nothing
+    action_ids = nothing
 end
 
 function (Animo::Classical_Policy)(env, name = nothing)
 
     if isnothing(name)
-        Action = Classical_Control(Animo.Source, env)
+        Action = Classical_Control(Animo, env)
     else
-        state = state(env, name)
-        Animo.state_ids
+        Action = Classical_Control(Animo, env, name)
     end
 
     return Action    
@@ -494,9 +493,10 @@ function reward(env)
     return 1
 end
 
-function Classical_Control(Source::Classical_Controls, env)
-
-    Source_Interface(env, Source)
+function Classical_Control(Animo, env, name = nothing)
+    
+    Source_Interface(env, Animo, name)
+    Source = Animo.Source
 
     for s in 1:Source.num_sources
 
@@ -519,44 +519,74 @@ function Classical_Control(Source::Classical_Controls, env)
 
     end
 
-    Action = Env_Interface(env, Source)
+    Action = Env_Interface(env, Animo, name)
     Measurements(Source)
 
     return Action
 end
 
-function Source_Interface(env, Source::Classical_Controls)
+function Source_Interface(env, Animo, name = nothing)
+
+    Source = Animo.Source
 
     i = env.steps + 1
     Source.steps = i
     ω = 2*π*Source.fsys
     Source.θsys = (Source.θsys + Source.ts*ω)%(2*π)
 
+    if !isnothing(name) state = state(env, name) end
+
     for num_source in 1:Source.num_sources
 
-        Source.V_filt_poc[num_source, :, i] = env.x[Source.V_poc_loc[: , num_source]]
-        Source.I_filt_poc[num_source, :, i] = env.x[Source.I_poc_loc[: , num_source]]
-        Source.I_filt_inv[num_source, :, i] = env.x[Source.I_inv_loc[: , num_source]]
-        Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
+        if isnothing(name)
+            Source.V_filt_poc[num_source, :, i] = env.x[Source.V_poc_loc[: , num_source]]
+            Source.I_filt_poc[num_source, :, i] = env.x[Source.I_poc_loc[: , num_source]]
+            Source.I_filt_inv[num_source, :, i] = env.x[Source.I_inv_loc[: , num_source]]
+            
+            Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i]) 
+        else
+            Source.V_filt_poc[num_source, :, i] = state[findall(contains("u_C_cables"), Animo.state_ids)]
+            if isnothing(findfirst(contains("L2"), Animo.state_ids))
+                Source.I_filt_poc[num_source, :, i] = state[findall(contains("L1"), Animo.state_ids)]
+            else
+                Source.I_filt_poc[num_source, :, i] = state[findall(contains("L2"), Animo.state_ids)]
+            end
+            Source.I_filt_inv[num_source, :, i] = state[findall(contains("L1"), Animo.state_ids)]
+            
+            Source.p_q_filt[num_source, :, i] =  p_q_theory(Source.V_filt_poc[num_source, :, i], Source.I_filt_poc[num_source, :, i])
+        end
 
     end
 
+    Animo.Source = Source
     return nothing
 end
 
-function Env_Interface(env, Source::Classical_Controls)
+function Env_Interface(env, Animo, name = nothing)
+
+    Source = Animo.Source
 
     i = Source.steps
 
-    _, B, _, _ = get_sys(env.nc)
-    Action = zeros(length(B[1,:]))
-
-    for ph in 1:3
+    if isnothing(name)
         
-        for s in 1:Source.num_sources
+        _, B, _, _ = get_sys(env.nc)
+        Action = zeros(length(B[1,:]))
 
-            Action[s + Source.num_sources*(ph - 1)] = Source.Vd_abc_new[s, ph, i]
+        for ph in 1:3
+            
+            for s in 1:Source.num_sources
+
+                Action[s + Source.num_sources*(ph - 1)] = Source.Vd_abc_new[s, ph, i]
+            end
         end
+    else
+        #Action = Source.Vd_abc_new[:, :, i][:]
+        #TODO: when the new action_ids format is released: switch
+        letterdict = Dict("a" -> 1, "b" -> 2, "c" -> 3)
+        Action = [Source.Vd_abc_new[parse(Int64, SubString(split(x, "_")[1], 7)),
+                                    letterdict[split(x, "_")[3]],
+                                    i] for x in Animo.action_ids]
     end
 
     return Action
