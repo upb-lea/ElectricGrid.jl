@@ -233,10 +233,9 @@ function (hook::DataHook)(::PostActStage, agent, env)
             hook.reward = zeros(length(agent.agents))
         end
         if length(hook.policy_names) != length(agent.agents)
-            hook.policy_names = [s for s in keys(agent.agents)]
+            hook.policy_names = keys(agent.agents)
         end
     
-        i = 1
         for name in hook.policy_names
             hook.reward[i] = reward(env, name)
             i += 1
