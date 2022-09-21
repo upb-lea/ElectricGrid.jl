@@ -217,15 +217,15 @@ reset!(env)
             Animo.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
         end
 
-        action = Animo(env)
+#         action = Animo(env)
 
-        # System Dynamics ______________________________________________________
+#         # System Dynamics ______________________________________________________
 
-        env(action)
-    end
+#         env(action)
+#     end
 
-    println("Progress : 100.0 %\n")
-end
+#     println("Progress : 100.0 %\n")
+# end
 
 #_______________________________________________________________________________
 #%% Plots

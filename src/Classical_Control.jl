@@ -473,11 +473,18 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
     action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:n_actions], )
     Source::Classical_Controls = Classical_Controls(t_final, fs, num_sources, delay = 1, phase = phase)
 
+    state_ids
+    action_ids
 end
 
-function (Animo::Classical_Policy)(env)
+function (Animo::Classical_Policy)(env, name = nothing)
 
-    Action = Classical_Control(Animo.Source, env)
+    if isnothing(name)
+        Action = Classical_Control(Animo.Source, env)
+    else
+        state = state(env, name)
+        Animo.state_ids
+    end
 
     return Action    
 end

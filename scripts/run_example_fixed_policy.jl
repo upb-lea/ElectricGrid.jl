@@ -27,24 +27,15 @@ t_final = 0.04 #time in seconds, total simulation run time
 #_______________________________________________________________________________
 # Environment Calcs
 
-ts = Timestep*1e-6
-t = 0:ts:t_final # time
-
-fs = 1/ts
-
-N = length(t)
-
-CM = [0. 1.
-   -1. 0.]
-
-#= CM = [ 0. 0. 1.
-        0. 0. 2
-        -1. -2. 0.] =#
 
 parameters = Dict()
 source_list = []
 source = Dict()
 
+#source["pwr"] = 45000.0
+#source["v_rip"] = 0.01556109320329396
+#source["vdc"] = 750
+#source["i_rip"] = 0.10108821490394984
 source["fltr"] = "L"
 source["R1"] = 0.4
 source["L1"] = 0.00034
@@ -63,8 +54,8 @@ cable_list = []
 
 cable = Dict()
 cable["R"] = 0.722
-cable["L"] = 0.000024
-cable["C"] = 0.4e-9;
+cable["L"] = 0.264e-3
+cable["C"] = 0.4e-6;
 push!(cable_list, cable);
 
 parameters["source"] = source_list
@@ -72,8 +63,10 @@ parameters["cable"] = cable_list
 parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230);
 
-env = SimEnv(reward_function = reward,  v_dc = 1, ts = ts, use_gpu = false
-, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = N-1)
+ts = 1e-4
+env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
+, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 500)
+
 
 #######################################################################################
 # GOAL: Use run function provided by ReinforcementLearning.jl to be able to interact 
@@ -113,9 +106,10 @@ I_poc_loc = [1; 6; 11]
 
 #######################################################################################
 plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"] 
-#plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
+##plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c", "i_f1_a", "i_f1_b", "i_f1_c", "i_f2_a", "i_f2_b", "i_f2_c"]  
+plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"]#, "i_2_a", "i_2_b", "i_2_c"] 
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
-#plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
+#plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]#, "u_v2_a", "u_v2_b", "u_v2_c"]
 hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
 
 policy = sin_policy(action_space = action_space(env), ts = ts)
