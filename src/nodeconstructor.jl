@@ -1553,13 +1553,13 @@ function get_action_ids(self::NodeConstructor)
     
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL
-            push!(actions, "u_v$s")
+            push!(actions, "source$s"*"_v")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-            push!(actions, "u_v$s")
+            push!(actions, "source$s"*"_v")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-            push!(actions, "u_v$s")
+            push!(actions, "source$s"*"_v")
         end
     end
 
@@ -1570,6 +1570,48 @@ function get_action_ids(self::NodeConstructor)
     
 
     return actions
+end
+
+function get_source_state_indices(self::NodeConstructor,sources)
+    state_ids=get_state_ids(self)
+    action_ids=get_action_ids(self)
+    source_indices = Dict()
+    for idx in sources
+        source = Dict()
+        state_indices = findall(x -> occursin("source$idx"*"_", x), state_ids)
+        action_indices = findall(x -> occursin("source$idx"*"_", x), action_ids)
+        source["state_indices"]= state_indices
+        source["action_indices"]= action_indices
+        source_indices["source$idx"]= source
+    end
+
+    return source_indices
+end
+
+function get_cable_state_indices(self::NodeConstructor,cables)
+    state_ids=get_state_ids(self)
+    cable_indices = Dict()
+    for idx in cables
+        cable = Dict()
+        state_indices = findall(x -> occursin("cable$idx"*"_", x), state_ids)
+        cable["state_indices"]= state_indices
+        cable_indices["cable$idx"]= cable
+    end
+
+    return cable_indices
+end
+
+function get_load_state_indices(self::NodeConstructor,loads)
+    state_ids=get_state_ids(self)
+    load_indices = Dict()
+    for idx in loads
+        load = Dict()
+        state_indices = findall(x -> occursin("load$idx"*"_", x), state_ids)
+        load["state_indices"]= state_indices
+        load_indices["load$idx"]= load
+    end
+
+    return load_indices
 end
 
 function draw_graph(self::NodeConstructor)
