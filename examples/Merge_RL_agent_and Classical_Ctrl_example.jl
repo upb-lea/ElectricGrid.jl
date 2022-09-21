@@ -189,20 +189,20 @@ end
 
 na = length(env.action_space)
 agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
+agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
 
-# TODO: action_space half
 Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
 fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
 Modes = [5]
 # tune controller
-#Source_Initialiser(env, Animo, Modes)
+Source_Initialiser(env, Animo, Modes)
 
 #TODO: entfernen!!!
-Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
+#Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
 
-agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
-Animo = Agent(policy = NamedPolicy(classicname, Animo.policy), trajectory = Animo.trajectory)
+
+#Animo = Agent(policy = NamedPolicy(classicname, Animo.policy), trajectory = Animo.trajectory)
 
 ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
                             "state_ids" => state_ids_agent,

@@ -477,7 +477,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
     action_ids = nothing
 end
 
-function (Animo::Classical_Policy)(env, name = nothing)
+function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing} = nothing)
 
     if isnothing(name)
         Action = Classical_Control(Animo, env)
@@ -491,6 +491,78 @@ end
 function reward(env)
     #implement your reward function here
     return 1
+end
+
+function (::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
+    
+    Source = Animo.Source
+
+    # RMS Phasors
+    Source.V_ph = fill!(Source.V_ph, 0)
+    Source.I_ph = fill!(Source.I_ph, 0)
+
+    # Instantaneous Real, Imaginary, and Zero powers
+    Source.p_q_inst = fill!(Source.p_q_inst, 0)
+
+    Source.p_inst = fill!(Source.p_inst, 0)
+
+    Source.Pm = fill!(Source.Pm, 0)
+    Source.Qm = fill!(Source.Qm, 0)
+
+    Source.vd = fill!(Source.vd, 0.0)
+    Source.qvd = fill!(Source.qvd, 0.0)
+
+    Source.fpll = fill!(Source.fpll, Source.fsys)
+
+    Source.θpll = fill!(Source.θpll, 0)
+
+    Source.pll_err = fill!(Source.pll_err, 0)
+    Source.pll_err_t = fill!(Source.pll_err_t, 0)
+
+    Source.V_filt_poc = fill!(Source.V_filt_poc, 0)
+    Source.V_filt_inv = fill!(Source.V_filt_inv, 0)
+
+    Source.I_filt_poc = fill!(Source.I_filt_poc, 0)
+    Source.I_filt_inv = fill!(Source.I_filt_inv, 0)
+
+    Source.p_q_filt  = fill!(Source.p_q_filt, 0)
+
+    Source.I_dq0 = fill!(Source.I_dq0, 0)
+    Source.I_ref_dq0 = fill!(Source.I_ref_dq0, 0)
+    Source.I_ref = fill!(Source.I_ref, 0)
+
+    # Current Integrations
+    Source.I_err = fill!(Source.I_err, 0)
+    Source.I_err_t = fill!(Source.I_err_t, 0)
+
+    Source.Vd_abc_new = fill!(Source.Vd_abc_new, 0)
+
+    Source.V_dq0 = fill!(Source.V_dq0, 0)
+    Source.V_ref_dq0 = fill!(Source.V_ref_dq0, 0)
+
+    V_ref_p = sqrt(2)*Source.Vrms[1]
+    for j in 1:num_sources
+        Source.V_ref[j, 1, :] = V_ref_p*cos.(θt)
+        Source.V_ref[j, 2, :] = V_ref_p*cos.(θt .- 120*π/180)
+        Source.V_ref[j, 3, :] = V_ref_p*cos.(θt .+ 120*π/180)
+    end
+
+    Source.V_err = fill!(Source.V_err, 0)
+    Source.V_err_t = fill!(Source.V_err_t, 0)
+
+    Source.I_lim = fill!(Source.I_lim, 0)
+
+    Source.ω_droop = fill!(Source.ω_droop, fsys*2π)
+
+    Source.θ_droop = fill!(Source.θ_droop, 0)
+
+    Source.α_sync = fill!(Source.α_sync, 0)
+    Source.ω_sync = fill!(Source.ω_sync, Source.fsys*2π)
+    Source.θ_sync = fill!(Source.θ_sync, 0)
+    Source.Δω_sync = fill!(Source.Δω_sync, 0)
+    Source.eq = fill!(Source.eq, 0)
+    Source.Mfif = fill!(Source.Mfif, 0)
+
 end
 
 function Classical_Control(Animo, env, name = nothing)
@@ -583,7 +655,7 @@ function Env_Interface(env, Animo, name = nothing)
     else
         #Action = Source.Vd_abc_new[:, :, i][:]
         #TODO: when the new action_ids format is released: switch
-        letterdict = Dict("a" -> 1, "b" -> 2, "c" -> 3)
+        letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
         Action = [Source.Vd_abc_new[parse(Int64, SubString(split(x, "_")[1], 7)),
                                     letterdict[split(x, "_")[3]],
                                     i] for x in Animo.action_ids]
@@ -1924,42 +1996,82 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
     return Lf, Cf, fc
 end
 
-function Source_Initialiser(env, Animo::Classical_Policy, modes; pf = 0.8)
+function Source_Initialiser(env, Animo, modes; pf = 0.8)
 
-    Source = Animo.Source
+    if isa(Animo, NamedPolicy)
+        Animo.policy.state_ids
+        Animo.policy.action_ids
 
-    Mode_Keys = collect(keys(Animo.Source.Modes))
+        Source = Animo.policy.Source
+        
+        Mode_Keys = collect(keys(Source.Modes))
 
-    for ns in 1:Animo.num_sources
+        Animo.policy.state_ids
 
-        Srated = env.nc.parameters["source"][ns]["pwr"]
-        Source.Rf[ns] = env.nc.parameters["source"][ns]["R1"]
-        Source.Lf[ns] = env.nc.parameters["source"][ns]["L1"]
-        Source.Cf[ns] = env.nc.parameters["source"][ns]["C"]
-        Source.Vdc[ns] = env.nc.parameters["source"][ns]["vdc"]
-        Source.Vrms[ns] = env.nc.parameters["grid"]["v_rms"]
+        for ns in 1:Animo.policy.num_sources
 
-        Source.S[ns] = Srated
-        Source.P[ns] = pf*Srated
-        Source.Q[ns] = sqrt(Srated^2 - Source.P[ns]^2)
+            Srated = env.nc.parameters["source"][ns]["pwr"]
+            Source.Rf[ns] = env.nc.parameters["source"][ns]["R1"]
+            Source.Lf[ns] = env.nc.parameters["source"][ns]["L1"]
+            Source.Cf[ns] = env.nc.parameters["source"][ns]["C"]
+            Source.Vdc[ns] = env.nc.parameters["source"][ns]["vdc"]
+            Source.Vrms[ns] = env.nc.parameters["grid"]["v_rms"]
 
-        if typeof(modes[ns]) == Int64
-            Source.Source_Modes[ns] = Mode_Keys[modes[ns]]
-        else
-            Source.Source_Modes[ns] = modes[ns]
+            Source.S[ns] = Srated
+            Source.P[ns] = pf*Srated
+            Source.Q[ns] = sqrt(Srated^2 - Source.P[ns]^2)
+
+            if typeof(modes[ns]) == Int64
+                Source.Source_Modes[ns] = Mode_Keys[modes[ns]]
+            else
+                Source.Source_Modes[ns] = modes[ns]
+            end
+
+            Source.pq0_set[ns, :] = [Source.P[ns]; Source.Q[ns]; 0]
+
+            Source.i_max[ns] = 1.15*sqrt(2)*Source.S[ns]/(3*Source.Vrms[ns])
+            Source.v_max[ns] = 1.5*Source.Vdc[ns]/(sqrt(2))
+
+            Current_PI_LoopShaping(Source, ns)
+            Voltage_PI_LoopShaping(Source, ns)
+        end
+    else
+        Source = Animo.Source
+
+        Mode_Keys = collect(keys(Source.Modes))
+
+        for ns in 1:Animo.num_sources
+
+            Srated = env.nc.parameters["source"][ns]["pwr"]
+            Source.Rf[ns] = env.nc.parameters["source"][ns]["R1"]
+            Source.Lf[ns] = env.nc.parameters["source"][ns]["L1"]
+            Source.Cf[ns] = env.nc.parameters["source"][ns]["C"]
+            Source.Vdc[ns] = env.nc.parameters["source"][ns]["vdc"]
+            Source.Vrms[ns] = env.nc.parameters["grid"]["v_rms"]
+
+            Source.S[ns] = Srated
+            Source.P[ns] = pf*Srated
+            Source.Q[ns] = sqrt(Srated^2 - Source.P[ns]^2)
+
+            if typeof(modes[ns]) == Int64
+                Source.Source_Modes[ns] = Mode_Keys[modes[ns]]
+            else
+                Source.Source_Modes[ns] = modes[ns]
+            end
+
+            Source.pq0_set[ns, :] = [Source.P[ns]; Source.Q[ns]; 0]
+
+            Source.i_max[ns] = 1.15*sqrt(2)*Source.S[ns]/(3*Source.Vrms[ns])
+            Source.v_max[ns] = 1.5*Source.Vdc[ns]/(sqrt(2))
+
+            Current_PI_LoopShaping(Source, ns)
+            Voltage_PI_LoopShaping(Source, ns)
         end
 
-        Source.pq0_set[ns, :] = [Source.P[ns]; Source.Q[ns]; 0]
+        # find the indices in the state vector that correspond to the inverters
+        Collect_IDs(env, Source)
 
-        Source.i_max[ns] = 1.15*sqrt(2)*Source.S[ns]/(3*Source.Vrms[ns])
-        Source.v_max[ns] = 1.5*Source.Vdc[ns]/(sqrt(2))
-
-        Current_PI_LoopShaping(Source, ns)
-        Voltage_PI_LoopShaping(Source, ns)
     end
-
-    # find the indices in the state vector that correspond to the inverters
-    Collect_IDs(env, Animo.Source)
 
     return nothing
 end
