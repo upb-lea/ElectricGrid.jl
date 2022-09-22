@@ -87,7 +87,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 2.0 # length in km
+l = 1.0 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -100,7 +100,7 @@ push!(cable_list, cable, cable)
 source_list = []
 source = Dict()
 # time step
-ts = 1e-4
+ts = 0.0002
 
 fs = 1/ts
 
@@ -189,11 +189,23 @@ agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.
 Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
 fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
+#=
+    1 -> "Swing Mode" - voltage source without dynamics
+    2 -> "Voltage Control Mode" - voltage source with controller dynamics
+    3 -> "PQ Control Mode" - grid following controllable load/source
+    4 -> "Droop Control Mode" - grid forming with power balancing
+    5 -> "Synchronverter Mode" - grid forming with power balancing via virtual motor
+    6 -> "Self-Synchronverter Mode" - grid forming with power balancing via virtual motor
+=#
+
 Source_Initialiser(env, Animo, [1])
+
+nm_src = 1 # changing the power set points of the 2nd source
+Animo.policy.Source.pq0_set[nm_src, 1] = 100e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
 
 #TODO: entfernen!!!
 #Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
-
 
 #Animo = Agent(policy = NamedPolicy(classicname, Animo.policy), trajectory = Animo.trajectory)
 
@@ -206,20 +218,16 @@ ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
                             
 ma = MultiAgentGridController(ma_agents, action_ids)
 
-
-
-plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C_a", "source2_u_C_b", "source2_u_C_c"]
+plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C_a", "source2_u_C_b", "source2_u_C_c", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = false, collect_reference = true, plot_rewards=true)
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true)
 
-run(ma, env, StopAfterEpisode(200), hook)
-
+run(ma, env, StopAfterEpisode(200), hook);
 
 
 ###############################
 # Plotting
 plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 200)
 
-
-
-#plot_best_results(;agent = agent, env = env, hook = hook, plot_reward = true, plot_reference = true)#, "u_load1"])
+include(srcdir("plotting.jl"))
+plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, plot_reward = false, plot_reference = true)

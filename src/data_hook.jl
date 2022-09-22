@@ -122,8 +122,23 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     hook.collect_state_paras = get_state_paras(env.nc)
 
     if hook.save_best_NNA && hook.currentNNA === nothing
-        hook.currentNNA = deepcopy(agent.policy.behavior_actor)
-        hook.bestNNA = deepcopy(agent.policy.behavior_actor)
+        if isa(agent, MultiAgentGridController)
+            if length(hook.policy_names) != length(agent.agents)
+                hook.policy_names = [s for s in keys(agent.agents)]
+            end
+
+            hook.currentNNA = Dict()
+            hook.bestNNA = Dict()
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                    hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        else
+            hook.currentNNA = deepcopy(agent.policy.behavior_actor)
+            hook.bestNNA = deepcopy(agent.policy.behavior_actor)
+        end
     end
 end
 
@@ -248,12 +263,26 @@ end
 
 function (hook::DataHook)(::PostEpisodeStage, agent, env)
 
-    if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards)
-        if hook.save_best_NNA
-            copyto!(hook.bestNNA, agent.policy.behavior_actor)
+    if isa(agent, MultiAgentGridController)
+        if length(hook.rewards) >= 1 && sum(hook.reward) > maximum(sum.(hook.rewards))
+            if hook.save_best_NNA
+                for name in hook.policy_names
+                    if isa(agent.agents[name]["policy"], Agent)
+                        hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                    end
+                end
+            end
+            hook.bestepisode = hook.ep
+            hook.bestreward = sum(hook.reward)
         end
-        hook.bestepisode = hook.ep
-        hook.bestreward = hook.reward
+    else
+        if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards)
+            if hook.save_best_NNA
+                copyto!(hook.bestNNA, agent.policy.behavior_actor)
+            end
+            hook.bestepisode = hook.ep
+            hook.bestreward = hook.reward
+        end
     end
 
     hook.ep += 1
@@ -266,7 +295,15 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env)
     end
 
     if hook.save_best_NNA
-        copyto!(hook.currentNNA, agent.policy.behavior_actor)
+        if isa(agent, MultiAgentGridController)
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        else
+            copyto!(hook.currentNNA, agent.policy.behavior_actor)
+        end
     end
 
 end

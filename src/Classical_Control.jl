@@ -272,7 +272,7 @@ mutable struct Classical_Controls
         # General System & Control
 
         Modes = Dict("Swing Mode" => 1, "Voltage Control Mode" => 2, "PQ Control Mode" => 3,
-        "Droop Control Mode" => 4, "Synchronverter Mode" => 5)
+        "Droop Control Mode" => 4, "Synchronverter Mode" => 5, "Self-Synchronverter Mode" => 6)
 
         Source_Modes = Array{String, 1}(undef, num_sources)
         Source_Modes = fill!(Source_Modes, "Voltage Control Mode")
@@ -490,11 +490,6 @@ function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing} = n
     return Action    
 end
 
-function reward(env)
-    #implement your reward function here
-    return 1
-end
-
 function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
 
     Source = Animo.Source
@@ -574,24 +569,24 @@ function Classical_Control(Animo, env, name = nothing)
     Source_Interface(env, Animo, name)
     Source = Animo.Source
 
-    Modes = Dict("Swing Mode" => 1, "Voltage Control Mode" => 2, "PQ Control Mode" => 3,
-        "Droop Control Mode" => 4, "Synchronverter Mode" => 5)
-
     for s in 1:Source.num_sources
 
-        if Source.Modes[Source.Source_Modes[s]] == 1
+        if Source.Source_Modes[s] == "Swing Mode"
 
             Swing_Mode(Source, s)
-        elseif Source.Modes[Source.Source_Modes[s]] == 2
+        elseif Source.Source_Modes[s] == "Voltage Control Mode"
 
             Voltage_Control_Mode(Source, s)
-        elseif Source.Modes[Source.Source_Modes[s]] == 3
+        elseif Source.Source_Modes[s] == "PQ Control Mode"
 
             PQ_Control_Mode(Source, s, Source.pq0_set[s, :])
-        elseif Source.Modes[Source.Source_Modes[s]] == 4
+        elseif Source.Source_Modes[s] == "Droop Control Mode"
 
             Droop_Control_Mode(Source, s)
-        elseif Source.Modes[Source.Source_Modes[s]] == 5
+        elseif Source.Source_Modes[s] == "Synchronverter Mode"
+
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :])
+        elseif Source.Source_Modes[s] == "Self-Synchronverter Mode"
 
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :])
         end
@@ -620,6 +615,9 @@ function Source_Interface(env, Animo, name = nothing)
     for num_source in 1:Source.num_sources
 
         if isnothing(name)
+
+            #-- Legacy Code
+
             Source.V_filt_poc[num_source, :, i] = env.x[Source.V_poc_loc[: , num_source]]
             Source.I_filt_poc[num_source, :, i] = env.x[Source.I_poc_loc[: , num_source]]
             Source.I_filt_inv[num_source, :, i] = env.x[Source.I_inv_loc[: , num_source]]
@@ -650,6 +648,8 @@ function Env_Interface(env, Animo, name = nothing)
     i = Source.steps
 
     if isnothing(name)
+
+        # -- Legacy Code
         
         _, B, _, _ = get_sys(env.nc)
         Action = zeros(length(B[1,:]))
@@ -2014,7 +2014,7 @@ function Source_Initialiser(env, Animo, modes; pf = 0.8)
 
         Source = Animo.policy.Source
         
-        Mode_Keys = collect(keys(Source.Modes))
+        Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x->x[2])]
 
         source_indices = unique([parse(Int64, SubString(split(x, "_")[1], 7)) for x in Animo.policy.state_ids], dims=1)
 
@@ -2049,9 +2049,10 @@ function Source_Initialiser(env, Animo, modes; pf = 0.8)
             e += 1
         end
     else
+        #-- Legacy Code
         Source = Animo.Source
 
-        Mode_Keys = collect(keys(Source.Modes))
+        Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x->x[2])]
 
         for ns in 1:Animo.num_sources
 
