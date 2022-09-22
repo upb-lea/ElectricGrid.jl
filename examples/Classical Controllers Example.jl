@@ -187,15 +187,7 @@ Animo.Source.pq0_set[2, 2] = 20e3 # VAi, Imaginary Power
 #%% Starting time simulation
 
 println("\nHere we go.\n")
-reset!(env)
-
-#plt_state_ids = ["i_f1_a", "i_f1_b", "i_f1_c"] 
-#plt_state_ids = ["u_1_a", "u_1_b", "u_1_c", "u_2_a", "u_2_b", "u_2_c"] 
-#plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
-#plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c", "u_v2_a", "u_v2_b", "u_v2_c"]
-#hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
-
-#run(Animo, env, StopAfterEpisode(1), hook)
+#reset!(env)
 
 @time begin
 
@@ -213,19 +205,19 @@ reset!(env)
 
         if t[i] > t_final/2
             nm_src = 2 # changing the power set points of the 2nd source
-            Animo.Source.pq0_set[nm_src, 1] = 100e3 # W, Real Power
-            Animo.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
+            Animo.policy.Source.pq0_set[nm_src, 1] = 100e3 # W, Real Power
+            Animo.policy.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
         end
 
-#         action = Animo(env)
+        action = Animo(env)
 
-#         # System Dynamics ______________________________________________________
+        # System Dynamics ______________________________________________________
 
-#         env(action)
-#     end
+        env(action)
+    end
 
-#     println("Progress : 100.0 %\n")
-# end
+    println("Progress : 100.0 %\n")
+end
 
 #_______________________________________________________________________________
 #%% Plots

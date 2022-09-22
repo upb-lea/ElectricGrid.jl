@@ -18,7 +18,7 @@ classicname = "classic"
 
 function reference(t)
     
-    u = [230 * sin.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
+    u = [sqrt(2)*230 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
     #return vcat(u,u)  # to control 2 sources
     return u
 end
@@ -81,21 +81,8 @@ CM = [ 0. 0. 1.
      0. 0. 2
      -1. -2. 0.]
 
-#=parameters = Dict{Any, Any}(
-    "source" => Any[
-                    Dict{Any, Any}("L1"=>0.0023, "R_C"=>0.4, "C"=>1.0e-5, "R1"=>0.4, "fltr"=>"LC"),
-                    Dict{Any, Any}("L1"=>0.0023, "R_C"=>0.4, "C"=>1.0e-5, "R1"=>0.4, "fltr"=>"LC") 
-                    ],
-    "load"   => Any[
-                    #Dict{Any, Any}("R"=>14, "impedance"=>"R")
-                    Dict{Any, Any}("C"=>0.381, "L"=>0.2, "R"=>14, "impedance"=>"RLC")
-                    ],
-    "cable"  => Any[
-                    Dict{Any, Any}("C"=>4.0e-7, "L"=>0.000264, "R"=>0.722),
-                    Dict{Any, Any}("C"=>4.0e-7, "L"=>0.000264, "R"=>0.722)
-                    ],
-    "grid"   => Dict{Any, Any}("fs"=>10000.0, "phase"=>3, "v_rms"=>230)
-) =#
+#-------------------------------------------------------------------------------
+# Cables
 
 cable_list = []
 
@@ -107,7 +94,6 @@ cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
 cable["C"] = 0.4e-6*l # 0.4e-6#
 
 push!(cable_list, cable, cable)
-
 
 # Sources
 
@@ -142,6 +128,9 @@ source["C"] = Cf
 
 push!(source_list, source)
 
+#-------------------------------------------------------------------------------
+# Loads
+
 load_list = []
 load = Dict()
 
@@ -155,6 +144,7 @@ load["L"] = L_load
 
 push!(load_list, load)
 
+#-------------------------------------------------------------------------------
 # Amalgamation
 
 parameters = Dict()
@@ -164,11 +154,12 @@ parameters["cable"] = cable_list
 parameters["load"] = load_list
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
+# Define the environment
 V_source = 800
 
 env = SimEnv(reward_function = reward, featurize = featurize, 
-v_dc=V_source, ts=ts, use_gpu=env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
-maxsteps=1000, action_delay=0)
+v_dc = V_source, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
+maxsteps = 1000, action_delay = 0)
 
 state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
@@ -192,11 +183,13 @@ agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.
 
 #agent = NamedPolicy(agentname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
 
+#_______________________________________________________________________________
+# Setting up the Sources
+
 Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
 fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
-# tune controller
-Source_Initialiser(env, Animo, [5])
+Source_Initialiser(env, Animo, [1])
 
 #TODO: entfernen!!!
 #Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
@@ -225,7 +218,7 @@ run(ma, env, StopAfterEpisode(200), hook)
 
 ###############################
 # Plotting
-plot_hook_results(; hook=hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 200)
+plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 200)
 
 
 

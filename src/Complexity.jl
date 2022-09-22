@@ -763,7 +763,7 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                             
                             Add_Transitions(Deus, Node, n, num_children, overwrite = 1)
 
-                        elseif state_test <= 0# && 1 == 2
+                        elseif state_test <= 0 && 1 == 2
 
                             # check if the new compare state has transitions to other states other than those of the current causal state
                             # if yes, then add those transitions, because they contribute to the graph indeterminacy
@@ -2665,3 +2665,44 @@ function Draw_Graph(Net, nodekey, N; run = 0)
        
     return nothing
 end
+
+#_______________________________________________________________________________
+# Dynamic systems
+
+function Logistic_Map(x, λ; r = 3.9277370017867516)
+
+    # Misiurewicz point:
+    # r = 3.9277370017867516
+    # Accumulation board - onset of chaos
+    #r = 3.5699456718695445
+
+    x = r*x*(1 - x)
+
+    if λ == 0 
+        λ = log.(2, abs.(r .- 2*r*x[1]))
+    else
+        λ = λ .+ log.(2, abs.(r .- 2*r*x[1]))
+    end
+
+    return x, λ
+end
+
+function Lorenz(u, p)
+
+    #= parameters
+        p[1] = σ - Prandtl
+        p[2] = ρ - Raleigh
+        p[3] = β - geometric aspect ratio
+
+        u[1] = x
+        u[2] = y
+        u[3] = z
+    =#
+
+    dx = p[1]*(u[2] - u[1])
+    dy = p[2]*u[1] - u[2] - u[1]*u[3] 
+    dz = u[1]*u[2] - p[3]*u[3]
+
+    return [dx; dy; dz]
+end
+
