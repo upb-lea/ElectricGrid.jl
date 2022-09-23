@@ -3,6 +3,7 @@ using DrWatson
 
 using ReinforcementLearning
 using PlotlyJS
+#using Plots
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
@@ -12,9 +13,7 @@ include(srcdir("Classical_Control.jl"))
 include(srcdir("Power_System_Theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
-
-agentname = "agent"
-classicname = "classic"
+include(srcdir("Classical_Control_Plots.jl"))
 
 function reference(t)
     
@@ -71,11 +70,29 @@ function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
     return state
 end
 
-env_cuda = false
-agent_cuda = false
+function RLBase.action_space(env::SimEnv, name::String)
+    if name == "agent"
+        return Space(fill(-1.0..1.0, size(action_ids_agent)))
+    else
+        return Space(fill(-1.0..1.0, size(action_ids_classic)))
+    end
+end
 
-#CM = [ 0. 1.
-#     -1.  0.]
+#_______________________________________________________________________________
+# Parameters - Time simulation
+Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+t_final = 0.4 #time in seconds, total simulation run time
+
+ts = Timestep*1e-6
+t = 0:ts:t_final # time
+
+fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
+
+#_______________________________________________________________________________
+# State space representation
+
+#-------------------------------------------------------------------------------
+# Connectivity Matrix
 
 CM = [ 0. 0. 1.
      0. 0. 2
@@ -87,7 +104,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 1.0 # length in km
+l = 2.0 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -99,10 +116,6 @@ push!(cable_list, cable, cable)
 
 source_list = []
 source = Dict()
-# time step
-ts = 0.0002
-
-fs = 1/ts
 
 source["pwr"] = 200e3
 source["vdc"] = 800
@@ -117,7 +130,7 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 100e3
+source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
@@ -155,39 +168,22 @@ parameters["load"] = load_list
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
 # Define the environment
-V_source = 800
 
 env = SimEnv(reward_function = reward, featurize = featurize, 
-v_dc = V_source, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
-maxsteps = 1000, action_delay = 0)
+v_dc = 800, ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
+maxsteps = length(t), action_delay = 0)
+
+#_______________________________________________________________________________
+# Setting up the Classical Sources
 
 state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
 
-state_ids_agent = filter(x -> split(x, "_")[1] == "source1", state_ids)
-action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)
-state_ids_classic = filter(x -> split(x, "_")[1] == "source2", state_ids)
-action_ids_classic = filter(x -> split(x, "_")[1] == "source2", action_ids)
+state_ids_classic = filter(x -> (split(x, "_")[1] == "source1" || split(x, "_")[1] == "source2"), state_ids)
+action_ids_classic = filter(x -> (split(x, "_")[1] == "source1" || split(x, "_")[1] == "source2"), action_ids)
 
-function RLBase.action_space(env::SimEnv, name::String)
-    if name == "agent"
-        return Space(fill(-1.0..1.0, size(action_ids_agent)))
-    else
-        return Space(fill(-1.0..1.0, size(action_ids_classic)))
-    end
-end
-
-na = length(env.action_space)
-agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
-agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
-
-#agent = NamedPolicy(agentname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
-
-#_______________________________________________________________________________
-# Setting up the Sources
-
-Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
-fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
+Animo = NamedPolicy("classic", Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = t_final, 
+fs = fs, num_sources = 2, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
 #=
     1 -> "Swing Mode" - voltage source without dynamics
@@ -198,32 +194,41 @@ fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids
     6 -> "Self-Synchronverter Mode" - grid forming with power balancing via virtual motor
 =#
 
-Source_Initialiser(env, Animo, [5])
+Source_Initialiser(env, Animo, [5 3])
 
-#TODO: entfernen!!!
-#Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
+nm_src = 2 # changing the power set points of the source
+Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
 
-#Animo = Agent(policy = NamedPolicy(classicname, Animo.policy), trajectory = Animo.trajectory)
+Animo.policy.Source.V_pu_set[nm_src, 1] = 1.05
+Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
 
-ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
-                            "state_ids" => state_ids_agent,
-                            "action_ids" => action_ids_agent),
-                nameof(Animo) => Dict("policy" => Animo,
+ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
                             "state_ids" => state_ids_classic,
                             "action_ids" => action_ids_classic))
                             
 ma = MultiAgentGridController(ma_agents, action_ids)
 
+agentname = "agent"
+
+#_______________________________________________________________________________
+#%% Starting time simulation
+
 plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C_a", "source2_u_C_b", "source2_u_C_c", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true)
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=false)
 
-run(ma, env, StopAfterEpisode(200), hook);
+run(ma, env, StopAfterEpisode(2), hook);
 
-
-###############################
+#_______________________________________________________________________________
 # Plotting
-plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 200)
 
-include(srcdir("plotting.jl"))
-plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, plot_reward = false, plot_reference = true)
+plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 2)
+
+#= Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 1)
+Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 2)
+
+Plot_Real_Imag_Active_Reactive(0, 5000, Animo.policy.Source, num_source = 1)
+Plot_Real_Imag_Active_Reactive(0, 5000, Animo.policy.Source, num_source = 2) =#
+
+print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

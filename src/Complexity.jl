@@ -2687,7 +2687,7 @@ function Logistic_Map(x, λ; r = 3.9277370017867516)
     return x, λ
 end
 
-function Lorenz(u, p)
+function Lorenz(du, u, p, t)
 
     #= parameters
         p[1] = σ - Prandtl
@@ -2699,10 +2699,9 @@ function Lorenz(u, p)
         u[3] = z
     =#
 
-    dx = p[1]*(u[2] - u[1])
-    dy = p[2]*u[1] - u[2] - u[1]*u[3] 
-    dz = u[1]*u[2] - p[3]*u[3]
+    du[1] = p[1]*(u[2] - u[1])
+    du[2] = p[2]*u[1] - u[2] - u[1]*u[3] 
+    du[3] = u[1]*u[2] - p[3]*u[3]
 
-    return [dx; dy; dz]
 end
 

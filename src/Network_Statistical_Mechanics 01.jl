@@ -2,11 +2,18 @@
 #@quickactivate "dare"
 
 using Plots
-using DynamicalSystems
+using DifferentialEquations
 
 include("Complexity.jl")
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
+
+u0 = [1.0, 0.0, 0.0]
+tspan = (0.0, 1.0)
+p = [10.0, 28.0, 8/3]
+
+prob = ODEProblem(Lorenz, u0, tspan, p)
+sol = solve(prob)
 
 #_______________________________________________________________________________
 # Parameters - Time simulation
