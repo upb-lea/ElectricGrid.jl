@@ -75,6 +75,11 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                 end
             end
         end
+        for id in indices["source$source"]["action_indices"]
+            if !(env.action_ids[id] in hook.collect_action_ids)
+                push!(hook.collect_action_ids,env.action_ids[id])
+            end
+        end
     end
 
     # add states of chosen cables to the state plotting list
@@ -103,7 +108,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                 if occursin("_u", env.state_ids[id])
                     if occursin("R", para["impedance"]) && occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
-                        push!(hook.extra_state_paras,(para["R"],(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1)), )
+                        push!(hook.extra_state_paras,(para["R"],(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1)), )
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_R"),replace(env.state_ids[id], "_u_C_total" => "_i_C"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
                     elseif occursin("R", para["impedance"])
                         push!(hook.extra_state_ids,id)
@@ -111,7 +116,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_R"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
                     elseif occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
-                        push!(hook.extra_state_paras,(0,(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1) ))
+                        push!(hook.extra_state_paras,(0,(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1) ))
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_C"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
                     else
                         push!(hook.extra_state_ids,id)
