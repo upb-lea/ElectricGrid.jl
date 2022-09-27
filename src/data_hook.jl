@@ -2,8 +2,8 @@ using ReinforcementLearning
 using DataFrames
 using UnicodePlots
 
-include(srcdir("plotting.jl"))
-include(srcdir("MultiAgentGridController.jl"))
+include(srcdir("plotting.jl")) 
+#include(srcdir("MultiAgentGridController.jl"))
 
 Base.@kwdef mutable struct DataHook <: AbstractHook
 
@@ -50,7 +50,9 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     # rest
     #hook.df = DataFrame()
     #hook.ep = 1
-    
+
+    # add states of chosen sources to the state and action plotting list 
+    # with this method, in addition to the states at L and C, one also obtains the states of R
     for source in hook.collect_sources
         para = env.nc.parameters["source"][source]
         indices = get_source_state_indices(env.nc,source)
@@ -79,6 +81,8 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
         end
     end
 
+    # add states of chosen cables to the state plotting list
+    # with this method, in addition to the state at L, one also obtains the states of R
     for cable in hook.collect_cables
         para = env.nc.parameters["cable"][cable]
         indices = get_cable_state_indices(env.nc,cable)
@@ -92,6 +96,8 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
         end
     end
 
+    # add states of chosen loads to the state plotting list
+    # with this method, in addition to the states at L and C, one also obtains the states of R
     for load in hook.collect_loads
         para = env.nc.parameters["load"][load]
         indices = get_load_state_indices(env.nc,load)
@@ -144,9 +150,12 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         end
     end
 
+    # computation of voltages at Ls and currents at Cs
     states_x = Vector( env.x )
     opstates=(hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
     extra_state_cntr= 1
+
+    # saving all states given in the collect_state_ids list + possible R States
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
         
