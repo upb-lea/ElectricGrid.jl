@@ -323,7 +323,7 @@ function _sample_fltr_LCL(grid_properties)
 
     source = Dict()
     source["fltr"] = "LCL"
-
+    
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
     source["vdc"] = rand(range(start=690,step=10,stop=800))
     source["i_rip"] = rand(Uniform(0.1, 0.15))
@@ -1443,32 +1443,32 @@ function get_state_ids(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL
-            push!(states, "i_f$s")    # i_f1; dann i_f2....
-            push!(states, "u_f$s")
-            push!(states, "i_$s")
-            push!(states, "u_$s")
+            push!(states, "source$s"*"_i_L1")    # i_f1; dann i_f2....
+            push!(states, "source$s"*"_u_C")
+            push!(states, "source$s"*"_i_L2")
+            push!(states, "source$s"*"_u_C_cables")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-            push!(states, "i_f$s")
-            push!(states, "u_f$s")
-            push!(states, "u_$s")
+            push!(states, "source$s"*"_i_L1")
+            push!(states, "source$s"*"_u_C")
+            push!(states, "source$s"*"_u_C_cables")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-            push!(states, "i_$s")
-            push!(states, "u_$s")
+            push!(states, "source$s"*"_i_L1")
+            push!(states, "source$s"*"_u_C_cables")
         end
     end
 
     for c in 1:self.num_connections
-        push!(states, "i_cable$c")
+        push!(states, "cable$c"*"_i_L")
     end
 
     for l in 1:self.num_loads
         if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-            push!(states, "u_load$l")
-            push!(states, "i_load$l")
+            push!(states, "load$l"*"_u_C_total")
+            push!(states, "load$l"*"_i_L")
         elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
-            push!(states, "u_load$l")
+            push!(states, "load$l"*"_u_C_total")
         end
     end
 
@@ -1553,13 +1553,13 @@ function get_action_ids(self::NodeConstructor)
     
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL
-            push!(actions, "u_v$s")
+            push!(actions, "source$s"*"_u")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-            push!(actions, "u_v$s")
+            push!(actions, "source$s"*"_u")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-            push!(actions, "u_v$s")
+            push!(actions, "source$s"*"_u")
         end
     end
 
@@ -1570,6 +1570,48 @@ function get_action_ids(self::NodeConstructor)
     
 
     return actions
+end
+
+function get_source_state_indices(self::NodeConstructor,sources)
+    state_ids=get_state_ids(self)
+    action_ids=get_action_ids(self)
+    source_indices = Dict()
+    for idx in sources
+        source = Dict()
+        state_indices = findall(x -> occursin("source$idx"*"_", x), state_ids)
+        action_indices = findall(x -> occursin("source$idx"*"_", x), action_ids)
+        source["state_indices"]= state_indices
+        source["action_indices"]= action_indices
+        source_indices["source$idx"]= source
+    end
+
+    return source_indices
+end
+
+function get_cable_state_indices(self::NodeConstructor,cables)
+    state_ids=get_state_ids(self)
+    cable_indices = Dict()
+    for idx in cables
+        cable = Dict()
+        state_indices = findall(x -> occursin("cable$idx"*"_", x), state_ids)
+        cable["state_indices"]= state_indices
+        cable_indices["cable$idx"]= cable
+    end
+
+    return cable_indices
+end
+
+function get_load_state_indices(self::NodeConstructor,loads)
+    state_ids=get_state_ids(self)
+    load_indices = Dict()
+    for idx in loads
+        load = Dict()
+        state_indices = findall(x -> occursin("load$idx"*"_", x), state_ids)
+        load["state_indices"]= state_indices
+        load_indices["load$idx"]= load
+    end
+
+    return load_indices
 end
 
 function draw_graph(self::NodeConstructor)
