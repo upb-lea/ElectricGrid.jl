@@ -329,20 +329,45 @@ function _sample_fltr_LCL(grid_properties)
     source["i_rip"] = rand(Uniform(0.1, 0.15))
     source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    ZL= 3*(grid_properties["v_rms"])^2 *(source["pwr"])^-1
-    i_peak = sqrt(2)*grid_properties["v_rms"]*(ZL)^-1
-    ilfmax = source["i_rip"] * i_peak
-    vcfmax = source["v_rip"] * sqrt(2)*grid_properties["v_rms"]
+   #Inductor design
 
+   Vorms = grid_properties["v_rms"]*1.05
+   Vop = Vorms*sqrt(2)
 
-    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ilfmax)^-1)
-    source["L2"] = deepcopy(source["L1"]) 
-    source["C"] = ilfmax*(8*grid_properties["fs"]*vcfmax)^-1
-    source["R1"] = 400 * source["L1"]
-    source["R2"] = deepcopy(source["R1"])
-    source["R_C"] = 28* source["C"]
+   Zl = 3*Vorms*Vorms/source["pwr"]
 
-    source
+   Iorms = Vorms/Zl
+   Iop = Iorms*sqrt(2)
+
+   ΔIlfmax = source["i_rip"]*Iop
+
+   source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
+   source["L2"] = deepcopy(source["L1"]) 
+   source["i_limit"]= Iop+ ΔIlfmax
+
+   #Capacitor design
+
+   Vorms = grid_properties["v_rms"]*0.95
+   Vop = Vorms*sqrt(2)
+
+   Zl = 3*Vorms*Vorms/source["pwr"]
+
+   Iorms = Vorms/Zl
+   Iop = Iorms*sqrt(2)
+   Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
+   ΔIlfmax = Ir_d*Iop
+   ΔVcfmax = source["v_rip"]*Vop
+
+   source["C"] = ΔIlfmax/(8*fs*ΔVcfmax)
+
+   source["R1"] = 400 * source["L1"]
+   source["R2"] = deepcopy(source["R1"])   
+   source["R_C"] = 28* source["C"]
+   source["v_limit"]= Vop+ΔVcfmax
+   
+   
+
+   source
 end
 
 
@@ -361,16 +386,39 @@ function _sample_fltr_LC(grid_properties)
     source["i_rip"] = rand(Uniform(0.1, 0.15))
     source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    ZL= 3*(grid_properties["v_rms"])^2 *(source["pwr"])^-1
-    i_peak = sqrt(2)*grid_properties["v_rms"]*(ZL)^-1
-    ilfmax = source["i_rip"] * i_peak
-    vcfmax = source["v_rip"] * sqrt(2)*grid_properties["v_rms"]
+    #Inductor design
 
+    Vorms = grid_properties["v_rms"]*1.05
+    Vop = Vorms*sqrt(2)
 
-    source["L1"] = (source["vdc"]*(4*grid_properties["fs"]*ilfmax)^-1)
-    source["C"] = ilfmax*(8*grid_properties["fs"]*vcfmax)^-1
+    Zl = 3*Vorms*Vorms/source["pwr"]
+
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+
+    ΔIlfmax = source["i_rip"]*Iop
+
+    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
+    source["i_limit"]= Iop+ ΔIlfmax
+
+    #Capacitor design
+
+    Vorms = grid_properties["v_rms"]*0.95
+    Vop = Vorms*sqrt(2)
+
+    Zl = 3*Vorms*Vorms/source["pwr"]
+
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+    Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
+    ΔIlfmax = Ir_d*Iop
+    ΔVcfmax = source["v_rip"]*Vop
+
+    source["C"] = ΔIlfmax/(8*fs*ΔVcfmax)
+
     source["R1"] = 400 * source["L1"]
     source["R_C"] = 28* source["C"]
+    source["v_limit"]= Vop+ΔVcfmax
 
     source
 end
@@ -391,13 +439,22 @@ function _sample_fltr_L(grid_properties)
     source["i_rip"] = rand(Uniform(0.1, 0.15))
     source["v_rip"] = rand(Uniform(0.014, 0.016))
 
-    ZL= 3*(grid_properties["v_rms"])^2 *(source["pwr"])^-1
-    i_peak = sqrt(2)*grid_properties["v_rms"]*(ZL)^-1
-    ilfmax = source["i_rip"] * i_peak
+    #Inductor design
 
+    Vorms = grid_properties["v_rms"]*1.05
+    Vop = Vorms*sqrt(2)
 
-    source["L1"] = (source["vdc"]*(4*grid_properties["fs"]*ilfmax)^-1) 
+    Zl = 3*Vorms*Vorms/source["pwr"]
+
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+
+    ΔIlfmax = source["i_rip"] *Iop
+
+    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
+
     source["R1"] = 400 * source["L1"] 
+    source["i_limit"]= Iop+ ΔIlfmax
 
     source
 end
@@ -1480,6 +1537,12 @@ function get_state_ids(self::NodeConstructor)
     return states
 end
 
+"""
+    get_state_paras(self::NodeConstructor)
+
+Creates a Vector containing the related L or C Parameters for the states of a NodeConstructor.
+"""
+
 function get_state_paras(self::NodeConstructor)
     state_paras = []
     for s in 1:self.num_sources
@@ -1572,6 +1635,12 @@ function get_action_ids(self::NodeConstructor)
     return actions
 end
 
+"""
+    get_source_state_indices(self::NodeConstructor,sources)
+
+Returns all state indices for passed sources.
+"""
+
 function get_source_state_indices(self::NodeConstructor,sources)
     state_ids=get_state_ids(self)
     action_ids=get_action_ids(self)
@@ -1588,6 +1657,12 @@ function get_source_state_indices(self::NodeConstructor,sources)
     return source_indices
 end
 
+"""
+    get_cable_state_indices(self::NodeConstructor,cables)
+
+Returns all state indices for passed cables.
+"""
+
 function get_cable_state_indices(self::NodeConstructor,cables)
     state_ids=get_state_ids(self)
     cable_indices = Dict()
@@ -1600,6 +1675,12 @@ function get_cable_state_indices(self::NodeConstructor,cables)
 
     return cable_indices
 end
+
+"""
+    get_load_state_indices(self::NodeConstructor,loads)
+
+Returns all state indices for passed loads.
+"""
 
 function get_load_state_indices(self::NodeConstructor,loads)
     state_ids=get_state_ids(self)
