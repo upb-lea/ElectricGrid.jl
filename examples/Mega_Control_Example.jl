@@ -198,7 +198,7 @@ fs = fs, num_sources = 2, state_ids = state_ids_classic, action_ids = action_ids
     9 -> "Null-Synchronverter Mode" - active control on real power and voltage
 =#
 
-Source_Initialiser(env, Animo, [6 1])
+Source_Initialiser(env, Animo, [6 5])
 
 Animo.policy.Source.τv = 0.02 # time constant of the voltage loop # 0.02
 Animo.policy.Source.τf = 0.002 # time constant of the frequency loop # 0.002

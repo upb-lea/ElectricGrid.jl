@@ -611,8 +611,8 @@ function Source_Interface(env, Animo, name = nothing)
 
     for num_source in 1:Source.num_sources
 
-        env_ns = 2
-        #env_ns = num_source
+        #env_ns = 2
+        env_ns = num_source
 
         Source.V_filt_poc[num_source, :, 1:end-1] = Source.V_filt_poc[num_source, :, 2:end]
         Source.I_filt_poc[num_source, :, 1:end-1] = Source.I_filt_poc[num_source, :, 2:end]
@@ -1539,14 +1539,15 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
     Tm = pq0_ref[1]/ωsys # Virtual machine Torque
 
     ω_err_new = ω[end] - ωsys - Source.ω_set[num_source]
-    ΔT_new = Dp*ω_err_new
+    ω_err_new = 50
+    ΔT = Dp*ω_err_new
 
     #~~~ PI Controller
 
-    Kp = 4e-4
-    Ki = 1e-3
+    Kp = 4e-9
+    Ki = 0.0001
     ω_set, ΔT_err_t, Source.ΔT_err[num_source, :] =
-    PI_Controller([ΔT_new], Source.ΔT_err[num_source, :], Source.ΔT_err_t[num_source], 
+    PI_Controller([-ΔT], Source.ΔT_err[num_source, :], Source.ΔT_err_t[num_source], 
     Kp, Ki, Source.ts)
 
     Source.ω_set[num_source] = ω_set[1]
@@ -1557,14 +1558,14 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
     Te_new = Source.p_q_filt[num_source, 1]/ω[end] # New Electrical Torque
     #Te_new = Mfif_new*dot(i_abc, cos_θ) # New Electrical Torque
 
-    α_new = (1/J)*(Tm - Te_new - ΔT_new) # New Angular Acceleration
+    α_new = (1/J)*(Tm - Te_new - ΔT) # New Angular Acceleration
 
     ω_new = Third_Order_Integrator(ω[end], μ, [α[2:end]; α_new])
 
     Source.ω_sync[num_source, :] = [ω[2:end]; ω_new]
     Source.α_sync[num_source, :] = [α[2:end]; α_new]
 
-    if Source.steps*Source.ts >= 3.0 - Source.ts/2 && Source.steps*Source.ts <= 3.0 + Source.ts/2
+    if Source.steps*Source.ts >= 3.0 - 3*Source.ts/2 && Source.steps*Source.ts <= 3.0 + Source.ts/2
         println("")
         println("--------------------------------------------------------")
 
@@ -1577,12 +1578,17 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
         println("i_max = ", Source.i_max[num_source])
 
         println("")
+        println("ΔT_new= ", ΔT)
         println("ΔT_err[:] = ", Source.ΔT_err[num_source, :])
         println("ΔT_err_t = ", ΔT_err_t)
         println("ω_set = ", ω_set)
         println("ω_new = ", ω_new)
+        println("ω[end] = ", ω[end])
         println("ω_err_new = ", ω_err_new)
-        println("Dp = ", Dp)
+        println("p_q_filt =", Source.p_q_filt[num_source, 1])
+        println("Pset = ", pq0_ref[1])
+
+#=         println("Dp = ", Dp)
 
         println("")
         println("Q = ", Q)
@@ -1593,7 +1599,7 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
         println("")
         println("P = ", Te_new*ω[end])
         println("p_q_filt =", Source.p_q_filt[num_source, 1])
-        println("p_q_inv =", p_q_inv[1])
+        println("p_q_inv =", p_q_inv[1]) =#
 
         println("")
         println("--------------------------------------------------------")
