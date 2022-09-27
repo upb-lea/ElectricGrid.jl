@@ -611,8 +611,8 @@ function Source_Interface(env, Animo, name = nothing)
 
     for num_source in 1:Source.num_sources
 
-        #env_ns = 2
-        env_ns = num_source
+        env_ns = 2
+        #env_ns = num_source
 
         Source.V_filt_poc[num_source, :, 1:end-1] = Source.V_filt_poc[num_source, :, 2:end]
         Source.I_filt_poc[num_source, :, 1:end-1] = Source.I_filt_poc[num_source, :, 2:end]
