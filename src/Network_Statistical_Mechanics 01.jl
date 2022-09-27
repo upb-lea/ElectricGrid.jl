@@ -8,18 +8,30 @@ include("Complexity.jl")
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
+# Lorenz!
 u0 = [1.0, 0.0, 0.0]
-tspan = (0.0, 1.0)
-p = [10.0, 28.0, 8/3]
+tspan = (0.0, 100.0)
+p = [10.0, 28.0, 8/3] 
 
-prob = ODEProblem(Lorenz, u0, tspan, p)
-sol = solve(prob)
+
+#Driven_Duffing!
+u0 = [1.0, 0.0, 0.0]
+tspan = (0.0, 1000.0)
+#p = [m, δ, α, β, γ, ω]
+p = [1, 0.25, -1, 1, 0.4, 1]
+#p = [1, 0.3, -1, 1, 0.5, 1.2]
+
+prob = ODEProblem(Driven_Duffing!, u0, tspan, p);
+sol = solve(prob, Rosenbrock23());
+
+traj = plot(sol, idxs = (1, 2))
+display(traj)
 
 #_______________________________________________________________________________
 # Parameters - Time simulation
 
 Timestep = 10 # time step in μs
-t_final = 1.3 #0.75 # time in seconds, total simulation run time
+t_final = 1.3 # 0.75 # time in seconds, total simulation run time
 fsys = 2000 # Hz, fundamental frequency of system
 fsys = 1/(10e-6) 
 
@@ -104,7 +116,7 @@ p1 = plot!(Deus.t_m[Nm_range], Deus.x_m[1, Nm_range], label = "xm")
 #plot!(Nm_range, Deus.s[Nm_range])
 #plot!(Nm_range, Deus.x_m[1, Nm_range])
 
-display(p1)
+#display(p1)
 
 println("Cμ_t[end] = ", Deus.Cμ_t[end])
 println("Hα[end] = ", Deus.Hα[end])

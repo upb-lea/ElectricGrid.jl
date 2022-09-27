@@ -3,7 +3,7 @@ function RMS(θ, t_signals)
     # Calcutates the DC offset, RMS magnitude, and phase angle relative to the
     # frequency (θ = 2*π*t[:]) for a three phase system
     # note that the reference is a cosine - subtract 90 degrees for sine.
-    i = 1
+
     i_length = size(t_signals, 1)
 
     rms = Array{Float64, 2}(undef, 3, 3)
@@ -13,32 +13,37 @@ function RMS(θ, t_signals)
 
     # Least squares method to find RMS of fundamental
     LS = [ones(i_length, 1) rm*cos.(θ) rm*sin.(θ)]
-    LS_inv = pinv(LS)
 
-    for ph in 1:3
+    if !any(isnan, LS)
 
-        #println(t_signals[ph, i_range])
-        AB = LS_inv*t_signals[:, ph]
-        A0 = AB[1]
-        A1 = AB[2]
-        B1 = AB[3]
+        LS_inv = pinv(LS)
 
-        a = sqrt(A1^2 + B1^2)
+        for ph in 1:3
 
-        if B1 < 0 && A1 > 0
-            d = acos(B1/a)
-        elseif B1 < 0 && A1 < 0
-            d = -acos(B1/a)
-        elseif B1 > 0 && A1 > 0
-            d = acos(B1/a)
-        else
-            d = -acos(B1/a)
+            #println(t_signals[ph, i_range])
+            AB = LS_inv*t_signals[:, ph]
+            A0 = AB[1]
+            A1 = AB[2]
+            B1 = AB[3]
+
+            a = sqrt(A1^2 + B1^2)
+
+            if B1 < 0 && A1 > 0
+                d = acos(B1/a)
+            elseif B1 < 0 && A1 < 0
+                d = -acos(B1/a)
+            elseif B1 > 0 && A1 > 0
+                d = acos(B1/a)
+            else
+                d = -acos(B1/a)
+            end
+
+            rms[ph,1] = A0
+            rms[ph,2] = a
+            rms[ph,3] = d
         end
-
-        rms[ph,1] = A0
-        rms[ph,2] = a
-        rms[ph,3] = d
     end
+    
 
     return rms
 end

@@ -198,7 +198,7 @@ fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids
     6 -> "Self-Synchronverter Mode" - grid forming with power balancing via virtual motor
 =#
 
-Source_Initialiser(env, Animo, [5])
+Source_Initialiser(env, Animo, [2])
 
 #TODO: entfernen!!!
 #Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
