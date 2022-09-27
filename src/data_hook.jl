@@ -34,6 +34,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     plot_rewards = false
     rewards::Vector{Vector{Float64}} = []
     reward::Vector{Float64} = [0.0]
+    policy_names::Vector{String} = []
 
     save_best_NNA = false
     bestNNA = nothing
@@ -74,11 +75,6 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                 end
             end
         end
-        for id in indices["source$source"]["action_indices"]
-            if !(env.action_ids[id] in hook.collect_action_ids)
-                push!(hook.collect_action_ids,env.action_ids[id])
-            end
-        end
     end
 
     # add states of chosen cables to the state plotting list
@@ -107,7 +103,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                 if occursin("_u", env.state_ids[id])
                     if occursin("R", para["impedance"]) && occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
-                        push!(hook.extra_state_paras,(para["R"],(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1)), )
+                        push!(hook.extra_state_paras,(para["R"],(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1)), )
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_R"),replace(env.state_ids[id], "_u_C_total" => "_i_C"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
                     elseif occursin("R", para["impedance"])
                         push!(hook.extra_state_ids,id)
@@ -115,7 +111,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_R"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
                     elseif occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
-                        push!(hook.extra_state_paras,(0,(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1) ))
+                        push!(hook.extra_state_paras,(0,(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load_id,env.nc))^(-1) ))
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_C"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
                     else
                         push!(hook.extra_state_ids,id)
@@ -132,8 +128,23 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     hook.collect_state_paras = get_state_paras(env.nc)
 
     if hook.save_best_NNA && hook.currentNNA === nothing
-        hook.currentNNA = deepcopy(agent.policy.behavior_actor)
-        hook.bestNNA = deepcopy(agent.policy.behavior_actor)
+        if isa(agent, MultiAgentGridController)
+            if length(hook.policy_names) != length(agent.agents)
+                hook.policy_names = [s for s in keys(agent.agents)]
+            end
+
+            hook.currentNNA = Dict()
+            hook.bestNNA = Dict()
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                    hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        else
+            hook.currentNNA = deepcopy(agent.policy.behavior_actor)
+            hook.bestNNA = deepcopy(agent.policy.behavior_actor)
+        end
     end
 end
 
@@ -241,12 +252,17 @@ function (hook::DataHook)(::PostActStage, agent, env)
     hook.tmp = DataFrame()
     
     if isa(agent, MultiAgentGridController)
+
         if length(hook.reward) != length(agent.agents)
             hook.reward = zeros(length(agent.agents))
         end
+        if length(hook.policy_names) != length(agent.agents)
+            hook.policy_names = [s for s in keys(agent.agents)]
+        end
+    
         i = 1
-        for name in keys(agent.agents)
-            hook.reward[i] = reward(env, name)
+        for name in hook.policy_names
+            hook.reward[i] += reward(env, name)
             i += 1
         end
     else
@@ -256,12 +272,26 @@ end
 
 function (hook::DataHook)(::PostEpisodeStage, agent, env)
 
-    if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards)
-        if hook.save_best_NNA
-            copyto!(hook.bestNNA, agent.policy.behavior_actor)
+    if isa(agent, MultiAgentGridController)
+        if length(hook.rewards) >= 1 && sum(hook.reward) > maximum(sum.(hook.rewards))
+            if hook.save_best_NNA
+                for name in hook.policy_names
+                    if isa(agent.agents[name]["policy"], Agent)
+                        hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                    end
+                end
+            end
+            hook.bestepisode = hook.ep
+            hook.bestreward = sum(hook.reward)
         end
-        hook.bestepisode = hook.ep
-        hook.bestreward = hook.reward
+    else
+        if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards)
+            if hook.save_best_NNA
+                copyto!(hook.bestNNA, agent.policy.behavior_actor)
+            end
+            hook.bestepisode = hook.ep
+            hook.bestreward = hook.reward
+        end
     end
 
     hook.ep += 1
@@ -274,7 +304,15 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env)
     end
 
     if hook.save_best_NNA
-        copyto!(hook.currentNNA, agent.policy.behavior_actor)
+        if isa(agent, MultiAgentGridController)
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        else
+            copyto!(hook.currentNNA, agent.policy.behavior_actor)
+        end
     end
 
 end
@@ -288,9 +326,9 @@ function (hook::DataHook)(::PostExperimentStage, agent, env)
 
     if hook.plot_rewards
         matrix_to_plot = reduce(hcat, hook.rewards)
-        p = lineplot(matrix_to_plot[1,:], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
         for i in 2:length(hook.rewards[1])
-            lineplot!(p, matrix_to_plot[i,:])
+            lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
         end
         println(p)
     end

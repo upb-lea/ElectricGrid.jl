@@ -242,7 +242,7 @@ function (env::SimEnv)(action)
         env.action = action
     end
     
-    env.action = env.action .* env.v_dc
+    env.action = env.action .* env.v_dc/2
 
     env.action = env.prepare_action(env)
     
