@@ -112,6 +112,8 @@ source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf
 source["C"] = Cf
+source["v_limit"]= 220 
+source["i_limit"]= 1000
 
 push!(source_list, source)
 
@@ -125,6 +127,8 @@ source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf
 source["C"] = Cf
+source["v_limit"]= 230 
+source["i_limit"]= 1000
 
 push!(source_list, source)
 
@@ -218,12 +222,13 @@ plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true)
 
-run(ma, env, StopAfterEpisode(200), hook);
+run(ma, env, StopAfterEpisode(10), hook);
 
 
 ###############################
 # Plotting
-plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 200)
+plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 2)
+plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 10)
 
 include(srcdir("plotting.jl"))
 plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, plot_reward = false, plot_reference = true)
