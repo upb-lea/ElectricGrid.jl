@@ -77,6 +77,8 @@ function RLBase.action_space(env::SimEnv, name::String)
     end
 end
 
+print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
+
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
@@ -103,7 +105,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 0.50 # length in km
+l = 0.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -116,7 +118,7 @@ push!(cable_list, cable, cable)
 source_list = []
 source = Dict()
 
-source["pwr"] = 200e3
+source["pwr"] = 100e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
@@ -129,7 +131,7 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 200e3
+source["pwr"] = 100e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
@@ -189,32 +191,27 @@ fs = fs, num_sources = 2, state_ids = state_ids_classic, action_ids = action_ids
     2 -> "Voltage Control Mode" - voltage source with controller dynamics
     3 -> "PQ Control Mode" - grid following controllable source/load
     4 -> "Droop Control Mode" - simple grid forming with power balancing
-    
-        "Synchronverter Modes" - grid forming with power balancing via virtual motor (advanced controllable source/load)
     5 -> "Full-Synchronverter Mode" - droop control on real and imaginary powers
-    6 -> "Self-Synchronverter Mode" - active control on real and imaginary powers
-    7 -> "Infinite-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
-    8 -> "Semi-Synchronverter Mode" - droop characteristic on imaginary power, and active control on real power
-    9 -> "Null-Synchronverter Mode" - active control on real power and voltage
+    6 -> "Infinite-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
 =#
 
-Source_Initialiser(env, Animo, [6 5])
+Source_Initialiser(env, Animo, [6 3])
 
 Animo.policy.Source.τv = 0.02 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf = 0.002 # time constant of the frequency loop # 0.002
+Animo.policy.Source.τf = 0.02 # time constant of the frequency loop # 0.002
 
 nm_src = 1 # changing the power set points of the source
-Animo.policy.Source.pq0_set[nm_src, 1] = 160e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = -125e3 # VAi, Imaginary Power
+Animo.policy.Source.pq0_set[nm_src, 1] = 15e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
 Animo.policy.Source.V_pu_set[nm_src, 1] = 1.02
 Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
 
 nm_src = 2 # changing the power set points of the source
-Animo.policy.Source.pq0_set[nm_src, 1] = 35e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = 55e3 # VAi, Imaginary Power
+Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = -10e3 # VAi, Imaginary Power
 
-Animo.policy.Source.V_pu_set[nm_src, 1] = 0.98
+Animo.policy.Source.V_pu_set[nm_src, 1] = 1.01
 Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
 ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
                             "state_ids" => state_ids_classic,
