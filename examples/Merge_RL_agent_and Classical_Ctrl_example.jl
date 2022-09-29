@@ -28,13 +28,13 @@ function reward(env, name = nothing)
     
     if !isnothing(name)
         if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source1_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source1_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source1_v_C_c", env.state_ids)
         else
-            u_l1_index = findfirst(x -> x == "source2_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source2_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source2_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source2_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source2_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source2_v_C_c", env.state_ids)
         end
 
         u_l1 = env.state[u_l1_index]
@@ -218,7 +218,7 @@ ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
                             
 ma = MultiAgentGridController(ma_agents, action_ids)
 
-plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C_a", "source2_u_C_b", "source2_u_C_c", "source1_i_L1_a", "source2_i_L1_a"]
+plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c", "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true)
 
