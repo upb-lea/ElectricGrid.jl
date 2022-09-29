@@ -64,10 +64,10 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                     push!(hook.extra_state_ids,id)
                     push!(hook.extra_state_paras,para["R1"])
                     push!(hook.extra_state_names,replace(env.state_ids[id], "_L1" => "_R1"))
-                elseif occursin("u_C", env.state_ids[id])
+                elseif occursin("v_C", env.state_ids[id])
                     push!(hook.extra_state_ids,id)
                     push!(hook.extra_state_paras,para["R_C"])
-                    push!(hook.extra_state_names, replace(env.state_ids[id], "u_C" => "i_R_C"))
+                    push!(hook.extra_state_names, replace(env.state_ids[id], "v_C" => "i_R_C"))
                 elseif occursin("_L2", env.state_ids[id])
                     push!(hook.extra_state_ids,id)
                     push!(hook.extra_state_paras,para["R2"])
@@ -105,23 +105,23 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
         for id in indices["load$load"]["state_indices"]
             if !(env.state_ids[id] in hook.collect_state_ids)
                 push!(hook.collect_state_ids,env.state_ids[id])
-                if occursin("_u", env.state_ids[id])
+                if occursin("_v", env.state_ids[id])
                     if occursin("R", para["impedance"]) && occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
                         push!(hook.extra_state_paras,(para["R"],(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1)), )
-                        push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_R"),replace(env.state_ids[id], "_u_C_total" => "_i_C"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
+                        push!(hook.extra_state_names,(replace(env.state_ids[id], "_v_C_total" => "_i_R"),replace(env.state_ids[id], "_v_C_total" => "_i_C"),replace(env.state_ids[id], "_v_C_total" => "_i_C_cables")))
                     elseif occursin("R", para["impedance"])
                         push!(hook.extra_state_ids,id)
                         push!(hook.extra_state_paras,(para["R"],0,(1)))
-                        push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_R"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
+                        push!(hook.extra_state_names,(replace(env.state_ids[id], "_v_C_total" => "_i_R"),replace(env.state_ids[id], "_v_C_total" => "_i_C_cables")))
                     elseif occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
                         push!(hook.extra_state_paras,(0,(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1) ))
-                        push!(hook.extra_state_names,(replace(env.state_ids[id], "_u_C_total" => "_i_C"),replace(env.state_ids[id], "_u_C_total" => "_i_C_cables")))
+                        push!(hook.extra_state_names,(replace(env.state_ids[id], "_v_C_total" => "_i_C"),replace(env.state_ids[id], "_v_C_total" => "_i_C_cables")))
                     else
                         push!(hook.extra_state_ids,id)
                         push!(hook.extra_state_paras,(0,0,1))
-                        push!(hook.extra_state_names,replace(env.state_ids[id], "_u_C_total" => "_i_C_cables"))
+                        push!(hook.extra_state_names,replace(env.state_ids[id], "_v_C_total" => "_i_C_cables"))
                     end
                 end
             end
@@ -176,28 +176,28 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         state_index = findfirst(x -> x == state_id, env.state_ids)
         
         insertcols!(hook.tmp, state_id => (env.x[state_index]))
-        insertcols!(hook.tmp, replace(state_id, "_i_" => "_u_", "_u_" => "_i_") => opstates[state_index,1])
+        insertcols!(hook.tmp, replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
 
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
                     insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_u_") => (env.x[state_index]))
+                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
                     insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_u_") => (env.x[state_index]))
+                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
                     insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_u_") => (env.x[state_index]))
+                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
                 insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
-                insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_u_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
+                insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
                 insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
-                insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_u_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
+                insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
         extra_state_cntr+=1
         end
@@ -223,28 +223,28 @@ function (hook::DataHook)(::PostActStage, agent, env)
         state_index = findfirst(x -> x == state_id, env.state_ids)
         
         insertcols!(hook.tmp, "next_state_"*state_id => (env.x[state_index]))
-        insertcols!(hook.tmp, "next_state_"*replace(state_id, "_i_" => "_u_", "_u_" => "_i_") => opstates[state_index,1])
+        insertcols!(hook.tmp, "next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
 
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
                     insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_u_") => (env.x[state_index]))
+                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
                     insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_u_") => (env.x[state_index]))
+                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
                     insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_u_") => (env.x[state_index]))
+                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
                 insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
-                insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_u_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
+                insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
                 insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
-                insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_u_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
+                insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
         extra_state_cntr+=1
         end

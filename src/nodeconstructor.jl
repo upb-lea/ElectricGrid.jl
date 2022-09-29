@@ -358,7 +358,7 @@ function _sample_fltr_LCL(grid_properties)
    ΔIlfmax = Ir_d*Iop
    ΔVcfmax = source["v_rip"]*Vop
 
-   source["C"] = ΔIlfmax/(8*fs*ΔVcfmax)
+   source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
 
    source["R1"] = 400 * source["L1"]
    source["R2"] = deepcopy(source["R1"])   
@@ -414,7 +414,7 @@ function _sample_fltr_LC(grid_properties)
     ΔIlfmax = Ir_d*Iop
     ΔVcfmax = source["v_rip"]*Vop
 
-    source["C"] = ΔIlfmax/(8*fs*ΔVcfmax)
+    source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
 
     source["R1"] = 400 * source["L1"]
     source["R_C"] = 28* source["C"]
@@ -1501,18 +1501,18 @@ function get_state_ids(self::NodeConstructor)
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL
             push!(states, "source$s"*"_i_L1")    # i_f1; dann i_f2....
-            push!(states, "source$s"*"_u_C")
+            push!(states, "source$s"*"_v_C")
             push!(states, "source$s"*"_i_L2")
-            push!(states, "source$s"*"_u_C_cables")
+            push!(states, "source$s"*"_v_C_cables")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC
             push!(states, "source$s"*"_i_L1")
-            push!(states, "source$s"*"_u_C")
-            push!(states, "source$s"*"_u_C_cables")
+            push!(states, "source$s"*"_v_C")
+            push!(states, "source$s"*"_v_C_cables")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
             push!(states, "source$s"*"_i_L1")
-            push!(states, "source$s"*"_u_C_cables")
+            push!(states, "source$s"*"_v_C_cables")
         end
     end
 
@@ -1522,10 +1522,10 @@ function get_state_ids(self::NodeConstructor)
 
     for l in 1:self.num_loads
         if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-            push!(states, "load$l"*"_u_C_total")
+            push!(states, "load$l"*"_v_C_total")
             push!(states, "load$l"*"_i_L")
         elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
-            push!(states, "load$l"*"_u_C_total")
+            push!(states, "load$l"*"_v_C_total")
         end
     end
 
@@ -1616,13 +1616,13 @@ function get_action_ids(self::NodeConstructor)
     
     for s in 1:self.num_sources
         if s <= self.num_fltr_LCL
-            push!(actions, "source$s"*"_u")
+            push!(actions, "source$s"*"_v")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC
-            push!(actions, "source$s"*"_u")
+            push!(actions, "source$s"*"_v")
         
         elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-            push!(actions, "source$s"*"_u")
+            push!(actions, "source$s"*"_v")
         end
     end
 
