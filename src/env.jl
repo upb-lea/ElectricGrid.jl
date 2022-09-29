@@ -171,8 +171,8 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         v_limit_fixed = 0
         norm_array = ones(length(states))
 
-        for (source_number, source) in enumerate(env.nc.parameters["source"])
-            for state_index in get_source_state_indices(env.nc, [source_number])["source$source_number"]["state_indices"]
+        for (source_number, source) in enumerate(nc.parameters["source"])
+            for state_index in get_source_state_indices(nc, [source_number])["source$source_number"]["state_indices"]
                 if contains(states[state_index], "_i")
                     if haskey(source, "i_limit")
                         norm_array[state_index] = source["i_limit"]
@@ -180,7 +180,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                         i_limit_fixed += 1
                         norm_array[state_index] = 1000.0
                     end
-                elseif contains(states[state_index], "_u")
+                elseif contains(states[state_index], "_v")
                     if haskey(source, "v_limit")
                         norm_array[state_index] = source["v_limit"]
                     else
@@ -191,8 +191,8 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             end
         end
 
-        for (load_number, load) in enumerate(env.nc.parameters["load"])
-            for state_index in get_load_state_indices(env.nc, [load_number])["load$load_number"]["state_indices"]
+        for (load_number, load) in enumerate(nc.parameters["load"])
+            for state_index in get_load_state_indices(nc, [load_number])["load$load_number"]["state_indices"]
                 if contains(states[state_index], "_i")
                     if haskey(load, "i_limit")
                         norm_array[state_index] = load["i_limit"]
@@ -200,7 +200,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                         i_limit_fixed += 1
                         norm_array[state_index] = 1000.0
                     end
-                elseif contains(states[state_index], "_u")
+                elseif contains(states[state_index], "_v")
                     if haskey(load, "v_limit")
                         norm_array[state_index] = load["v_limit"]
                     else
@@ -211,8 +211,8 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             end
         end
 
-        for (cable_number, cable) in enumerate(env.nc.parameters["cable"])
-            for state_index in get_cable_state_indices(env.nc, [cable_number])["cable$cable_number"]["state_indices"]
+        for (cable_number, cable) in enumerate(nc.parameters["cable"])
+            for state_index in get_cable_state_indices(nc, [cable_number])["cable$cable_number"]["state_indices"]
                 if contains(states[state_index], "_i")
                     if haskey(cable, "i_limit")
                         norm_array[state_index] = cable["i_limit"]
@@ -220,7 +220,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                         i_limit_fixed += 1
                         norm_array[state_index] = 1000.0
                     end
-                elseif contains(states[state_index], "_u")
+                elseif contains(states[state_index], "_v")
                     if haskey(cable, "v_limit")
                         norm_array[state_index] = cable["v_limit"]
                     else
