@@ -82,7 +82,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 3.4 #time in seconds, total simulation run time
+t_final = 2 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -105,7 +105,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 0.5 # length in km
+l = 1.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -118,7 +118,7 @@ push!(cable_list, cable, cable)
 source_list = []
 source = Dict()
 
-source["pwr"] = 100e3
+source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
@@ -189,10 +189,12 @@ fs = fs, num_sources = 2, state_ids = state_ids_classic, action_ids = action_ids
 #= Modes:
     1 -> "Swing Mode" - voltage source without dynamics (i.e. an Infinite Bus)
     2 -> "Voltage Control Mode" - voltage source with controller dynamics
+
     3 -> "PQ Control Mode" - grid following controllable source/load
+
     4 -> "Droop Control Mode" - simple grid forming with power balancing
     5 -> "Full-Synchronverter Mode" - droop control on real and imaginary powers
-    6 -> "Infinite-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
+    6 -> "Semi-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
 =#
 
 Source_Initialiser(env, Animo, [6 3])
@@ -208,10 +210,10 @@ Animo.policy.Source.V_pu_set[nm_src, 1] = 1.02
 Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
 
 nm_src = 2 # changing the power set points of the source
-Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = -10e3 # VAi, Imaginary Power
+Animo.policy.Source.pq0_set[nm_src, 1] = 10e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
-Animo.policy.Source.V_pu_set[nm_src, 1] = 1.01
+Animo.policy.Source.V_pu_set[nm_src, 1] = 0.98
 Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
 ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
                             "state_ids" => state_ids_classic,

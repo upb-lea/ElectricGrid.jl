@@ -583,7 +583,6 @@ function Classical_Control(Animo, env, name = nothing)
 
             Voltage_Control_Mode(Source, s)
         elseif Source.Source_Modes[s] == "PQ Control Mode"
-
             PQ_Control_Mode(Source, s, Source.pq0_set[s, :])
         elseif Source.Source_Modes[s] == "Droop Control Mode"
 
@@ -591,13 +590,13 @@ function Classical_Control(Animo, env, name = nothing)
         elseif Source.Source_Modes[s] == "Full-Synchronverter Mode"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
-        elseif Source.Source_Modes[s] == "Infinite-Synchronverter Mode"
+        elseif Source.Source_Modes[s] == "Semi-Synchronverter Mode"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
         elseif Source.Source_Modes[s] == "Self-Synchronverter Mode"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
-        elseif Source.Source_Modes[s] == "Semi-Synchronverter Mode"
+        elseif Source.Source_Modes[s] == "Infinite-Synchronverter Mode"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
         elseif Source.Source_Modes[s] == "Null-Synchronverter Mode"
@@ -653,8 +652,6 @@ end
 function Env_Interface(env, Animo, name = nothing)
 
     Source = Animo.Source
-
-    i = Source.steps
 
     letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
     source_indices = unique([parse(Int64, SubString(split(x, "_")[1], 7)) for x in Animo.state_ids], dims=1)
@@ -800,16 +797,16 @@ function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 1)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 2)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 3)
-    θt = Source.θpll[num_source, 1]
+    θt = Source.θpll[num_source, 1, end]
 
-    if i*Source.ts > 2/Source.fsys
+    if i*Source.ts > 4/Source.fsys
         PQ_Control(pq0_ref = pq0, Source, num_source, θt)
     else
 
         PQ_Control(pq0_ref = [0; 0; 0], Source, num_source, θt)
     end
 
-    Current_Controller(Source, num_source, θt)
+    #Current_Controller(Source, num_source, θt)
 
     return nothing
 end
@@ -842,7 +839,7 @@ function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [
     return nothing
 end
 
-function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = 70, ξ = 0.7)
+function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = 70, ξ = 0.35)
 
     #= A robost 3 phase phase locked loop
 
@@ -1051,7 +1048,7 @@ function Phase_Locked_Loop_1ph(Source::Classical_Controls, num_source; Kp = 0.00
     return nothing
 end
 
-function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
+#= function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
 
     i = Source.steps
 
@@ -1113,11 +1110,9 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
     end
 
     return nothing
-end
+end =#
 
-#= function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
-
-    i = Source.steps
+function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
 
     Kp = Source.I_kp[num_source]
     Ki = Source.I_ki[num_source]
@@ -1146,14 +1141,29 @@ end
     s_dq0_avg, Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] =
     PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts)
 
-    Source.Vd_abc_new[num_source, :] = 0.5*Inv_DQ0_transform(s_dq0_avg, θ)
+    if any(isnan, s_dq0_avg)
+        println("s_dq0_avg = ", s_dq0_avg)
+        println("I_dq0_ref = ", I_dq0_ref)
+        println()
+        println("I_αβγ_ref = ", I_αβγ_ref)
+        println("pq0_ref = ", pq0_ref)
+        println("V_αβγ = ", V_αβγ)
+        println("I_dq0 = ", I_dq0)
+        println("I_err = ", I_err)
+        println("I_err_t = ", I_err_t)
+        println("θ = ", θ)
+        println(Inv_DQ0_transform(s_dq0_avg, θ))
+        error("Asdfasd")
+    end
+
+    Source.Vd_abc_new[num_source, :] = Inv_DQ0_transform(s_dq0_avg, θ)
     
     Source.I_ref_dq0[num_source, :] = I_dq0_ref
     Source.I_dq0[num_source, :] = I_dq0
     Source.I_ref[num_source, :] = Inv_DQ0_transform(Source.I_ref_dq0[num_source, :], θ)
 
     return nothing
-end =#
+end
 
 function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrms[num_source])
 
@@ -1286,7 +1296,7 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ; Kb = 1)
     V_dq0 = Source.V_dq0[num_source, :]
     V_ref_dq0 = Source.V_ref_dq0[num_source, :]
 
-    if sqrt(2/3)*norm(Source.V_ref_dq0[num_source, :]) > Source.v_max[num_source]/2 #Source.Vdc[num_source]
+    if sqrt(2/3)*norm(Source.V_ref_dq0[num_source, :]) > Source.v_max[num_source] #Source.Vdc[num_source]
         Source.V_ref_dq0[num_source, :] = Source.V_ref_dq0[num_source, :].*((Source.Vdc[num_source]/2)/(sqrt(2/3)*norm(V_ref_dq0)))
         V_ref_dq0 = Source.V_ref_dq0[num_source, :] # v_max Vdc
     end
@@ -1588,19 +1598,32 @@ function Measurements(Source::Classical_Controls)
                 Source.Qm[ns, 1:3] = (Source.V_ph[ns, :, 2].*Source.I_ph[ns, :, 2]).*sin.(Source.V_ph[ns, :, 3] .- Source.I_ph[ns, :, 3])
                 Source.Qm[ns, 4] = sum(Source.Qm[ns, 1:3])
 
-                if i*Source.ts < 3 + Source.ts/2 && i*Source.ts > 3 - Source.ts/2 #&& ns == 1 && 1 == 2
+                if i*Source.ts < 1.9 + Source.ts/2 && i*Source.ts > 1.9 - Source.ts/2 #&& ns == 1 && 1 == 2
 
                     println("")
-                    println("i = ", i)
+                    println("t = ", round(i*Source.ts, digits = 3))
                     println("num source = ", ns)
-                    println("V_ph[ns,  1, 2] = ", Source.V_ph[ns, 1, 2]/230)
-                    println("I_ph[ns,  1, 2] = ", sqrt(2)*Source.I_ph[ns, 1, 2])
+                    println("V_ph[ns,  1, 2] = ", round(Source.V_ph[ns, 1, 2]/230, digits = 3), " p.u.")
+                    println("I_ph[ns,  1, 2] = ", round(sqrt(2)*Source.I_ph[ns, 1, 2], digits = 3), " peak [A]")
+                    println("i_max = ", round(Source.i_max[ns], digits = 3), " peak [A]")
                     #println("V_ph[ns,  1, 3] = ", Source.V_ph[ns, 1, 3]*180/pi)
-                    println("p_inst[ns] = ", Source.p_q_inst[ns, 1])
-                    println("q_inst[ns] = ", Source.p_q_inst[ns, 2])
-                    println("Pm[ns]= ", Source.Pm[ns, 4])
-                    println("Qm[ns]= ", Source.Qm[ns, 4])
-                    println("Sm[ns]= ", sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2))
+                    println("Pm[ns] = ", round(Source.p_q_inst[ns, 1]/1000, digits = 3), " kW")
+                    println("Qm[ns] = ", round(Source.p_q_inst[ns, 2]/1000, digits = 3), " kVAi")
+                    println("Sm[ns]= ", round(sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2)/1000, digits = 3), " KVA")
+                    println("")
+                end
+                if i*Source.ts < 0.9 + Source.ts/2 && i*Source.ts > 0.9 - Source.ts/2 #&& ns == 1 && 1 == 2
+
+                    println("")
+                    println("t = ", round(i*Source.ts, digits = 3))
+                    println("num source = ", ns)
+                    println("V_ph[ns,  1, 2] = ", round(Source.V_ph[ns, 1, 2]/230, digits = 3), " p.u.")
+                    println("I_ph[ns,  1, 2] = ", round(sqrt(2)*Source.I_ph[ns, 1, 2], digits = 3), " peak [A]")
+                    println("i_max = ", round(Source.i_max[ns], digits = 3), " peak [A]")
+                    #println("V_ph[ns,  1, 3] = ", Source.V_ph[ns, 1, 3]*180/pi)
+                    println("Pm[ns] = ", round(Source.p_q_inst[ns, 1]/1000, digits = 3), " kW")
+                    println("Qm[ns] = ", round(Source.p_q_inst[ns, 2]/1000, digits = 3), " kVAi")
+                    println("Sm[ns]= ", round(sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2)/1000, digits = 3), " KVA")
                     println("")
                 end
         end
@@ -1878,7 +1901,7 @@ function Source_Initialiser(env, Animo, modes; pf = 0.8)
             Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
 
             Source.i_max[e] = 1.15*sqrt(2)*Source.S[e]/(3*Source.Vrms[e])
-            Source.v_max[e] = 1.5*Source.Vdc[e]/(sqrt(2))
+            Source.v_max[e] = 1.5*Source.Vdc[e]/2
 
             Current_PI_LoopShaping(Source, e)
             Voltage_PI_LoopShaping(Source, e)
