@@ -43,6 +43,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     currentNNA = nothing
 
     collect_reference = false
+    collect_vdc_idx = []
 
 end
 
@@ -157,6 +158,10 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
+
+    for idx in hook.collect_vdc_idx
+        insertcols!(hook.tmp, "source$(idx)_vdc" => env.v_dc[idx])
+    end
 
     if hook.collect_reference
         #insertcols!(hook.tmp, :reference => reference(env.t))
