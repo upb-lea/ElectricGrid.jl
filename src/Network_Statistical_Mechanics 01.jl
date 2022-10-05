@@ -8,25 +8,6 @@ include("Complexity.jl")
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
-# Lorenz!
-u0 = [1.0, 0.0, 0.0]
-tspan = (0.0, 100.0)
-p = [10.0, 28.0, 8/3] 
-
-
-#Driven_Duffing!
-u0 = [1.0, 0.0, 0.0]
-tspan = (0.0, 1000.0)
-#p = [m, δ, α, β, γ, ω]
-p = [1, 0.25, -1, 1, 0.4, 1]
-#p = [1, 0.3, -1, 1, 0.5, 1.2]
-
-prob = ODEProblem(Driven_Duffing!, u0, tspan, p);
-sol = solve(prob, Rosenbrock23());
-
-traj = plot(sol, idxs = (1, 2))
-display(traj)
-
 #_______________________________________________________________________________
 # Parameters - Time simulation
 

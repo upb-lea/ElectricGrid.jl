@@ -82,7 +82,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 2 #time in seconds, total simulation run time
+t_final = 1 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -105,7 +105,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 1.5 # length in km
+l = 2.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -131,7 +131,7 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 100e3
+source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
@@ -172,19 +172,15 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
 env = SimEnv(reward_function = reward, featurize = featurize, 
 v_dc = 800, ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
-maxsteps = length(t), action_delay = 0)
-
-#_______________________________________________________________________________
-# Setting up the Classical Sources
+maxsteps = length(t), action_delay = 1)
 
 state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
 
-state_ids_classic = filter(x -> (split(x, "_")[1] == "source1" || split(x, "_")[1] == "source2"), state_ids)
-action_ids_classic = filter(x -> (split(x, "_")[1] == "source1" || split(x, "_")[1] == "source2"), action_ids)
+#_______________________________________________________________________________
+# Setting up the Classical Sources
 
-Animo = NamedPolicy("classic", Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = t_final, 
-fs = fs, num_sources = 2, state_ids = state_ids_classic, action_ids = action_ids_classic))
+Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [6 6], Source_Indices = [1 2]))
 
 #= Modes:
     1 -> "Swing Mode" - voltage source without dynamics (i.e. an Infinite Bus)
@@ -197,24 +193,26 @@ fs = fs, num_sources = 2, state_ids = state_ids_classic, action_ids = action_ids
     6 -> "Semi-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
 =#
 
-Source_Initialiser(env, Animo, [6 3])
-
-Animo.policy.Source.τv = 0.02 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf = 0.02 # time constant of the frequency loop # 0.002
+Animo.policy.Source.τv[1] = 0.002 # time constant of the voltage loop # 0.02
+Animo.policy.Source.τf[1] = 0.002 # time constant of the frequency loop # 0.002
 
 nm_src = 1 # changing the power set points of the source
-Animo.policy.Source.pq0_set[nm_src, 1] = 15e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
-Animo.policy.Source.V_pu_set[nm_src, 1] = 1.02
-Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
+Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
+Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
 
 nm_src = 2 # changing the power set points of the source
 Animo.policy.Source.pq0_set[nm_src, 1] = 10e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
-Animo.policy.Source.V_pu_set[nm_src, 1] = 0.98
-Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
+Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
+Animo.policy.Source.V_δ_set[nm_src, 1] = +90*π/180
+
+state_ids_classic = Animo.policy.state_ids
+action_ids_classic = Animo.policy.action_ids
+
 ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
                             "state_ids" => state_ids_classic,
                             "action_ids" => action_ids_classic))

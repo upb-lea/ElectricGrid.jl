@@ -47,7 +47,6 @@ mutable struct Classical_Controls
     θsys::Float64
     ts::Float64 # s, sampling timestep
     N::Int64
-    delay::Int64
     steps::Int64
 
     V_poc_loc::Matrix{Int64} # the position in the state vector where the POC Voltage is measured
@@ -113,8 +112,8 @@ mutable struct Classical_Controls
 
     Δfmax::Float64 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
     ΔEmax::Float64 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
-    τv::Float64  # time constant of the voltage loop
-    τf::Float64  # time constant of the frequency-droop loop
+    τv::Vector{Float64}  # time constant of the voltage loop
+    τf::Vector{Float64}  # time constant of the frequency-droop loop
 
     D::Matrix{Float64} # Droop coefficients
     ω_droop::Array{Float64}
@@ -152,7 +151,7 @@ mutable struct Classical_Controls
         Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64, phases::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
-        ts::Float64, N::Int64, delay::Int64, steps::Int64,
+        ts::Float64, N::Int64, steps::Int64,
         V_poc_loc::Matrix{Int64}, I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
         pll_err::Array{Float64}, pll_err_t::Matrix{Float64},
         vd::Array{Float64}, qvd::Array{Float64},
@@ -170,7 +169,7 @@ mutable struct Classical_Controls
         V_err::Array{Float64}, V_err_t::Matrix{Float64},
         V_kp::Vector{Float64}, V_ki::Vector{Float64},
         I_lim::Matrix{Float64},
-        Δfmax::Float64, ΔEmax::Float64, τv::Float64, τf::Float64,
+        Δfmax::Float64, ΔEmax::Float64, τv::Vector{Float64}, τf::Vector{Float64},
         D::Matrix{Float64}, ω_droop::Array{Float64}, θ_droop::Matrix{Float64},
         pq0_set::Matrix{Float64},
         J_sync::Vector{Float64}, K_sync::Vector{Float64}, ΔT_t::Vector{Float64},
@@ -187,7 +186,7 @@ mutable struct Classical_Controls
         Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, delay, steps,
+        ts, N, steps,
         V_poc_loc, I_poc_loc, I_inv_loc,
         pll_err, pll_err_t,
         vd, qvd,
@@ -214,7 +213,7 @@ mutable struct Classical_Controls
         ΔT_err, ΔT_err_t, ω_set)
     end
 
-    function Classical_Controls(t_final, f_cntr, num_sources; delay = 1, phases = 3)
+    function Classical_Controls(f_cntr, num_sources; phases = 3)
 
         #---------------------------------------------------------------------------
         # Physical Electrical Parameters
@@ -246,9 +245,7 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # Measurements
 
-        t_final = convert(Float64, t_final)
         ts = 1/f_cntr
-        t = 0:ts:t_final
 
         steps = 0
         fsys = 50.0
@@ -256,7 +253,6 @@ mutable struct Classical_Controls
 
         T_eval = 1 #number of periods to average over
         N = convert(Int64, round(T_eval/(fsys*ts))) + 1
-        N2 = length(t)
 
         T_sp_rms = 5*fsys #samples in a second for rms calcs, x*fsys = x samples in a cycle
 
@@ -286,10 +282,10 @@ mutable struct Classical_Controls
         "PQ Control Mode" => 3,
         "Droop Control Mode" => 4, 
         "Full-Synchronverter Mode" => 5, 
-        "Infinite-Synchronverter Mode" => 6,
-        "Self-Synchronverter Mode" => 7,
-        "Semi-Synchronverter Mode" => 8,
-        "Null-Synchronverter Mode" => 9)
+        "Semi-Synchronverter Mode" => 6,
+        "Not Used 1" => 7,
+        "Not Used 2" => 8,
+        "Not Used 3" => 9)
 
         Source_Modes = Array{String, 1}(undef, num_sources)
         Source_Modes = fill!(Source_Modes, "Voltage Control Mode")
@@ -306,9 +302,9 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # Phase Locked Loops
 
-        vd = Array{Float64, 3}(undef, num_sources, phases, N2) #3 for 3 phases
+        vd = Array{Float64, 3}(undef, num_sources, phases, Order) #3 for 3 phases *
         vd = fill!(vd, 0.0)
-        qvd = Array{Float64, 3}(undef, num_sources, phases, N2) #3 for 3 phases
+        qvd = Array{Float64, 3}(undef, num_sources, phases, Order) #3 for 3 phases *
         qvd = fill!(qvd, 0.0)
 
         fpll = Array{Float64, 3}(undef, num_sources, phases, Order + 1) #3 for 3 phases
@@ -404,8 +400,11 @@ mutable struct Classical_Controls
 
         Δfmax = 5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
         ΔEmax = 0.5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
-        τv = 0.02 # time constant of the voltage loop # 0.02
-        τf = 0.002 # time constant of the frequency loop # 0.002
+        
+        τv = Array{Float64, 1}(undef, num_sources)
+        τv = fill!(τv, 0.002 ) # time constant of the voltage loop # 0.02
+        τf = Array{Float64, 1}(undef, num_sources) 
+        τf = fill!(τf, 0.002 ) # time constant of the frequency loop # 0.002
 
         D = Array{Float64, 2}(undef, num_sources, 2)
         D[:,1] = fill!(D[:,1], 2π*Δfmax/P[1])
@@ -462,7 +461,7 @@ mutable struct Classical_Controls
         Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, delay, steps,
+        ts, N, steps,
         V_poc_loc, I_poc_loc, I_inv_loc,
         pll_err, pll_err_t,
         vd, qvd,
@@ -492,18 +491,62 @@ end
 
 Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
-    n_actions = 1
-    t_final = 0.04
-    fs = 10e3
-    num_sources = 1
-    delay = 0
-    phases = 3
+    action_space::Space{Vector{ClosedInterval{Float64}}}
+    Source::Classical_Controls
 
-    action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:n_actions], )
-    Source::Classical_Controls = Classical_Controls(t_final, fs, num_sources, delay = 0, phases = phases)
+    state_ids::Vector{String}
+    action_ids::Vector{String}
 
-    state_ids = nothing
-    action_ids = nothing
+    function Classical_Policy(action_space, Source, state_ids, action_ids)
+        new(action_space, Source, state_ids, action_ids)
+    end
+
+    function Classical_Policy(env; Modes = [], Source_Indices = [], phases = 3)
+
+        state_ids = get_state_ids(env.nc)
+        action_ids = get_action_ids(env.nc)
+
+        ssa = "source".*string.(Source_Indices)
+        state_ids_classic = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), state_ids)     
+        action_ids_classic = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), action_ids)
+
+        Source = Classical_Controls(1/env.ts, length(Source_Indices), phases = phases)
+
+        Source_Initialiser(env, Source, Modes, Source_Indices)
+
+        println(state_ids_classic)
+
+        #------------------------------------
+
+        for s in 1:length(Source_Indices)
+
+            s_idx = string(Source_Indices[s])
+    
+            Source.V_poc_loc[:, s]  = findall(contains(s_idx*"_u_C_cables"), state_ids_classic)
+
+            if isnothing(findfirst(contains("L2"), state_ids_classic))
+                Source.I_poc_loc[1:phases, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+            else
+                Source.I_poc_loc[1:phases, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
+            end
+            Source.I_inv_loc[1:phases, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+
+            println()
+            println("source = ", s_idx)
+            println("V_poc_loc = ", Source.V_poc_loc[:, s])
+            println("I_poc_loc = ", Source.I_poc_loc[:, s])
+            println("I_inv_loc = ", Source.I_inv_loc[:, s])
+            println()
+            
+        end
+
+        #------------------------------------
+
+        animo = Classical_Policy(Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), Source,
+        state_ids_classic, action_ids_classic)
+
+        return animo
+    end
 end
 
 function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing} = nothing)
@@ -593,15 +636,15 @@ function Classical_Control(Animo, env, name = nothing)
         elseif Source.Source_Modes[s] == "Semi-Synchronverter Mode"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
-        elseif Source.Source_Modes[s] == "Self-Synchronverter Mode"
+        elseif Source.Source_Modes[s] == "Not Used 1"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
-        elseif Source.Source_Modes[s] == "Infinite-Synchronverter Mode"
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
+        elseif Source.Source_Modes[s] == "Not Used 2"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
-        elseif Source.Source_Modes[s] == "Null-Synchronverter Mode"
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
+        elseif Source.Source_Modes[s] == "Not Used 3"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
         end
     end
 
@@ -625,20 +668,13 @@ function Source_Interface(env, Animo, name = nothing)
 
     for num_source in 1:Source.num_sources
 
-        #env_ns = 2
-        env_ns = num_source
-
         Source.V_filt_poc[num_source, :, 1:end-1] = Source.V_filt_poc[num_source, :, 2:end]
         Source.I_filt_poc[num_source, :, 1:end-1] = Source.I_filt_poc[num_source, :, 2:end]
         Source.I_filt_inv[num_source, :, 1:end-1] = Source.I_filt_inv[num_source, :, 2:end]
 
-        Source.V_filt_poc[num_source, :, end] = state[findall(contains(string(env_ns)*"_u_C_cables"), Animo.state_ids)]
-        if isnothing(findfirst(contains("L2"), Animo.state_ids))
-            Source.I_filt_poc[num_source, :, end] = state[findall(contains(string(env_ns)*"_i_L1"), Animo.state_ids)]
-        else
-            Source.I_filt_poc[num_source, :, end] = state[findall(contains(string(env_ns)*"_i_L2"), Animo.state_ids)]
-        end
-        Source.I_filt_inv[num_source, :, end] = state[findall(contains(string(env_ns)*"_i_L1"), Animo.state_ids)]
+        Source.V_filt_poc[num_source, :, end] = state[Source.V_poc_loc[:, num_source]]
+        Source.I_filt_poc[num_source, :, end] = state[Source.I_poc_loc[:, num_source]]
+        Source.I_filt_inv[num_source, :, end] = state[Source.I_inv_loc[:, num_source]]
         
         Source.p_q_filt[num_source, :] =  p_q_theory(Source.V_filt_poc[num_source, :, end], Source.I_filt_poc[num_source, :, end])
 
@@ -659,49 +695,6 @@ function Env_Interface(env, Animo, name = nothing)
                                 letterdict[split(x, "_")[3]]] for x in Animo.action_ids]
 
     return Action
-end
-
-function Collect_IDs(env, Source::Classical_Controls)
-
-    A, _, _, _ = get_sys(env.nc)
-    num_fltr_LCL = env.nc.num_fltr_LCL
-    num_fltr_LC = env.nc.num_fltr_LC
-    num_fltr_L = env.nc.num_fltr_L
-
-    ns = length(A[1,:])/3 # get num of inputs
-    np = 3 # number of phases
-
-    x = 0
-    for s in 1:Source.num_sources
-        if s <= num_fltr_LCL
-
-            x += 1
-            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 2
-            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 1
-            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-        
-        elseif s <= num_fltr_LCL + num_fltr_LC
-
-            x += 1
-            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 2
-            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-        
-        elseif s <= num_fltr_LCL + num_fltr_LC + num_fltr_L
-
-            x += 1
-            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 1
-            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-
-        end
-    end
-
-    return nothing
 end
 
 function Ramp(final, μ, i; t_end = 0.02, ramp = 0)
@@ -824,8 +817,8 @@ function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [
     Source.D[num_source, 2] = Source.Q[num_source]/(Vrms*sqrt(2)*Dout[2])
 
     # Synchronverter parameters
-    Source.J_sync[num_source] = Source.τf*Source.D[num_source, 1]
-    Source.K_sync[num_source] = Source.τv*Source.fsys*2π*Source.D[num_source, 2]
+    Source.J_sync[num_source] = Source.τf[num_source]*Source.D[num_source, 1]
+    Source.K_sync[num_source] = Source.τv[num_source]*Source.fsys*2π*Source.D[num_source, 2]
 
     if i*Source.ts > 0/Source.fsys
         Synchronverter_Control(Source, num_source, pq0_ref = pq0_ref, Vrms = Vrms, mode = mode)
@@ -944,8 +937,6 @@ function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = 70,
         
     =#
 
-    i = Source.steps
-
     Ki = ωn^2 # tuning
     Kp = ξ*2*sqrt(Ki) # tuning
 
@@ -1047,70 +1038,6 @@ function Phase_Locked_Loop_1ph(Source::Classical_Controls, num_source; Kp = 0.00
 
     return nothing
 end
-
-#= function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
-
-    i = Source.steps
-
-    Kp = Source.V_kp[num_source]
-    Ki = Source.V_ki[num_source]
-
-    V_err = Source.V_err[num_source, :, :]
-    V_err_t = Source.V_err_t[num_source, :]
-
-    if norm(pq0_ref) > Source.S[num_source]
-        pq0_ref = pq0_ref.*(Source.S[num_source]/norm(pq0_ref))
-    end
-
-    V_αβγ = Clarke_Transform(Source.V_filt_poc[num_source, :, end])
-    I_αβγ = Clarke_Transform(Source.I_filt_poc[num_source, :, end])
-
-    #-------------------------------------------------------------
-
-    I_αβγ_ref = Inv_p_q_v(V_αβγ, pq0_ref)
-
-    I_dq0_ref = Park_Transform(I_αβγ_ref, θ)
-    I_dq0 = Park_Transform(I_αβγ, θ)
-
-    #-------------------------------------------------------------
-
-    V_αβγ_ref = Inv_p_q_i(I_αβγ, pq0_ref)
-
-    V_dq0_ref = Park_Transform(V_αβγ_ref, θ)
-    V_dq0 = Park_Transform(V_αβγ, θ)
-
-    if sqrt(2/3)*norm(V_dq0_ref) > Source.Vdc[num_source]/2
-        V_dq0_ref = V_dq0_ref.*((Source.Vdc[num_source]/2)/(sqrt(2/3)*norm(V_dq0_ref) ))
-    end
-
-    #-------------------------------------------------------------
-
-    Source.V_ref[num_source, :] = Inv_DQ0_transform(V_dq0_ref, θ)
-
-    Source.V_ref_dq0[num_source, :] = V_dq0_ref
-    Source.V_dq0[num_source, :] = V_dq0
-
-    if i > 1
-        # Including Anti-windup - Back-calculation
-        I_err_new = I_dq0_ref .- I_dq0 .+ Kb*(Source.I_ref_dq0[num_source, :] .- Source.I_lim[num_source,:])
-    else
-        I_err_new = I_dq0_ref .- I_dq0
-    end
-
-    Source.I_lim[num_source,:], Source.V_err_t[num_source, :], 
-    Source.V_err[num_source, :, :] =
-    PI_Controller(I_err_new, V_err, V_err_t, Kp, Ki, Source.ts)
-
-    Ip_ref = sqrt(2/3)*norm(Source.I_lim[num_source, :]) # peak set point
-
-    if Ip_ref > Source.i_max[num_source]
-        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source,:]*Source.i_max[num_source]/Ip_ref
-    else
-        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]
-    end
-
-    return nothing
-end =#
 
 function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
 
@@ -1269,7 +1196,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ)
     PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts)
 
     Source.Vd_abc_new[num_source, :] = Inv_DQ0_transform(s_dq0_avg, θ)
-    #Source.Vd_abc_new[num_source, :, i + Source.delay] = 0.5*Source.Vdc[num_source].*Inv_DQ0_transform(s_dq0_avg, θ)
+    #Source.Vd_abc_new[num_source, :, i] = 0.5*Source.Vdc[num_source].*Inv_DQ0_transform(s_dq0_avg, θ)
     #= Theory:
         The switching functions s_abc(t) is generated by comparing the normalized
         voltage value with a triangular modulation carrier. The output of the
@@ -1538,22 +1465,6 @@ function Third_Order_Integrator(y_i, μ, u)
     return y_next
 end
 
-function Integrator_Prep(i; Order = 3)
-
-    cnt_start = i - Order + 1
-    cnt_end = i - 1
-    if cnt_end < 1
-        cnt_start = 1
-        cnt_end = 1
-    end
-    if cnt_start < 1
-        cnt_start = 1
-    end
-    range = cnt_start:cnt_end
-
-    return range, cnt_end
-end
-
 #-------------------------------------------------------------------------------
 
 function Measurements(Source::Classical_Controls)
@@ -1598,7 +1509,7 @@ function Measurements(Source::Classical_Controls)
                 Source.Qm[ns, 1:3] = (Source.V_ph[ns, :, 2].*Source.I_ph[ns, :, 2]).*sin.(Source.V_ph[ns, :, 3] .- Source.I_ph[ns, :, 3])
                 Source.Qm[ns, 4] = sum(Source.Qm[ns, 1:3])
 
-                if i*Source.ts < 1.9 + Source.ts/2 && i*Source.ts > 1.9 - Source.ts/2 #&& ns == 1 && 1 == 2
+                #= if i*Source.ts < 1.9 + Source.ts/2 && i*Source.ts > 1.9 - Source.ts/2 #&& ns == 1 && 1 == 2
 
                     println("")
                     println("t = ", round(i*Source.ts, digits = 3))
@@ -1611,8 +1522,8 @@ function Measurements(Source::Classical_Controls)
                     println("Qm[ns] = ", round(Source.p_q_inst[ns, 2]/1000, digits = 3), " kVAi")
                     println("Sm[ns]= ", round(sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2)/1000, digits = 3), " KVA")
                     println("")
-                end
-                if i*Source.ts < 0.9 + Source.ts/2 && i*Source.ts > 0.9 - Source.ts/2 #&& ns == 1 && 1 == 2
+                end =#
+                #= if i*Source.ts < 0.9 + Source.ts/2 && i*Source.ts > 0.9 - Source.ts/2 #&& ns == 1 && 1 == 2
 
                     println("")
                     println("t = ", round(i*Source.ts, digits = 3))
@@ -1625,7 +1536,7 @@ function Measurements(Source::Classical_Controls)
                     println("Qm[ns] = ", round(Source.p_q_inst[ns, 2]/1000, digits = 3), " kVAi")
                     println("Sm[ns]= ", round(sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2)/1000, digits = 3), " KVA")
                     println("")
-                end
+                end =#
         end
     end
 
@@ -1676,7 +1587,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
     tf_sys = tf(sys)
 
     Ts = 1/Source.f_cntr
-    dly = Source.delay*Ts
+    dly = 1*Ts #To do: action_delay from env
     ZoH = tf([1], [Ts/2, 1]) # Transfer function of the sample and hold process
     Pade = tf([-dly/2, 1], [dly/2, 1]) # Pure first-order delay approximation
     PWM_gain = Source.Vdc[num_source]/2
@@ -1865,54 +1776,42 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
     return Lf, Cf, fc
 end
 
-function Source_Initialiser(env, Animo, modes; pf = 0.8)
+function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
-    if isa(Animo, NamedPolicy)
+    Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
 
-        Animo.policy.state_ids
-        Animo.policy.action_ids
+    e = 1
 
-        Source = Animo.policy.Source
-        
-        Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
+    for ns in source_indices
 
-        source_indices = unique([parse(Int64, SubString(split(x, "_")[1], 7)) for x in Animo.policy.state_ids], dims=1)
+        Srated = env.nc.parameters["source"][ns]["pwr"]
+        Source.Rf[e] = env.nc.parameters["source"][ns]["R1"]
+        Source.Lf[e] = env.nc.parameters["source"][ns]["L1"]
+        Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
+        Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
+        Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
 
-        e = 1
-        for ns in source_indices
+        Source.S[e] = Srated
+        Source.P[e] = pf*Srated
+        Source.Q[e] = sqrt(Srated^2 - Source.P[e]^2)
 
-            Srated = env.nc.parameters["source"][ns]["pwr"]
-            Source.Rf[e] = env.nc.parameters["source"][ns]["R1"]
-            Source.Lf[e] = env.nc.parameters["source"][ns]["L1"]
-            Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
-            Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
-            Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
-
-            Source.S[e] = Srated
-            Source.P[e] = pf*Srated
-            Source.Q[e] = sqrt(Srated^2 - Source.P[e]^2)
-
-            if typeof(modes[e]) == Int64
-                Source.Source_Modes[e] = Mode_Keys[modes[e]]
-            else
-                Source.Source_Modes[e] = modes[e]
-            end
-
-            Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
-
-            Source.i_max[e] = 1.15*sqrt(2)*Source.S[e]/(3*Source.Vrms[e])
-            Source.v_max[e] = 1.5*Source.Vdc[e]/2
-
-            Current_PI_LoopShaping(Source, e)
-            Voltage_PI_LoopShaping(Source, e)
-
-            e += 1
+        if typeof(modes[e]) == Int64
+            Source.Source_Modes[e] = Mode_Keys[modes[e]]
+        else
+            Source.Source_Modes[e] = modes[e]
         end
-    else
-    
-        Println("\nError.\nClassical policy is not a named policy.\n")
 
+        Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
+
+        Source.i_max[e] = 1.15*sqrt(2)*Source.S[e]/(3*Source.Vrms[e])
+        Source.v_max[e] = 1.5*Source.Vdc[e]/2
+
+        Current_PI_LoopShaping(Source, e)
+        Voltage_PI_LoopShaping(Source, e)
+
+        e += 1
     end
 
     return nothing
 end
+

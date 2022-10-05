@@ -1817,7 +1817,6 @@ function Cranking(Deus::ϵ_Machine, x, μ_s)
     Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
     #Load_values(Deus::ϵ_Machine)
-    #Load_values(Deus::ϵ_Machine)
 
     Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
 

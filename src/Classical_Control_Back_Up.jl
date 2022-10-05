@@ -1138,6 +1138,70 @@ end
 
     i = Source.steps
 
+    Kp = Source.V_kp[num_source]
+    Ki = Source.V_ki[num_source]
+
+    V_err = Source.V_err[num_source, :, :]
+    V_err_t = Source.V_err_t[num_source, :]
+
+    if norm(pq0_ref) > Source.S[num_source]
+        pq0_ref = pq0_ref.*(Source.S[num_source]/norm(pq0_ref))
+    end
+
+    V_αβγ = Clarke_Transform(Source.V_filt_poc[num_source, :, end])
+    I_αβγ = Clarke_Transform(Source.I_filt_poc[num_source, :, end])
+
+    #-------------------------------------------------------------
+
+    I_αβγ_ref = Inv_p_q_v(V_αβγ, pq0_ref)
+
+    I_dq0_ref = Park_Transform(I_αβγ_ref, θ)
+    I_dq0 = Park_Transform(I_αβγ, θ)
+
+    #-------------------------------------------------------------
+
+    V_αβγ_ref = Inv_p_q_i(I_αβγ, pq0_ref)
+
+    V_dq0_ref = Park_Transform(V_αβγ_ref, θ)
+    V_dq0 = Park_Transform(V_αβγ, θ)
+
+    if sqrt(2/3)*norm(V_dq0_ref) > Source.Vdc[num_source]/2
+        V_dq0_ref = V_dq0_ref.*((Source.Vdc[num_source]/2)/(sqrt(2/3)*norm(V_dq0_ref) ))
+    end
+
+    #-------------------------------------------------------------
+
+    Source.V_ref[num_source, :] = Inv_DQ0_transform(V_dq0_ref, θ)
+
+    Source.V_ref_dq0[num_source, :] = V_dq0_ref
+    Source.V_dq0[num_source, :] = V_dq0
+
+    if i > 1
+        # Including Anti-windup - Back-calculation
+        I_err_new = I_dq0_ref .- I_dq0 .+ Kb*(Source.I_ref_dq0[num_source, :] .- Source.I_lim[num_source,:])
+    else
+        I_err_new = I_dq0_ref .- I_dq0
+    end
+
+    Source.I_lim[num_source,:], Source.V_err_t[num_source, :], 
+    Source.V_err[num_source, :, :] =
+    PI_Controller(I_err_new, V_err, V_err_t, Kp, Ki, Source.ts)
+
+    Ip_ref = sqrt(2/3)*norm(Source.I_lim[num_source, :]) # peak set point
+
+    if Ip_ref > Source.i_max[num_source]
+        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source,:]*Source.i_max[num_source]/Ip_ref
+    else
+        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]
+    end
+
+    return nothing
+end =#
+
+#= function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
+
+    i = Source.steps
+
     Kp = Source.I_kp[num_source]
     Ki = Source.I_ki[num_source]
 
@@ -2298,3 +2362,52 @@ function Source_Initialiser(env, Animo, modes; pf = 0.8)
 
     return nothing
 end
+
+#= function Source_Initialiser(env, Animo, modes; pf = 0.8)
+
+    if isa(Animo, NamedPolicy)
+
+        Source = Animo.policy.Source
+        
+        Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
+
+        source_indices = unique([parse(Int64, SubString(split(x, "_")[1], 7)) for x in Animo.policy.state_ids], dims=1)
+
+        e = 1
+        for ns in source_indices
+
+            Srated = env.nc.parameters["source"][ns]["pwr"]
+            Source.Rf[e] = env.nc.parameters["source"][ns]["R1"]
+            Source.Lf[e] = env.nc.parameters["source"][ns]["L1"]
+            Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
+            Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
+            Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
+
+            Source.S[e] = Srated
+            Source.P[e] = pf*Srated
+            Source.Q[e] = sqrt(Srated^2 - Source.P[e]^2)
+
+            if typeof(modes[e]) == Int64
+                Source.Source_Modes[e] = Mode_Keys[modes[e]]
+            else
+                Source.Source_Modes[e] = modes[e]
+            end
+
+            Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
+
+            Source.i_max[e] = 1.15*sqrt(2)*Source.S[e]/(3*Source.Vrms[e])
+            Source.v_max[e] = 1.5*Source.Vdc[e]/2
+
+            Current_PI_LoopShaping(Source, e)
+            Voltage_PI_LoopShaping(Source, e)
+
+            e += 1
+        end
+    else
+    
+        Println("\nError.\nClassical policy is not a named policy.\n")
+
+    end
+
+    return nothing
+end =#
