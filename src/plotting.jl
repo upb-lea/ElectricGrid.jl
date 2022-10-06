@@ -23,7 +23,7 @@ function plot_rewards_3d(hook)
 end
 
 function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_to_plot = nothing, plot_reward = true, plot_reference = false)
-    reset!(env)
+    RLBase.reset!(env)
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -33,13 +33,34 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
         actions_to_plot = hook.collect_action_ids
     end
 
-    act_noise_old = agent.policy.act_noise
-    agent.policy.act_noise = 0.0
-    copyto!(agent.policy.behavior_actor, hook.bestNNA)
+    if isa(agent, MultiAgentGridController)
+        act_noise_old = Dict()
+        for (name, agent_temp) in agent.agents
+            if isa(agent_temp["policy"], Agent)
+                act_noise_old[name] = agent_temp["policy"].policy.policy.act_noise
+                agent_temp["policy"].policy.policy.act_noise = 0.0
+                copyto!(agent_temp["policy"].policy.policy.behavior_actor, hook.bestNNA[name])
+            end
+        end
+    else
+        act_noise_old = agent.policy.act_noise
+        agent.policy.act_noise = 0.0
+        copyto!(agent.policy.behavior_actor, hook.bestNNA)
+    end
     
     temphook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
     
-    run(agent.policy, env, StopAfterEpisode(1), temphook)
+    if isa(agent, MultiAgentGridController)
+        ma2 = deepcopy(agent)
+        for (name, policy) in ma2.agents
+            if isa(policy["policy"], Agent)
+                policy["policy"] = policy["policy"].policy
+            end
+        end
+        run(ma2, env, StopAfterEpisode(1), temphook)
+    else
+        run(agent.policy, env, StopAfterEpisode(1), temphook)
+    end
     
     layout = Layout(
             plot_bgcolor="#f1f3f7",
@@ -53,16 +74,9 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
                 titlefont_color="orange",
                 range=[-1, 1]
             ),
-            legend = attr(
-                x=1,
-                y=1.02,
-                yanchor="bottom",
-                xanchor="right",
-                orientation="h"
-            ),
-            width = 1000,
-            height = 650,
-            margin=attr(l=100, r=80, b=80, t=100, pad=10)
+            width = 1200,
+            height = 850,
+            margin=attr(l=100, r=200, b=80, t=100, pad=10)
         )
 
 
@@ -89,15 +103,24 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
     display(p)
     
-    copyto!(agent.policy.behavior_actor, hook.currentNNA)
-    agent.policy.act_noise = act_noise_old
+    if isa(agent, MultiAgentGridController)
+        for (name, agent_temp) in agent.agents
+            if isa(agent_temp["policy"], Agent)
+                agent_temp["policy"].policy.policy.act_noise = act_noise_old[name] 
+                copyto!(agent_temp["policy"].policy.policy.behavior_actor, hook.currentNNA[name])
+            end
+        end
+    else
+        copyto!(agent.policy.behavior_actor, hook.currentNNA)
+        agent.policy.act_noise = act_noise_old
+    end
     
-    reset!(env)
+    RLBase.reset!(env)
 
     return nothing
 end
 
-function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing)
+function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [])
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -146,6 +169,11 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
     
     for action_id in actions_to_plot
         push!(traces, scatter(df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
+    end
+
+    for vdc_idx in vdc_to_plot
+        #TODO: If the index is not collected this function does print only the steps 1,2,3,4.... on y axis, WHY? How to handle that?
+        push!(traces, scatter(df, x = :time, y = Symbol("source$(vdc_idx)_vdc"), mode="lines", name = "source$(vdc_idx)_vdc"))
     end
     
     if plot_reference
