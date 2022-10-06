@@ -20,7 +20,9 @@ end;
 
 Base.@kwdef mutable struct PV_array
     pv_module::PV_module           # module parameters
-    N_modules = 20
+    N_modules = 10000
+    serial = 10
+    parallel = 4
     connection = 's'
     
 end;
@@ -39,11 +41,11 @@ function get_I(pv_arr::PV_array, V, G, T)
     function I_diode(self::PV_module, V, G, T)
         dT = self.T_0 + T
         V_T = self.k*dT/self.q
-        I_d = self.I_0*(exp(V/(self.ni*self.N_cell*pv_arr.N_modules*V_T))-1)
+        I_d = self.I_0*(exp(V/(self.ni*self.N_cell*pv_arr.serial*V_T))-1)
         return I_d
     end;
     
-    I = (I_photo(self, G, T) - I_diode(self, V, G, T)) 
+    I = (I_photo(self, G, T) - I_diode(self, V, G, T)) * pv_arr.parallel
     return I
 end
 
@@ -57,7 +59,7 @@ function get_V(pv_arr::PV_array, I, G, T)
     end;
     
     I = maximum([0.0,I[1]])
-    res = I_photo(self, G, T)-I
+    res = I_photo(self, G, T)-(I/pv_arr.parallel)
     
     dT = self.T_0 + T
     V_T = self.k*dT/self.q
@@ -65,7 +67,7 @@ function get_V(pv_arr::PV_array, I, G, T)
     if res <= 0
         V=0
     else
-        V = self.ni*self.N_cell*pv_arr.N_modules*V_T*(log((res)/self.I_0)+1)
+        V = self.ni*self.N_cell*pv_arr.serial*V_T*(log((res)/self.I_0)+1)
     end
     
     return V

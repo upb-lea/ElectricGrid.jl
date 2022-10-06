@@ -7,6 +7,7 @@ using DataStructures
 
 include("./custom_control.jl")
 include("./nodeconstructor.jl")
+include("./pv_module.jl")
 
 
 mutable struct SimEnv <: AbstractEnv
@@ -303,7 +304,14 @@ function (env::SimEnv)(action)
 
     # mutliply action with vdc vector
     # assumes in all number of phases per source the same vdc by repeating the vdc value "phase"-times
-    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
+    pv_module = PV_module()
+
+    pv_array = PV_array(;pv_module)
+
+    env.v_dc[1] = get_V(pv_array, env.x[1][1], 1000, 27)
+
+    env.action = env.action .* env.v_dc
+    # env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
     
 
     env.action = env.prepare_action(env)

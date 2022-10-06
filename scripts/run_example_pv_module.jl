@@ -66,7 +66,7 @@ parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => 10000.0, "phase" => 1, "v_rms" => 230);
 
 ts = 1e-4
-env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
+env = SimEnv(reward_function = reward, ts=ts, use_gpu=false
 , CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 500)
 
 
@@ -87,11 +87,18 @@ policy = sin_policy(action_space=action_space(env))
 #######################################################################################
 # Define data-logging hook
 # define which states to store, to check what states are avalible type get_state_ids(env.nc) into command line
+
+state_ids = get_state_ids(env.nc)
+action_ids = get_action_ids(env.nc)
+
+state_ids_agent = filter(x -> split(x, "_")[1] == "source1", state_ids)
+action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)
+
 #plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c", "i_f1_a", "i_f1_b", "i_f1_c", "i_f2_a", "i_f2_b", "i_f2_c"]  
-plt_state_ids = ["i_1"]#, "i_2_a", "i_2_b", "i_2_c"]  
+plt_state_ids = ["source1_i_L1"]#, "i_2_a", "i_2_b", "i_2_c"]  
 # define which states to store, to check what states are avalible type get_action_ids(env.nc) into command line 
-plt_action_ids = ["u_v1"]#, "u_v2_a", "u_v2_b", "u_v2_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
+plt_action_ids = ["source1_u"]#, "u_v2_a", "u_v2_b", "u_v2_c"]
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, collect_vdc_idx = [1])
 
 #######################################################################################
 # GOAL: Use run function provided by ReinforcementLearning.jl to be able to interact 
@@ -102,5 +109,5 @@ run(policy, env, StopAfterEpisode(1), hook)
 
 #TODO
 # this will be shifted to plotting.jl soon
-plot_hook_results(hook=hook)
-
+plot_hook_results(hook=hook, vdc_to_plot=[1])
+plot_hook_results(; hook = hook, states_to_plot = ["source1_i_L1"] )

@@ -15,7 +15,7 @@ end
 function (p::sin_policy)(env)
     p.t = p.t + p.ts
     #u = [230 * sin.(50*2*pi*p.t .+ 2/3*pi*(i-1)) for i = 1:length(p.action_space)]
-    u = [.01 for i = 1:length(p.action_space)]
+    u = [.077 for i = 1:length(p.action_space)]
     #u = [0.5, 0, -0.5, 0.7, 0.2, -0.2]
     # u = [1 * sin.(50*2*pi*p.t .- 2/3*pi*(i-1)) for i = 1:3]
     return u
