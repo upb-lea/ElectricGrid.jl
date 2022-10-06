@@ -53,6 +53,8 @@ mutable struct Classical_Controls
     I_poc_loc::Matrix{Int64}
     I_inv_loc::Matrix{Int64}
 
+    Action_loc::Vector{Vector{Int64}}
+
     #---------------------------------------------------------------------------
     # Phase Locked Loops
 
@@ -153,6 +155,7 @@ mutable struct Classical_Controls
         f_cntr::Float64, fsys::Float64, θsys::Float64,
         ts::Float64, N::Int64, steps::Int64,
         V_poc_loc::Matrix{Int64}, I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
+        Action_loc::Vector{Vector{Int64}},
         pll_err::Array{Float64}, pll_err_t::Matrix{Float64},
         vd::Array{Float64}, qvd::Array{Float64},
         fpll::Array{Float64}, θpll::Array{Float64},
@@ -188,6 +191,7 @@ mutable struct Classical_Controls
         f_cntr, fsys, θsys,
         ts, N, steps,
         V_poc_loc, I_poc_loc, I_inv_loc,
+        Action_loc,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -277,18 +281,18 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # General System & Control
 
-        Modes = Dict("Swing Mode" => 1, 
-        "Voltage Control Mode" => 2, 
-        "PQ Control Mode" => 3,
-        "Droop Control Mode" => 4, 
-        "Full-Synchronverter Mode" => 5, 
-        "Semi-Synchronverter Mode" => 6,
+        Modes = Dict("Swing" => 1, 
+        "Voltage Control" => 2, 
+        "PQ Control" => 3,
+        "Droop Control" => 4, 
+        "Full-Synchronverter" => 5, 
+        "Semi-Synchronverter" => 6,
         "Not Used 1" => 7,
         "Not Used 2" => 8,
         "Not Used 3" => 9)
 
         Source_Modes = Array{String, 1}(undef, num_sources)
-        Source_Modes = fill!(Source_Modes, "Voltage Control Mode")
+        Source_Modes = fill!(Source_Modes, "Voltage Control")
 
         V_poc_loc = Array{Int64, 2}(undef, phases, num_sources)
         V_poc_loc = fill!(V_poc_loc, 1)
@@ -296,6 +300,8 @@ mutable struct Classical_Controls
         I_poc_loc = fill!(I_poc_loc, 1)
         I_inv_loc = Array{Int64, 2}(undef, phases, num_sources)
         I_inv_loc = fill!(I_inv_loc, 1)
+
+        Action_loc = Vector{Vector{Int64}}(undef, 0)
 
         Order = 3 #integration Order
 
@@ -463,6 +469,7 @@ mutable struct Classical_Controls
         f_cntr, fsys, θsys,
         ts, N, steps,
         V_poc_loc, I_poc_loc, I_inv_loc,
+        Action_loc,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -514,8 +521,6 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
         Source_Initialiser(env, Source, Modes, Source_Indices)
 
-        println(state_ids_classic)
-
         #------------------------------------
 
         for s in 1:length(Source_Indices)
@@ -525,20 +530,18 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
             Source.V_poc_loc[:, s]  = findall(contains(s_idx*"_u_C_cables"), state_ids_classic)
 
             if isnothing(findfirst(contains("L2"), state_ids_classic))
-                Source.I_poc_loc[1:phases, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
             else
-                Source.I_poc_loc[1:phases, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
+                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
             end
-            Source.I_inv_loc[1:phases, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
 
-            println()
-            println("source = ", s_idx)
-            println("V_poc_loc = ", Source.V_poc_loc[:, s])
-            println("I_poc_loc = ", Source.I_poc_loc[:, s])
-            println("I_inv_loc = ", Source.I_inv_loc[:, s])
-            println()
-            
+            Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
         end
+
+        letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
+
+        Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), vec(Source_Indices)), 
+        letterdict[split(x, "_")[3]]] for x in action_ids_classic]
 
         #------------------------------------
 
@@ -619,21 +622,21 @@ function Classical_Control(Animo, env, name = nothing)
 
     for s in 1:Source.num_sources
 
-        if Source.Source_Modes[s] == "Swing Mode"
+        if Source.Source_Modes[s] == "Swing"
 
             Swing_Mode(Source, s)
-        elseif Source.Source_Modes[s] == "Voltage Control Mode"
+        elseif Source.Source_Modes[s] == "Voltage Control"
 
             Voltage_Control_Mode(Source, s)
-        elseif Source.Source_Modes[s] == "PQ Control Mode"
+        elseif Source.Source_Modes[s] == "PQ Control"
             PQ_Control_Mode(Source, s, Source.pq0_set[s, :])
-        elseif Source.Source_Modes[s] == "Droop Control Mode"
+        elseif Source.Source_Modes[s] == "Droop Control"
 
             Droop_Control_Mode(Source, s)
-        elseif Source.Source_Modes[s] == "Full-Synchronverter Mode"
+        elseif Source.Source_Modes[s] == "Full-Synchronverter"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
-        elseif Source.Source_Modes[s] == "Semi-Synchronverter Mode"
+        elseif Source.Source_Modes[s] == "Semi-Synchronverter"
             smode = Source.Modes[Source.Source_Modes[s]] - 4
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
         elseif Source.Source_Modes[s] == "Not Used 1"
@@ -648,7 +651,7 @@ function Classical_Control(Animo, env, name = nothing)
         end
     end
 
-    Action = Env_Interface(env, Animo, name)
+    Action = Env_Interface(Source)
     Measurements(Source)
 
     return Action
@@ -685,14 +688,9 @@ function Source_Interface(env, Animo, name = nothing)
     return nothing
 end
 
-function Env_Interface(env, Animo, name = nothing)
+function Env_Interface(Source)
 
-    Source = Animo.Source
-
-    letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
-    source_indices = unique([parse(Int64, SubString(split(x, "_")[1], 7)) for x in Animo.state_ids], dims=1)
-    Action = [Source.Vd_abc_new[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), source_indices),
-                                letterdict[split(x, "_")[3]]] for x in Animo.action_ids]
+    Action = [Source.Vd_abc_new[Source.Action_loc[x][1], Source.Action_loc[x][2]] for x in 1:length(Source.Action_loc)]
 
     return Action
 end
@@ -1067,21 +1065,6 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
 
     s_dq0_avg, Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] =
     PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts)
-
-    if any(isnan, s_dq0_avg)
-        println("s_dq0_avg = ", s_dq0_avg)
-        println("I_dq0_ref = ", I_dq0_ref)
-        println()
-        println("I_αβγ_ref = ", I_αβγ_ref)
-        println("pq0_ref = ", pq0_ref)
-        println("V_αβγ = ", V_αβγ)
-        println("I_dq0 = ", I_dq0)
-        println("I_err = ", I_err)
-        println("I_err_t = ", I_err_t)
-        println("θ = ", θ)
-        println(Inv_DQ0_transform(s_dq0_avg, θ))
-        error("Asdfasd")
-    end
 
     Source.Vd_abc_new[num_source, :] = Inv_DQ0_transform(s_dq0_avg, θ)
     

@@ -180,23 +180,24 @@ action_ids = get_action_ids(env.nc)
 #_______________________________________________________________________________
 # Setting up the Classical Sources
 
-Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [6 6], Source_Indices = [1 2]))
+Animo = NamedPolicy("classic", Classical_Policy(env, Modes = ["Semi-Synchronverter", "PQ Control"], Source_Indices = [1 2]))
 
 #= Modes:
-    1 -> "Swing Mode" - voltage source without dynamics (i.e. an Infinite Bus)
-    2 -> "Voltage Control Mode" - voltage source with controller dynamics
+    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+    2 -> "Voltage Control" - voltage source with controller dynamics
 
-    3 -> "PQ Control Mode" - grid following controllable source/load
+    3 -> "PQ Control" - grid following controllable source/load
 
-    4 -> "Droop Control Mode" - simple grid forming with power balancing
-    5 -> "Full-Synchronverter Mode" - droop control on real and imaginary powers
-    6 -> "Semi-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
+    4 -> "Droop Control" - simple grid forming with power balancing
+    5 -> "Full-Synchronverter" - droop control on real and imaginary powers
+    6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
 
-Animo.policy.Source.τv[1] = 0.002 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf[1] = 0.002 # time constant of the frequency loop # 0.002
-
 nm_src = 1 # changing the power set points of the source
+
+Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
+Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
+
 Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
@@ -204,6 +205,10 @@ Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
 Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
 
 nm_src = 2 # changing the power set points of the source
+
+Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
+Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
+
 Animo.policy.Source.pq0_set[nm_src, 1] = 10e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 

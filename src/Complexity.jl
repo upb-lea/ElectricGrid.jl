@@ -10,6 +10,7 @@ mutable struct Node
 
     parent::Int64
     generation::Int64
+    cylinder::Int64
     child_vals::Vector{Int64}
     child_locs::Vector{Int64}
 
@@ -26,7 +27,7 @@ mutable struct Node
     state::Int64
 
     function Node(value::Int64,
-                parent::Int64, generation::Int64,
+                parent::Int64, generation::Int64, cylinder::Int64,
                 child_vals::Vector{Int64}, child_locs::Vector{Int64},
                 cn::Int64, Pr::Float64, Pr_c::Vector{Float64},
                 morph_vals::Vector{Int64}, morph_Pr_c::Vector{Float64},
@@ -35,7 +36,7 @@ mutable struct Node
                 state::Int64)
 
         new(value,
-            parent, generation,
+            parent, generation, cylinder,
             child_vals, child_locs,
             cn, Pr, Pr_c,
             morph_vals, morph_Pr_c,
@@ -52,6 +53,7 @@ mutable struct Node
         Pr = 0.0
         Pr_c = Array{Float64, 1}(undef, 0)
         generation = 0
+        cylinder = 0
 
         morph_vals = Array{Int64, 1}(undef, 0)
         morph_Pr_c = Array{Float64, 1}(undef, 0)
@@ -62,7 +64,7 @@ mutable struct Node
         state = 0
 
         Node(value,
-            parent, generation,
+            parent, generation, cylinder,
             child_vals, child_locs,
             cn, Pr, Pr_c,
             morph_vals, morph_Pr_c,
@@ -141,12 +143,15 @@ mutable struct Parse_Tree
     N::Int64 # length of the total sequence
     D::Int64 # 1st Approximation Parameter - Depth of the tree (even number)
     L::Int64 # 2nd Approximation Parameter - length of future subsequences
+    C::Vector{Matrix{Float64}} # empirical estimation of cylinders
+    m::Int64 # center point
 
-    function Parse_Tree(Nodes::Vector{Node}, N::Int64, D::Int64, L::Int64)
-        new(Nodes, N, D, L)
+    function Parse_Tree(Nodes::Vector{Node}, N::Int64, D::Int64, L::Int64,
+        C::Vector{Matrix{Float64}}, m::Int64)
+        new(Nodes, N, D, L, C, m)
     end
 
-    function Parse_Tree(N, D)
+    function Parse_Tree(N, D, m)
 
         Nodes = Array{Node, 1}(undef, 0)
         Nodes = [Nodes; Node(-1, 0)] # creating the root node
@@ -155,7 +160,9 @@ mutable struct Parse_Tree
 
         L = Int(floor(D/2))
 
-        Parse_Tree(Nodes, N, D, L)
+        C = Vector{Matrix{Float64}}(undef, 0)
+
+        Parse_Tree(Nodes, N, D, L, C, m)
     end
 end
 
@@ -290,6 +297,7 @@ mutable struct ϵ_Machine
     k::Int64 # Simulation step
 
     s::Array{Int64, 1} # measured symbols
+    x::Array{Float64, 2} # input data
     x_m::Array{Float64, 2} # State space machine representation of symbols
     t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64} # Machine time
  
@@ -332,7 +340,7 @@ mutable struct ϵ_Machine
 
     function ϵ_Machine(Ts::Vector{Matrix{Float64}}, Tree::Parse_Tree,
         δ::Float64, μ_m::Float64, ϵ::Array{Float64, 1}, x_range::Array{Float64, 2}, k::Int64,
-        s::Array{Int64, 1}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
+        s::Array{Int64, 1}, x::Array{Float64, 2}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
         C_states::Matrix{Int64}, start_state::Int64, Dang_States::Vector{Int64}, IG::Float64,
         T::Matrix{Float64}, I::Matrix{Float64}, eigval::Vector{ComplexF64},
         r_eigvecs::Matrix{ComplexF64}, l_eigvecs::Matrix{ComplexF64},
@@ -345,7 +353,7 @@ mutable struct ϵ_Machine
         Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, C::Float64, Cμ::Float64, Ce::Float64, Cμe::Float64)     
 
         new(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
-        s, x_m, t_m,
+        s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
         r_eigvecs, l_eigvecs, D, pv,  
@@ -363,7 +371,7 @@ mutable struct ϵ_Machine
         # Stochastic transitions on a Multigraph
         Ts = Vector{Matrix{Float64}}(undef, 0)
         C_states = Array{Int64, 2}(undef, 0, 4)
-        Tree = Parse_Tree(N, D)
+        Tree = Parse_Tree(N, D, Int(floor(D/2)))
         start_state = 0
         Dang_States = Array{Int64, 1}(undef, 0)
         IG = 0.0
@@ -377,6 +385,7 @@ mutable struct ϵ_Machine
         dim = length(ϵ)
         s = Array{Int64, 1}(undef, N)
         s = fill!(s, 0)
+        x = Array{Float64, 2}(undef, dim, N) # State space machine representation
         x_m = Array{Float64, 2}(undef, dim, N) # State space machine representation
         t_m = 0:μ_m:t_final # machine time
 
@@ -420,7 +429,7 @@ mutable struct ϵ_Machine
         Cαe = fill!(Cαe, 0.0)
 
         ϵ_Machine(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
-        s, x_m, t_m,
+        s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
         r_eigvecs, l_eigvecs, D, pv,  
@@ -553,9 +562,11 @@ function Sampling(Deus::ϵ_Machine, x, μ_s)
     return nothing
 end
 
-function add_Nodes(Tree::Parse_Tree, s; parent = 1)
+function add_Nodes(Deus::ϵ_Machine, s, xi; parent = 1)
 
     d = length(s) # Depth of the remaining sub-sequence
+
+    Tree = Deus.Tree
 
     if length(Tree.Nodes[parent].child_vals) == 0
 
@@ -564,7 +575,11 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
         Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; Tree.Nodes[new_node].cn/Tree.Nodes[parent].cn]
 
         if d > 1
-            add_Nodes(Tree, s[2:end], parent = new_node)
+            add_Nodes(Deus, s[2:end], xi, parent = new_node)
+        else
+            Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(xi)))
+            Tree.Nodes[new_node].cylinder = length(Tree.C)
+            Tree.C[Tree.Nodes[new_node].cylinder][end, :] = xi
         end
     else
 
@@ -578,10 +593,12 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
             new_parent = Int(Tree.Nodes[parent].child_locs[parent_loc])
 
             if d > 1
-                add_Nodes(Tree, s[2:end], parent = new_parent)
+                add_Nodes(Deus, s[2:end], xi, parent = new_parent)
             else
                 Tree.Nodes[new_parent].cn = Tree.Nodes[new_parent].cn + 1
                 Tree.Nodes[new_parent].Pr = Tree.Nodes[new_parent].cn/(Tree.N - Tree.D)
+
+                Tree.C[Tree.Nodes[new_parent].cylinder] = cat(Tree.C[Tree.Nodes[new_parent].cylinder], xi, dims = 1)
             end
         else
 
@@ -590,7 +607,11 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
             Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; 0]
 
             if d > 1
-                add_Nodes(Tree, s[2:end], parent = new_node)
+                add_Nodes(Deus, s[2:end], xi, parent = new_node)
+            else
+                Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(xi)))
+                Tree.Nodes[new_node].cylinder = length(Tree.C)
+                Tree.C[Tree.Nodes[new_node].cylinder][end, :] = xi
             end
         end
 
@@ -1806,11 +1827,25 @@ end
 
 function Cranking(Deus::ϵ_Machine, x, μ_s)
 
+    Deus.x = x
+
     Sampling(Deus, x, μ_s)
 
+    t = 0
     for i in 1:Deus.k - Deus.Tree.D + 1
-        add_Nodes(Deus.Tree, Deus.s[i : (i + Deus.Tree.D - 1)])
+        xi = Deus.x[:, i + Deus.Tree.m - 1]
+        add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], [xi xi])
+        t = t + 1
     end
+    println(t)
+
+    y = 0
+    for i in 1:length(Deus.Tree.C)
+        y = y + length(Deus.Tree.C[i])
+    end
+    println(y/2)
+
+    #----------------------------------------------------------
 
     Tree_Isomorphism(Deus)
 
