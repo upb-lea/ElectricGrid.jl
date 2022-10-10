@@ -26,13 +26,13 @@ function reward(env, name = nothing)
     
     if !isnothing(name)
         if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source1_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source1_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source1_v_C_c", env.state_ids)
         else
-            u_l1_index = findfirst(x -> x == "source2_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source2_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source2_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source2_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source2_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source2_v_C_c", env.state_ids)
         end
 
         u_l1 = env.state[u_l1_index]
@@ -118,7 +118,7 @@ push!(cable_list, cable, cable)
 source_list = []
 source = Dict()
 
-source["pwr"] = 200e3
+source["pwr"] = 100e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
@@ -171,7 +171,7 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 # Define the environment
 
 env = SimEnv(reward_function = reward, featurize = featurize, 
-v_dc = 800, ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
+ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
 maxsteps = length(t), action_delay = 1)
 
 state_ids = get_state_ids(env.nc)
@@ -180,7 +180,7 @@ action_ids = get_action_ids(env.nc)
 #_______________________________________________________________________________
 # Setting up the Classical Sources
 
-Animo = NamedPolicy("classic", Classical_Policy(env, Modes = ["Semi-Synchronverter", "PQ Control"], Source_Indices = [1 2]))
+Animo = NamedPolicy("classic", Classical_Policy(env, Modes = ["Semi-Synchronverter", "PQ Control"], Source_Indices = [2 1]))
 
 #= Modes:
     1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
@@ -193,23 +193,23 @@ Animo = NamedPolicy("classic", Classical_Policy(env, Modes = ["Semi-Synchronvert
     6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
 
+nm_src = 2 # changing the power set points of the source
+
+Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
+Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
+
+Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
+
+Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
+Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
+
 nm_src = 1 # changing the power set points of the source
 
 Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
 Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
 
 Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
-
-Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
-Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
-
-nm_src = 2 # changing the power set points of the source
-
-Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
-
-Animo.policy.Source.pq0_set[nm_src, 1] = 10e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
 Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
@@ -229,16 +229,19 @@ agentname = "agent"
 #_______________________________________________________________________________
 #%% Starting time simulation
 
-plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C_a", "source2_u_C_b", "source2_u_C_c", "source1_i_L1_a", "source2_i_L1_a"]
+plt_state_ids = []#"source1_v_C_a", "source2_v_C_a", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = false, plot_rewards=false)
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
+collect_vrms_idx = [1 2], collect_irms_idx = [1 2], collect_pq_idx = [1 2],
+save_best_NNA = true, collect_reference = false, plot_rewards=false)
 
 run(ma, env, StopAfterEpisode(1), hook);
 
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = false, episode = 1)
+plot_hook_results(; hook = hook, actions_to_plot = [], episode = 1, 
+pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2])
 
 #= Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 1)
 Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 2)

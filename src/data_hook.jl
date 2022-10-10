@@ -45,6 +45,12 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     collect_reference = false
     collect_vdc_idx = []
 
+    collect_vdq_idx = []
+    collect_vrms_idx = []
+    collect_idq_idx = []
+    collect_irms_idx = []
+    collect_pq_idx = []
+
 end
 
 function (hook::DataHook)(::PreExperimentStage, agent, env)
@@ -158,6 +164,53 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
+
+    if findfirst(x -> x == "classic", hook.policy_names) !== nothing
+
+        for idx in hook.collect_vdq_idx
+
+            s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
+            if s_idx !== nothing
+                insertcols!(hook.tmp, "source$(idx)_vd" => agent.agents["classic"]["policy"].policy.Source.V_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_vq" => agent.agents["classic"]["policy"].policy.Source.V_dq0[s_idx, 2])
+            end
+        end
+
+        for idx in hook.collect_idq_idx
+            s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
+            if s_idx !== nothing
+                insertcols!(hook.tmp, "source$(idx)_id" => agent.agents["classic"]["policy"].policy.Source.I_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_iq" => agent.agents["classic"]["policy"].policy.Source.I_dq0[s_idx, 2])
+            end
+        end
+
+        for idx in hook.collect_pq_idx
+            s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
+            if s_idx !== nothing
+                insertcols!(hook.tmp, "source$(idx)_p" => agent.agents["classic"]["policy"].policy.Source.p_q_filt[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_q" => agent.agents["classic"]["policy"].policy.Source.p_q_filt[s_idx, 2])
+            end
+        end
+
+        for idx in hook.collect_vrms_idx
+            s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
+            if s_idx !== nothing
+                insertcols!(hook.tmp, "source$(idx)_vrms_a" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 1, 2])
+                insertcols!(hook.tmp, "source$(idx)_vrms_b" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 2, 2])
+                insertcols!(hook.tmp, "source$(idx)_vrms_c" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 3, 2])
+            end
+        end
+
+        for idx in hook.collect_irms_idx
+            s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
+            if s_idx !== nothing
+                insertcols!(hook.tmp, "source$(idx)_irms_a" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 1, 2])
+                insertcols!(hook.tmp, "source$(idx)_irms_b" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 2, 2])
+                insertcols!(hook.tmp, "source$(idx)_irms_c" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 3, 2])
+            end
+        end
+
+    end
 
     for idx in hook.collect_vdc_idx
         insertcols!(hook.tmp, "source$(idx)_vdc" => env.v_dc[idx])

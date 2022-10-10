@@ -503,12 +503,15 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
     state_ids::Vector{String}
     action_ids::Vector{String}
+    Source_Indices::Vector{Int64}
 
-    function Classical_Policy(action_space, Source, state_ids, action_ids)
-        new(action_space, Source, state_ids, action_ids)
+    function Classical_Policy(action_space, Source, state_ids, action_ids, Source_Indices)
+        new(action_space, Source, state_ids, action_ids, Source_Indices)
     end
 
     function Classical_Policy(env; Modes = [], Source_Indices = [], phases = 3)
+
+        Source_Indices = vec(Source_Indices)
 
         state_ids = get_state_ids(env.nc)
         action_ids = get_action_ids(env.nc)
@@ -527,7 +530,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
             s_idx = string(Source_Indices[s])
     
-            Source.V_poc_loc[:, s]  = findall(contains(s_idx*"_u_C_cables"), state_ids_classic)
+            Source.V_poc_loc[:, s]  = findall(contains(s_idx*"_v_C_cables"), state_ids_classic)
 
             if isnothing(findfirst(contains("L2"), state_ids_classic))
                 Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
@@ -546,7 +549,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
         #------------------------------------
 
         animo = Classical_Policy(Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), Source,
-        state_ids_classic, action_ids_classic)
+        state_ids_classic, action_ids_classic, Source_Indices)
 
         return animo
     end
@@ -1517,6 +1520,8 @@ function Measurements(Source::Classical_Controls)
                     #println("V_ph[ns,  1, 3] = ", Source.V_ph[ns, 1, 3]*180/pi)
                     println("Pm[ns] = ", round(Source.p_q_inst[ns, 1]/1000, digits = 3), " kW")
                     println("Qm[ns] = ", round(Source.p_q_inst[ns, 2]/1000, digits = 3), " kVAi")
+                    println("Pm[ns] = ", round(Source.p_q_filt[ns, 1]/1000, digits = 3), " kW")
+                    println("Qm[ns] = ", round(Source.p_q_filt[ns, 2]/1000, digits = 3), " kVAi")
                     println("Sm[ns]= ", round(sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2)/1000, digits = 3), " KVA")
                     println("")
                 end =#
@@ -1786,8 +1791,8 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
         Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
 
-        Source.i_max[e] = 1.15*sqrt(2)*Source.S[e]/(3*Source.Vrms[e])
-        Source.v_max[e] = 1.5*Source.Vdc[e]/2
+        Source.i_max[e] = env.nc.parameters["source"][ns]["i_limit"]
+        Source.v_max[e] = env.nc.parameters["source"][ns]["v_limit"]/2
 
         Current_PI_LoopShaping(Source, e)
         Voltage_PI_LoopShaping(Source, e)

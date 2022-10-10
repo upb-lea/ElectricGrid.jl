@@ -120,7 +120,9 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     return nothing
 end
 
-function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [])
+function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
+    plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [],
+    vdq_to_plot = [], idq_to_plot = [], pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [])
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -175,6 +177,38 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
         #TODO: If the index is not collected this function does print only the steps 1,2,3,4.... on y axis, WHY? How to handle that?
         push!(traces, scatter(df, x = :time, y = Symbol("source$(vdc_idx)_vdc"), mode="lines", name = "source$(vdc_idx)_vdc"))
     end
+
+    if findfirst(x -> x == "classic", hook.policy_names) !== nothing
+
+        for idx in vdq_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vd"), mode="lines", name = "source$(idx)_vd"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vq"), mode="lines", name = "source$(idx)_vq"))
+        end
+
+        for idx in idq_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_id"), mode="lines", name = "source$(idx)_id"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_iq"), mode="lines", name = "source$(idx)_iq"))
+        end
+
+        for idx in pq_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p"), mode="lines", name = "source$(idx)_p"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q"), mode="lines", name = "source$(idx)_q"))
+        end
+
+        for idx in vrms_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms_a"), mode="lines", name = "source$(idx)_vrms_a"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms_b"), mode="lines", name = "source$(idx)_vrms_b"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms_c"), mode="lines", name = "source$(idx)_vrms_c"))
+        end
+
+        for idx in irms_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms_a"), mode="lines", name = "source$(idx)_irms_a"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms_b"), mode="lines", name = "source$(idx)_irms_b"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms_c"), mode="lines", name = "source$(idx)_irms_c"))
+        end
+    end
+
+
     
     if plot_reference
         #TODO: how to check which refs to plot? 
