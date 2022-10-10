@@ -540,8 +540,8 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
         letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
 
-        Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), vec(Source_Indices)), 
-        letterdict[split(x, "_")[3]]] for x in action_ids_classic]
+        Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
+        vec(Source_Indices)), letterdict[split(x, "_")[3]]] for x in action_ids_classic]
 
         #------------------------------------
 
