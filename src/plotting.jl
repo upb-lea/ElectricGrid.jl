@@ -130,7 +130,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     return nothing
 end
 
-function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing)
+function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [])
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -179,6 +179,11 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
     
     for action_id in actions_to_plot
         push!(traces, scatter(df, x = :time, y = Symbol(action_id), mode="lines", name = action_id, yaxis = "y2"))
+    end
+
+    for vdc_idx in vdc_to_plot
+        #TODO: If the index is not collected this function does print only the steps 1,2,3,4.... on y axis, WHY? How to handle that?
+        push!(traces, scatter(df, x = :time, y = Symbol("source$(vdc_idx)_vdc"), mode="lines", name = "source$(vdc_idx)_vdc"))
     end
     
     if plot_reference

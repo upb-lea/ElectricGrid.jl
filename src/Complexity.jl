@@ -3,6 +3,8 @@ using SpecialFunctions
 
 using Graphs
 using NetworkLayout
+using Polyhedra
+import QHull
 
 mutable struct Node
 
@@ -10,6 +12,7 @@ mutable struct Node
 
     parent::Int64
     generation::Int64
+    cylinder::Int64
     child_vals::Vector{Int64}
     child_locs::Vector{Int64}
 
@@ -26,7 +29,7 @@ mutable struct Node
     state::Int64
 
     function Node(value::Int64,
-                parent::Int64, generation::Int64,
+                parent::Int64, generation::Int64, cylinder::Int64,
                 child_vals::Vector{Int64}, child_locs::Vector{Int64},
                 cn::Int64, Pr::Float64, Pr_c::Vector{Float64},
                 morph_vals::Vector{Int64}, morph_Pr_c::Vector{Float64},
@@ -35,7 +38,7 @@ mutable struct Node
                 state::Int64)
 
         new(value,
-            parent, generation,
+            parent, generation, cylinder,
             child_vals, child_locs,
             cn, Pr, Pr_c,
             morph_vals, morph_Pr_c,
@@ -52,6 +55,7 @@ mutable struct Node
         Pr = 0.0
         Pr_c = Array{Float64, 1}(undef, 0)
         generation = 0
+        cylinder = 0
 
         morph_vals = Array{Int64, 1}(undef, 0)
         morph_Pr_c = Array{Float64, 1}(undef, 0)
@@ -62,7 +66,7 @@ mutable struct Node
         state = 0
 
         Node(value,
-            parent, generation,
+            parent, generation, cylinder,
             child_vals, child_locs,
             cn, Pr, Pr_c,
             morph_vals, morph_Pr_c,
@@ -141,12 +145,18 @@ mutable struct Parse_Tree
     N::Int64 # length of the total sequence
     D::Int64 # 1st Approximation Parameter - Depth of the tree (even number)
     L::Int64 # 2nd Approximation Parameter - length of future subsequences
+    C::Vector{Matrix{Float64}} # empirical estimation of cylinders
+    C_vols::Vector{Float64} # Cylinder volumes
+    reps::Matrix{Float64} # Cylinder representatives
+    H::Float64 # expected squared error
+    m::Int64 # center point
 
-    function Parse_Tree(Nodes::Vector{Node}, N::Int64, D::Int64, L::Int64)
-        new(Nodes, N, D, L)
+    function Parse_Tree(Nodes::Vector{Node}, N::Int64, D::Int64, L::Int64,
+        C::Vector{Matrix{Float64}}, C_vols::Vector{Float64}, reps::Matrix{Float64}, H::Float64, m::Int64)
+        new(Nodes, N, D, L, C, C_vols, reps, H, m)
     end
 
-    function Parse_Tree(N, D)
+    function Parse_Tree(N, D, m)
 
         Nodes = Array{Node, 1}(undef, 0)
         Nodes = [Nodes; Node(-1, 0)] # creating the root node
@@ -155,7 +165,12 @@ mutable struct Parse_Tree
 
         L = Int(floor(D/2))
 
-        Parse_Tree(Nodes, N, D, L)
+        C = Vector{Matrix{Float64}}(undef, 0)
+        C_vols = Vector{Float64}(undef, 0)
+        reps = Matrix{Float64}(undef, 0, 2)
+        H = 0.0
+
+        Parse_Tree(Nodes, N, D, L, C, C_vols, reps, H, m)
     end
 end
 
@@ -290,6 +305,7 @@ mutable struct ϵ_Machine
     k::Int64 # Simulation step
 
     s::Array{Int64, 1} # measured symbols
+    x::Array{Float64, 2} # input data
     x_m::Array{Float64, 2} # State space machine representation of symbols
     t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64} # Machine time
  
@@ -332,7 +348,7 @@ mutable struct ϵ_Machine
 
     function ϵ_Machine(Ts::Vector{Matrix{Float64}}, Tree::Parse_Tree,
         δ::Float64, μ_m::Float64, ϵ::Array{Float64, 1}, x_range::Array{Float64, 2}, k::Int64,
-        s::Array{Int64, 1}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
+        s::Array{Int64, 1}, x::Array{Float64, 2}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
         C_states::Matrix{Int64}, start_state::Int64, Dang_States::Vector{Int64}, IG::Float64,
         T::Matrix{Float64}, I::Matrix{Float64}, eigval::Vector{ComplexF64},
         r_eigvecs::Matrix{ComplexF64}, l_eigvecs::Matrix{ComplexF64},
@@ -345,7 +361,7 @@ mutable struct ϵ_Machine
         Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, C::Float64, Cμ::Float64, Ce::Float64, Cμe::Float64)     
 
         new(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
-        s, x_m, t_m,
+        s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
         r_eigvecs, l_eigvecs, D, pv,  
@@ -363,7 +379,7 @@ mutable struct ϵ_Machine
         # Stochastic transitions on a Multigraph
         Ts = Vector{Matrix{Float64}}(undef, 0)
         C_states = Array{Int64, 2}(undef, 0, 4)
-        Tree = Parse_Tree(N, D)
+        Tree = Parse_Tree(N, D, Int(floor(D/2)))
         start_state = 0
         Dang_States = Array{Int64, 1}(undef, 0)
         IG = 0.0
@@ -377,6 +393,7 @@ mutable struct ϵ_Machine
         dim = length(ϵ)
         s = Array{Int64, 1}(undef, N)
         s = fill!(s, 0)
+        x = Array{Float64, 2}(undef, dim, N) # State space machine representation
         x_m = Array{Float64, 2}(undef, dim, N) # State space machine representation
         t_m = 0:μ_m:t_final # machine time
 
@@ -420,7 +437,7 @@ mutable struct ϵ_Machine
         Cαe = fill!(Cαe, 0.0)
 
         ϵ_Machine(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
-        s, x_m, t_m,
+        s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
         r_eigvecs, l_eigvecs, D, pv,  
@@ -486,14 +503,17 @@ function Partitioning(Deus::ϵ_Machine, x)
 
         When the partition is a generating partition, the original dyanmics and the 
         symbol dynamics are conjugate, (i.e. acting or operating as if joined).
+
+        A partition which always yields a reduction in uncertainty as to the exact microstate 
+        given increasing coarse-grained measurements, is known as a generating partition.
     =#
 
-    m = length(x) # number of dimensions
+    dims = length(x) # number of dimensions
 
     s = 0 # mapped symbol
     k = 1 # number of symbols in the alphabet
 
-    for d in 1:m
+    for d in 1:dims
 
         norm = (Deus.x_range[d, 1] - Deus.x_range[d, 2])
 
@@ -521,7 +541,7 @@ function Dimensioning(Deus::ϵ_Machine, s)
         is mapped back to the state space.
     =#
 
-    m = length(ϵ) # number of dimensions
+    m = length(Deus.ϵ) # number of dimensions
 
     x = Array{Float64, 1}(undef, m) # State space position
     k = [1; Int.(ceil.(1 ./ Deus.ϵ[:]))]
@@ -550,9 +570,11 @@ function Sampling(Deus::ϵ_Machine, x, μ_s)
     return nothing
 end
 
-function add_Nodes(Tree::Parse_Tree, s; parent = 1)
+function add_Nodes(Deus::ϵ_Machine, s, xi; parent = 1)
 
     d = length(s) # Depth of the remaining sub-sequence
+
+    Tree = Deus.Tree
 
     if length(Tree.Nodes[parent].child_vals) == 0
 
@@ -561,7 +583,11 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
         Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; Tree.Nodes[new_node].cn/Tree.Nodes[parent].cn]
 
         if d > 1
-            add_Nodes(Tree, s[2:end], parent = new_node)
+            add_Nodes(Deus, s[2:end], xi, parent = new_node)
+        else
+            Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(xi)))
+            Tree.Nodes[new_node].cylinder = length(Tree.C)
+            Tree.C[Tree.Nodes[new_node].cylinder][end, :] = xi
         end
     else
 
@@ -575,10 +601,11 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
             new_parent = Int(Tree.Nodes[parent].child_locs[parent_loc])
 
             if d > 1
-                add_Nodes(Tree, s[2:end], parent = new_parent)
+                add_Nodes(Deus, s[2:end], xi, parent = new_parent)
             else
                 Tree.Nodes[new_parent].cn = Tree.Nodes[new_parent].cn + 1
                 Tree.Nodes[new_parent].Pr = Tree.Nodes[new_parent].cn/(Tree.N - Tree.D)
+                Tree.C[Tree.Nodes[new_parent].cylinder] = cat(Tree.C[Tree.Nodes[new_parent].cylinder], xi, dims = 1)
             end
         else
 
@@ -587,7 +614,11 @@ function add_Nodes(Tree::Parse_Tree, s; parent = 1)
             Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; 0]
 
             if d > 1
-                add_Nodes(Tree, s[2:end], parent = new_node)
+                add_Nodes(Deus, s[2:end], xi, parent = new_node)
+            else
+                Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(xi)))
+                Tree.Nodes[new_node].cylinder = length(Tree.C)
+                Tree.C[Tree.Nodes[new_node].cylinder][end, :] = xi
             end
         end
 
@@ -614,6 +645,69 @@ function add_Node(Tree::Parse_Tree, parent, s)
     Tree.Nodes[new_node].generation = Tree.Nodes[parent].generation + 1
 
     return new_node
+end
+
+function Cylinder_Volumes(Deus::ϵ_Machine)
+
+    Cyls = Deus.Tree.C
+
+    num_cyl = length(Cyls)
+
+    lib = QHull.Library()
+
+    max_C_vol = 0.0
+
+    for i in 1:num_cyl
+
+        if size(Cyls[i], 1) == 1 # this is a point
+
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; 0.0]
+    
+        elseif size(Cyls[i], 2) == 1 # these are scalar values
+
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; (maximum(Cyls[i]) - minimum(Cyls[i]))]
+
+        elseif size(Cyls[i], 1) == 2 # these is a line
+
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; norm(Cyls[i][1, :] .- Cyls[i][2, :])]
+
+        elseif size(Cyls[i], 1) > 2
+
+            p = polyhedron(vrep(Cyls[i]) , lib)
+            removevredundancy!(p)
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; p.volume]
+        end
+
+
+        if Deus.Tree.C_vols[end] > max_C_vol
+            max_C_vol = Deus.Tree.C_vols[end]
+        end
+    end
+
+    println(max_C_vol)
+
+    return nothing
+end
+
+function Representatives(Deus::ϵ_Machine)
+
+    num_cyl = length(Deus.Tree.C)
+
+    Deus.Tree.reps = Matrix{Float64}(undef, num_cyl, size(Deus.Tree.C[1], 2))
+
+    for i in 1:num_cyl
+
+        Deus.Tree.reps[i, :] = sum(Deus.Tree.C[i], dims = 1)/size(Deus.Tree.C[i], 1)
+
+        for j in axes(Deus.Tree.C[i], 1)
+
+            Deus.Tree.H = Deus.Tree.H + (norm(Deus.Tree.reps[i, :] .- transpose(Deus.Tree.C[i][j, :])))^2
+        end
+    end
+
+    Deus.Tree.H = Deus.Tree.H/num_cyl
+
+    return nothing
 end
 
 function Tree_Isomorphism(Deus::ϵ_Machine; Ancest::Vector{Int64} = [1], d = 0)
@@ -1801,22 +1895,26 @@ function The_Wire(Deus::ϵ_Machine, symbols, ancest, Pr_c, cn)
     return state_ref
 end
 
-function Cranking(Deus::ϵ_Machine, x, μ_s)
+function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
-    Sampling(Deus, x, μ_s)
+    Deus.x = x_in
+
+    Sampling(Deus, x_in, μ_s)
 
     for i in 1:Deus.k - Deus.Tree.D + 1
-        add_Nodes(Deus.Tree, Deus.s[i : (i + Deus.Tree.D - 1)])
+        xi = Deus.x[:, i + Deus.Tree.m - 1]
+        add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], transpose(xi))
     end
 
-    Tree_Isomorphism(Deus)
+    #----------------------------------------------------------
+
+    #= Tree_Isomorphism(Deus)
 
     Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
     #Load_values(Deus::ϵ_Machine)
-    #Load_values(Deus::ϵ_Machine)
 
-    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
+    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation =#
 
     return nothing
 end
@@ -2687,22 +2785,62 @@ function Logistic_Map(x, λ; r = 3.9277370017867516)
     return x, λ
 end
 
-function Lorenz(u, p)
+function Lorenz!(du, u, p, t)
 
     #= parameters
         p[1] = σ - Prandtl
         p[2] = ρ - Raleigh
         p[3] = β - geometric aspect ratio
 
-        u[1] = x
-        u[2] = y
-        u[3] = z
+        u0 = [1.0, 0.0, 0.0]
+        tspan = (0.0, 100.0)
+        p = [10.0, 28.0, 8/3]
     =#
 
-    dx = p[1]*(u[2] - u[1])
-    dy = p[2]*u[1] - u[2] - u[1]*u[3] 
-    dz = u[1]*u[2] - p[3]*u[3]
+    x, y, z = u
+    σ, ρ, β = p
 
-    return [dx; dy; dz]
+    du[1] = σ*(y - x)
+    du[2] = ρ*x- y - x*z 
+    du[3] = x*y - β*z
+
+    return du
 end
 
+function Driven_Duffing!(du, u, p, t)
+
+    #= Theory
+        The driven duffing system, a forced harmonic ocillator, is an example 
+        of a nonautomonous system. That is, it has a time dependence. It is also 
+        an example of a three-dimensional system. Similarly, an nth-order time-
+        dependent equation is a special case of an (n+1)-dimensional system. 
+        By this trick, we may remove any time dependence by adding an extra 
+        dimension to the system. A more physical motivation is that we need 
+        to know three numbers u[1], u[2], and u[3], to predict that future,
+        given the present. It is a 2nd order differential equaion
+
+        m = mass
+        δ = controls the amount of damping
+        α = controls the linear stiffness
+        β = controls the amount of non-linearity in the restoring force; 
+            if zero the Duffing equation is a damped and driven simple harmonic oscillator
+        γ = amplitude of the periodic driving force
+        ω = angular frequency
+
+        m*ddx + δ*dx + α*x + β*x^3 = γ*cos(ω*t)
+
+        p = [m, δ, α, β, γ, ω]
+
+        p = [1, 0.25, -1, 1, 0.4, 1]
+        p = [1, 0.3, -1, 1, 0.5, 1.2] # Chaotic
+    =#
+
+    x, y, z = u
+    m, δ, α, β, γ, ω = p
+
+    du[1] = y
+    du[2] = (1/m)*(-δ*y - α*x - β*x^3 + γ*cos(z))
+    du[3] = ω
+
+    return du
+end

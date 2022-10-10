@@ -28,13 +28,13 @@ function reward(env, name = nothing)
     
     if !isnothing(name)
         if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source1_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source1_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source1_v_C_c", env.state_ids)
         else
-            u_l1_index = findfirst(x -> x == "source2_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source2_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source2_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source2_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source2_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source2_v_C_c", env.state_ids)
         end
 
         u_l1 = env.state[u_l1_index]
@@ -105,26 +105,30 @@ ts = 0.0001
 fs = 1/ts
 
 source["pwr"] = 200e3
-source["vdc"] = 800
+#source["vdc"] = 800
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf
 source["C"] = Cf
+source["v_limit"]= 220 
+source["i_limit"]= 1000
 
 push!(source_list, source)
 
 source = Dict()
 
 source["pwr"] = 100e3
-source["vdc"] = 800
+source["vdc"] = 600
 source["fltr"] = "LC"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf
 source["C"] = Cf
+source["v_limit"]= 230 
+source["i_limit"]= 1000
 
 push!(source_list, source)
 
@@ -157,8 +161,7 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 # Define the environment
 V_source = 800
 
-env = SimEnv(reward_function = reward, featurize = featurize, 
-v_dc = V_source, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
+env = SimEnv(reward_function = reward, featurize = featurize, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
 maxsteps = 1000, action_delay = 0)
 
 state_ids = get_state_ids(env.nc)
@@ -198,11 +201,7 @@ fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids
     6 -> "Self-Synchronverter Mode" - grid forming with power balancing via virtual motor
 =#
 
-Source_Initialiser(env, Animo, [1])
-
-nm_src = 1 # changing the power set points of the 2nd source
-Animo.policy.Source.pq0_set[nm_src, 1] = 100e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = 20e3 # VAi, Imaginary Power
+Source_Initialiser(env, Animo, [2])
 
 #TODO: entfernen!!!
 #Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
@@ -218,12 +217,12 @@ ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
                             
 ma = MultiAgentGridController(ma_agents, action_ids)
 
-plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C_a", "source2_u_C_b", "source2_u_C_c", "source1_i_L1_a", "source2_i_L1_a"]
+plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c", "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true)
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true, collect_vdc_idx = [2])
 
 ma["agent"]["policy"].policy.policy.act_noise = 0.1
-run(ma, env, StopAfterEpisode(4000), hook);
+run(ma, env, StopAfterEpisode(1), hook);
 
 
 ###############################
