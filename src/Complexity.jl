@@ -3,6 +3,8 @@ using SpecialFunctions
 
 using Graphs
 using NetworkLayout
+using Polyhedra
+import QHull
 
 mutable struct Node
 
@@ -144,11 +146,14 @@ mutable struct Parse_Tree
     D::Int64 # 1st Approximation Parameter - Depth of the tree (even number)
     L::Int64 # 2nd Approximation Parameter - length of future subsequences
     C::Vector{Matrix{Float64}} # empirical estimation of cylinders
+    C_vols::Vector{Float64} # Cylinder volumes
+    reps::Matrix{Float64} # Cylinder representatives
+    H::Float64 # expected squared error
     m::Int64 # center point
 
     function Parse_Tree(Nodes::Vector{Node}, N::Int64, D::Int64, L::Int64,
-        C::Vector{Matrix{Float64}}, m::Int64)
-        new(Nodes, N, D, L, C, m)
+        C::Vector{Matrix{Float64}}, C_vols::Vector{Float64}, reps::Matrix{Float64}, H::Float64, m::Int64)
+        new(Nodes, N, D, L, C, C_vols, reps, H, m)
     end
 
     function Parse_Tree(N, D, m)
@@ -161,8 +166,11 @@ mutable struct Parse_Tree
         L = Int(floor(D/2))
 
         C = Vector{Matrix{Float64}}(undef, 0)
+        C_vols = Vector{Float64}(undef, 0)
+        reps = Matrix{Float64}(undef, 0, 2)
+        H = 0.0
 
-        Parse_Tree(Nodes, N, D, L, C, m)
+        Parse_Tree(Nodes, N, D, L, C, C_vols, reps, H, m)
     end
 end
 
@@ -500,12 +508,12 @@ function Partitioning(Deus::ϵ_Machine, x)
         given increasing coarse-grained measurements, is known as a generating partition.
     =#
 
-    m = length(x) # number of dimensions
+    dims = length(x) # number of dimensions
 
     s = 0 # mapped symbol
     k = 1 # number of symbols in the alphabet
 
-    for d in 1:m
+    for d in 1:dims
 
         norm = (Deus.x_range[d, 1] - Deus.x_range[d, 2])
 
@@ -533,7 +541,7 @@ function Dimensioning(Deus::ϵ_Machine, s)
         is mapped back to the state space.
     =#
 
-    m = length(ϵ) # number of dimensions
+    m = length(Deus.ϵ) # number of dimensions
 
     x = Array{Float64, 1}(undef, m) # State space position
     k = [1; Int.(ceil.(1 ./ Deus.ϵ[:]))]
@@ -597,7 +605,6 @@ function add_Nodes(Deus::ϵ_Machine, s, xi; parent = 1)
             else
                 Tree.Nodes[new_parent].cn = Tree.Nodes[new_parent].cn + 1
                 Tree.Nodes[new_parent].Pr = Tree.Nodes[new_parent].cn/(Tree.N - Tree.D)
-
                 Tree.C[Tree.Nodes[new_parent].cylinder] = cat(Tree.C[Tree.Nodes[new_parent].cylinder], xi, dims = 1)
             end
         else
@@ -638,6 +645,69 @@ function add_Node(Tree::Parse_Tree, parent, s)
     Tree.Nodes[new_node].generation = Tree.Nodes[parent].generation + 1
 
     return new_node
+end
+
+function Cylinder_Volumes(Deus::ϵ_Machine)
+
+    Cyls = Deus.Tree.C
+
+    num_cyl = length(Cyls)
+
+    lib = QHull.Library()
+
+    max_C_vol = 0.0
+
+    for i in 1:num_cyl
+
+        if size(Cyls[i], 1) == 1 # this is a point
+
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; 0.0]
+    
+        elseif size(Cyls[i], 2) == 1 # these are scalar values
+
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; (maximum(Cyls[i]) - minimum(Cyls[i]))]
+
+        elseif size(Cyls[i], 1) == 2 # these is a line
+
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; norm(Cyls[i][1, :] .- Cyls[i][2, :])]
+
+        elseif size(Cyls[i], 1) > 2
+
+            p = polyhedron(vrep(Cyls[i]) , lib)
+            removevredundancy!(p)
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; p.volume]
+        end
+
+
+        if Deus.Tree.C_vols[end] > max_C_vol
+            max_C_vol = Deus.Tree.C_vols[end]
+        end
+    end
+
+    println(max_C_vol)
+
+    return nothing
+end
+
+function Representatives(Deus::ϵ_Machine)
+
+    num_cyl = length(Deus.Tree.C)
+
+    Deus.Tree.reps = Matrix{Float64}(undef, num_cyl, size(Deus.Tree.C[1], 2))
+
+    for i in 1:num_cyl
+
+        Deus.Tree.reps[i, :] = sum(Deus.Tree.C[i], dims = 1)/size(Deus.Tree.C[i], 1)
+
+        for j in axes(Deus.Tree.C[i], 1)
+
+            Deus.Tree.H = Deus.Tree.H + (norm(Deus.Tree.reps[i, :] .- transpose(Deus.Tree.C[i][j, :])))^2
+        end
+    end
+
+    Deus.Tree.H = Deus.Tree.H/num_cyl
+
+    return nothing
 end
 
 function Tree_Isomorphism(Deus::ϵ_Machine; Ancest::Vector{Int64} = [1], d = 0)
@@ -1825,35 +1895,26 @@ function The_Wire(Deus::ϵ_Machine, symbols, ancest, Pr_c, cn)
     return state_ref
 end
 
-function Cranking(Deus::ϵ_Machine, x, μ_s)
+function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
-    Deus.x = x
+    Deus.x = x_in
 
-    Sampling(Deus, x, μ_s)
+    Sampling(Deus, x_in, μ_s)
 
-    t = 0
     for i in 1:Deus.k - Deus.Tree.D + 1
         xi = Deus.x[:, i + Deus.Tree.m - 1]
-        add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], [xi xi])
-        t = t + 1
+        add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], transpose(xi))
     end
-    println(t)
-
-    y = 0
-    for i in 1:length(Deus.Tree.C)
-        y = y + length(Deus.Tree.C[i])
-    end
-    println(y/2)
 
     #----------------------------------------------------------
 
-    Tree_Isomorphism(Deus)
+    #= Tree_Isomorphism(Deus)
 
     Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
     #Load_values(Deus::ϵ_Machine)
 
-    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
+    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation =#
 
     return nothing
 end
