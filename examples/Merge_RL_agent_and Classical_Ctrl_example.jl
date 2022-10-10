@@ -44,7 +44,7 @@ function reward(env, name = nothing)
         u = [u_l1, u_l2, u_l3]
         refs = reference(env.t)
 
-        r = -(sum(abs.(refs/600 - u)/3))
+        r = -(sum(abs.(refs/600 - u)/3)) * (1 - 0.99)
     end
 
     return r
@@ -100,7 +100,7 @@ push!(cable_list, cable, cable)
 source_list = []
 source = Dict()
 # time step
-ts = 0.0002
+ts = 0.0001
 
 fs = 1/ts
 
@@ -222,12 +222,12 @@ plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true)
 
-run(ma, env, StopAfterEpisode(200), hook);
+ma["agent"]["policy"].policy.policy.act_noise = 0.1
+run(ma, env, StopAfterEpisode(4000), hook);
 
 
 ###############################
 # Plotting
-plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 200)
+#plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 3000)
 
-include(srcdir("plotting.jl"))
-plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, plot_reward = false, plot_reference = true)
+plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, plot_reward = false, plot_reference = true, use_best = false)
