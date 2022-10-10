@@ -36,7 +36,7 @@ mutable struct SimEnv <: AbstractEnv
     action_delay_buffer
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, v_dc = nothing, norm_array = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
     
     if !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
 
@@ -148,37 +148,92 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             action_ids = get_action_ids(nc)
         end
     end
-    # TODO: take vdc per source from the nc.parameters[] something like:
-    # v_dc = [env.nc.parameters["sources"][n]["vdc"] for n = 1:env.nc.num_sources]
-    if isnothing(v_dc)
-        println("INFO: v_dc = 350V will get applied to all actions")
-        v_dc = 350 * ones(length(action_space))
-    elseif isa(v_dc, Number)
-        println("INFO: v_dc = $(v_dc)V will get applied to all actions")
-        v_dc = v_dc * ones(length(action_space))
-    end
     
-    #TODO: norm_array from parameters Dict
-    if isnothing(norm_array)
-        if isnothing(nc)
-            println("INFO: norm_array set to ones - if neccessary please define norm_array in env initialization")
-            norm_array = ones(length(sys_d.A[1,:]))
+    vdc_fixed = 0
+    v_dc = ones(nc.num_sources)
+    for (source_number, source) in enumerate(nc.parameters["source"])
+        # set vdc for that source
+        if haskey(source, "vdc")
+            v_dc[source_number] = source["vdc"]
         else
-            println("INFO: Generating standard norm_array from nodeconstructor")
-            states = get_state_ids(nc)
-            norm_array = []
-            println("WARNING: limits set to fixed value - define in nc.parameters")
-            for state_name in states
-                if occursin("_i", state_name)
-                    #push!(norm_array, limits["i_lim"])
-                    push!(norm_array, 20.0)
-                elseif occursin("_u", state_name)
-                    #push!(norm_array, limits["v_lim"])
-                    push!(norm_array, 600.0)
+            v_dc[source_number] = 800
+            vdc_fixed += 1
+        end
+    end
+    vdc_fixed > 0 && println("WARNING: $vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc")
+
+
+    println("INFO: Normalization done based in defined parameterlimits")
+    states = get_state_ids(nc)
+
+    i_limit_fixed = 0
+    v_limit_fixed = 0
+    norm_array = ones(length(states))
+
+    for (source_number, source) in enumerate(nc.parameters["source"])
+        # set norm_array based on in parameters defined limits
+        for state_index in get_source_state_indices(nc, [source_number])["source$source_number"]["state_indices"]
+            if contains(states[state_index], "_i")
+                if haskey(source, "i_limit")
+                    norm_array[state_index] = source["i_limit"]
+                else
+                    i_limit_fixed += 1
+                    norm_array[state_index] = 1000.0
+                end
+            elseif contains(states[state_index], "_v")
+                if haskey(source, "v_limit")
+                    norm_array[state_index] = source["v_limit"]
+                else
+                    v_limit_fixed += 1
+                    norm_array[state_index] = 1500.0
                 end
             end
         end
     end
+
+    for (load_number, load) in enumerate(nc.parameters["load"])
+        for state_index in get_load_state_indices(nc, [load_number])["load$load_number"]["state_indices"]
+            if contains(states[state_index], "_i")
+                if haskey(load, "i_limit")
+                    norm_array[state_index] = load["i_limit"]
+                else
+                    i_limit_fixed += 1
+                    norm_array[state_index] = 1000.0
+                end
+            elseif contains(states[state_index], "_v")
+                if haskey(load, "v_limit")
+                    norm_array[state_index] = load["v_limit"]
+                else
+                    v_limit_fixed += 1
+                    norm_array[state_index] = 1500.0
+                end
+            end
+        end
+    end
+
+    for (cable_number, cable) in enumerate(nc.parameters["cable"])
+        for state_index in get_cable_state_indices(nc, [cable_number])["cable$cable_number"]["state_indices"]
+            if contains(states[state_index], "_i")
+                if haskey(cable, "i_limit")
+                    norm_array[state_index] = cable["i_limit"]
+                else
+                    i_limit_fixed += 1
+                    norm_array[state_index] = 1000.0
+                end
+            elseif contains(states[state_index], "_v")
+                if haskey(cable, "v_limit")
+                    norm_array[state_index] = cable["v_limit"]
+                else
+                    v_limit_fixed += 1
+                    norm_array[state_index] = 1500.0
+                end
+            end
+        end
+    end
+
+    i_limit_fixed > 0 && println("WARNING: $i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit!")
+    v_limit_fixed > 0 && println("WARNING: $v_limit_fixed Voltage limits set to 1500 V - please define in nc.parameters -> source -> v_limit!")        
+
 
     if isnothing(reward)
         reward = 0.0
@@ -241,8 +296,15 @@ function (env::SimEnv)(action)
     else
         env.action = action
     end
+
+    # env.v_dc = [800, 600]
+
+    # action * [800, get_vDC_PV(env.state[1])]
+
+    # mutliply action with vdc vector
+    # assumes in all number of phases per source the same vdc by repeating the vdc value "phase"-times
+    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
     
-    env.action = env.action .* env.v_dc/2
 
     env.action = env.prepare_action(env)
     
@@ -280,5 +342,11 @@ function (env::SimEnv)(action)
     # Power constraint
     env.reward = env.reward_function(env)
 
-    env.done = env.steps >= env.maxsteps
+    env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
+end
+
+function get_vDC_PV(I)
+
+    V_dc = I *N_cell * P_cell
+    
 end
