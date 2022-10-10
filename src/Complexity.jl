@@ -1906,6 +1906,8 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
         add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], transpose(xi))
     end
 
+    Representatives(Deus)
+
     #----------------------------------------------------------
 
     #= Tree_Isomorphism(Deus)

@@ -858,6 +858,11 @@ git-tree-sha1 = "fb28b5dc239d0174d7297310ef7b84a11804dfab"
 uuid = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 version = "1.0.1"
 
+[[deps.GeometricalPredicates]]
+git-tree-sha1 = "6c9f24b54b8bf2e3496b5b3c25f5a0aebacd95d5"
+uuid = "fd0ad045-b25c-564e-8f9c-8ef5c5f21267"
+version = "0.4.2"
+
 [[deps.GeometryBasics]]
 deps = ["EarCut_jll", "GeoInterface", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
 git-tree-sha1 = "12a584db96f1d460421d5fb8860822971cdb8455"
@@ -2329,6 +2334,18 @@ deps = ["Graphs"]
 git-tree-sha1 = "8351f8d73d7e880bfc042a8b6922684ebeafb35c"
 uuid = "19fa3120-7c27-5ec5-8db8-b0b0aa330d6f"
 version = "0.2.0"
+
+[[deps.VoronoiCells]]
+deps = ["GeometryBasics", "RecipesBase", "VoronoiDelaunay"]
+git-tree-sha1 = "56366c6d0ce6c27aa0ea8a5a4909ac434f0fd33f"
+uuid = "e3e34ffb-84e9-5012-9490-92c94d0c60a4"
+version = "0.3.0"
+
+[[deps.VoronoiDelaunay]]
+deps = ["Colors", "GeometricalPredicates", "Random"]
+git-tree-sha1 = "3eab57de79a60d8a5f1e046a052cb9ad952abf40"
+uuid = "72f80fcb-8c52-57d9-aff0-40c1a3526986"
+version = "0.4.3"
 
 [[deps.Wavelets]]
 deps = ["DSP", "FFTW", "LinearAlgebra", "Reexport", "SpecialFunctions", "Statistics"]

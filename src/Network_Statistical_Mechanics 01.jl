@@ -3,6 +3,8 @@
 
 using Plots
 using DifferentialEquations
+using VoronoiCells
+using GeometryBasics
 
 include("Complexity.jl")
 
@@ -106,4 +108,10 @@ println("Hα[end] = ", Deus.Hα[end])
 println("Period = ", 2^(Deus.Hα[end]))
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
+
+points = [Point(rand(), rand()) for _ in 1:10]
+rect = Rectangle(Point(0, 0), Point(1, 1))
+tess = voronoicells(points, rect);
+
+plot(tess, legend = :topleft)
 
