@@ -206,15 +206,11 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
         end
 
         for idx in vrms_to_plot
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms_a"), mode="lines", name = "source$(idx)_vrms_a"))
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms_b"), mode="lines", name = "source$(idx)_vrms_b"))
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms_c"), mode="lines", name = "source$(idx)_vrms_c"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms"), mode="lines", name = "source$(idx)_vrms"))
         end
 
         for idx in irms_to_plot
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms_a"), mode="lines", name = "source$(idx)_irms_a"))
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms_b"), mode="lines", name = "source$(idx)_irms_b"))
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms_c"), mode="lines", name = "source$(idx)_irms_c"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms"), mode="lines", name = "source$(idx)_irms"))
         end
     end
 

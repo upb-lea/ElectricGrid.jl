@@ -193,7 +193,7 @@ Animo = NamedPolicy("classic", Classical_Policy(env, Modes = ["Semi-Synchronvert
     6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
 
-nm_src = 2 # changing the power set points of the source
+nm_src = 2
 
 Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
 Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
@@ -204,7 +204,7 @@ Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
 Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
 
-nm_src = 1 # changing the power set points of the source
+nm_src = 1
 
 Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
 Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
@@ -232,7 +232,7 @@ agentname = "agent"
 plt_state_ids = []#"source1_v_C_a", "source2_v_C_a", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
-collect_vrms_idx = [1 2], collect_irms_idx = [1 2], collect_pq_idx = [1 2],
+collect_vrms_idx = [2 1], collect_irms_idx = [2 1], collect_pq_idx = [2 1],
 save_best_NNA = true, collect_reference = false, plot_rewards=false)
 
 run(ma, env, StopAfterEpisode(1), hook);
@@ -241,12 +241,7 @@ run(ma, env, StopAfterEpisode(1), hook);
 # Plotting
 
 plot_hook_results(; hook = hook, actions_to_plot = [], episode = 1, 
-pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2])
+pq_to_plot = [2 1], vrms_to_plot = [2 1], irms_to_plot = [2 1])
 
-#= Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 1)
-Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 2)
-
-Plot_Real_Imag_Active_Reactive(0, 5000, Animo.policy.Source, num_source = 1)
-Plot_Real_Imag_Active_Reactive(0, 5000, Animo.policy.Source, num_source = 2) =#
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

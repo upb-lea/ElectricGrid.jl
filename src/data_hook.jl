@@ -195,18 +195,18 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         for idx in hook.collect_vrms_idx
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_vrms_a" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 1, 2])
-                insertcols!(hook.tmp, "source$(idx)_vrms_b" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 2, 2])
-                insertcols!(hook.tmp, "source$(idx)_vrms_c" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 3, 2])
+                vrms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.V_filt_poc[s_idx, :, end], 0))
+                insertcols!(hook.tmp, "source$(idx)_vrms" => vrms)
+                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
         for idx in hook.collect_irms_idx
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_irms_a" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 1, 2])
-                insertcols!(hook.tmp, "source$(idx)_irms_b" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 2, 2])
-                insertcols!(hook.tmp, "source$(idx)_irms_c" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 3, 2])
+                irms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.I_filt_poc[s_idx, :, end], 0))
+                insertcols!(hook.tmp, "source$(idx)_irms" => irms)
+                #insertcols!(hook.tmp, "source$(idx)_irms_a" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 1, 2])
             end
         end
 
