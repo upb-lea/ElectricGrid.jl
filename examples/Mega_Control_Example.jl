@@ -12,8 +12,6 @@ include(srcdir("Classical_Control.jl"))
 include(srcdir("Power_System_Theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
-include(srcdir("Classical_Control_Plots.jl"))
-
 function reference(t)
     
     u = [sqrt(2)*230 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
@@ -203,22 +201,9 @@ state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
 
 #_______________________________________________________________________________
-# Setting up the Reinforcement Learning Sources
-
-agentname = "agent"
-
-state_ids_agent = filter(x -> split(x, "_")[1] == "source1", state_ids)
-action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)
-
-na = length(env.action_space)
-agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = false)
-agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
-
-#_______________________________________________________________________________
 # Setting up the Classical Sources
 
-# Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [4, 6, 3], Source_Indices = [1 2 3]))
-Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [1, 1], Source_Indices = [2 3]))
+Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [4, 6, 3], Source_Indices = [1 2 3]))
 
 #= Modes:
     1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
@@ -231,7 +216,7 @@ Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [1, 1], Source_Indi
     6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
 
-nm_src = 1 #2
+nm_src = 2
 
 Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
 Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
@@ -240,47 +225,46 @@ Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
 Animo.policy.Source.V_pu_set[nm_src, 1] = 0.95
-Animo.policy.Source.V_δ_set[nm_src, 1] = -0*π/180
+Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
 
-nm_src = 2 #3
+nm_src = 3
+
+Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
+Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
 
 Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = -25e3 # VAi, Imaginary Power
 
+Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
+Animo.policy.Source.V_δ_set[nm_src, 1] = +90*π/180
+
 state_ids_classic = Animo.policy.state_ids
 action_ids_classic = Animo.policy.action_ids
 
-#= ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
-                            "state_ids" => state_ids_classic,
-                            "action_ids" => action_ids_classic)) =#
-
-ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
-                            "state_ids" => state_ids_agent,
-                            "action_ids" => action_ids_agent),
-                nameof(Animo) => Dict("policy" => Animo,
+ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
                             "state_ids" => state_ids_classic,
                             "action_ids" => action_ids_classic))
                             
 ma = MultiAgentGridController(ma_agents, action_ids)
 
+agentname = "agent"
+
 #_______________________________________________________________________________
 #%% Starting time simulation
 
-plt_state_ids = ["source1_v_C_a", "source1_i_L1_a"]
+plt_state_ids = []#"source1_v_C_a", "source2_v_C_a", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
-collect_vrms_idx = [3 2], collect_irms_idx = [3 2], collect_pq_idx = [3 2],
-save_best_NNA = true, collect_reference = true, plot_rewards = true)
+collect_vrms_idx = [3 2 1], collect_irms_idx = [3 2 1], collect_pq_idx = [3 2 1],
+save_best_NNA = true, collect_reference = false, plot_rewards=false)
 
-run(ma, env, StopAfterEpisode(100), hook);
+run(ma, env, StopAfterEpisode(1), hook);
 
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(; hook = hook, actions_to_plot = [], episode = 200, 
-pq_to_plot = [3 2], vrms_to_plot = [3 2], irms_to_plot = [3 2])
+plot_hook_results(; hook = hook, actions_to_plot = [], episode = 1, 
+pq_to_plot = [3 2 1], vrms_to_plot = [3 2 1], irms_to_plot = [3 2 1])
 
-plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, 
-plot_reward = false, plot_reference = true, use_best = false)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
