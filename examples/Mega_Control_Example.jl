@@ -12,8 +12,6 @@ include(srcdir("Classical_Control.jl"))
 include(srcdir("Power_System_Theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
-include(srcdir("Classical_Control_Plots.jl"))
-
 function reference(t)
     
     u = [sqrt(2)*230 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
