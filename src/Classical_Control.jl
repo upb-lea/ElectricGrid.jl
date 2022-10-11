@@ -821,7 +821,7 @@ function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [
     Source.J_sync[num_source] = Source.τf[num_source]*Source.D[num_source, 1]
     Source.K_sync[num_source] = Source.τv[num_source]*Source.fsys*2π*Source.D[num_source, 2]
 
-    if i*Source.ts > 0/Source.fsys
+    if i*Source.ts > 0
         Synchronverter_Control(Source, num_source, pq0_ref = pq0_ref, Vrms = Vrms, mode = mode)
         θ_S = Source.θ_sync[num_source]
         Voltage_Controller(Source, num_source, θ_S)

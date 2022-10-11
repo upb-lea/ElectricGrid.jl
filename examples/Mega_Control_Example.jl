@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.5 #time in seconds, total simulation run time
+t_final = 1.0 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -93,14 +93,14 @@ fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-CM = [ 0. 0. 0. 1.
+#= CM = [ 0. 0. 0. 1.
         0. 0. 0. 2.
         0. 0. 0. 3.
-        -1. -2. -3. 0.]
+        -1. -2. -3. 0.] =#
 
-#= CM = [ 0. 0. 1.
+CM = [ 0. 0. 1.
         0. 0. 2
-        -1. -2. 0.] =#
+        -1. -2. 0.]
 
 #= CM = [0. 1.
    -1. 0.] =#
@@ -111,13 +111,15 @@ CM = [ 0. 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 2.5 # length in km
+l = 1.0 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
 cable["C"] = 0.4e-6*l # 0.4e-6#
 
-push!(cable_list, cable, cable, cable)
+#= push!(cable_list, cable, cable, cable) =#
+
+push!(cable_list, cable, cable)
 
 #-------------------------------------------------------------------------------
 # Sources
@@ -127,12 +129,14 @@ source = Dict()
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-source["R1"] = 0.4
-source["R_C"] = 0.0006
-source["L1"] = Lf
 source["C"] = Cf
+source["R_C"] = 0.0006
+source["R1"] = 0.4
+source["L1"] = Lf/2
+source["R2"] = 0.4
+source["L2"] = Lf/2
 
 push!(source_list, source)
 
@@ -140,27 +144,31 @@ source = Dict()
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-source["R1"] = 0.4
-source["R_C"] = 0.0006
-source["L1"] = Lf
 source["C"] = Cf
+source["R_C"] = 0.0006
+source["R1"] = 0.4
+source["L1"] = Lf/2
+source["R2"] = 0.4
+source["L2"] = Lf/2
 
 push!(source_list, source)
 
-source = Dict()
+#= source = Dict()
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-source["R1"] = 0.4
-source["R_C"] = 0.0006
-source["L1"] = Lf
 source["C"] = Cf
+source["R_C"] = 0.0006
+source["R1"] = 0.4
+source["L1"] = Lf/2
+source["R2"] = 0.4
+source["L2"] = Lf/2
 
-push!(source_list, source)
+push!(source_list, source) =#
 
 #-------------------------------------------------------------------------------
 # Loads
@@ -203,7 +211,7 @@ action_ids = get_action_ids(env.nc)
 #_______________________________________________________________________________
 # Setting up the Classical Sources
 
-Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [4, 6, 3], Source_Indices = [1 2 3]))
+Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [6, 6], Source_Indices = [1 2]))
 
 #= Modes:
     1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
@@ -216,6 +224,17 @@ Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [4, 6, 3], Source_I
     6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
 
+nm_src = 1
+
+Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
+Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
+
+Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
+
+Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
+Animo.policy.Source.V_δ_set[nm_src, 1] = 0*π/180
+
 nm_src = 2
 
 Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
@@ -224,19 +243,8 @@ Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 
 Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
 Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
-Animo.policy.Source.V_pu_set[nm_src, 1] = 0.95
-Animo.policy.Source.V_δ_set[nm_src, 1] = -90*π/180
-
-nm_src = 3
-
-Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
-
-Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = -25e3 # VAi, Imaginary Power
-
 Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
-Animo.policy.Source.V_δ_set[nm_src, 1] = +90*π/180
+Animo.policy.Source.V_δ_set[nm_src, 1] = 0*π/180
 
 state_ids_classic = Animo.policy.state_ids
 action_ids_classic = Animo.policy.action_ids
@@ -255,7 +263,7 @@ agentname = "agent"
 plt_state_ids = []#"source1_v_C_a", "source2_v_C_a", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
-collect_vrms_idx = [3 2 1], collect_irms_idx = [3 2 1], collect_pq_idx = [3 2 1],
+collect_vrms_idx = [1 2], collect_irms_idx = [1 2], collect_pq_idx = [1 2],
 save_best_NNA = true, collect_reference = false, plot_rewards=false)
 
 run(ma, env, StopAfterEpisode(1), hook);
@@ -264,7 +272,7 @@ run(ma, env, StopAfterEpisode(1), hook);
 # Plotting
 
 plot_hook_results(; hook = hook, actions_to_plot = [], episode = 1, 
-pq_to_plot = [3 2 1], vrms_to_plot = [3 2 1], irms_to_plot = [3 2 1])
+pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2])
 
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
