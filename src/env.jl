@@ -160,10 +160,12 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                 # set vdc for that source
                 if haskey(source, "vdc")
                     v_dc[source_number] = source["vdc"]
-                    push!(v_dc_arr, source["vdc"])
+                    fun = (env, G, T) -> source["vdc"]
+                    push!(v_dc_arr, fun)
                 else
                     v_dc[source_number] = 800
-                    push!(v_dc_arr, 800)
+                    fun = (env, G, T) -> 800
+                    push!(v_dc_arr, fun)
                     vdc_fixed += 1
                 end
             elseif source["source_type"] == "pv"
@@ -175,20 +177,23 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                 pv_array = PV_array(;pv_module=pv_m)
                 # find(x -> .... source$source_number_i_L in state_ids)
                 ex = :(get_V($pv_array, env.x[$source_number]*env.action, G, T))
-                push!(v_dc_arr, ex)
+                fun = (env, G, T) -> get_V(:($pv_array), env.x[:($source_number)]*env.action, G, T)
+                push!(v_dc_arr, fun)
                 
                 # first value set to 0
                 v_dc[source_number] = 0
             else
                 println("WARNING: sourceType not known! vdc set to fixed value")
                 v_dc[source_number] = 800
-                push!(v_dc_arr, 800)
+                fun = (env, G, T) -> 800
+                push!(v_dc_arr, fun)
                 vdc_fixed += 1
             end
         else
             println("WARNING: sourceType not defined! vdc set to fixed value, if not wanted please define nc.parameters -> source -> source_type (e.g. = ideal")
             v_dc[source_number] = 800
-            push!(v_dc_arr, 800)
+            fun = (env, G, T) -> 800
+            push!(v_dc_arr, fun)
             vdc_fixed += 1
         end
     end
@@ -337,13 +342,15 @@ function (env::SimEnv)(action)
     # assumes in all number of phases per source the same vdc by repeating the vdc value "phase"-times
 
     # TODO define G and T via data_set or stochastic process next to pv_array
-    global G = 1000
-    global T = 27
+    G = 1000
+    T = 27
 
     #env.v_dc[1] = get_V(pv_array, env.x[1]*env.action, G, T)
 
     # TODO use functions instead of eval to fit to dare wrapper?!
-    env.v_dc = eval.(env.v_dc_arr)
+    #env.v_dc = eval.(env.v_dc_arr)
+    env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
+    println(env.v_dc)
     env.action = env.action .* env.v_dc
     # env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
     
