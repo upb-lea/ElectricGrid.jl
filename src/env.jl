@@ -176,7 +176,6 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                 pv_m = PV_module()
                 pv_array = PV_array(;pv_module=pv_m)
                 # find(x -> .... source$source_number_i_L in state_ids)
-                ex = :(get_V($pv_array, env.x[$source_number]*env.action, G, T))
                 fun = (env, G, T) -> get_V(:($pv_array), env.x[:($source_number)]*env.action, G, T)
                 push!(v_dc_arr, fun)
                 
@@ -347,8 +346,6 @@ function (env::SimEnv)(action)
 
     #env.v_dc[1] = get_V(pv_array, env.x[1]*env.action, G, T)
 
-    # TODO use functions instead of eval to fit to dare wrapper?!
-    #env.v_dc = eval.(env.v_dc_arr)
     env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
     println(env.v_dc)
     env.action = env.action .* env.v_dc
