@@ -20,10 +20,8 @@ end;
 
 Base.@kwdef mutable struct PV_array
     pv_module::PV_module           # module parameters
-    N_modules = 10000
     serial = 10
     parallel = 4
-    connection = 's'
     
 end;
 
