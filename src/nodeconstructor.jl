@@ -1708,6 +1708,11 @@ function generate_A(self::NodeConstructor)
     A_src = zeros(self.num_fltr, self.num_fltr) # construct matrix of zeros
     A_src_list = [get_A_src(self, i) for i in 1:self.num_sources]
     println(A_src_list)
+    # ####################################################################
+    # ####################################################################
+    # TODO: Variable eingabe der Quellen self.parameters["source"][i]["ftlr"]  == "LCL"
+    # ####################################################################
+    # ####################################################################
     for (i, ele) in enumerate(A_src_list)
         if i <= self.num_fltr_LCL
         # IDEE: if self.parameters["source"][i]["ftlr"]  == "LCL"
