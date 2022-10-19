@@ -345,12 +345,18 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             for s in 1:num_fltr_L_undef
             push!(parameters["source"], _sample_fltr_L(parameters["grid"]))
             end
+            # Validierung ob LC vorhanden ist?
+            if num_LC_defined == 0 &&  num_fltr_LC_undef == 0
+                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+            end
+        else
+
+            if num_LC_defined == 0 
+                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+            end
         end
 
-        # Validierung ob LC vorhanden ist?
-        if num_LC_defined == 0 &&  num_fltr_LC_undef == 0
-            println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
-        end
+        
 
         source_type_fixed > 0 && println("WARNING: $vdc_fixed sourceType not defined! set to ideal!")
 
@@ -404,7 +410,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         parameters["load"] = load_list
 
     else
-        num_def_loads = length(parameters["loads"])
+        num_def_loads = length(parameters["load"])
 
         num_undef_loads = num_loads - num_def_loads
 
@@ -505,7 +511,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         @assert num_undef_cables >= 0 "Expect the number of defined cables within the parameter dict to be less or equal to the number of sources in the env, but the entries within the parameter dict is $num_def_cables and the number of env cables is $num_cables."
 
         if num_undef_cables > 0
-            println("WARNING: The number of defined cables $num_def_cables is smaller than the number specified cablesin the environment $num_cables, therefore the remaining $num_undef_cables cables are selected randomly!")
+            println("WARNING: The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!")
         end
 
         for (idx, cable) in enumerate(parameters["cable"])
@@ -1707,7 +1713,7 @@ function generate_A(self::NodeConstructor)
     self.num_fltr = 4 * self.num_fltr_LCL + 3 * self.num_fltr_LC + 2 * self.num_fltr_L
     A_src = zeros(self.num_fltr, self.num_fltr) # construct matrix of zeros
     A_src_list = [get_A_src(self, i) for i in 1:self.num_sources]
-    println(A_src_list)
+    
     # ####################################################################
     # ####################################################################
     # TODO: Variable eingabe der Quellen self.parameters["source"][i]["ftlr"]  == "LCL"
