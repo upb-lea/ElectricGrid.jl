@@ -35,8 +35,8 @@ source2 = Dict()
 #source["v_rip"] = 0.01556109320329396
 #source["vdc"] = 750
 #source["i_rip"] = 0.10108821490394984
-source1["fltr"] = "L"
-source1["source_type"] = "ideal"
+source1["fltr"] = "LCL"
+source1["source_type"] = "pv"
 source1["R1"] = 0.4
 source1["R_C"] = 0.0006
 source1["L1"] = 2.3e-3
@@ -44,7 +44,7 @@ source1["L1"] = 2.3e-3
 #source["L2"] = 0.001005523738767639
 source1["C"] = 1e-6;
 
-source2["fltr"] = "L"
+#source2["fltr"] = "L"
 source2["source_type"] = "pv"
 source2["R1"] = 0.4
 source2["R_C"] = 0.0006
@@ -53,7 +53,7 @@ source2["L1"] = 2.3e-3
 #source["L2"] = 0.001005523738767639
 source2["C"] = 1e-6;
 
-push!(source_list, source1, source2);
+push!(source_list, source1)#, source2);
 
 load_list = []
 load = Dict()

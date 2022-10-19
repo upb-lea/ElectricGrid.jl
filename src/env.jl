@@ -40,32 +40,13 @@ end
 
 function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
     
-    if !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
+    if !(isnothing(num_sources) || isnothing(num_loads)) 
 
-        if isnothing(parameters)
-            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM)
-        else
-            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
-        end
-
-        A, B, C, D = get_sys(nc)
-        Ad = exp(A*ts)
-        Bd = A \ (Ad - C) * B
-
-        if use_gpu
-            Ad = CuArray(A)
-            Bd = CuArray(B)
-            C = CuArray(C)
-            if isa(D, Array)
-                D = CuArray(D)
-            end
-        end
-
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
 
     else
         # Construct standard env with 2 sources, 1 load
-        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)")
+        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)") #TODO: Clarify what there problem is
         CM = [ 0. 0. 1.
                0. 0. 2
               -1. -2. 0.]
@@ -76,11 +57,20 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters)
         end
 
-        A, B, C, D = get_sys(nc)
-        Ad = exp(A*ts)
-        Bd = A \ (Ad - C) * B
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    end
 
+    A, B, C, D = get_sys(nc)
+    Ad = exp(A*ts)
+    Bd = A \ (Ad - C) * B
+    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+
+    if use_gpu
+        Ad = CuArray(A)
+        Bd = CuArray(B)
+        C = CuArray(C)
+        if isa(D, Array)
+            D = CuArray(D)
+        end
     end
 
     if isnothing(action_space)
