@@ -1,4 +1,7 @@
-name = "dare"
+name = "Dare"
+uuid = "d6749236-802c-4af3-9b09-2fcebf7269d7"
+#authors = ["Jan Stenner <jan.stenner@uni-paderborn.de>"]
+version = "0.1.0"
 
 [deps]
 CDDLib = "3391f64e-dcde-5f30-b752-e11513730f60"

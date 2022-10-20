@@ -2,8 +2,8 @@ using ReinforcementLearning
 using DataFrames
 using UnicodePlots
 
-include(srcdir("plotting.jl")) 
-include(srcdir("MultiAgentGridController.jl"))
+include("./plotting.jl")
+include("./MultiAgentGridController.jl")
 
 Base.@kwdef mutable struct DataHook <: AbstractHook
 
