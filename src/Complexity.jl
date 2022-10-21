@@ -1,9 +1,15 @@
 using LinearAlgebra
 using SpecialFunctions
 
+using DifferentialEquations
+
 using Graphs
 using NetworkLayout
+
+using VoronoiCells
+using GeometryBasics
 using Polyhedra
+using PolygonOps
 import QHull
 
 mutable struct Node
@@ -302,7 +308,8 @@ mutable struct ϵ_Machine
     μ_m::Float64 # Sampling timestep / interval of the machine
     ϵ::Array{Float64, 1} # Instrument resolution
     x_range::Array{Float64, 2} # State space limits
-    k::Int64 # Simulation step
+    k::Int64 # Simulation step - number of coordinate points (duplicate in Tree)
+    Partition::Tessellation{Point2{Float64}} # 2D partitioning
 
     s::Array{Int64, 1} # measured symbols
     x::Array{Float64, 2} # input data
@@ -348,6 +355,7 @@ mutable struct ϵ_Machine
 
     function ϵ_Machine(Ts::Vector{Matrix{Float64}}, Tree::Parse_Tree,
         δ::Float64, μ_m::Float64, ϵ::Array{Float64, 1}, x_range::Array{Float64, 2}, k::Int64,
+        Partition::Tessellation{Point2{Float64}},
         s::Array{Int64, 1}, x::Array{Float64, 2}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
         C_states::Matrix{Int64}, start_state::Int64, Dang_States::Vector{Int64}, IG::Float64,
         T::Matrix{Float64}, I::Matrix{Float64}, eigval::Vector{ComplexF64},
@@ -360,7 +368,8 @@ mutable struct ϵ_Machine
         Zα::Vector{Float64}, Hα::Vector{Float64}, hα::Vector{Float64}, Cα::Vector{Float64}, Cαe::Vector{Float64}, 
         Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, C::Float64, Cμ::Float64, Ce::Float64, Cμe::Float64)     
 
-        new(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
+        new(Ts, Tree, δ, μ_m, ϵ, x_range, k,
+        Partition, 
         s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
@@ -387,6 +396,18 @@ mutable struct ϵ_Machine
         μ_m = round(μ_m/μ_s)*μ_s # correction to prevent overflow of vectors
         k = 0 # machine step # machine step
         t_final = N*μ_s - μ_s
+
+        dims = length(x_range[:, 1])
+
+        if dims == 2
+            points = [Point(x_range[1, 2], x_range[2, 2]) for _ in 1:1]
+            boundaries = Rectangle(Point2(x_range[1, 2], x_range[2, 2]), Point2(x_range[1, 1], x_range[2, 1]))
+            Partition = voronoicells(points, boundaries)
+        else
+            points = [Point(0.5, 0.5) for _ in 1:1]
+            boundaries = Rectangle(Point2(0, 0), Point2(1, 1))
+            Partition = voronoicells(points, boundaries)
+        end
         
         N = convert(Int64, Int(ceil(N*μ_s/μ_m)))
 
@@ -437,6 +458,7 @@ mutable struct ϵ_Machine
         Cαe = fill!(Cαe, 0.0)
 
         ϵ_Machine(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
+        Partition,
         s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
@@ -511,7 +533,7 @@ function Partitioning(Deus::ϵ_Machine, x)
     dims = length(x) # number of dimensions
 
     s = 0 # mapped symbol
-    k = 1 # number of symbols in the alphabet
+    A = 1 # number of symbols in the alphabet
 
     for d in 1:dims
 
@@ -524,14 +546,13 @@ function Partitioning(Deus::ϵ_Machine, x)
             x[d] = Deus.x_range[d, 2]
         end
 
-        p = x[d] - Deus.x_range[d, 2]
         x[d] = x[d] - Deus.x_range[d, 2]
-        s = s + Int(floor(x[d]/(Deus.ϵ[d]*norm))*k)
+        s = s + Int(floor(x[d]/(Deus.ϵ[d]*norm))*A)
 
-        k = Int(k*ceil(1/Deus.ϵ[d]))
+        A = Int(A*ceil(1/Deus.ϵ[d]))
     end
 
-    return s, k
+    return s, A
 end
 
 function Dimensioning(Deus::ϵ_Machine, s)
@@ -566,6 +587,13 @@ function Sampling(Deus::ϵ_Machine, x, μ_s)
             Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
         end
     end
+
+    return nothing
+end
+
+function Generating_Partition(Deus::ϵ_Machine, x)
+
+
 
     return nothing
 end
@@ -816,8 +844,8 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                     node_dist = Deus.Tree.Nodes[Node].morph_dist
                     #Pr_d = maximum(abs.(node_dist .- state_dist))
 
-                    #state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
-                    #node_dist = Deus.Tree.Nodes[Node].Pr_c
+                    # state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
+                    # node_dist = Deus.Tree.Nodes[Node].Pr_c
                     #Pr_d = maximum(abs.(node_dist .- state_dist))
 
                     state_cn = Deus.Tree.Nodes[Deus.C_states[1, n]].cn
@@ -1910,13 +1938,13 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
     #----------------------------------------------------------
 
-    #= Tree_Isomorphism(Deus)
+    Tree_Isomorphism(Deus)
 
-    Statistical_Mechanics(Deus)
+    #Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
-    #Load_values(Deus::ϵ_Machine)
+    Load_values(Deus::ϵ_Machine)
 
-    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation =#
+    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
 
     return nothing
 end

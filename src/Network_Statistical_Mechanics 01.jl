@@ -2,9 +2,6 @@
 #@quickactivate "dare"
 
 using Plots
-using DifferentialEquations
-using VoronoiCells
-using GeometryBasics
 
 include("Complexity.jl")
 
@@ -14,7 +11,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 # Parameters - Time simulation
 
 Timestep = 10 # time step in μs
-t_final = 0.1 # 0.75 # time in seconds, total simulation run time
+t_final = 1.3 # 0.75 # time in seconds, total simulation run time
 fsys = 2000 # Hz, fundamental frequency of system
 fsys = 1/(10e-6) 
 
@@ -82,9 +79,9 @@ println("\nHere we go.\n")
     x_range[:, 1] = [1.0 for i in 1:dim] # maximum
     x_range[:, 2] = [0.0 for i in 1:dim] # minimum
 
-    Deus = ϵ_Machine(N, D, ϵ[1:2], x_range[1:2, :], μ_m, μ_s, δ = 0.05)
+    Deus = ϵ_Machine(N, D, ϵ[1:1], x_range[1:1, :], μ_m, μ_s, δ = 0.1)
 
-    Cranking(Deus, x[1:2, :], μ_s)
+    Cranking(Deus, x[1:1, :], μ_s)
 end
 
 T_plot_end = 30
@@ -108,10 +105,4 @@ println("Hα[end] = ", Deus.Hα[end])
 println("Period = ", 2^(Deus.Hα[end]))
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
-
-points = [Point(rand(), rand()) for _ in 1:10]
-rect = Rectangle(Point(0, 0), Point(1, 1))
-tess = voronoicells(points, rect);
-
-plot(tess, legend = :topleft)
 
