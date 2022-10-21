@@ -204,14 +204,16 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                     norm_array[state_index] = source["i_limit"]
                 else
                     i_limit_fixed += 1
-                    norm_array[state_index] = 1000.0
+                    norm_array[state_index] = 1.15*sqrt(2)*nc.parameters["source"][source_number]["pwr"]/(3*nc.parameters["grid"]["v_rms"])
+                    nc.parameters["source"][source_number]["i_limit"] = norm_array[state_index]
                 end
             elseif contains(states[state_index], "_v")
                 if haskey(source, "v_limit")
                     norm_array[state_index] = source["v_limit"]
                 else
                     v_limit_fixed += 1
-                    norm_array[state_index] = 1500.0
+                    norm_array[state_index] = 1.5*nc.parameters["source"][source_number]["vdc"]
+                    nc.parameters["source"][source_number]["v_limit"] = norm_array[state_index]
                 end
             end
         end

@@ -12,8 +12,6 @@ include(srcdir("Classical_Control.jl"))
 include(srcdir("Power_System_Theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
-include(srcdir("Classical_Control_Plots.jl"))
-
 function reference(t)
     
     u = [sqrt(2)*230 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
@@ -26,13 +24,13 @@ function reward(env, name = nothing)
     
     if !isnothing(name)
         if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source1_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source1_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source1_v_C_c", env.state_ids)
         else
-            u_l1_index = findfirst(x -> x == "source2_u_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source2_u_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source2_u_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source2_v_C_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source2_v_C_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source2_v_C_c", env.state_ids)
         end
 
         u_l1 = env.state[u_l1_index]
@@ -77,10 +75,12 @@ function RLBase.action_space(env::SimEnv, name::String)
     end
 end
 
+print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
+
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 3.4 #time in seconds, total simulation run time
+t_final = 0.5 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -93,9 +93,17 @@ fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-CM = [ 0. 0. 1.
-     0. 0. 2
-     -1. -2. 0.]
+CM = [ 0. 0. 0. 1.
+        0. 0. 0. 2.
+        0. 0. 0. 3.
+        -1. -2. -3. 0.]
+
+#= CM = [ 0. 0. 1.
+        0. 0. 2
+        -1. -2. 0.] =#
+
+#= CM = [0. 1.
+   -1. 0.] =#
 
 #-------------------------------------------------------------------------------
 # Cables
@@ -103,17 +111,31 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 0.50 # length in km
+l = 2.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
 cable["C"] = 0.4e-6*l # 0.4e-6#
 
-push!(cable_list, cable, cable)
+push!(cable_list, cable, cable, cable)
 
+#-------------------------------------------------------------------------------
 # Sources
 
 source_list = []
+source = Dict()
+
+source["pwr"] = 200e3
+source["vdc"] = 800
+source["fltr"] = "LC"
+Lf, Cf, _ = Filter_Design(source["pwr"], fs)
+source["R1"] = 0.4
+source["R_C"] = 0.0006
+source["L1"] = Lf
+source["C"] = Cf
+
+push!(source_list, source)
+
 source = Dict()
 
 source["pwr"] = 200e3
@@ -168,80 +190,95 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
 # Define the environment
 
-env = SimEnv(reward_function = reward, featurize = featurize, 
-v_dc = 800, ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
-maxsteps = length(t), action_delay = 0)
+num_sources = length(source_list)
+num_loads = length(load_list)
 
-#_______________________________________________________________________________
-# Setting up the Classical Sources
+env = SimEnv(reward_function = reward, featurize = featurize, 
+ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
+parameters = parameters, maxsteps = length(t), action_delay = 1)
 
 state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
 
-state_ids_classic = filter(x -> (split(x, "_")[1] == "source1" || split(x, "_")[1] == "source2"), state_ids)
-action_ids_classic = filter(x -> (split(x, "_")[1] == "source1" || split(x, "_")[1] == "source2"), action_ids)
+#_______________________________________________________________________________
+# Setting up the Reinforcement Learning Sources
 
-Animo = NamedPolicy("classic", Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = t_final, 
-fs = fs, num_sources = 2, state_ids = state_ids_classic, action_ids = action_ids_classic))
+agentname = "agent"
+
+state_ids_agent = filter(x -> split(x, "_")[1] == "source1", state_ids)
+action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)
+
+na = length(env.action_space)
+agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = false)
+agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
+
+#_______________________________________________________________________________
+# Setting up the Classical Sources
+
+# Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [4, 6, 3], Source_Indices = [1 2 3]))
+Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [1, 1], Source_Indices = [2 3]))
 
 #= Modes:
-    1 -> "Swing Mode" - voltage source without dynamics (i.e. an Infinite Bus)
-    2 -> "Voltage Control Mode" - voltage source with controller dynamics
-    3 -> "PQ Control Mode" - grid following controllable source/load
-    4 -> "Droop Control Mode" - simple grid forming with power balancing
-    
-        "Synchronverter Modes" - grid forming with power balancing via virtual motor (advanced controllable source/load)
-    5 -> "Full-Synchronverter Mode" - droop control on real and imaginary powers
-    6 -> "Self-Synchronverter Mode" - active control on real and imaginary powers
-    7 -> "Infinite-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
-    8 -> "Semi-Synchronverter Mode" - droop characteristic on imaginary power, and active control on real power
-    9 -> "Null-Synchronverter Mode" - active control on real power and voltage
+    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+    2 -> "Voltage Control" - voltage source with controller dynamics
+
+    3 -> "PQ Control" - grid following controllable source/load
+
+    4 -> "Droop Control" - simple grid forming with power balancing
+    5 -> "Full-Synchronverter" - droop control on real and imaginary powers
+    6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
 
-Source_Initialiser(env, Animo, [6 5])
+nm_src = 1 #2
 
-Animo.policy.Source.τv = 0.02 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf = 0.002 # time constant of the frequency loop # 0.002
+Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
+Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
 
-nm_src = 1 # changing the power set points of the source
-Animo.policy.Source.pq0_set[nm_src, 1] = 160e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = -125e3 # VAi, Imaginary Power
+Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
 
-Animo.policy.Source.V_pu_set[nm_src, 1] = 1.02
-Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
+Animo.policy.Source.V_pu_set[nm_src, 1] = 0.95
+Animo.policy.Source.V_δ_set[nm_src, 1] = -0*π/180
 
-nm_src = 2 # changing the power set points of the source
-Animo.policy.Source.pq0_set[nm_src, 1] = 35e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = 55e3 # VAi, Imaginary Power
+nm_src = 2 #3
 
-Animo.policy.Source.V_pu_set[nm_src, 1] = 0.98
-Animo.policy.Source.V_δ_set[nm_src, 1] = 0 #-90*π/180
-ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
+Animo.policy.Source.pq0_set[nm_src, 1] = 65e3 # W, Real Power
+Animo.policy.Source.pq0_set[nm_src, 2] = -25e3 # VAi, Imaginary Power
+
+state_ids_classic = Animo.policy.state_ids
+action_ids_classic = Animo.policy.action_ids
+
+#= ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
+                            "state_ids" => state_ids_classic,
+                            "action_ids" => action_ids_classic)) =#
+
+ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
+                            "state_ids" => state_ids_agent,
+                            "action_ids" => action_ids_agent),
+                nameof(Animo) => Dict("policy" => Animo,
                             "state_ids" => state_ids_classic,
                             "action_ids" => action_ids_classic))
                             
 ma = MultiAgentGridController(ma_agents, action_ids)
 
-agentname = "agent"
-
 #_______________________________________________________________________________
 #%% Starting time simulation
 
-plt_state_ids = ["source1_u_C_a", "source1_u_C_b", "source1_u_C_c", "source2_u_C_a", "source2_u_C_b", "source2_u_C_c", "source1_i_L1_a", "source2_i_L1_a"]
+plt_state_ids = ["source1_v_C_a", "source1_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = false, plot_rewards=false)
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
+collect_vrms_idx = [3 2], collect_irms_idx = [3 2], collect_pq_idx = [3 2],
+save_best_NNA = true, collect_reference = true, plot_rewards = true)
 
-run(ma, env, StopAfterEpisode(1), hook);
+run(ma, env, StopAfterEpisode(100), hook);
 
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = false, episode = 1)
+plot_hook_results(; hook = hook, actions_to_plot = [], episode = 200, 
+pq_to_plot = [3 2], vrms_to_plot = [3 2], irms_to_plot = [3 2])
 
-#= Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 1)
-Plot_Vrms(5, 5000, Animo.policy.Source, num_source = 2)
-
-Plot_Real_Imag_Active_Reactive(0, 5000, Animo.policy.Source, num_source = 1)
-Plot_Real_Imag_Active_Reactive(0, 5000, Animo.policy.Source, num_source = 2) =#
+plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, 
+plot_reward = false, plot_reference = true, use_best = false)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

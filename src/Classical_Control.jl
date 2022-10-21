@@ -47,12 +47,13 @@ mutable struct Classical_Controls
     θsys::Float64
     ts::Float64 # s, sampling timestep
     N::Int64
-    delay::Int64
     steps::Int64
 
     V_poc_loc::Matrix{Int64} # the position in the state vector where the POC Voltage is measured
     I_poc_loc::Matrix{Int64}
     I_inv_loc::Matrix{Int64}
+
+    Action_loc::Vector{Vector{Int64}}
 
     #---------------------------------------------------------------------------
     # Phase Locked Loops
@@ -113,8 +114,8 @@ mutable struct Classical_Controls
 
     Δfmax::Float64 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
     ΔEmax::Float64 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
-    τv::Float64  # time constant of the voltage loop
-    τf::Float64  # time constant of the frequency-droop loop
+    τv::Vector{Float64}  # time constant of the voltage loop
+    τf::Vector{Float64}  # time constant of the frequency-droop loop
 
     D::Matrix{Float64} # Droop coefficients
     ω_droop::Array{Float64}
@@ -152,8 +153,9 @@ mutable struct Classical_Controls
         Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64, phases::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
-        ts::Float64, N::Int64, delay::Int64, steps::Int64,
+        ts::Float64, N::Int64, steps::Int64,
         V_poc_loc::Matrix{Int64}, I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
+        Action_loc::Vector{Vector{Int64}},
         pll_err::Array{Float64}, pll_err_t::Matrix{Float64},
         vd::Array{Float64}, qvd::Array{Float64},
         fpll::Array{Float64}, θpll::Array{Float64},
@@ -170,7 +172,7 @@ mutable struct Classical_Controls
         V_err::Array{Float64}, V_err_t::Matrix{Float64},
         V_kp::Vector{Float64}, V_ki::Vector{Float64},
         I_lim::Matrix{Float64},
-        Δfmax::Float64, ΔEmax::Float64, τv::Float64, τf::Float64,
+        Δfmax::Float64, ΔEmax::Float64, τv::Vector{Float64}, τf::Vector{Float64},
         D::Matrix{Float64}, ω_droop::Array{Float64}, θ_droop::Matrix{Float64},
         pq0_set::Matrix{Float64},
         J_sync::Vector{Float64}, K_sync::Vector{Float64}, ΔT_t::Vector{Float64},
@@ -187,8 +189,9 @@ mutable struct Classical_Controls
         Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, delay, steps,
+        ts, N, steps,
         V_poc_loc, I_poc_loc, I_inv_loc,
+        Action_loc,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -214,7 +217,7 @@ mutable struct Classical_Controls
         ΔT_err, ΔT_err_t, ω_set)
     end
 
-    function Classical_Controls(t_final, f_cntr, num_sources; delay = 1, phases = 3)
+    function Classical_Controls(f_cntr, num_sources; phases = 3)
 
         #---------------------------------------------------------------------------
         # Physical Electrical Parameters
@@ -246,9 +249,7 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # Measurements
 
-        t_final = convert(Float64, t_final)
         ts = 1/f_cntr
-        t = 0:ts:t_final
 
         steps = 0
         fsys = 50.0
@@ -256,7 +257,6 @@ mutable struct Classical_Controls
 
         T_eval = 1 #number of periods to average over
         N = convert(Int64, round(T_eval/(fsys*ts))) + 1
-        N2 = length(t)
 
         T_sp_rms = 5*fsys #samples in a second for rms calcs, x*fsys = x samples in a cycle
 
@@ -281,11 +281,18 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # General System & Control
 
-        Modes = Dict("Swing Mode" => 1, "Voltage Control Mode" => 2, "PQ Control Mode" => 3,
-        "Droop Control Mode" => 4, "Synchronverter Mode" => 5, "Self-Synchronverter Mode" => 6)
+        Modes = Dict("Swing" => 1, 
+        "Voltage Control" => 2, 
+        "PQ Control" => 3,
+        "Droop Control" => 4, 
+        "Full-Synchronverter" => 5, 
+        "Semi-Synchronverter" => 6,
+        "Not Used 1" => 7,
+        "Not Used 2" => 8,
+        "Not Used 3" => 9)
 
         Source_Modes = Array{String, 1}(undef, num_sources)
-        Source_Modes = fill!(Source_Modes, "Voltage Control Mode")
+        Source_Modes = fill!(Source_Modes, "Voltage Control")
 
         V_poc_loc = Array{Int64, 2}(undef, phases, num_sources)
         V_poc_loc = fill!(V_poc_loc, 1)
@@ -294,14 +301,16 @@ mutable struct Classical_Controls
         I_inv_loc = Array{Int64, 2}(undef, phases, num_sources)
         I_inv_loc = fill!(I_inv_loc, 1)
 
+        Action_loc = Vector{Vector{Int64}}(undef, 0)
+
         Order = 3 #integration Order
 
         #---------------------------------------------------------------------------
         # Phase Locked Loops
 
-        vd = Array{Float64, 3}(undef, num_sources, phases, N2) #3 for 3 phases
+        vd = Array{Float64, 3}(undef, num_sources, phases, Order) #3 for 3 phases *
         vd = fill!(vd, 0.0)
-        qvd = Array{Float64, 3}(undef, num_sources, phases, N2) #3 for 3 phases
+        qvd = Array{Float64, 3}(undef, num_sources, phases, Order) #3 for 3 phases *
         qvd = fill!(qvd, 0.0)
 
         fpll = Array{Float64, 3}(undef, num_sources, phases, Order + 1) #3 for 3 phases
@@ -395,10 +404,13 @@ mutable struct Classical_Controls
             frequency decrease between 3% and 5% (from nominal values)
         =#
 
-        Δfmax = 0.03*fsys/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
-        ΔEmax = 0.05*Vrms[1]/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
-        τv = 0.02 # time constant of the voltage loop
-        τf = 0.02
+        Δfmax = 5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
+        ΔEmax = 0.5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
+        
+        τv = Array{Float64, 1}(undef, num_sources)
+        τv = fill!(τv, 0.002 ) # time constant of the voltage loop # 0.02
+        τf = Array{Float64, 1}(undef, num_sources) 
+        τf = fill!(τf, 0.002 ) # time constant of the frequency loop # 0.002
 
         D = Array{Float64, 2}(undef, num_sources, 2)
         D[:,1] = fill!(D[:,1], 2π*Δfmax/P[1])
@@ -455,8 +467,9 @@ mutable struct Classical_Controls
         Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, delay, steps,
+        ts, N, steps,
         V_poc_loc, I_poc_loc, I_inv_loc,
+        Action_loc,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -485,18 +498,61 @@ end
 
 Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
-    n_actions = 1
-    t_final = 0.04
-    fs = 10e3
-    num_sources = 1
-    delay = 0
-    phases = 3
+    action_space::Space{Vector{ClosedInterval{Float64}}}
+    Source::Classical_Controls
 
-    action_space::Space{Vector{ClosedInterval{Float64}}} = Space([ -1.0..1.0 for i = 1:n_actions], )
-    Source::Classical_Controls = Classical_Controls(t_final, fs, num_sources, delay = 0, phases = phases)
+    state_ids::Vector{String}
+    action_ids::Vector{String}
+    Source_Indices::Vector{Int64}
 
-    state_ids = nothing
-    action_ids = nothing
+    function Classical_Policy(action_space, Source, state_ids, action_ids, Source_Indices)
+        new(action_space, Source, state_ids, action_ids, Source_Indices)
+    end
+
+    function Classical_Policy(env; Modes = [], Source_Indices = [], phases = 3)
+
+        Source_Indices = vec(Source_Indices)
+
+        state_ids = get_state_ids(env.nc)
+        action_ids = get_action_ids(env.nc)
+
+        ssa = "source".*string.(Source_Indices)
+        state_ids_classic = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), state_ids)     
+        action_ids_classic = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), action_ids)
+
+        Source = Classical_Controls(1/env.ts, length(Source_Indices), phases = phases)
+
+        Source_Initialiser(env, Source, Modes, Source_Indices)
+
+        #------------------------------------
+
+        for s in 1:length(Source_Indices)
+
+            s_idx = string(Source_Indices[s])
+    
+            Source.V_poc_loc[:, s]  = findall(contains(s_idx*"_v_C_cables"), state_ids_classic)
+
+            if isnothing(findfirst(contains("L2"), state_ids_classic))
+                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+            else
+                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
+            end
+
+            Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+        end
+
+        letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
+
+        Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
+        vec(Source_Indices)), letterdict[split(x, "_")[3]]] for x in action_ids_classic]
+
+        #------------------------------------
+
+        animo = Classical_Policy(Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), Source,
+        state_ids_classic, action_ids_classic, Source_Indices)
+
+        return animo
+    end
 end
 
 function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing} = nothing)
@@ -569,29 +625,36 @@ function Classical_Control(Animo, env, name = nothing)
 
     for s in 1:Source.num_sources
 
-        if Source.Source_Modes[s] == "Swing Mode"
+        if Source.Source_Modes[s] == "Swing"
 
             Swing_Mode(Source, s)
-        elseif Source.Source_Modes[s] == "Voltage Control Mode"
+        elseif Source.Source_Modes[s] == "Voltage Control"
 
             Voltage_Control_Mode(Source, s)
-        elseif Source.Source_Modes[s] == "PQ Control Mode"
-
+        elseif Source.Source_Modes[s] == "PQ Control"
             PQ_Control_Mode(Source, s, Source.pq0_set[s, :])
-        elseif Source.Source_Modes[s] == "Droop Control Mode"
+        elseif Source.Source_Modes[s] == "Droop Control"
 
             Droop_Control_Mode(Source, s)
-        elseif Source.Source_Modes[s] == "Synchronverter Mode"
-
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :])
-        elseif Source.Source_Modes[s] == "Self-Synchronverter Mode"
-
-            Self_Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :])
+        elseif Source.Source_Modes[s] == "Full-Synchronverter"
+            smode = Source.Modes[Source.Source_Modes[s]] - 4
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
+        elseif Source.Source_Modes[s] == "Semi-Synchronverter"
+            smode = Source.Modes[Source.Source_Modes[s]] - 4
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
+        elseif Source.Source_Modes[s] == "Not Used 1"
+            smode = Source.Modes[Source.Source_Modes[s]] - 4
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
+        elseif Source.Source_Modes[s] == "Not Used 2"
+            smode = Source.Modes[Source.Source_Modes[s]] - 4
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
+        elseif Source.Source_Modes[s] == "Not Used 3"
+            smode = Source.Modes[Source.Source_Modes[s]] - 4
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
         end
-
     end
 
-    Action = Env_Interface(env, Animo, name)
+    Action = Env_Interface(Source)
     Measurements(Source)
 
     return Action
@@ -611,20 +674,13 @@ function Source_Interface(env, Animo, name = nothing)
 
     for num_source in 1:Source.num_sources
 
-        env_ns = 2
-        #env_ns = num_source
-
         Source.V_filt_poc[num_source, :, 1:end-1] = Source.V_filt_poc[num_source, :, 2:end]
         Source.I_filt_poc[num_source, :, 1:end-1] = Source.I_filt_poc[num_source, :, 2:end]
         Source.I_filt_inv[num_source, :, 1:end-1] = Source.I_filt_inv[num_source, :, 2:end]
 
-        Source.V_filt_poc[num_source, :, end] = state[findall(contains(string(env_ns)*"_u_C_cables"), Animo.state_ids)]
-        if isnothing(findfirst(contains("L2"), Animo.state_ids))
-            Source.I_filt_poc[num_source, :, end] = state[findall(contains(string(env_ns)*"_i_L1"), Animo.state_ids)]
-        else
-            Source.I_filt_poc[num_source, :, end] = state[findall(contains(string(env_ns)*"_i_L2"), Animo.state_ids)]
-        end
-        Source.I_filt_inv[num_source, :, end] = state[findall(contains(string(env_ns)*"_i_L1"), Animo.state_ids)]
+        Source.V_filt_poc[num_source, :, end] = state[Source.V_poc_loc[:, num_source]]
+        Source.I_filt_poc[num_source, :, end] = state[Source.I_poc_loc[:, num_source]]
+        Source.I_filt_inv[num_source, :, end] = state[Source.I_inv_loc[:, num_source]]
         
         Source.p_q_filt[num_source, :] =  p_q_theory(Source.V_filt_poc[num_source, :, end], Source.I_filt_poc[num_source, :, end])
 
@@ -635,61 +691,11 @@ function Source_Interface(env, Animo, name = nothing)
     return nothing
 end
 
-function Env_Interface(env, Animo, name = nothing)
+function Env_Interface(Source)
 
-    Source = Animo.Source
-
-    i = Source.steps
-
-    letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
-    source_indices = unique([parse(Int64, SubString(split(x, "_")[1], 7)) for x in Animo.state_ids], dims=1)
-    Action = [Source.Vd_abc_new[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), source_indices),
-                                letterdict[split(x, "_")[3]]] for x in Animo.action_ids]
+    Action = [Source.Vd_abc_new[Source.Action_loc[x][1], Source.Action_loc[x][2]] for x in 1:length(Source.Action_loc)]
 
     return Action
-end
-
-function Collect_IDs(env, Source::Classical_Controls)
-
-    A, _, _, _ = get_sys(env.nc)
-    num_fltr_LCL = env.nc.num_fltr_LCL
-    num_fltr_LC = env.nc.num_fltr_LC
-    num_fltr_L = env.nc.num_fltr_L
-
-    ns = length(A[1,:])/3 # get num of inputs
-    np = 3 # number of phases
-
-    x = 0
-    for s in 1:Source.num_sources
-        if s <= num_fltr_LCL
-
-            x += 1
-            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 2
-            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 1
-            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-        
-        elseif s <= num_fltr_LCL + num_fltr_LC
-
-            x += 1
-            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 2
-            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-        
-        elseif s <= num_fltr_LCL + num_fltr_LC + num_fltr_L
-
-            x += 1
-            Source.I_inv_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            Source.I_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-            x += 1
-            Source.V_poc_loc[1:np, s] = Int.([(x + i*ns) for i in 0:(np-1)])
-
-        end
-    end
-
-    return nothing
 end
 
 function Ramp(final, μ, i; t_end = 0.02, ramp = 0)
@@ -785,21 +791,21 @@ function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 1)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 2)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 3)
-    θt = Source.θpll[num_source, 1]
+    θt = Source.θpll[num_source, 1, end]
 
-    if i*Source.ts > 2/Source.fsys
+    if i*Source.ts > 4/Source.fsys
         PQ_Control(pq0_ref = pq0, Source, num_source, θt)
     else
 
         PQ_Control(pq0_ref = [0; 0; 0], Source, num_source, θt)
     end
 
-    Current_Controller(Source, num_source, θt)
+    #Current_Controller(Source, num_source, θt)
 
     return nothing
 end
 
-function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], ramp = 0, t_end = 0.04)
+function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], ramp = 0, t_end = 0.04, mode = 3)
 
     i = Source.steps
 
@@ -808,18 +814,15 @@ function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, i; t_end = t_end, ramp = ramp)
     Dout = D_Ramp([2π*Source.Δfmax; Source.ΔEmax], Source.ts, i, t_end = t_end, ramp = ramp)
 
-    Source.D[num_source, 1] = Source.fsys*Dout[1]/Source.P[num_source]
-    Source.D[num_source, 2] = Vrms*sqrt(2)*Dout[2]/Source.Q[num_source]
+    Source.D[num_source, 1] = Source.P[num_source]/((2π)*(Source.fsys)*Source.fsys*Dout[1])
+    Source.D[num_source, 2] = Source.Q[num_source]/(Vrms*sqrt(2)*Dout[2])
 
     # Synchronverter parameters
-    Dp_sync = 1/((2π)*(Source.fsys)*Source.D[num_source, 1])
-    Source.J_sync[num_source] = Source.τf*Dp_sync
-
-    Dq_sync = 1/(Source.D[num_source, 2])
-    Source.K_sync[num_source] = Source.τv*Source.fsys*2π*Dq_sync
+    Source.J_sync[num_source] = Source.τf[num_source]*Source.D[num_source, 1]
+    Source.K_sync[num_source] = Source.τv[num_source]*Source.fsys*2π*Source.D[num_source, 2]
 
     if i*Source.ts > 0/Source.fsys
-        Synchronverter_Control(Source, num_source; pq0_ref = pq0_ref, Vrms = Vrms)
+        Synchronverter_Control(Source, num_source, pq0_ref = pq0_ref, Vrms = Vrms, mode = mode)
         θ_S = Source.θ_sync[num_source]
         Voltage_Controller(Source, num_source, θ_S)
         Current_Controller(Source, num_source, θ_S)
@@ -830,38 +833,7 @@ function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [
     return nothing
 end
 
-function Self_Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], ramp = 0, t_end = 0.04)
-
-    i = Source.steps
-
-    pu = Source.V_pu_set[num_source, 1]
-
-    Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, i; t_end = t_end, ramp = ramp)
-    Dout = D_Ramp([2π*Source.Δfmax; Source.ΔEmax], Source.ts, i, t_end = t_end, ramp = ramp)
-
-    Source.D[num_source, 1] = Source.fsys*Dout[1]/Source.P[num_source]
-    Source.D[num_source, 2] = Vrms*sqrt(2)*Dout[2]/Source.Q[num_source]
-
-    # Synchronverter parameters
-    Dp_sync = 1/((2π)*(Source.fsys)*Source.D[num_source, 1])
-    Source.J_sync[num_source] = Source.τf*Dp_sync
-
-    Dq_sync = 1/(Source.D[num_source, 2])
-    Source.K_sync[num_source] = Source.τv*Source.fsys*2π*Dq_sync
-
-    if i*Source.ts > 0/Source.fsys
-        Self_Synchronverter_Control(Source, num_source, pq0_ref = pq0_ref, Vrms = Vrms)
-        θ_S = Source.θ_sync[num_source]
-        Voltage_Controller(Source, num_source, θ_S)
-        Current_Controller(Source, num_source, θ_S)
-    end
-
-    Phase_Locked_Loop_3ph(Source, num_source)
-
-    return nothing
-end
-
-function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = 70, ξ = 0.7)
+function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = 70, ξ = 0.35)
 
     #= A robost 3 phase phase locked loop
 
@@ -965,8 +937,6 @@ function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = 70,
         The settling time for the controller is approximately ξ*ωn
         
     =#
-
-    i = Source.steps
 
     Ki = ωn^2 # tuning
     Kp = ξ*2*sqrt(Ki) # tuning
@@ -1072,72 +1042,6 @@ end
 
 function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
 
-    i = Source.steps
-
-    Kp = Source.V_kp[num_source]
-    Ki = Source.V_ki[num_source]
-
-    V_err = Source.V_err[num_source, :, :]
-    V_err_t = Source.V_err_t[num_source, :]
-
-    if norm(pq0_ref) > Source.S[num_source]
-        pq0_ref = pq0_ref.*(Source.S[num_source]/norm(pq0_ref))
-    end
-
-    V_αβγ = Clarke_Transform(Source.V_filt_poc[num_source, :, end])
-    I_αβγ = Clarke_Transform(Source.I_filt_poc[num_source, :, end])
-
-    #-------------------------------------------------------------
-
-    I_αβγ_ref = Inv_p_q_v(V_αβγ, pq0_ref)
-
-    I_dq0_ref = Park_Transform(I_αβγ_ref, θ)
-    I_dq0 = Park_Transform(I_αβγ, θ)
-
-    #-------------------------------------------------------------
-
-    V_αβγ_ref = Inv_p_q_i(I_αβγ, pq0_ref)
-
-    V_dq0_ref = Park_Transform(V_αβγ_ref, θ)
-    V_dq0 = Park_Transform(V_αβγ, θ)
-
-    if sqrt(2/3)*norm(V_dq0_ref) > Source.Vdc[num_source]/2
-        V_dq0_ref = V_dq0_ref.*((Source.Vdc[num_source]/2)/(sqrt(2/3)*norm(V_dq0_ref) ))
-    end
-
-    #-------------------------------------------------------------
-
-    Source.V_ref[num_source, :] = Inv_DQ0_transform(V_dq0_ref, θ)
-
-    Source.V_ref_dq0[num_source, :] = V_dq0_ref
-    Source.V_dq0[num_source, :] = V_dq0
-
-    if i > 1
-        # Including Anti-windup - Back-calculation
-        I_err_new = I_dq0_ref .- I_dq0 .+ Kb*(Source.I_ref_dq0[num_source, :] .- Source.I_lim[num_source,:])
-    else
-        I_err_new = I_dq0_ref .- I_dq0
-    end
-
-    Source.I_lim[num_source,:], Source.V_err_t[num_source, :], 
-    Source.V_err[num_source, :, :] =
-    PI_Controller(I_err_new, V_err, V_err_t, Kp, Ki, Source.ts)
-
-    Ip_ref = sqrt(2/3)*norm(Source.I_lim[num_source, :]) # peak set point
-
-    if Ip_ref > Source.i_max[num_source]
-        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source,:]*Source.i_max[num_source]/Ip_ref
-    else
-        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]
-    end
-
-    return nothing
-end
-
-#= function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kb = 1)
-
-    i = Source.steps
-
     Kp = Source.I_kp[num_source]
     Ki = Source.I_ki[num_source]
 
@@ -1165,14 +1069,14 @@ end
     s_dq0_avg, Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] =
     PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts)
 
-    Source.Vd_abc_new[num_source, :] = 0.5*Inv_DQ0_transform(s_dq0_avg, θ)
+    Source.Vd_abc_new[num_source, :] = Inv_DQ0_transform(s_dq0_avg, θ)
     
     Source.I_ref_dq0[num_source, :] = I_dq0_ref
     Source.I_dq0[num_source, :] = I_dq0
     Source.I_ref[num_source, :] = Inv_DQ0_transform(Source.I_ref_dq0[num_source, :], θ)
 
     return nothing
-end =#
+end
 
 function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrms[num_source])
 
@@ -1278,7 +1182,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ)
     PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts)
 
     Source.Vd_abc_new[num_source, :] = Inv_DQ0_transform(s_dq0_avg, θ)
-    #Source.Vd_abc_new[num_source, :, i + Source.delay] = 0.5*Source.Vdc[num_source].*Inv_DQ0_transform(s_dq0_avg, θ)
+    #Source.Vd_abc_new[num_source, :, i] = 0.5*Source.Vdc[num_source].*Inv_DQ0_transform(s_dq0_avg, θ)
     #= Theory:
         The switching functions s_abc(t) is generated by comparing the normalized
         voltage value with a triangular modulation carrier. The output of the
@@ -1305,7 +1209,7 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ; Kb = 1)
     V_dq0 = Source.V_dq0[num_source, :]
     V_ref_dq0 = Source.V_ref_dq0[num_source, :]
 
-    if sqrt(2/3)*norm(Source.V_ref_dq0[num_source, :]) > Source.v_max[num_source]/2 #Source.Vdc[num_source]
+    if sqrt(2/3)*norm(Source.V_ref_dq0[num_source, :]) > Source.v_max[num_source] #Source.Vdc[num_source]
         Source.V_ref_dq0[num_source, :] = Source.V_ref_dq0[num_source, :].*((Source.Vdc[num_source]/2)/(sqrt(2/3)*norm(V_ref_dq0)))
         V_ref_dq0 = Source.V_ref_dq0[num_source, :] # v_max Vdc
     end
@@ -1335,100 +1239,41 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ; Kb = 1)
     return nothing
 end
 
-function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Vrms = Source.Vrms[num_source])
+function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], mode = 3, Vrms = Source.Vrms[num_source])
 
-    #=
-        A synchronverter is an inverter that mimics synchronous generators, which
-        offers a mechanism for power systems to control grid-connected renewable energy
-        and facilitates smart grid integration. Similar to other grid-connected inverters,
-        it typically needs a dedicated synchronizing unit, e.g. a phase-locked loop,
-        to provide a the phase, frequency, and amplitude of the grid voltages as
-        references. However, in this implementation the synchronizing unit has been
-        removed. It can automatically synchronize itself with the grid before connection
-        and tracks the grid frequency after connection. All the function of the original
-        synchronverter, such as frequency and voltage regulation, real power, and
-        reactive power control, are maintained.
+    #= Modes:
+            "Synchronverter Modes" - grid forming with power balancing via virtual motor (advanced controllable source/load)
+        1 -> "Full-Synchronverter Mode" - droop control on real and imaginary powers
+        2 -> "Infinite-Synchronverter Mode" - droop characteristic on real power, and active control on voltage
+        *3 -> "Self-Synchronverter Mode" - active control on real and imaginary powers
+        *4 -> "Semi-Synchronverter Mode" - droop characteristic on imaginary power, and active control on real power
+        *5 -> "Null-Synchronverter Mode" - active control on real power and voltage
 
-        Synchronverters are grid-friendly inverters that mimic synchronous generatons.
-        A synchronverter includes the mathematical model of a synchronous machines and
-        behaves in the same way, mathematically, as a synchronous generator to provide
-        a voltage supply. Its controller is in principle a power controller with integrated
-        capability of voltage and frequency regulation so it is able to achieve real
-        power control, reactive power control, frequency regulation,a nd voltage regulation.
-        Because of the embedded mathematical model, a utility is able to control a
-        synchronverter in the same way as controlling synchronous generators, which
-        consideratbly facilitates the grid connection of renewable energy and smart
-        grid integration. Since a synchronous machine is inherently able to synchronize
-        with the grid, it should be possible to integrate synchronization function
-        into the power controller and make a synchronverter to synchronize with the
-        grid without a dedicated PLL. This would remove the slow element in the closed
-        loop system consisteing of the PLL, the inverter controller and the power
-        system, and removes a major nonlinear element that affects the speed and
-        accuracy of synchronization.
-
-        A synchronverter will have all the good and bad properties of an SG, which is
-        nonlinear system. For example, the undesirable phenomena, such as loss of
-        stability due to underexcitation as well as hunting (oscillations around the
-        synchronous frequency), could occur in a synchronverter. An advantage is that
-        we can choose the parameters, such as intertia, friction coefficient, field
-        inductance, and mutual inductances. (The energy that would be lost in the
-        virtual mechanical friction is not lost in reality; it is directed back to
-        the DC bus). Moreover, we can (and do) choose to have no magnetic saturation
-        and no eddy currents. If we want, we can choose parameter values that are
-        impossible in a real SG, and we can also vary the parameters while the system
-        is operating. Synchronverters can alos be operated as synchronous motors based
-        on the same mathematical derivation.
-
-        In this model, the number of pairs of poles for each phase is 1 and hence the
-        mechanical speed of the machine is the same as the electrical speed of the
-        electromagnetic field.
-
-        Similarly to the control of a synchronous generator, the controller of a
-        synchronverter has two channels: one for the real power and the other for
-        reactive power. The real power is controlled by a frequency droop loop,
-        using the virtual mechanical friction coefficient Dp as the feedback gain.
-        The loop regulated the virtual speed, ω, of the synchronous machine and creates
-        the phase angle, θ, for the control signal, e.
-
-        The reactive power is controlled by a voltage droop loop, using the voltage
-        droop coefficient Dq. This loop regulates the field excitation Mf*if, which
-        is proportional to the amplitude of the voltage generated. Hence, the frequency
-        control, voltage control, real power control, and reactive power control are
-        all integrated in one compact controller with only four parameters (Dp, Dq,
-        K, and J)
-
-        For grid-connected applications, a synchronization unit is needed to provide the
-        grid information for the synchronverter to synchronize with the grid before
-        connection and for the synchronverter to deliver the desired real and reactive
-        powers after connection. If P and Q are controlled to be zero, then the
-        generated voltage e is the same as the grid voltage vg. This condition is not
-        common in the normal operation of an SG, but when it is satisfied, the SG
-        can be connected to or disconnected from the grid without causing large
-        transient dynamics. The same applies to a synchronverter to synchronize with
-        the grid before connection. However, by making some changes to the core of
-        the model the synchronverter can be connected to the grid safely and operated
-        without the need of a dedicated PLL.
-
-        When the VSG is operated in P-droop mode the real power is not the same as Pset,
-        but deviated from the value. This is because preference is given to maintaining
-        a minimum frequency deviation of the SVG from the nominal frequency. The same
-        holds for Q-droop mode, where the reactive power is not the same as Qset, but
-        deviated from the Qset. In this case preference is given to voltage deviation.
-
-        Typical values for the frequency droop are a 100% increase in power for a
-        frequency decrease between 3% and 5%.
-
-        τv = 0.002 # s
-        τf = 0.002 # s
-        Dp = 0.2026
-        Dq = 117.88
+        * problems
     =#
 
+    if mode == 1 # no changes
+        S1 = 0 # PI = 0
+        S2 = 1 # Dq = 1
+    elseif mode == 2
+        S1 = 0 # PI = 1
+        S2 = 1 # Dq = 1 && 88
+    elseif mode == 3
+        S1 = 1 # PI = 0
+        S2 = 0 # Dq = 1 && 88
+    elseif mode == 4
+        S1 = 1 # PI = 1
+        S2 = 1 # Dq = 1
+    elseif mode == 5
+        S1 = 1 # PI = 1
+        S2 = 1 # Dq = 1 && 88
+    end
+
     J = Source.J_sync[num_source]
     K = Source.K_sync[num_source]
-    
-    Dp = 1/((2π)*(Source.fsys)*Source.D[num_source, 1])
-    Dq = 1/(Source.D[num_source, 2])
+
+    Dp = Source.D[num_source, 1]
+    Dq = S2*Source.D[num_source, 2]
 
     eq = Source.eq[num_source, :]
     Mfif = Source.Mfif[num_source]
@@ -1437,79 +1282,7 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
     ω = Source.ω_sync[num_source, :]
     θ = Source.θ_sync[num_source] # only phase a
 
-    ωsys = Source.fsys*2π # nominal grid frequency
-    Vn = sqrt(2)*Vrms # nominal peak POC voltage
-    Vg = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[num_source, :, end], 0)) # peak measured voltage
-
-    μ = Source.ts
-
-    i_abc = Source.I_filt_poc[num_source, :, end]
-
-    sin_θ = sin.([θ; θ - 120*π/180; θ + 120*π/180])
-    cos_θ = cos.([θ; θ - 120*π/180; θ + 120*π/180])
-
-    #---- Integrate eq_new to find Mfif_new
-
-    #Q = ω[end]*Mfif[end]*dot(i_abc, sin_θ) # Reactive Power
-    Q = Source.p_q_filt[num_source, 2]
-    eq_new = (1/K)*(pq0_ref[2] + Dq*(Vn - Vg) - Q)
-    eq_new = (1/K)*(Dq*(Vn - Vg))
-
-    Mfif_new = Third_Order_Integrator(Mfif, μ, [eq[2:end]; eq_new])
-
-    Source.Mfif[num_source] = Mfif_new
-    Source.eq[num_source, :] = [eq[2:end]; eq_new]
-    #----
-
-    #---- Integrate α_new to find ω_new
-    Tm = pq0_ref[1]/ωsys # Virtual machine Torque
-
-    ω_err_new = ω[end] - ωsys
-    ΔT_new = Dp*ω_err_new
-
-    #Te_new = Mfif_new*dot(i_abc, cos_θ) # New Electrical Torque
-    Te_new = Source.p_q_filt[num_source, 1]/ω[end] # New Electrical Torque
-
-    α_new = (1/J)*(Tm - Te_new - ΔT_new) # New Angular Acceleration
-
-    ω_new = Third_Order_Integrator(ω[end], μ, [α[2:end]; α_new])
-
-    Source.ω_sync[num_source, :] = [ω[2:end]; ω_new]
-    Source.α_sync[num_source, :] = [α[2:end]; α_new]
-    #----
-
-    #---- Integrate ω_new to find θ_new
-    θ_new = Third_Order_Integrator(θ, μ, [ω[2:end]; ω_new])%(2*π)
-
-    Source.θ_sync[num_source] = θ_new
-    #----
-
-    #----
-    cos_θ_new = cos.([θ_new; θ_new - 120*π/180; θ_new + 120*π/180])
-    e = ω_new*Mfif_new*cos_θ_new # three phase generated voltage
-    #----
-
-    Source.V_ref[num_source, 1] = e[1]
-    Source.V_ref[num_source, 2] = e[2]
-    Source.V_ref[num_source, 3] = e[3]
-
-    return nothing
-end
-
-function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], Kp = 0.0005, Ki = 0.01, Vrms = Source.Vrms[num_source])
-
-    J = Source.J_sync[num_source]
-    K = Source.K_sync[num_source]
-
-    Dp = 1/(Source.D[num_source, 1]*(2π)*Source.fsys)
-    Dq = 0/(Source.D[num_source, 2])
-
-    eq = Source.eq[num_source, :]
-    Mfif = Source.Mfif[num_source]
-
-    α = Source.α_sync[num_source, :]
-    ω = Source.ω_sync[num_source, :]
-    θ = Source.θ_sync[num_source] # only phase a
+    Q = Source.p_q_filt[num_source, 2] # Reactive Power
 
     ωsys = Source.fsys*2π # nominal grid frequency
     Vn = sqrt(2)*Vrms # nominal peak POC voltage
@@ -1517,17 +1290,13 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
 
     μ = Source.ts
 
-    i_abc = Source.I_filt_poc[num_source, :, end]
-
-    sin_θ = sin.([θ; θ - 120*π/180; θ + 120*π/180])
-    cos_θ = cos.([θ; θ - 120*π/180; θ + 120*π/180])
-
     #---- Integrate eq_new to find Mfif_new
 
-    Q = Source.p_q_filt[num_source, 2]
-    #Q = ω[end]*Mfif[end]*dot(i_abc, sin_θ) # Reactive Power
-    eq_new = (1/K)*(pq0_ref[2] + Dq*(Vn - Vg) - Q)
-    eq_new = (1/K)*(Dq*(Vn - Vg))
+    if mode == 2 || mode == 5
+        eq_new = (1/K)*(Dq*(Vn - Vg))
+    else
+        eq_new = (1/K)*(pq0_ref[2] + Dq*(Vn - Vg) - Q)
+    end
 
     Mfif_new = Third_Order_Integrator(Mfif, μ, [eq[2:end]; eq_new])
 
@@ -1539,24 +1308,29 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
     Tm = pq0_ref[1]/ωsys # Virtual machine Torque
 
     ω_err_new = ω[end] - ωsys - Source.ω_set[num_source]
-    ω_err_new = 50
     ΔT = Dp*ω_err_new
 
     #~~~ PI Controller
 
-    Kp = 4e-9
-    Ki = 0.0001
-    ω_set, ΔT_err_t, Source.ΔT_err[num_source, :] =
-    PI_Controller([-ΔT], Source.ΔT_err[num_source, :], Source.ΔT_err_t[num_source], 
-    Kp, Ki, Source.ts)
+    if S1 == 1 && 1 == 2
 
-    Source.ω_set[num_source] = ω_set[1]
-    Source.ΔT_err_t[num_source] = ΔT_err_t[1]
+        Kp = 0.0001
+        Ki = 0.001
+        ω_set, ΔT_err_t, Source.ΔT_err[num_source, :] =
+        PI_Controller([-ΔT], Source.ΔT_err[num_source, :], Source.ΔT_err_t[num_source], 
+        Kp, Ki, Source.ts) 
 
+        Source.ω_set[num_source] = ω_set[1]
+        Source.ΔT_err_t[num_source] = ΔT_err_t[1]
+    else
+
+        Source.ω_set[num_source] = 0
+        Source.ΔT_err_t[num_source] = 0
+        Source.ΔT_err[num_source, :] = fill!(Source.ΔT_err[num_source, :], 0.0)
+    end
     #~~~
 
     Te_new = Source.p_q_filt[num_source, 1]/ω[end] # New Electrical Torque
-    #Te_new = Mfif_new*dot(i_abc, cos_θ) # New Electrical Torque
 
     α_new = (1/J)*(Tm - Te_new - ΔT) # New Angular Acceleration
 
@@ -1565,45 +1339,6 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
     Source.ω_sync[num_source, :] = [ω[2:end]; ω_new]
     Source.α_sync[num_source, :] = [α[2:end]; α_new]
 
-    if Source.steps*Source.ts >= 3.0 - 3*Source.ts/2 && Source.steps*Source.ts <= 3.0 + Source.ts/2
-        println("")
-        println("--------------------------------------------------------")
-
-        v_inv = 0.5*Source.Vdc[num_source].*Source.Vd_abc_new[num_source, :]
-        p_q_inv = p_q_theory(v_inv, Source.I_filt_inv[num_source, :, end])
-
-        Ip_ref = sqrt(2/3)*norm(DQ0_transform(Source.I_filt_inv[num_source, :, end], 0)) 
-
-        println("Ip_ref = ", Ip_ref)
-        println("i_max = ", Source.i_max[num_source])
-
-        println("")
-        println("ΔT_new= ", ΔT)
-        println("ΔT_err[:] = ", Source.ΔT_err[num_source, :])
-        println("ΔT_err_t = ", ΔT_err_t)
-        println("ω_set = ", ω_set)
-        println("ω_new = ", ω_new)
-        println("ω[end] = ", ω[end])
-        println("ω_err_new = ", ω_err_new)
-        println("p_q_filt =", Source.p_q_filt[num_source, 1])
-        println("Pset = ", pq0_ref[1])
-
-#=         println("Dp = ", Dp)
-
-        println("")
-        println("Q = ", Q)
-        println("p_q_filt =", Source.p_q_filt[num_source, 2])
-        println("p_q_inv =", p_q_inv[2])
-        println("eq_new =", eq_new)
-
-        println("")
-        println("P = ", Te_new*ω[end])
-        println("p_q_filt =", Source.p_q_filt[num_source, 1])
-        println("p_q_inv =", p_q_inv[1]) =#
-
-        println("")
-        println("--------------------------------------------------------")
-    end
     #----
 
     #---- Integrate ω_new to find θ_new
@@ -1623,126 +1358,6 @@ function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0
 
     return nothing
 end
-
-#= function Self_Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0], SQ = 1, SP = 1, SC = 0, Kp = 0.0005, Ki = 0.01)
-
-
-    ##### REMEMBER TO CHANGE COS TO SINE AND VICE VERSA - DQ0 CONSISTENT
-
-    i = Source.steps
-    # SQ = 1 for Q-droop mode, 0 for Q-set mode
-    # SP = 1 for P-droop mode, 0 for P-set mode
-    # SC = 1 for Self-synchronisation mode
-
-    J = Source.J_sync[num_source]
-    K = Source.K_sync[num_source]
-    Dq = sqrt(2)/(Source.D[num_source, 2])
-    Dp = 1/(Source.D[num_source, 1]*(2*π)*Source.fsys)
-
-    range, range_end = Integrator_Prep(i)
-    Δω = Source.Δω_sync[num_source, range]
-    ΔT_t = Source.ΔT_t[num_source]
-    eq = Source.eq[num_source, range]
-    Mfif = Source.Mfif[num_source, range]
-
-    α = Source.α_sync[num_source, range]
-    ω = Source.ω_sync[num_source, range]
-    θ = Source.θ_sync[num_source, range_end] # only phase a
-
-    ωsys = Source.fsys*2π # nominal grid frequency
-    Vn = sqrt(2)*Source.Vrms[num_source] # nominal peak POC voltage
-    Vg_abc = Source.V_filt_poc[num_source, :, end]
-    Vg = sqrt(2/3)*norm(DQ0_transform(Vg_abc, 0)) # peak measured voltage
-
-    μ = Source.ts
-    pq0 = Source.p_q_filt[num_source, :]
-    i_abc = Source.I_filt_poc[num_source, :, i]
-
-    sin_θ = sin.([θ; θ - 120*π/180; θ + 120*π/180])
-    cos_θ = cos.([θ; θ - 120*π/180; θ + 120*π/180])
-
-    #---- Self-synchronisation
-
-    if SC == 1
-        SP = 0
-        SQ = 0
-    end
-
-    i_c = i_abc
-    #----
-
-    #---- Integrate eq_new to find Mfif_new
-
-    if SC == 1
-        Q = -ω[end]*Mfif[end]*dot(i_c, cos_θ) # Reactive Power
-    else
-        Q = pq0[2]
-    end
-
-    eq_new = (1/K)*(pq0_ref[2] + SQ*Dq*(Vn - Vg) - Q)
-
-    Mfif_new = Third_Order_Integrator(Mfif[end], μ, [eq; eq_new])
-    Mfif_new = Mfif[end] + μ*eq_new
-
-    Source.Mfif[num_source, i] = Mfif_new
-    Source.eq[num_source, i] = eq_new
-    #----
-
-    #---- PI control to find Δω
-    #=
-    When Sp = 0, is turned ON, ΔT is controlled to be 0 in the steady state via
-    the PI controller.
-    =#
-    if SP == 0
-        ω_ref = Δω .+ ωsys
-        ω_err = ω .- ω_ref
-        ΔT = Dp*ω_err
-
-        ΔT_t = Third_Order_Integrator(ΔT_t, μ, ΔT) # integration
-        Δω_new = Kp*ΔT[end] + Ki*ΔT_t
-
-        Source.Δω_sync[num_source, i] = Δω_new
-        Source.ΔT_t[num_source] = ΔT_t
-    else
-        Δω_new = 0
-        Source.Δω_sync[num_source, i] = 0
-        Source.ΔT_t[num_source] = 0
-    end
-    #----
-
-    #---- Integrate α_new to find ω_new
-    Tm = pq0_ref[1]/ωsys # Virtual machine Torque
-
-    ω_ref_new = Δω_new + ωsys
-    ω_err_new = ω[end] - ω_ref_new
-    ΔT_new = Dp*ω_err_new
-    Te_new = Mfif_new*dot(i_c, sin_θ) # New Electrical Torque
-    α_new = (1/J)*(Tm - Te_new - ΔT_new) # New Angular Acceleration
-
-    ω_new = Third_Order_Integrator(ω[end], μ, [α; α_new])
-    ω_new = ω[end] + μ*α_new
-
-    Source.ω_sync[num_source, i] = ω_new
-    Source.α_sync[num_source, i] = α_new
-    #----
-
-    #---- Integrate ω_new to find θ_new
-    θ_new = Third_Order_Integrator(θ, μ, [ω; ω_new])%(2*π)
-
-    Source.θ_sync[num_source, i] = θ_new
-    #----
-
-    #----
-    sin_θ_new = sin.([θ_new; θ_new - 120*π/180; θ_new + 120*π/180])
-    e = ω_new*Mfif_new*sin_θ_new # three phase generated voltage
-    #----
-
-    Source.V_ref[num_source, 1] = e[1]
-    Source.V_ref[num_source, 2] = e[2]
-    Source.V_ref[num_source, 3] = e[3]
-
-    return nothing
-end =#
 
 function Butterworth_LPF(fc, x, y, μ)
 
@@ -1836,22 +1451,6 @@ function Third_Order_Integrator(y_i, μ, u)
     return y_next
 end
 
-function Integrator_Prep(i; Order = 3)
-
-    cnt_start = i - Order + 1
-    cnt_end = i - 1
-    if cnt_end < 1
-        cnt_start = 1
-        cnt_end = 1
-    end
-    if cnt_start < 1
-        cnt_start = 1
-    end
-    range = cnt_start:cnt_end
-
-    return range, cnt_end
-end
-
 #-------------------------------------------------------------------------------
 
 function Measurements(Source::Classical_Controls)
@@ -1896,19 +1495,36 @@ function Measurements(Source::Classical_Controls)
                 Source.Qm[ns, 1:3] = (Source.V_ph[ns, :, 2].*Source.I_ph[ns, :, 2]).*sin.(Source.V_ph[ns, :, 3] .- Source.I_ph[ns, :, 3])
                 Source.Qm[ns, 4] = sum(Source.Qm[ns, 1:3])
 
-                if i*Source.ts < 3 + Source.ts/2 && i*Source.ts > 3 - Source.ts/2
+                #= if i*Source.ts < 1.9 + Source.ts/2 && i*Source.ts > 1.9 - Source.ts/2 #&& ns == 1 && 1 == 2
 
-                    println()
-                    println("i = ", i)
+                    println("")
+                    println("t = ", round(i*Source.ts, digits = 3))
                     println("num source = ", ns)
-                    println("V_ph[ns,  1, 2] = ", Source.V_ph[ns, 1, 2]/230)
+                    println("V_ph[ns,  1, 2] = ", round(Source.V_ph[ns, 1, 2]/230, digits = 3), " p.u.")
+                    println("I_ph[ns,  1, 2] = ", round(sqrt(2)*Source.I_ph[ns, 1, 2], digits = 3), " peak [A]")
+                    println("i_max = ", round(Source.i_max[ns], digits = 3), " peak [A]")
                     #println("V_ph[ns,  1, 3] = ", Source.V_ph[ns, 1, 3]*180/pi)
-                    #println("p_inst[ns] = ", Source.p_q_inst[ns, 1])
-                    #println("q_inst[ns] = ", Source.p_q_inst[ns, 2])
-                    println("Pm[ns]= ", Source.Pm[ns, 4])
-                    println("Qm[ns]= ", Source.Qm[ns, 4])
-                    println("Sm[ns]= ", sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2))
-                end
+                    println("Pm[ns] = ", round(Source.p_q_inst[ns, 1]/1000, digits = 3), " kW")
+                    println("Qm[ns] = ", round(Source.p_q_inst[ns, 2]/1000, digits = 3), " kVAi")
+                    println("Sm[ns]= ", round(sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2)/1000, digits = 3), " KVA")
+                    println("")
+                end =#
+                #= if i*Source.ts < 0.9 + Source.ts/2 && i*Source.ts > 0.9 - Source.ts/2 #&& ns == 1 && 1 == 2
+
+                    println("")
+                    println("t = ", round(i*Source.ts, digits = 3))
+                    println("num source = ", ns)
+                    println("V_ph[ns,  1, 2] = ", round(Source.V_ph[ns, 1, 2]/230, digits = 3), " p.u.")
+                    println("I_ph[ns,  1, 2] = ", round(sqrt(2)*Source.I_ph[ns, 1, 2], digits = 3), " peak [A]")
+                    println("i_max = ", round(Source.i_max[ns], digits = 3), " peak [A]")
+                    #println("V_ph[ns,  1, 3] = ", Source.V_ph[ns, 1, 3]*180/pi)
+                    println("Pm[ns] = ", round(Source.p_q_inst[ns, 1]/1000, digits = 3), " kW")
+                    println("Qm[ns] = ", round(Source.p_q_inst[ns, 2]/1000, digits = 3), " kVAi")
+                    println("Pm[ns] = ", round(Source.p_q_filt[ns, 1]/1000, digits = 3), " kW")
+                    println("Qm[ns] = ", round(Source.p_q_filt[ns, 2]/1000, digits = 3), " kVAi")
+                    println("Sm[ns]= ", round(sqrt(Source.Pm[ns, 4]^2 + Source.Qm[ns, 4]^2)/1000, digits = 3), " KVA")
+                    println("")
+                end =#
         end
     end
 
@@ -1959,7 +1575,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
     tf_sys = tf(sys)
 
     Ts = 1/Source.f_cntr
-    dly = Source.delay*Ts
+    dly = 1*Ts #To do: action_delay from env
     ZoH = tf([1], [Ts/2, 1]) # Transfer function of the sample and hold process
     Pade = tf([-dly/2, 1], [dly/2, 1]) # Pure first-order delay approximation
     PWM_gain = Source.Vdc[num_source]/2
@@ -2148,54 +1764,42 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
     return Lf, Cf, fc
 end
 
-function Source_Initialiser(env, Animo, modes; pf = 0.8)
+function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
-    if isa(Animo, NamedPolicy)
+    Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
 
-        Animo.policy.state_ids
-        Animo.policy.action_ids
+    e = 1
 
-        Source = Animo.policy.Source
-        
-        Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
+    for ns in source_indices
 
-        source_indices = unique([parse(Int64, SubString(split(x, "_")[1], 7)) for x in Animo.policy.state_ids], dims=1)
+        Srated = env.nc.parameters["source"][ns]["pwr"]
+        Source.Rf[e] = env.nc.parameters["source"][ns]["R1"]
+        Source.Lf[e] = env.nc.parameters["source"][ns]["L1"]
+        Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
+        Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
+        Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
 
-        e = 1
-        for ns in source_indices
+        Source.S[e] = Srated
+        Source.P[e] = pf*Srated
+        Source.Q[e] = sqrt(Srated^2 - Source.P[e]^2)
 
-            Srated = env.nc.parameters["source"][ns]["pwr"]
-            Source.Rf[e] = env.nc.parameters["source"][ns]["R1"]
-            Source.Lf[e] = env.nc.parameters["source"][ns]["L1"]
-            Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
-            Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
-            Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
-
-            Source.S[e] = Srated
-            Source.P[e] = pf*Srated
-            Source.Q[e] = sqrt(Srated^2 - Source.P[e]^2)
-
-            if typeof(modes[e]) == Int64
-                Source.Source_Modes[e] = Mode_Keys[modes[e]]
-            else
-                Source.Source_Modes[e] = modes[e]
-            end
-
-            Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
-
-            Source.i_max[e] = 1.15*sqrt(2)*Source.S[e]/(3*Source.Vrms[e])
-            Source.v_max[e] = 1.5*Source.Vdc[e]/(sqrt(2))
-
-            Current_PI_LoopShaping(Source, e)
-            Voltage_PI_LoopShaping(Source, e)
-
-            e += 1
+        if typeof(modes[e]) == Int64
+            Source.Source_Modes[e] = Mode_Keys[modes[e]]
+        else
+            Source.Source_Modes[e] = modes[e]
         end
-    else
-    
-        Println("\nError.\nClassical policy is not a named policy.\n")
 
+        Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
+
+        Source.i_max[e] = env.nc.parameters["source"][ns]["i_limit"]
+        Source.v_max[e] = env.nc.parameters["source"][ns]["v_limit"]/2
+
+        Current_PI_LoopShaping(Source, e)
+        Voltage_PI_LoopShaping(Source, e)
+
+        e += 1
     end
 
     return nothing
 end
+

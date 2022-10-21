@@ -22,7 +22,7 @@ function plot_rewards_3d(hook)
     display(p)
 end
 
-function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_to_plot = nothing, plot_reward = true, plot_reference = false)
+function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_to_plot = nothing, plot_reward = true, plot_reference = false, use_best = true, use_noise = 0.0)
     RLBase.reset!(env)
 
     if isnothing(states_to_plot)
@@ -38,14 +38,18 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
         for (name, agent_temp) in agent.agents
             if isa(agent_temp["policy"], Agent)
                 act_noise_old[name] = agent_temp["policy"].policy.policy.act_noise
-                agent_temp["policy"].policy.policy.act_noise = 0.0
-                copyto!(agent_temp["policy"].policy.policy.behavior_actor, hook.bestNNA[name])
+                agent_temp["policy"].policy.policy.act_noise = use_noise
+                if use_best
+                    copyto!(agent_temp["policy"].policy.policy.behavior_actor, hook.bestNNA[name])
+                end
             end
         end
     else
         act_noise_old = agent.policy.act_noise
-        agent.policy.act_noise = 0.0
-        copyto!(agent.policy.behavior_actor, hook.bestNNA)
+        agent.policy.act_noise = use_noise
+        if use_best
+            copyto!(agent.policy.behavior_actor, hook.bestNNA)
+        end
     end
     
     temphook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
@@ -61,10 +65,12 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     else
         run(agent.policy, env, StopAfterEpisode(1), temphook)
     end
+
+    episode_string = use_best ? string(hook.bestepisode) : string(hook.ep - 1)
     
     layout = Layout(
             plot_bgcolor="#f1f3f7",
-            title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * string(hook.bestepisode) * "</sub>",
+            title = "Results<br><sub>Run with Behavior-Actor-NNA from Episode " * episode_string * "</sub>",
             xaxis_title = "Time in Seconds",
             yaxis_title = "State values",
             yaxis2 = attr(
@@ -106,12 +112,16 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     if isa(agent, MultiAgentGridController)
         for (name, agent_temp) in agent.agents
             if isa(agent_temp["policy"], Agent)
-                agent_temp["policy"].policy.policy.act_noise = act_noise_old[name] 
-                copyto!(agent_temp["policy"].policy.policy.behavior_actor, hook.currentNNA[name])
+                agent_temp["policy"].policy.policy.act_noise = act_noise_old[name]
+                if use_best
+                    copyto!(agent_temp["policy"].policy.policy.behavior_actor, hook.currentNNA[name])
+                end
             end
         end
     else
-        copyto!(agent.policy.behavior_actor, hook.currentNNA)
+        if use_best
+            copyto!(agent.policy.behavior_actor, hook.currentNNA)
+        end
         agent.policy.act_noise = act_noise_old
     end
     
@@ -120,7 +130,9 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     return nothing
 end
 
-function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [])
+function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
+    plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [],
+    vdq_to_plot = [], idq_to_plot = [], pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [])
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -175,6 +187,34 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
         #TODO: If the index is not collected this function does print only the steps 1,2,3,4.... on y axis, WHY? How to handle that?
         push!(traces, scatter(df, x = :time, y = Symbol("source$(vdc_idx)_vdc"), mode="lines", name = "source$(vdc_idx)_vdc"))
     end
+
+    if findfirst(x -> x == "classic", hook.policy_names) !== nothing
+
+        for idx in vdq_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vd"), mode="lines", name = "source$(idx)_vd"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vq"), mode="lines", name = "source$(idx)_vq"))
+        end
+
+        for idx in idq_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_id"), mode="lines", name = "source$(idx)_id"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_iq"), mode="lines", name = "source$(idx)_iq"))
+        end
+
+        for idx in pq_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p"), mode="lines", name = "source$(idx)_p"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q"), mode="lines", name = "source$(idx)_q"))
+        end
+
+        for idx in vrms_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms"), mode="lines", name = "source$(idx)_vrms"))
+        end
+
+        for idx in irms_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms"), mode="lines", name = "source$(idx)_irms"))
+        end
+    end
+
+
     
     if plot_reference
         #TODO: how to check which refs to plot? 

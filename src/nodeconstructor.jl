@@ -86,7 +86,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(parameters["load"]) == num_loads "Expect the number of loads to match the number of sources in the parameters, but got $num_loads and $(length(parameters["load"]))"
 
-        @assert length(parameters["cable"]) == num_connections "Expect the number of sources to match the number of sources in the parameters, but got $num_connections and $(length(parameters["cable"]))"
+        @assert length(parameters["cable"]) == num_connections "Expect the number of cables to match the number of cables in the parameters, but got $num_connections and $(length(parameters["cable"]))"
 
         # println(parameters)
 
