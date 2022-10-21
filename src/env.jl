@@ -7,6 +7,7 @@ using DataStructures
 
 include("./custom_control.jl")
 include("./nodeconstructor.jl")
+include("./pv_module.jl")
 
 
 mutable struct SimEnv <: AbstractEnv
@@ -28,6 +29,7 @@ mutable struct SimEnv <: AbstractEnv
     steps
     state_ids
     v_dc
+    v_dc_arr
     norm_array
     convert_state_to_cpu
     reward
@@ -38,32 +40,13 @@ end
 
 function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
     
-    if !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
+    if !(isnothing(num_sources) || isnothing(num_loads)) 
 
-        if isnothing(parameters)
-            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM)
-        else
-            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
-        end
-
-        A, B, C, D = get_sys(nc)
-        Ad = exp(A*ts)
-        Bd = A \ (Ad - C) * B
-
-        if use_gpu
-            Ad = CuArray(A)
-            Bd = CuArray(B)
-            C = CuArray(C)
-            if isa(D, Array)
-                D = CuArray(D)
-            end
-        end
-
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
 
     else
         # Construct standard env with 2 sources, 1 load
-        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)")
+        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)") #TODO: Clarify what there problem is
         CM = [ 0. 0. 1.
                0. 0. 2
               -1. -2. 0.]
@@ -74,11 +57,20 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters)
         end
 
-        A, B, C, D = get_sys(nc)
-        Ad = exp(A*ts)
-        Bd = A \ (Ad - C) * B
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    end
 
+    A, B, C, D = get_sys(nc)
+    Ad = exp(A*ts)
+    Bd = A \ (Ad - C) * B
+    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+
+    if use_gpu
+        Ad = CuArray(A)
+        Bd = CuArray(B)
+        C = CuArray(C)
+        if isa(D, Array)
+            D = CuArray(D)
+        end
     end
 
     if isnothing(action_space)
@@ -150,13 +142,47 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
     
     vdc_fixed = 0
-    v_dc = ones(nc.num_sources)
+    v_dc = ones(nc.num_sources)  # vector to store evaluated v_dc_arr (constants and functions) in the env, needed e.g. in the data_hook
+    v_dc_arr = []  # array to store all functions for v_dc as well as constants
     for (source_number, source) in enumerate(nc.parameters["source"])
-        # set vdc for that source
-        if haskey(source, "vdc")
-            v_dc[source_number] = source["vdc"]
+        if haskey(source, "source_type")
+            if source["source_type"] == "ideal"
+                # set vdc for that source
+                if haskey(source, "vdc")
+                    v_dc[source_number] = source["vdc"]
+                    fun = (env, G, T) -> source["vdc"]
+                    push!(v_dc_arr, fun)
+                else
+                    v_dc[source_number] = 800
+                    fun = (env, G, T) -> 800
+                    push!(v_dc_arr, fun)
+                    vdc_fixed += 1
+                end
+            elseif source["source_type"] == "pv"
+                #v_dc[source_number] = :(get_V(pv_array, env.x[1]*env.action, G, T))
+                #TODO : how to calculate i_dc in 3-phase grid? Which current of env to use?
+                #TODO : $source_number does only fit if all L filters! Otherwise how to define the offet for $source_number?!?!?
+                # TODO built pv module from parameter dict - where to define? In env?
+                pv_m = PV_module()
+                pv_array = PV_array(;pv_module=pv_m)
+                # find(x -> .... source$source_number_i_L in state_ids)
+                fun = (env, G, T) -> get_V(:($pv_array), env.x[:($source_number)]*env.action, G, T)
+                push!(v_dc_arr, fun)
+                
+                # first value set to 0
+                v_dc[source_number] = 0
+            else
+                println("WARNING: sourceType not known! vdc set to fixed value")
+                v_dc[source_number] = 800
+                fun = (env, G, T) -> 800
+                push!(v_dc_arr, fun)
+                vdc_fixed += 1
+            end
         else
+            println("WARNING: sourceType not defined! vdc set to fixed value, if not wanted please define nc.parameters -> source -> source_type (e.g. = ideal")
             v_dc[source_number] = 800
+            fun = (env, G, T) -> 800
+            push!(v_dc_arr, fun)
             vdc_fixed += 1
         end
     end
@@ -252,7 +278,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         fill!(action_delay_buffer, zeros(length(action_space)))
     end
 
-    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, norm_array, convert_state_to_cpu, reward, action, action_ids, action_delay_buffer)
+    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, v_dc_arr, norm_array, convert_state_to_cpu, reward, action, action_ids, action_delay_buffer)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -305,7 +331,17 @@ function (env::SimEnv)(action)
 
     # mutliply action with vdc vector
     # assumes in all number of phases per source the same vdc by repeating the vdc value "phase"-times
-    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
+
+    # TODO define G and T via data_set or stochastic process next to pv_array
+    G = 1000
+    T = 27
+
+    #env.v_dc[1] = get_V(pv_array, env.x[1]*env.action, G, T)
+
+    env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
+    println(env.v_dc)
+    env.action = env.action .* env.v_dc
+    # env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
     
 
     env.action = env.prepare_action(env)
