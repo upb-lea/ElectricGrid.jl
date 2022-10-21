@@ -233,6 +233,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         
             #Inductor design
             if !haskey(source, "L1") 
+                #TODO: If LCL, then L1 = L1/2; L2 = L1
                 Vorms = parameters["grid"]["v_rms"]*1.05
                 Vop = Vorms*sqrt(2)
             
@@ -257,12 +258,19 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 Iop = Iorms*sqrt(2)
             
                 ΔIlfmax = source["i_rip"]*Iop
-                source["i_limit"]= Iop+ ΔIlfmax
+                source["i_limit"]= 1.15*Iop + ΔIlfmax
             end
 
             if !haskey(source, "R1")
                 #TODO: @Septimus: why?
-                source["R1"] = 400 * source["L1"]
+                #source["R1"] = 400 * source["L1"]
+
+                # This is my suggestion
+                if source["fltr"] == "LC"
+                    source["R1"] = 200 * source["L1"] # can be as low as 20
+                else
+                    source["R1"] = 400 * source["L1"] # can be as low as 40
+                end
             end
             
             if !haskey(source, "fltr")
@@ -274,7 +282,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
             
 
-            if (source["fltr"] == "LC" || source["fltr"] == "LCL") && !haskey(source, "C1")
+            if (source["fltr"] == "LC" || source["fltr"] == "LCL") && !haskey(source, "C")
                 #Capacitor design
                 if source["fltr"] == "LC"
                     num_LC_defined += 1
@@ -286,7 +294,12 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
                 Iorms = Vorms/Zl
                 Iop = Iorms*sqrt(2)
-                Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
+
+                if source["fltr"] == "LC"
+                    Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
+                else
+                    Ir_d = source["vdc"]/(8*parameters["grid"]["fs"]*source["L1"]*Iop)
+                end
                 ΔIlfmax = Ir_d*Iop
                 ΔVcfmax = source["v_rip"]*Vop
 
@@ -309,7 +322,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 ΔIlfmax = Ir_d*Iop
                 ΔVcfmax = source["v_rip"]*Vop
                 
-                source["v_limit"]= Vop+ΔVcfmax
+                source["v_limit"]= 1.5*2*(sqrt(2)*parameters["grid"]["v_rms"] + ΔVcfmax)
             end
 
             if  source["fltr"] == "LCL" && !haskey(source, "L2")
@@ -326,6 +339,31 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             if !haskey(source, "source_type")
                 source["source_type"] = "ideal"
                 source_type_fixed += 1
+            end
+
+            if !haskey(source, "τv")
+                source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+            end
+
+            if !haskey(source, "τf")
+                source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+            end
+
+            if !haskey(source, "p_set")
+                pf = 0.8 # power factor
+                source["p_set"] = source["pwr"]*pf
+            end
+
+            if !haskey(source, "q_set")
+                source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+            end
+
+            if !haskey(source, "v_pu_set")
+                source["v_pu_set"] = 1.0
+            end
+
+            if !haskey(source, "v_δ_set")
+                source["v_δ_set"] = 0.0
             end
         end
 
@@ -792,7 +830,7 @@ function _sample_fltr_LCL(grid_properties)
 
    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
    source["L2"] = deepcopy(source["L1"]) 
-   source["i_limit"]= Iop+ ΔIlfmax
+   source["i_limit"]= Iop + ΔIlfmax
 
    #Capacitor design
 
@@ -812,7 +850,7 @@ function _sample_fltr_LCL(grid_properties)
    source["R1"] = 400 * source["L1"]
    source["R2"] = deepcopy(source["R1"])   
    source["R_C"] = 28* source["C"]
-   source["v_limit"]= Vop+ΔVcfmax
+   source["v_limit"]= 2*(sqrt(2)*parameters["grid"]["v_rms"] + ΔVcfmax)
    
    
 
@@ -868,7 +906,7 @@ function _sample_fltr_LC(grid_properties)
 
     source["R1"] = 400 * source["L1"]
     source["R_C"] = 28* source["C"]
-    source["v_limit"]= Vop+ΔVcfmax
+    source["v_limit"]= 2*(sqrt(2)*parameters["grid"]["v_rms"] + ΔVcfmax)
 
     source
 end

@@ -111,7 +111,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 1.0 # length in km
+l = 2.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -125,18 +125,13 @@ push!(cable_list, cable, cable)
 # Sources
 
 source_list = []
-source = Dict()
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LCL"
-Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-source["C"] = Cf
-source["R_C"] = 0.0006
-source["R1"] = 0.4
-source["L1"] = Lf/2
-source["R2"] = 0.4
-source["L2"] = Lf/2
+source["fltr"] = "LC"
+source["p_set"] = 50e3
+source["q_set"] = 10e3
+source["v_pu_set"] = 1.05
 
 push!(source_list, source)
 
@@ -144,14 +139,10 @@ source = Dict()
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LCL"
-Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-source["C"] = Cf
-source["R_C"] = 0.0006
-source["R1"] = 0.4
-source["L1"] = Lf/2
-source["R2"] = 0.4
-source["L2"] = Lf/2
+source["fltr"] = "LC"
+source["p_set"] = 50e3
+source["q_set"] = 10e3
+source["v_pu_set"] = 1.0
 
 push!(source_list, source)
 
@@ -159,14 +150,9 @@ push!(source_list, source)
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LCL"
-Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-source["C"] = Cf
-source["R_C"] = 0.0006
-source["R1"] = 0.4
-source["L1"] = Lf/2
-source["R2"] = 0.4
-source["L2"] = Lf/2
+source["fltr"] = "LC"
+source["i_rip"] = 0.15
+source["v_rip"] = 0.01537
 
 push!(source_list, source) =#
 
@@ -211,7 +197,7 @@ action_ids = get_action_ids(env.nc)
 #_______________________________________________________________________________
 # Setting up the Classical Sources
 
-Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [6, 6], Source_Indices = [1 2]))
+Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [6, 3], Source_Indices = [1 2]))
 
 #= Modes:
     1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
@@ -223,28 +209,6 @@ Animo = NamedPolicy("classic", Classical_Policy(env, Modes = [6, 6], Source_Indi
     5 -> "Full-Synchronverter" - droop control on real and imaginary powers
     6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
-
-nm_src = 1
-
-Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
-
-Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
-
-Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
-Animo.policy.Source.V_δ_set[nm_src, 1] = 0*π/180
-
-nm_src = 2
-
-Animo.policy.Source.τv[nm_src] = 0.002 # time constant of the voltage loop # 0.02
-Animo.policy.Source.τf[nm_src] = 0.002 # time constant of the frequency loop # 0.002
-
-Animo.policy.Source.pq0_set[nm_src, 1] = 50e3 # W, Real Power
-Animo.policy.Source.pq0_set[nm_src, 2] = 10e3 # VAi, Imaginary Power
-
-Animo.policy.Source.V_pu_set[nm_src, 1] = 1.0
-Animo.policy.Source.V_δ_set[nm_src, 1] = 0*π/180
 
 state_ids_classic = Animo.policy.state_ids
 action_ids_classic = Animo.policy.action_ids
@@ -273,6 +237,5 @@ run(ma, env, StopAfterEpisode(1), hook);
 
 plot_hook_results(; hook = hook, actions_to_plot = [], episode = 1, 
 pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2])
-
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

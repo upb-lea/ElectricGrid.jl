@@ -532,7 +532,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
     
             Source.V_poc_loc[:, s]  = findall(contains(s_idx*"_v_C_cables"), state_ids_classic)
 
-            if isnothing(findfirst(contains("L2"), state_ids_classic))
+            if isnothing(findfirst(contains(s_idx*"_i_L2"), state_ids_classic))
                 Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
             else
                 Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
@@ -1789,7 +1789,14 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             Source.Source_Modes[e] = modes[e]
         end
 
-        Source.pq0_set[e, :] = [Source.P[e]; Source.Q[e]; 0]
+        Source.τv[e] = env.nc.parameters["source"][ns]["τv"] # time constant of the voltage loop
+        Source.τf[e] = env.nc.parameters["source"][ns]["τf"] # time constant of the frequency loop
+
+        Source.pq0_set[e, 1] = env.nc.parameters["source"][ns]["p_set"] # W, Real Power
+        Source.pq0_set[e, 2] = env.nc.parameters["source"][ns]["q_set"] # VAi, Imaginary Power
+
+        Source.V_pu_set[e, 1] = env.nc.parameters["source"][ns]["v_pu_set"]
+        Source.V_δ_set[e, 1] = env.nc.parameters["source"][ns]["v_δ_set"]*π/180
 
         Source.i_max[e] = env.nc.parameters["source"][ns]["i_limit"]
         Source.v_max[e] = env.nc.parameters["source"][ns]["v_limit"]/2
