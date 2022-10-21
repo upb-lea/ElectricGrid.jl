@@ -22,20 +22,19 @@ CM = [ 0. 0. 1.
 ts = 1e-4
 
 
-source1 = Dict()
-source_list = []
-source1["fltr"] = "LC"
-source1["source_type"] = "pv"
-source1["R1"] = 0.4
-source1["R_C"] = 0.0006
-source1["L1"] = 2.3e-3
-#source["R2"] = 0.4022094955070556   # needed for LCL
-#source["L2"] = 0.001005523738767639
-#source1["C"] = 1e-6;
+load_list = []
+load = Dict()
 
-parameters = Dict()
-parameters["source"] = source_list
-push!(source_list, source1)#, source2);
+#load["impedance"] = "RLC"
+load["R"] = 14.0;
+#load["L"] = 57.042;
+#load["C"] = 39.18;
+push!(load_list, load);
 
-env = SimEnv(ts=ts, num_sources = 3, num_loads = 2, maxsteps = 500, parameters=parameters);
+
+parameters["load"] = load_list;
+
+ts = 1e-4
+env = SimEnv(ts=ts, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 500)
+env.nc.parameters["load"][1]
 

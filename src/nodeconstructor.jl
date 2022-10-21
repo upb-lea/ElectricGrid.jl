@@ -96,10 +96,8 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert num_fltr_LCL + num_fltr_LC + num_fltr_L == num_sources "Expect the number of sources to be identical to the sum of the filter types, but the number of sources is $num_sources and the sum of the filters is $(num_fltr_LCL + num_fltr_LC + num_fltr_L)"
 
-        @assert num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R == num_loads "Expect the number of loads to be identical to the sum of the loads types, but the number of loads is $num_loads and the sum of the loads is $(num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R)"
+        @assert num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_RC + num_loads_R + num_loads_C + num_loads_L == num_loads "Expect the number of loads to be identical to the sum of the loads types, but the number of loads is $num_loads and the sum of the loads is $(num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R)"
         
-        
-
         # valid_realistic_para(parameters) TODO: revise that values are checked independently of network parameters, if necessary only via A-matrix
 
     else
@@ -293,6 +291,10 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 ΔVcfmax = source["v_rip"]*Vop
 
                 source["C"] = ΔIlfmax/(8*parameters["grid"]["fs"]*ΔVcfmax)
+
+                if !haskey(source, "R_C")
+                    source["R_C"] = 28*source["C"] 
+                end  
             end
 
             if !haskey(source, "v_limit")
@@ -319,9 +321,6 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                     source["R2"] = deepcopy(source["R1"]) 
                 end  
 
-                if !haskey(source, "R_C")
-                    source["R_C"] = 28*source["C"] 
-                end  
             end
 
             if !haskey(source, "source_type")
@@ -358,7 +357,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
         
 
-        source_type_fixed > 0 && println("WARNING: $vdc_fixed sourceType not defined! set to ideal!")
+        source_type_fixed > 0 && println("WARNING: $source_type_fixed sourceType not defined! set to ideal!")
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     
@@ -431,22 +430,21 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             end
 
-            char = [split(load["impedance"], "")]
-
+            char = split(load["impedance"], "")
             for (_, value) in enumerate(char)
                 if value == "R"
                     if !haskey(load, "R")
                         load["R"] = round(rand(Uniform(10, 1e5)), digits=3)
                     end
                 end
-                if !(value == "L")
+                if value == "L"
                     if !haskey(load, "L")
-                        load["L"] = round(rand(Uniform(1e-6, 1e-3)), digits=3)
+                        load["L"] = rand(Uniform(1e-6, 1e-3))
                     end
                 end
-                if !(value == "C")
+                if value == "C"
                     if !haskey(load, "C")
-                        load["C"] = round(rand(Uniform(1e-9, 1e-4)), digits=3)
+                        load["C"] = rand(Uniform(1e-9, 1e-4))
                     end
                 end
             end
@@ -524,11 +522,11 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 cable["Rb"] = 0.722 # TODO: Fixed?!
             end
 
-            if !haskey(cable, "Lb")
+            if !haskey(cable, "Cb")
                 cable["Cb"] = 0.4e-6 # TODO: Fixed?!
             end
 
-            if !haskey(cable, "Cb")
+            if !haskey(cable, "Lb")
                 cable["Lb"] = 0.264e-3 # TODO: Fixed?!
             end
 
@@ -972,6 +970,7 @@ function _sample_load_RC()
 
     load = Dict()
     load["impedance"] = "RC"
+    # TODO: do these values make sence?!, if smaller 1, take out round command!!
     load["R"] = round(rand(Uniform(10, 1e5)), digits=3)
     load["C"] = round(rand(Uniform(1e-3, 1e2)), digits=3)
 
@@ -1034,16 +1033,16 @@ Sample parameters for the cable.
 """
 function _sample_cable()
     
-    l =  rand(Uniform(1e-3, 1e1))
-
-    Rb = 0.722
-    Cb = 0.4e-6
-    Lb = 0.264e-3
-
     cable = Dict()
-    cable["R"] = l * Rb
-    cable["L"] = l * Lb
-    cable["C"] = l * Cb
+    cable["len"] = rand(Uniform(1e-3, 1e1))
+
+    cable["Rb"] =  0.722
+    cable["Cb"] = 0.4e-6
+    cable["Lb"] =  0.264e-3
+
+    cable["R"] = cable["len"] * cable["Rb"]
+    cable["L"] = cable["len"] * cable["Lb"]
+    cable["C"] = cable["len"] * cable["Cb"]
 
     cable
 end
