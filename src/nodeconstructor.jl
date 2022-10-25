@@ -282,28 +282,30 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
             
 
-            if (source["fltr"] == "LC" || source["fltr"] == "LCL") && !haskey(source, "C")
+            if (source["fltr"] == "LC" || source["fltr"] == "LCL")
                 #Capacitor design
                 if source["fltr"] == "LC"
                     num_LC_defined += 1
                 end
-                Vorms = parameters["grid"]["v_rms"]*0.95
-                Vop = Vorms*sqrt(2)
+                if !haskey(source, "C")
+                    Vorms = parameters["grid"]["v_rms"]*0.95
+                    Vop = Vorms*sqrt(2)
 
-                Zl = 3*Vorms*Vorms/source["pwr"]
+                    Zl = 3*Vorms*Vorms/source["pwr"]
 
-                Iorms = Vorms/Zl
-                Iop = Iorms*sqrt(2)
+                    Iorms = Vorms/Zl
+                    Iop = Iorms*sqrt(2)
 
-                if source["fltr"] == "LC"
-                    Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
-                else
-                    Ir_d = source["vdc"]/(8*parameters["grid"]["fs"]*source["L1"]*Iop)
+                    if source["fltr"] == "LC"
+                        Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
+                    else
+                        Ir_d = source["vdc"]/(8*parameters["grid"]["fs"]*source["L1"]*Iop)
+                    end
+                    ΔIlfmax = Ir_d*Iop
+                    ΔVcfmax = source["v_rip"]*Vop
+
+                    source["C"] = ΔIlfmax/(8*parameters["grid"]["fs"]*ΔVcfmax)
                 end
-                ΔIlfmax = Ir_d*Iop
-                ΔVcfmax = source["v_rip"]*Vop
-
-                source["C"] = ΔIlfmax/(8*parameters["grid"]["fs"]*ΔVcfmax)
 
                 if !haskey(source, "R_C")
                     source["R_C"] = 28*source["C"] 
@@ -1751,53 +1753,52 @@ function generate_A(self::NodeConstructor)
     A_src = zeros(self.num_fltr, self.num_fltr) # construct matrix of zeros
     A_src_list = [get_A_src(self, i) for i in 1:self.num_sources]
     
-    # ####################################################################
-    # ####################################################################
-    # TODO: Variable eingabe der Quellen self.parameters["source"][i]["ftlr"]  == "LCL"
-    # ####################################################################
-    # ####################################################################
+    # TODO: maybe do in one loop like: for (i, vals) in enumerate(zip([1, 4, 2, 5], 2:12, (:a, :b, :c)))
+    cntr = 0
     for (i, ele) in enumerate(A_src_list)
-        if i <= self.num_fltr_LCL
-        # IDEE: if self.parameters["source"][i]["ftlr"]  == "LCL"
-            start = 4 * i - 3
-            stop = 4 * i
-
+        #if i <= self.num_fltr_LCL
+        
+        if self.parameters["source"][i]["fltr"]  == "LCL"
+            start = 1 + cntr
+            stop = 4 + cntr
+            cntr += 4
             A_src[start:stop, start:stop] = ele
 
-        elseif i <= self.num_fltr_LCL + self.num_fltr_LC
-            start = 3 * i + self.num_fltr_LCL - 2
-            stop = 3 * i + self.num_fltr_LCL
-
+        elseif self.parameters["source"][i]["fltr"] == "LC"
+            start = 1 + cntr
+            stop = 3 + cntr
+            cntr += 3
             A_src[start:stop, start:stop] = ele
 
-        elseif i <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-            start = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC - 1
-            stop = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC
-
+        elseif self.parameters["source"][i]["fltr"]  == "L"
+            start = 1 + cntr
+            stop = 2 + cntr
+            cntr += 2
             A_src[start:stop,start:stop] = ele
         end
     end
-
+    
     # get A_src_trn_c
     A_src_trn_c = zeros(self.num_fltr, self.num_connections)
     A_src_trn_c_list = [get_A_src_trn_c(self, i) for i in 1:self.num_sources] # start at 1 bc Source 1 ...
-
+    cntr = 0
     for (i, ele) in enumerate(A_src_trn_c_list)
-        if i <= self.num_fltr_LCL
-            start = 4 * i - 3
-            stop = 4 * i
-
+        if self.parameters["source"][i]["fltr"]  == "LCL"
+            start = 1 + cntr
+            stop = 4 + cntr
+            cntr += 4
             A_src_trn_c[start:stop,:] = ele
 
-        elseif i <= self.num_fltr_LCL+self.num_fltr_LC
-            start = 3 * i + self.num_fltr_LCL - 2
-            stop = 3 * i + self.num_fltr_LCL
+        elseif self.parameters["source"][i]["fltr"] == "LC"
+            start = 1 + cntr
+            stop = 3 + cntr
+            cntr += 3
             A_src_trn_c[start:stop,:] = ele
 
-        elseif i <= self.num_fltr_LCL+self.num_fltr_LC+self.num_fltr_L
-            start = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC - 1
-            stop = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC
-
+        elseif self.parameters["source"][i]["fltr"]  == "L"
+            start = 1 + cntr
+            stop = 2 + cntr
+            cntr += 2
             A_src_trn_c[start:stop,:] = ele
         end
     end
@@ -1806,23 +1807,24 @@ function generate_A(self::NodeConstructor)
     A_src_trn_l = zeros(self.num_connections, self.num_fltr)
     A_src_trn_l_list = [get_A_src_trn_l(self, i) for i in 1:self.num_sources] # start at 1 bc Source 1 ...
 
+    cntr = 0
     for (i, ele) in enumerate(A_src_trn_l_list)
-        if i <= self.num_fltr_LCL
-            start = 4 * i - 3
-            stop = 4 * i
-
+        if self.parameters["source"][i]["fltr"]  == "LCL"
+            start = 1 + cntr
+            stop = 4 + cntr
+            cntr += 4
             A_src_trn_l[:,start:stop] = ele
 
-        elseif i <= self.num_fltr_LCL+self.num_fltr_LC
-            start = 3 * i + self.num_fltr_LCL - 2
-            stop = 3 * i + self.num_fltr_LCL
-
+        elseif self.parameters["source"][i]["fltr"] == "LC"
+            start = 1 + cntr
+            stop = 3 + cntr
+            cntr += 3
             A_src_trn_l[:,start:stop] = ele
 
-        elseif i <= self.num_fltr_LCL+self.num_fltr_LC+self.num_fltr_L
-            start = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC - 1
-            stop = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC
-
+        elseif self.parameters["source"][i]["fltr"]  == "L"
+            start = 1 + cntr
+            stop = 2 + cntr
+            cntr += 2
             A_src_trn_l[:,start:stop] = ele
         end
     end
@@ -1851,15 +1853,25 @@ function generate_A(self::NodeConstructor)
     A_load_diag = zeros(self.num_impedance, self.num_impedance)
     A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
 
+    cntr = 0
     for (i, ele) in enumerate(A_load_list)
-        if i <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+        if (self.parameters["load"][i]["impedance"]  == "RLC" ||
+            self.parameters["load"][i]["impedance"]  == "LC" ||
+            self.parameters["load"][i]["impedance"]  == "RL" ||
+            self.parameters["load"][i]["impedance"]  == "L")
 
-            start = 2 * i - 1
-            stop = 2 * i
+            start = 1 + cntr
+            stop = 2 + cntr
+            cntr += 2
             A_load_diag[start:stop, start:stop] = ele
 
-        elseif i <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+        elseif (self.parameters["load"][i]["impedance"]  == "RC" ||
+            self.parameters["load"][i]["impedance"]  == "C" ||
+            self.parameters["load"][i]["impedance"]  == "R")
 
+            start = 1 + cntr
+            stop = 1 + cntr
+            cntr += 1
             start = i + self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
             A_load_diag[start:start, start:start] = ele
 
@@ -1904,24 +1916,24 @@ function generate_B(self::NodeConstructor)
     B = zeros(self.num_fltr + self.num_connections + self.num_impedance, self.num_sources)
 
     B_source_list = [get_B_source(self, i) for i in 1:self.num_sources] # start at 1 bc Source 1 ...
-
+    cntr = 0
     for (i, ele) in enumerate(B_source_list)
-        if i <= self.num_fltr_LCL
-            start = 4 * i - 3
-            stop = 4 * i
-
+        if self.parameters["source"][i]["fltr"]  == "LCL"
+            start = 1 + cntr
+            stop = 4 + cntr
+            cntr += 4
             B[start:stop,i] = ele
 
-        elseif i <= self.num_fltr_LCL + self.num_fltr_LC
-            start = 3 * i + self.num_fltr_LCL - 2
-            stop = 3 * i + self.num_fltr_LCL
-
+        elseif self.parameters["source"][i]["fltr"]  == "LC"
+            start = 1 + cntr
+            stop = 3 + cntr
+            cntr += 3
             B[start:stop,i] = ele
 
-        elseif i <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
-            start = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC - 1
-            stop = 2 * i + 2 * self.num_fltr_LCL + self.num_fltr_LC
-
+        elseif self.parameters["source"][i]["fltr"]  == "L"
+            start = 1 + cntr
+            stop = 2 + cntr
+            cntr += 2
             B[start:stop,i:i] = ele
         end
     end
@@ -1995,32 +2007,38 @@ get_states(self::NodeConstructor) = get_state_ids(self)
 function get_state_ids(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
-        if s <= self.num_fltr_LCL
+        if self.parameters["source"][s]["fltr"]  == "LCL"
             push!(states, "source$s"*"_i_L1")    # i_f1; dann i_f2....
             push!(states, "source$s"*"_v_C")
             push!(states, "source$s"*"_i_L2")
             push!(states, "source$s"*"_v_C_cables")
         
-        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+        elseif self.parameters["source"][s]["fltr"]  == "LC"
             push!(states, "source$s"*"_i_L1")
             push!(states, "source$s"*"_v_C")
             push!(states, "source$s"*"_v_C_cables")
-        
-        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+
+        elseif self.parameters["source"][s]["fltr"]  == "L"
             push!(states, "source$s"*"_i_L1")
             push!(states, "source$s"*"_v_C_cables")
         end
     end
 
     for c in 1:self.num_connections
+        # TODO: correct?
         push!(states, "cable$c"*"_i_L")
     end
 
     for l in 1:self.num_loads
-        if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+        if (self.parameters["load"][l]["impedance"]  == "RLC" ||
+            self.parameters["load"][l]["impedance"]  == "LC" ||
+            self.parameters["load"][l]["impedance"]  == "RL" ||
+            self.parameters["load"][l]["impedance"]  == "L")
             push!(states, "load$l"*"_v_C_total")
             push!(states, "load$l"*"_i_L")
-        elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+        elseif (self.parameters["load"][l]["impedance"]  == "RC" ||
+            self.parameters["load"][l]["impedance"]  == "C" ||
+            self.parameters["load"][l]["impedance"]  == "R")
             push!(states, "load$l"*"_v_C_total")
         end
     end
@@ -2042,18 +2060,18 @@ Creates a Vector containing the related L or C Parameters for the states of a No
 function get_state_paras(self::NodeConstructor)
     state_paras = []
     for s in 1:self.num_sources
-        if s <= self.num_fltr_LCL
+        if self.parameters["source"][s]["fltr"]  == "LCL"
             push!(state_paras, self.parameters["source"][s]["L1"]) 
             push!(state_paras, self.parameters["source"][s]["C"]) 
             push!(state_paras, self.parameters["source"][s]["L2"])
             push!(state_paras, get_C_sum_cable_node(s,self))
         
-        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+        elseif self.parameters["source"][s]["fltr"]  == "LC"
             push!(state_paras, self.parameters["source"][s]["L1"])
             push!(state_paras, self.parameters["source"][s]["C"])
             push!(state_paras, get_C_sum_cable_node(s,self))  
         
-        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+        elseif self.parameters["source"][s]["fltr"]  == "L"
             push!(state_paras, self.parameters["source"][s]["L1"])
             push!(state_paras, get_C_sum_cable_node(s,self))
         end
@@ -2064,14 +2082,19 @@ function get_state_paras(self::NodeConstructor)
     end
 
     for l in 1:self.num_loads
-        if l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+        if (self.parameters["load"][l]["impedance"]  == "RLC" ||
+            self.parameters["load"][l]["impedance"]  == "LC" ||
+            self.parameters["load"][l]["impedance"]  == "RL" ||
+            self.parameters["load"][l]["impedance"]  == "L")
             c=0
                 if haskey(self.parameters["load"][l], "C")
                     c= self.parameters["load"][l]["C"]
                 end
             push!(state_paras, get_C_sum_cable_node(self.num_sources+l,self) + c) 
             push!(state_paras, self.parameters["load"][l]["L"])  
-        elseif l <= self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L + self.num_loads_RC + self.num_loads_C + self.num_loads_R
+        elseif (self.parameters["load"][l]["impedance"]  == "RC" ||
+            self.parameters["load"][l]["impedance"]  == "C" ||
+            self.parameters["load"][l]["impedance"]  == "R")
             c=0
             if haskey(self.parameters["load"][l], "C")
                 c= self.parameters["load"][l]["C"]
@@ -2111,13 +2134,13 @@ function get_action_ids(self::NodeConstructor)
     actions = []
     
     for s in 1:self.num_sources
-        if s <= self.num_fltr_LCL
+        if self.parameters["source"][s]["fltr"]  == "LCL"
             push!(actions, "source$s"*"_u")
         
-        elseif s <= self.num_fltr_LCL + self.num_fltr_LC
+        elseif self.parameters["source"][s]["fltr"]  == "LC"
             push!(actions, "source$s"*"_u")
         
-        elseif s <= self.num_fltr_LCL + self.num_fltr_LC + self.num_fltr_L
+        elseif self.parameters["source"][s]["fltr"]  == "L"
             push!(actions, "source$s"*"_u")
         end
     end
@@ -2197,7 +2220,7 @@ function draw_graph(self::NodeConstructor)
     Red nodes corresponse to a source.
     Lightblue nodes corresponse to a load.
     """
-
+    # TODO: @Jan Needed?
     # edges = []
     # color = []
     # for i in range(1, self.num_connections+1):
