@@ -14,17 +14,13 @@ Base.@kwdef mutable struct PV_module
     G_ref = 1000               # Irradiance at STC
     mu_sc = 1.3e-3             # Coefficient tempreture of short circuit current
     I_ph_ref = 3.11            # Phototcurrent at STC
-    
-    
 end;
 
 Base.@kwdef mutable struct PV_array
     pv_module::PV_module           # module parameters
     serial = 10
     parallel = 4
-    
 end;
-
 
 
 function get_I(pv_arr::PV_array, V, G, T)
@@ -47,7 +43,8 @@ function get_I(pv_arr::PV_array, V, G, T)
     return I
 end
 
-function get_V(pv_arr::PV_array, I, G, T)
+
+function get_V(pv_arr::PV_array, I, G, T) 
 
     self = pv_arr.pv_module
     function I_photo(self::PV_module, G, T)
