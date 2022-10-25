@@ -1,10 +1,4 @@
-#using DrWatson
-#@quickactivate "dare"
-
 using Plots
-using DifferentialEquations
-using VoronoiCells
-using GeometryBasics
 
 include("Complexity.jl")
 
@@ -41,8 +35,8 @@ x = Array{Float64, 2}(undef, dim, N) # State space
 r = 3.9277370017867516
 # Accumulation board - onset of chaos
 #r = 3.5699456718695445
-r = 3.56
 
+# initial conditions
 x[1, 1] = 0.4
 x[2, 1] = 0.41
 
