@@ -325,10 +325,6 @@ function (env::SimEnv)(action)
         env.action = action
     end
 
-    # env.v_dc = [800, 600]
-
-    # action * [800, get_vDC_PV(env.state[1])]
-
     # mutliply action with vdc vector
     # assumes in all number of phases per source the same vdc by repeating the vdc value "phase"-times
 
@@ -336,12 +332,8 @@ function (env::SimEnv)(action)
     G = 1000
     T = 27
 
-    #env.v_dc[1] = get_V(pv_array, env.x[1]*env.action, G, T)
-
     env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
-    println(env.v_dc)
-    env.action = env.action .* env.v_dc
-    # env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
+    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
     
 
     env.action = env.prepare_action(env)
