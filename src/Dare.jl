@@ -3,7 +3,7 @@ module Dare
 using ReinforcementLearning
 using PlotlyJS
 
-export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, DataHook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup
+export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, DataHook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup, SimEnv
 
 include("./nodeconstructor.jl")
 include("./env.jl")
