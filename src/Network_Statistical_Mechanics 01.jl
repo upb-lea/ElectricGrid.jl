@@ -2,6 +2,9 @@
 #@quickactivate "dare"
 
 using Plots
+using DifferentialEquations
+using VoronoiCells
+using GeometryBasics
 
 include("Complexity.jl")
 
@@ -38,6 +41,7 @@ x = Array{Float64, 2}(undef, dim, N) # State space
 r = 3.9277370017867516
 # Accumulation board - onset of chaos
 #r = 3.5699456718695445
+r = 3.56
 
 x[1, 1] = 0.4
 x[2, 1] = 0.41
@@ -60,8 +64,8 @@ println("\nHere we go.\n")
             println("Progress : ", 10*floor((10*t[i]/t_final)), " %")
         end
 
-        x[1, i + 1], λ[1] = Logistic_Map(x[1, i], λ[1])
-        x[2, i + 1], λ[2] = Logistic_Map(x[2, i], λ[2])
+        x[1, i + 1], λ[1] = Logistic_Map(x[1, i], λ[1], r = r)
+        x[2, i + 1], λ[2] = Logistic_Map(x[2, i], λ[2], r = r)
 
     end
 
@@ -79,7 +83,7 @@ println("\nHere we go.\n")
     x_range[:, 1] = [1.0 for i in 1:dim] # maximum
     x_range[:, 2] = [0.0 for i in 1:dim] # minimum
 
-    Deus = ϵ_Machine(N, D, ϵ[1:1], x_range[1:1, :], μ_m, μ_s, δ = 0.1)
+    Deus = ϵ_Machine(N, D, ϵ[1:1], x_range[1:1, :], μ_m, μ_s, δ = 0.05)
 
     Cranking(Deus, x[1:1, :], μ_s)
 end

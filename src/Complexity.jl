@@ -152,14 +152,16 @@ mutable struct Parse_Tree
     D::Int64 # 1st Approximation Parameter - Depth of the tree (even number)
     L::Int64 # 2nd Approximation Parameter - length of future subsequences
     C::Vector{Matrix{Float64}} # empirical estimation of cylinders
+    Cs::Vector{Int64} # symbols corresponding to cylinder
     C_vols::Vector{Float64} # Cylinder volumes
     reps::Matrix{Float64} # Cylinder representatives
     H::Float64 # expected squared error
     m::Int64 # center point
 
     function Parse_Tree(Nodes::Vector{Node}, N::Int64, D::Int64, L::Int64,
-        C::Vector{Matrix{Float64}}, C_vols::Vector{Float64}, reps::Matrix{Float64}, H::Float64, m::Int64)
-        new(Nodes, N, D, L, C, C_vols, reps, H, m)
+        C::Vector{Matrix{Float64}}, C_vols::Vector{Float64}, Cs::Vector{Int64},
+        reps::Matrix{Float64}, H::Float64, m::Int64)
+        new(Nodes, N, D, L, C, Cs, C_vols, reps, H, m)
     end
 
     function Parse_Tree(N, D, m)
@@ -172,11 +174,12 @@ mutable struct Parse_Tree
         L = Int(floor(D/2))
 
         C = Vector{Matrix{Float64}}(undef, 0)
+        Cs = Vector{Int64}(undef, 0)
         C_vols = Vector{Float64}(undef, 0)
         reps = Matrix{Float64}(undef, 0, 2)
         H = 0.0
 
-        Parse_Tree(Nodes, N, D, L, C, C_vols, reps, H, m)
+        Parse_Tree(Nodes, N, D, L, C, C_vols, Cs, reps, H, m)
     end
 end
 
@@ -394,13 +397,15 @@ mutable struct ϵ_Machine
         IG = 0.0
 
         μ_m = round(μ_m/μ_s)*μ_s # correction to prevent overflow of vectors
-        k = 0 # machine step # machine step
+        k = 0 # machine step
         t_final = N*μ_s - μ_s
 
         dims = length(x_range[:, 1])
 
         if dims == 2
-            points = [Point(x_range[1, 2], x_range[2, 2]) for _ in 1:1]
+            x_mid = (x_range[1, 2] + x_range[1, 1])/2
+            y_mid = (x_range[2, 2] + x_range[2, 1])/2
+            points = [Point(x_mid, y_mid) for _ in 1:1]
             boundaries = Rectangle(Point2(x_range[1, 2], x_range[2, 2]), Point2(x_range[1, 1], x_range[2, 1]))
             Partition = voronoicells(points, boundaries)
         else
@@ -585,20 +590,19 @@ function Sampling(Deus::ϵ_Machine, x, μ_s)
   
             Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i])
             Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
+
+            if rand() >= 0.5
+                Deus.s[Deus.k] = 1
+            else
+                Deus.s[Deus.k] = 0
+            end
         end
     end
 
     return nothing
 end
 
-function Generating_Partition(Deus::ϵ_Machine, x)
-
-
-
-    return nothing
-end
-
-function add_Nodes(Deus::ϵ_Machine, s, xi; parent = 1)
+function add_Nodes(Deus::ϵ_Machine, s, mi; parent = 1)
 
     d = length(s) # Depth of the remaining sub-sequence
 
@@ -611,11 +615,12 @@ function add_Nodes(Deus::ϵ_Machine, s, xi; parent = 1)
         Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; Tree.Nodes[new_node].cn/Tree.Nodes[parent].cn]
 
         if d > 1
-            add_Nodes(Deus, s[2:end], xi, parent = new_node)
+            add_Nodes(Deus, s[2:end], mi, parent = new_node)
         else
-            Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(xi)))
+            Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(Deus.x[:, mi])))
             Tree.Nodes[new_node].cylinder = length(Tree.C)
-            Tree.C[Tree.Nodes[new_node].cylinder][end, :] = xi
+            Tree.C[Tree.Nodes[new_node].cylinder][end, :] = transpose(Deus.x[:, mi])
+            Tree.Cs = [Tree.Cs; Deus.s[mi]]
         end
     else
 
@@ -629,11 +634,12 @@ function add_Nodes(Deus::ϵ_Machine, s, xi; parent = 1)
             new_parent = Int(Tree.Nodes[parent].child_locs[parent_loc])
 
             if d > 1
-                add_Nodes(Deus, s[2:end], xi, parent = new_parent)
+                add_Nodes(Deus, s[2:end], mi, parent = new_parent)
             else
                 Tree.Nodes[new_parent].cn = Tree.Nodes[new_parent].cn + 1
                 Tree.Nodes[new_parent].Pr = Tree.Nodes[new_parent].cn/(Tree.N - Tree.D)
-                Tree.C[Tree.Nodes[new_parent].cylinder] = cat(Tree.C[Tree.Nodes[new_parent].cylinder], xi, dims = 1)
+                Tree.C[Tree.Nodes[new_parent].cylinder] = cat(Tree.C[Tree.Nodes[new_parent].cylinder], 
+                transpose(Deus.x[:, mi]), dims = 1)
             end
         else
 
@@ -642,11 +648,12 @@ function add_Nodes(Deus::ϵ_Machine, s, xi; parent = 1)
             Tree.Nodes[parent].Pr_c = [Tree.Nodes[parent].Pr_c; 0]
 
             if d > 1
-                add_Nodes(Deus, s[2:end], xi, parent = new_node)
+                add_Nodes(Deus, s[2:end], mi, parent = new_node)
             else
-                Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(xi)))
+                Tree.C = push!(Tree.C, Matrix{Float64}(undef, 1, length(Deus.x[:, mi])))
                 Tree.Nodes[new_node].cylinder = length(Tree.C)
-                Tree.C[Tree.Nodes[new_node].cylinder][end, :] = xi
+                Tree.C[Tree.Nodes[new_node].cylinder][end, :] = transpose(Deus.x[:, mi])
+                Tree.Cs = [Tree.Cs; Deus.s[mi]]
             end
         end
 
@@ -722,6 +729,7 @@ function Representatives(Deus::ϵ_Machine)
     num_cyl = length(Deus.Tree.C)
 
     Deus.Tree.reps = Matrix{Float64}(undef, num_cyl, size(Deus.Tree.C[1], 2))
+    Deus.Tree.H = 0
 
     for i in 1:num_cyl
 
@@ -735,7 +743,19 @@ function Representatives(Deus::ϵ_Machine)
 
     Deus.Tree.H = Deus.Tree.H/num_cyl
 
-    return nothing
+    count_s = 0
+
+    for i in 1:Deus.k
+
+        _, min = findmin(norm.(eachrow(abs.(Deus.x[i] .- Deus.Tree.reps[:, :]))))
+
+        if Deus.s[i] != Deus.Tree.Cs[min]
+            count_s = count_s + 1 #the new symbol sequence is different from the first
+            Deus.s[i] = Deus.Tree.Cs[min]
+        end
+    end
+
+    return count_s
 end
 
 function Tree_Isomorphism(Deus::ϵ_Machine; Ancest::Vector{Int64} = [1], d = 0)
@@ -844,8 +864,8 @@ function Reconstruction(Deus::ϵ_Machine, Node)
                     node_dist = Deus.Tree.Nodes[Node].morph_dist
                     #Pr_d = maximum(abs.(node_dist .- state_dist))
 
-                    # state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
-                    # node_dist = Deus.Tree.Nodes[Node].Pr_c
+                    #state_dist = Deus.Tree.Nodes[Deus.C_states[1, n]].Pr_c
+                    #node_dist = Deus.Tree.Nodes[Node].Pr_c
                     #Pr_d = maximum(abs.(node_dist .- state_dist))
 
                     state_cn = Deus.Tree.Nodes[Deus.C_states[1, n]].cn
@@ -1929,13 +1949,40 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
     Sampling(Deus, x_in, μ_s)
 
-    for i in 1:Deus.k - Deus.Tree.D + 1
-        xi = Deus.x[:, i + Deus.Tree.m - 1]
-        add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], transpose(xi))
+    max_iter = 20
+    D_max = Deus.Tree.D
+
+    D = 10 # initial string/cylinder length
+
+    count_s = 0
+    iter = 1
+    while iter <= max_iter
+  
+        m = Int(floor(D/2))
+        Deus.Tree = Parse_Tree(N, D, m)
+
+        for i in 1:Deus.k - Deus.Tree.D + 1
+            mi = i + Deus.Tree.m - 1
+            add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], mi)
+        end
+
+        println("iter = ", iter)
+        println("D = ", D)
+        count = Representatives(Deus)
+        println("Mean squared error = ", Deus.Tree.H)
+        println("count = ", count)
+        println()
+
+        if ((count >= count_s && iter != 1) || count == 0) && D != D_max
+            D = D + 1
+            iter = 0
+        elseif (count >= count_s && iter != 1) || count == 0
+            break
+        end
+
+        count_s = count 
+        iter += 1
     end
-
-    Representatives(Deus)
-
     #----------------------------------------------------------
 
     Tree_Isomorphism(Deus)

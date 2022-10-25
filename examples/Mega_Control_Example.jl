@@ -123,6 +123,7 @@ push!(cable_list, cable, cable)
 
 #-------------------------------------------------------------------------------
 # Sources
+source = Dict()
 
 source_list = []
 
@@ -134,8 +135,6 @@ source["q_set"] = 10e3
 source["v_pu_set"] = 1.05
 
 push!(source_list, source)
-
-source = Dict()
 
 source["pwr"] = 200e3
 source["vdc"] = 800
