@@ -2,8 +2,8 @@ using ReinforcementLearning
 using DataFrames
 using UnicodePlots
 
-include(srcdir("plotting.jl")) 
-include(srcdir("MultiAgentGridController.jl"))
+include("./plotting.jl")
+include("./MultiAgentGridController.jl")
 
 Base.@kwdef mutable struct DataHook <: AbstractHook
 
@@ -135,7 +135,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
         end
     end
 
-    print(hook.extra_state_names)
+    #print(hook.extra_state_names)
     hook.A,hook.B ,_ ,_ = get_sys(env.nc)
     hook.collect_state_paras = get_state_paras(env.nc)
 
@@ -360,10 +360,11 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env)
     hook.ep += 1
 
     push!(hook.rewards, hook.reward)
+
     if isa(agent, MultiAgentGridController)
         hook.reward = zeros(length(agent.agents))
     else
-        hook.reward[1] = 0.0
+        hook.reward = [0.0]
     end
 
     if hook.save_best_NNA
@@ -377,7 +378,6 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env)
             copyto!(hook.currentNNA, agent.policy.behavior_actor)
         end
     end
-
 end
 
 function (hook::DataHook)(::PostExperimentStage, agent, env)
@@ -389,7 +389,11 @@ function (hook::DataHook)(::PostExperimentStage, agent, env)
 
     if hook.plot_rewards
         matrix_to_plot = reduce(hcat, hook.rewards)
-        p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        if length(hook.policy_names) > 0
+            p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        else
+            p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        end
         for i in 2:length(hook.rewards[1])
             lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
         end
