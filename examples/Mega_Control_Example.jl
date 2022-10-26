@@ -1,5 +1,4 @@
 using Dare
-using ReinforcementLearning
 
 function reference(t)
     
@@ -150,7 +149,7 @@ push!(source_list, source) =#
 load_list = []
 load = Dict()
 
-R1_load, L_load, _, _ = Dare.Load_Impedance_2(50e3, 0.6, 230)
+R1_load, L_load, _, _ = Load_Impedance_2(50e3, 0.6, 230)
 #R2_load, C_load, _, _ = Load_Impedance_2(150e3, -0.8, 230)
 
 load["impedance"] = "RL"
@@ -179,8 +178,8 @@ env = SimEnv(reward_function = reward, featurize = featurize,
 ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
 parameters = parameters, maxsteps = length(t), action_delay = 1)
 
-state_ids = Dare.get_state_ids(env.nc)
-action_ids = Dare.get_action_ids(env.nc)
+state_ids = get_state_ids(env.nc)
+action_ids = get_action_ids(env.nc)
 
 #_______________________________________________________________________________
 # Setting up the Classical Sources
