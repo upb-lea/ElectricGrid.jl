@@ -1985,13 +1985,13 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
     end
     #----------------------------------------------------------
 
-    Tree_Isomorphism(Deus)
+    #= Tree_Isomorphism(Deus)
 
     #Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
-    Load_values(Deus::ϵ_Machine)
+    Load_values(Deus)
 
-    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
+    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation =#
 
     return nothing
 end
