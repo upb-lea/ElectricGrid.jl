@@ -1,17 +1,30 @@
 using ReinforcementLearning
 
-#TODO: controller name?!?!?!?
 mutable struct dare_setup
     env
     control_agent
     hook
 end
 
-function create_setup(;num_sources, num_loads, CM=nothing, parameters=nothing, ts=0.0001, t_end=0.05, env_cuda=false, agent_cuda=false)
+function create_setup(;num_sources, num_loads, CM = nothing, parameters = nothing, ts = 100e-6, t_end = 0.5, env_cuda = false, agent_cuda = false)
+
+    #_______________________________________________________________________________
+    # State space representation
+
+    #-------------------------------------------------------------------------------
+    # Connectivity Matrix
+
+    #= CM = [ 0. 0. 0. 1.
+            0. 0. 0. 2.
+            0. 0. 0. 3.
+            -1. -2. -3. 0.] =#
 
     CM = [ 0. 0. 1.
-     0. 0. 2
-     -1. -2. 0.]
+    0. 0. 2
+    -1. -2. 0.]
+
+    #= CM = [0. 1.
+    -1. 0.] =#
 
     #-------------------------------------------------------------------------------
     # Cables
@@ -19,50 +32,49 @@ function create_setup(;num_sources, num_loads, CM=nothing, parameters=nothing, t
     cable_list = []
 
     # Network Cable Impedances
-    l = 1.0 # length in km
+    l = 2.5 # length in km
     cable = Dict()
     cable["R"] = 0.208*l # Ω, line resistance 0.722#
     cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
     cable["C"] = 0.4e-6*l # 0.4e-6#
 
+    #= push!(cable_list, cable, cable, cable) =#
+
     push!(cable_list, cable, cable)
 
+    #-------------------------------------------------------------------------------
     # Sources
+    source = Dict()
 
     source_list = []
-    source = Dict()
-    # time step
-    ts = 0.0001
-
-    fs = 1/ts
 
     source["pwr"] = 200e3
-    #source["vdc"] = 800
+    source["vdc"] = 800
     source["fltr"] = "LC"
-    Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-    source["R1"] = 0.4
-    source["R_C"] = 0.0006
-    source["L1"] = Lf
-    source["C"] = Cf
-    source["v_limit"]= 1500
-    source["i_limit"]= 1000
+    source["p_set"] = 50e3
+    source["q_set"] = 10e3
+    source["v_pu_set"] = 1.05
 
     push!(source_list, source)
-
-    source = Dict()
 
     source["pwr"] = 100e3
-    source["vdc"] = 600
+    source["vdc"] = 800
     source["fltr"] = "LC"
-    Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-    source["R1"] = 0.4
-    source["R_C"] = 0.0006
-    source["L1"] = Lf
-    source["C"] = Cf
-    source["v_limit"]= 1500 
-    source["i_limit"]= 1000
+    source["p_set"] = 50e3
+    source["q_set"] = 10e3
+    source["v_pu_set"] = 1.0
 
     push!(source_list, source)
+
+    #= source = Dict()
+
+    source["pwr"] = 200e3
+    source["vdc"] = 800
+    source["fltr"] = "LC"
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
+
+    push!(source_list, source) =#
 
     #-------------------------------------------------------------------------------
     # Loads
@@ -88,8 +100,13 @@ function create_setup(;num_sources, num_loads, CM=nothing, parameters=nothing, t
     parameters["source"] = source_list
     parameters["cable"] = cable_list
     parameters["load"] = load_list
-    parameters["grid"] = Dict("fs" => fs, "phase" => 1, "v_rms" => 230)
+    parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
+    # Define the environment
+
+    num_sources = length(source_list)
+    num_loads = length(load_list)
+        
     maxsteps = Int(t_end / ts)
 
     function reward(env, name = nothing)

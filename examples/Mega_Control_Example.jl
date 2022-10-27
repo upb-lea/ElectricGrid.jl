@@ -1,4 +1,5 @@
 using Dare
+
 using ReinforcementLearning
 
 function reference(t)
@@ -212,13 +213,13 @@ agentname = "agent"
 #_______________________________________________________________________________
 #%% Starting time simulation
 
-plt_state_ids = []#"source1_v_C_a", "source2_v_C_a", "source1_i_L1_a", "source2_i_L1_a"]
+plt_state_ids = ["source1_v_C_a"]#, "source2_v_C_a", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
-collect_vrms_idx = [1 2], collect_irms_idx = [1 2], collect_pq_idx = [1 2],
+collect_vrms_ids = [1 2], #collect_irms_ids = [1 2], collect_pq_ids = [1 2],
 save_best_NNA = false, collect_reference = false, plot_rewards=false)
 
-run(ma, env, StopAfterEpisode(1), hook);
+RLBase.run(ma, env, StopAfterEpisode(1), hook);
 
 #_______________________________________________________________________________
 # Plotting

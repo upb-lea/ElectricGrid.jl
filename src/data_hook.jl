@@ -43,13 +43,13 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     currentNNA = nothing
 
     collect_reference = false
-    collect_vdc_idx = []
+    collect_vdc_ids = []
 
-    collect_vdq_idx = []
-    collect_vrms_idx = []
-    collect_idq_idx = []
-    collect_irms_idx = []
-    collect_pq_idx = []
+    collect_vdq_ids = []
+    collect_vrms_ids = []
+    collect_idq_ids = []
+    collect_irms_ids = []
+    collect_pq_ids = []
 
 end
 
@@ -167,7 +167,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
-        for idx in hook.collect_vdq_idx
+        for idx in hook.collect_vdq_ids
 
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
@@ -176,7 +176,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_idq_idx
+        for idx in hook.collect_idq_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
                 insertcols!(hook.tmp, "source$(idx)_id" => agent.agents["classic"]["policy"].policy.Source.I_dq0[s_idx, 1])
@@ -184,7 +184,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_pq_idx
+        for idx in hook.collect_pq_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
                 insertcols!(hook.tmp, "source$(idx)_p" => agent.agents["classic"]["policy"].policy.Source.p_q_filt[s_idx, 1])
@@ -192,7 +192,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_vrms_idx
+        for idx in hook.collect_vrms_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
                 vrms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.V_filt_poc[s_idx, :, end], 0))
@@ -201,7 +201,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_irms_idx
+        for idx in hook.collect_irms_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
                 irms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.I_filt_poc[s_idx, :, end], 0))
@@ -212,7 +212,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
     end
 
-    for idx in hook.collect_vdc_idx
+    for idx in hook.collect_vdc_ids
         insertcols!(hook.tmp, "source$(idx)_vdc" => env.v_dc[idx])
     end
 
@@ -268,6 +268,9 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     end
     
     insertcols!(hook.tmp, :action => Ref(action))
+
+    println("\nPreActStage")
+    println(hook.tmp)
     
 end
 
@@ -310,6 +313,9 @@ function (hook::DataHook)(::PostActStage, agent, env)
 
     insertcols!(hook.tmp, :reward => env.reward)
     insertcols!(hook.tmp, :done => env.done)
+
+    println("\nPostActStage")
+    println(hook.tmp)
 
     append!(hook.df, hook.tmp)
     hook.tmp = DataFrame()
