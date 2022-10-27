@@ -1,6 +1,16 @@
-using Dare
+using DrWatson
+@quickactivate "dare"
 
 using ReinforcementLearning
+using PlotlyJS
+
+include(srcdir("nodeconstructor.jl"))
+include(srcdir("env.jl"))
+include(srcdir("agent_ddpg.jl"))
+include(srcdir("data_hook.jl"))
+include(srcdir("Classical_Control.jl"))
+include(srcdir("Power_System_Theory.jl"))
+include(srcdir("MultiAgentGridController.jl"))
 
 function reference(t)
     
@@ -219,7 +229,7 @@ hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_acti
 collect_vrms_ids = [1 2], #collect_irms_ids = [1 2], collect_pq_ids = [1 2],
 save_best_NNA = false, collect_reference = false, plot_rewards=false)
 
-RLBase.run(ma, env, StopAfterEpisode(1), hook);
+run(ma, env, StopAfterEpisode(1), hook);
 
 #_______________________________________________________________________________
 # Plotting
