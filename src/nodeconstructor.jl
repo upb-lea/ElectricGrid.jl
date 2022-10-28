@@ -80,7 +80,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 3 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms' and 'phase' but got $(keys(parameters))"
+        @assert length(keys(parameters["grid"])) == 4 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -162,6 +162,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         grid_properties["fs"] =  10e3
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
+        grid_properties["f_grid"] = 50
         parameters["grid"] = grid_properties
 
     else
@@ -173,6 +174,9 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         end
         if !haskey(parameters["grid"], "phase")
             parameters["grid"]["phase"] = 3
+        end
+        if !haskey(parameters["grid"], "f_grid")
+            parameters["grid"]["f_grid"] = 50
         end
     end
 
@@ -852,7 +856,7 @@ function _sample_fltr_LCL(grid_properties)
    source["R1"] = 400 * source["L1"]
    source["R2"] = deepcopy(source["R1"])   
    source["R_C"] = 28* source["C"]
-   source["v_limit"]= 2*(sqrt(2)*parameters["grid"]["v_rms"] + ΔVcfmax)
+   source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
    
    
 
@@ -908,7 +912,7 @@ function _sample_fltr_LC(grid_properties)
 
     source["R1"] = 400 * source["L1"]
     source["R_C"] = 28* source["C"]
-    source["v_limit"]= 2*(sqrt(2)*parameters["grid"]["v_rms"] + ΔVcfmax)
+    source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
 
     source
 end
@@ -2250,4 +2254,41 @@ function draw_graph(self::NodeConstructor)
     # plt.show()
 
     # pass
+end
+
+function get_Y_bus(self::NodeConstructor)
+    """
+    get_Y_bus(self::NodeConstructor)
+    Returns the Admittance Matrix of the power grid based on the CM Matrix and the parameter dict 
+    """
+
+    Y_bus = zeros(Complex{Float64}, self.tot_ele, self.tot_ele)  # Y -> tot_ele x tot_ele
+    omega = 2*π*self.parameters["grid"]["f_grid"]
+
+    for col in 1:self.tot_ele
+        for row in 1:self.tot_ele
+            if self.CM[row, col] != 0  # we have a cable connected
+                # CM index defines the number of the cable
+                cable_idx = abs(Int(self.CM[row, col]))
+                G_RL = self.parameters["cable"][cable_idx]["R"] / (self.parameters["cable"][cable_idx]["R"]^2 + omega^2 *self.parameters["cable"][1]["L"]^2)
+                B_RL = (omega *self.parameters["cable"][cable_idx]["L"])/ (self.parameters["cable"][cable_idx]["R"]^2 + omega^2 *self.parameters["cable"][1]["L"]^2)
+                Y_bus[row, col] = -G_RL - im*B_RL
+            elseif row == col  # diagonal elements
+                # Go through all col elements of that row to find the connected cable to that bus (non zero elements in CM[:, row])
+                cable_idxs = filter(n -> n !=0, self.CM[row, :])
+                G = 0
+                B = 0
+                for idx in cable_idxs
+                    # add all RL 
+                    idx = abs(Int(idx))
+                    G += self.parameters["cable"][idx]["R"] / (self.parameters["cable"][idx]["R"]^2 + omega^2 *self.parameters["cable"][1]["L"]^2)
+                    B += (omega *self.parameters["cable"][idx]["L"])/ (self.parameters["cable"][idx]["R"]^2 + omega^2 *self.parameters["cable"][1]["L"]^2)
+                    # and add all shunt C connected to that bus since diagonal element
+                    B += omega * self.parameters["cable"][idx]["C"] / 2 
+                end
+                Y_bus[row, col] = G + im*B
+            end
+        end
+    end
+    return Y_bus
 end
