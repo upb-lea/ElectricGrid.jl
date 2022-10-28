@@ -367,6 +367,14 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             if !haskey(source, "v_δ_set")
                 source["v_δ_set"] = 0.0
             end
+
+            if !haskey(source, "mode")
+                source["mode"] = "Semi-Synchronverter"
+            end
+
+            if !haskey(source, "control_type")
+                source["control_type"] = "classic"
+            end
         end
 
         if num_undef_sources > 0
@@ -394,8 +402,6 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
             end
         end
-
-        
 
         source_type_fixed > 0 && println("WARNING: $source_type_fixed sourceType not defined! set to ideal!")
 

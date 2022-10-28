@@ -509,9 +509,20 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
         new(action_space, Source, state_ids, action_ids, Source_Indices)
     end
 
-    function Classical_Policy(env; Modes = [], Source_Indices = [], phases = 3)
+    function Classical_Policy(env)
 
-        Source_Indices = vec(Source_Indices)
+        Source_Indices = Array{Int64, 1}(undef, 0)
+        Modes = Array{Any, 1}(undef, 0)
+
+        for ns in 1:env.nc.num_sources
+
+            if env.nc.parameters["source"][ns]["control_type"] == "classic"
+                Source_Indices = [Source_Indices; Int(ns)]
+                Modes = [Modes; env.nc.parameters["source"][ns]["mode"]]
+            end
+        end
+
+        #Source_Indices = vec(Source_Indices)
 
         state_ids = get_state_ids(env.nc)
         action_ids = get_action_ids(env.nc)
@@ -520,13 +531,13 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
         state_ids_classic = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), state_ids)     
         action_ids_classic = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), action_ids)
 
-        Source = Classical_Controls(1/env.ts, length(Source_Indices), phases = phases)
+        Source = Classical_Controls(1/env.ts, length(Source_Indices), phases = env.nc.parameters["grid"]["phase"])
 
         Source_Initialiser(env, Source, Modes, Source_Indices)
 
         #------------------------------------
 
-        for s in 1:length(Source_Indices)
+        for s in axes(Source_Indices, 1)
 
             s_idx = string(Source_Indices[s])
     
@@ -544,7 +555,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
         letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
 
         Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
-        vec(Source_Indices)), letterdict[split(x, "_")[3]]] for x in action_ids_classic]
+        Source_Indices), letterdict[split(x, "_")[3]]] for x in action_ids_classic]
 
         #------------------------------------
 
@@ -1710,7 +1721,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
             Source.V_ki[num_source] = ki_v
             Source.Gv_cl[num_source] = Gv_cl
 
-            println("\nError. PI Voltage Controller with Positive Poles.")
+            println("\nWARNING: PI Voltage Controller with Positive Poles.")
             println("Suggestion: Decrease Simulation Time Step")
             println("Source = ", num_source,"\n")
         end

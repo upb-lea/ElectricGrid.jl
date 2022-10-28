@@ -1,17 +1,3 @@
-#= using DrWatson
-@quickactivate "dare"
-
-using ReinforcementLearning
-using PlotlyJS
-
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
-include(srcdir("agent_ddpg.jl"))
-include(srcdir("data_hook.jl"))
-include(srcdir("Classical_Control.jl"))
-include(srcdir("Power_System_Theory.jl"))
-include(srcdir("MultiAgentGridController.jl")) =#
-
 using Dare
 using ReinforcementLearning
 
@@ -202,7 +188,7 @@ parameters["cable"] = cable_list
 parameters["load"] = load_list
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
-#setup = create_setup(parameters)
+setup = create_setup(parameters = parameters)
 
 # Define the environment
 
@@ -224,11 +210,18 @@ Animo = NamedPolicy("classic", Classical_Policy(env))
 state_ids_classic = Animo.policy.state_ids
 action_ids_classic = Animo.policy.action_ids
 
-ma_agents = Dict(nameof(Animo) => Dict("policy" => Animo,
-                            "state_ids" => state_ids_classic,
-                            "action_ids" => action_ids_classic))
-                            
-ma = MultiAgentGridController(ma_agents, action_ids)
+Multi_Agents = Dict()
+Multi_Agent_list = []
+
+polc = Dict()
+
+polc["policy"] = Animo
+polc["state_ids"] = state_ids_classic
+polc["action_ids"] = action_ids_classic
+
+Multi_Agents[nameof(Animo)] = polc
+
+ma = MultiAgentGridController(Multi_Agents, action_ids)
 
 agentname = "agent"
 

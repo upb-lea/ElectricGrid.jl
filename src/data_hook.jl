@@ -268,9 +268,6 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     end
     
     insertcols!(hook.tmp, :action => Ref(action))
-
-    println("\nPreActStage")
-    println(hook.tmp)
     
 end
 
@@ -313,9 +310,6 @@ function (hook::DataHook)(::PostActStage, agent, env)
 
     insertcols!(hook.tmp, :reward => env.reward)
     insertcols!(hook.tmp, :done => env.done)
-
-    println("\nPostActStage")
-    println(hook.tmp)
 
     append!(hook.df, hook.tmp)
     hook.tmp = DataFrame()
