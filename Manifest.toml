@@ -2,7 +2,7 @@
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "50194dc2ace16a79d461c450139d4de5774cef85"
+project_hash = "f34446c141296bf0179a185cc1056c3854e041ea"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Markdown", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -235,18 +235,6 @@ deps = ["Adapt"]
 git-tree-sha1 = "a05b83d278a5c52111af07e2b2df64bf7b122f8c"
 uuid = "9de3a189-e0c0-4e15-ba3b-b14b9fb0aec1"
 version = "0.1.10"
-
-[[deps.Clipper]]
-deps = ["Clipper_jll"]
-git-tree-sha1 = "0d26a8f45fb663e409ada1c6f07ebbbb7dfa7a03"
-uuid = "c8f6d549-b3ab-5508-a0d1-48fe138e8cc1"
-version = "0.6.3"
-
-[[deps.Clipper_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "bdaf829ca02bdd1d787be4a1332af27ec0d8510b"
-uuid = "1721f0f4-5627-55cb-8b31-c466f04189fe"
-version = "6.4.2+1"
 
 [[deps.CloseOpenIntervals]]
 deps = ["ArrayInterface", "Static"]
@@ -779,12 +767,6 @@ version = "0.2.8"
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
-[[deps.GEOS_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "f4c0cafb093b62d5a5d8447a9b2306555385c0d9"
-uuid = "d604d12d-fa86-5845-992e-78dc15976526"
-version = "3.11.0+0"
-
 [[deps.GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
 git-tree-sha1 = "d972031d28c8c8d9d7b41a536ad7bb0c2579caca"
@@ -879,12 +861,6 @@ deps = ["Extents"]
 git-tree-sha1 = "fb28b5dc239d0174d7297310ef7b84a11804dfab"
 uuid = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 version = "1.0.1"
-
-[[deps.GeoInterfaceRecipes]]
-deps = ["GeoInterface", "RecipesBase"]
-git-tree-sha1 = "29e1ec25cfb6762f503a19495aec347acf867a9e"
-uuid = "0329782f-3d07-4b52-b9f6-d3137cf03c7a"
-version = "1.0.0"
 
 [[deps.GeometricalPredicates]]
 git-tree-sha1 = "6c9f24b54b8bf2e3496b5b3c25f5a0aebacd95d5"
@@ -1245,12 +1221,6 @@ deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
 version = "7.84.0+0"
 
-[[deps.LibGEOS]]
-deps = ["CEnum", "Extents", "GEOS_jll", "GeoInterface", "GeoInterfaceRecipes"]
-git-tree-sha1 = "0cc1d45ab2e47fe4789c693e833412e69ce4670d"
-uuid = "a90b1aa1-3769-5649-ba7e-abc5a9d163eb"
-version = "0.7.3"
-
 [[deps.LibGit2]]
 deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -1449,12 +1419,6 @@ version = "0.1.2"
 git-tree-sha1 = "ea6a5b7e56e76d8051023faaa11d91d1d881dac3"
 uuid = "39ec1447-df44-5f4c-beaa-866f30b4d3b2"
 version = "0.2.5"
-
-[[deps.MiniQhull]]
-deps = ["QhullMiniWrapper_jll"]
-git-tree-sha1 = "9dc837d180ee49eeb7c8b77bb1c860452634b0d1"
-uuid = "978d7f02-9e05-4691-894f-ae31a51d76ca"
-version = "0.4.0"
 
 [[deps.Missings]]
 deps = ["DataAPI"]
@@ -1759,19 +1723,6 @@ git-tree-sha1 = "b42fb2292fbbaed36f25d33a15c8cc0b4f287fcf"
 uuid = "1d0040c9-8b98-4ee7-8388-3f51789ca0ad"
 version = "0.1.10"
 
-[[deps.PolygonArea]]
-deps = ["RecipesBase", "StaticArrays"]
-git-tree-sha1 = "796656db7acc9bcd9b2c9a7ed9fe96e43d0c423d"
-repo-rev = "master"
-repo-url = "https://github.com/mancellin/PolygonArea.jl"
-uuid = "f818da22-b9d0-4424-a67f-6ca99e6cd93f"
-version = "0.4.0-dev"
-
-[[deps.PolygonOps]]
-git-tree-sha1 = "77b3d3605fc1cd0b42d95eba87dfcd2bf67d5ff6"
-uuid = "647866c9-e3ac-4575-94e7-e3d426903924"
-version = "0.1.2"
-
 [[deps.Polyhedra]]
 deps = ["GenericLinearAlgebra", "GeometryBasics", "JuMP", "LinearAlgebra", "MutableArithmetics", "RecipesBase", "SparseArrays", "StaticArrays"]
 git-tree-sha1 = "d6aaf7dd794fdcd7896cfc98301f6ffe84a99f56"
@@ -1845,18 +1796,6 @@ deps = ["Polyhedra", "PyCall", "StaticArrays"]
 git-tree-sha1 = "da8422c9eac9baed4d2209492ae6375b049b1a1e"
 uuid = "a8468747-bd6f-53ef-9e5c-744dbc5c59e7"
 version = "0.2.3"
-
-[[deps.QhullMiniWrapper_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Qhull_jll"]
-git-tree-sha1 = "607cf73c03f8a9f83b36db0b86a3a9c14179621f"
-uuid = "460c41e3-6112-5d7f-b78c-b6823adb3f2d"
-version = "1.0.0+1"
-
-[[deps.Qhull_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "695c3049ad94fa38b7f1e8243cdcee27ecad0867"
-uuid = "784f63db-0788-585a-bace-daefebcd302b"
-version = "8.0.1000+0"
 
 [[deps.Qt5Base_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "xkbcommon_jll"]
