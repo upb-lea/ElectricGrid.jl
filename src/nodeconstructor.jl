@@ -369,7 +369,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
 
             if !haskey(source, "mode")
-                source["mode"] = "Semi-Synchronverter"
+                source["mode"] = "Full-Synchronverter"
             end
 
             if !haskey(source, "control_type")

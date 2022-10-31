@@ -1,4 +1,4 @@
-using Dare
+using Dare;
 using ReinforcementLearning
 
 function reference(t)
@@ -188,7 +188,7 @@ parameters["cable"] = cable_list
 parameters["load"] = load_list
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
-setup = create_setup(parameters = parameters)
+#setup = create_setup(parameters = parameters, CM = CM)
 
 # Define the environment
 

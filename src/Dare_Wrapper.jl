@@ -64,9 +64,8 @@ function create_setup(;num_sources = 0, num_loads = 0, CM = nothing, parameters 
 
     if parameters["grid"]["fs"] === nothing
         ts = 100e-6
-        fs = 1/ts
     else
-        ts = 1/fs
+        ts = 1/(parameters["grid"]["fs"])
     end
         
     maxsteps = Int(t_end / ts) + 1
