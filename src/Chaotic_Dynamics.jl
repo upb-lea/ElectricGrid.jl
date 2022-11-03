@@ -6,7 +6,7 @@ include("Complexity.jl")
 # Parameters - Time simulation
 
 ω = 1
-t_final = 15e3*2π/ω
+t_final = 20e3*2π/ω
 μ_s = 2π/ω # time step in s
 
 #_______________________________________________________________________________
@@ -51,7 +51,7 @@ x = Poincare[1:2, :]
 #_______________________________________________________________________________
 #%% Emergence
 
-D = 14
+D = 10
 
 ϵ = Array{Float64, 1}(undef, dim) # Instrument resolution
 ep = sum(x[1:1, :])/N
@@ -71,12 +71,26 @@ Cranking(Deus, Poincare[1:2, :], μ_s)
 #%% Plots
 
 traj = plot(sol, idxs = (1, 2))
-display(traj)
+#display(traj)
 
 #traj = plot(sol, idxs = (1, 2))
-traj = plot(Poincare[1, :], Poincare[2, :], 
+
+colrs = Array{Symbol, 1}(undef, Deus.k)
+for i in 1:Deus.k
+    
+    if Deus.s[i] == 0
+        colrs[i] = :red
+    elseif Deus.s[i] == 1
+        colrs[i] = :blue
+    elseif Deus.s[i] == 2
+        colrs[i] = :green
+    end
+end
+
+
+traj = plot(Deus.x[1, :], Deus.x[2, :], 
             seriestype = :scatter,
-            markercolor = :black,
+            markercolor = colrs,
             markersize = 1,
             markerstrokewidth = 0,
             legend = false)

@@ -24,13 +24,13 @@ function reward(env, name = nothing)
     
     if !isnothing(name)
         if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_v_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_v_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_v_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source1_v_C_filt_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source1_v_C_filt_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source1_v_C_filt_c", env.state_ids)
         else
-            u_l1_index = findfirst(x -> x == "source2_v_C_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source2_v_C_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source2_v_C_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source2_v_C_filt_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source2_v_C_filt_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source2_v_C_filt_c", env.state_ids)
         end
 
         u_l1 = env.state[u_l1_index]
@@ -111,7 +111,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 0.5 # length in km
+l = 2.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -129,7 +129,7 @@ push!(cable_list, cable, cable)
     2 -> "Voltage Control" - voltage source with controller dynamics
 
     3 -> "PQ Control" - grid following controllable source/load (active and reactive Power)
-    4 -> "PV Control" - grid following controllable source/load (active power and voltage magnitude)
+    4 -> "PV Control" - grid following controllable source (active power and voltage magnitude)
 
     5 -> "Droop Control" - simple grid forming with power balancing
     6 -> "Full-Synchronverter" - droop control on real and imaginary powers
@@ -142,11 +142,11 @@ source_list = []
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
-source["mode"] = 7
+source["mode"] = 5
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -155,13 +155,13 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 100e3
+source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
-source["v_pu_set"] = 1.01
-source["mode"] = 4
+source["v_pu_set"] = 1.0
+source["mode"] = 5
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -184,7 +184,7 @@ push!(source_list, source) =#
 load_list = []
 load = Dict()
 
-R1_load, L_load, _, _ = Load_Impedance_2(50e3, 0.6, 230)
+R1_load, L_load, _, _ = Load_Impedance_2(100e3, 0.6, 230)
 #R2_load, C_load, _, _ = Load_Impedance_2(150e3, -0.8, 230)
 
 load["impedance"] = "RL"

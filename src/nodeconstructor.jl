@@ -2015,13 +2015,13 @@ function get_state_ids(self::NodeConstructor)
     for s in 1:self.num_sources
         if self.parameters["source"][s]["fltr"]  == "LCL"
             push!(states, "source$s"*"_i_L1")    # i_f1; dann i_f2....
-            push!(states, "source$s"*"_v_C")
+            push!(states, "source$s"*"_v_C_filt")
             push!(states, "source$s"*"_i_L2")
             push!(states, "source$s"*"_v_C_cables")
         
         elseif self.parameters["source"][s]["fltr"]  == "LC"
             push!(states, "source$s"*"_i_L1")
-            push!(states, "source$s"*"_v_C")
+            push!(states, "source$s"*"_v_C_filt")
             push!(states, "source$s"*"_v_C_cables")
 
         elseif self.parameters["source"][s]["fltr"]  == "L"

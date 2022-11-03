@@ -6,10 +6,6 @@ using DifferentialEquations
 using Graphs
 using NetworkLayout
 
-using VoronoiCells
-using GeometryBasics
-using Polyhedra
-using PolygonOps
 import QHull
 
 mutable struct Node
@@ -312,7 +308,6 @@ mutable struct ϵ_Machine
     ϵ::Array{Float64, 1} # Instrument resolution
     x_range::Array{Float64, 2} # State space limits
     k::Int64 # Simulation step - number of coordinate points (duplicate in Tree)
-    Partition::Tessellation{Point2{Float64}} # 2D partitioning
 
     s::Array{Int64, 1} # measured symbols
     x::Array{Float64, 2} # input data
@@ -358,7 +353,6 @@ mutable struct ϵ_Machine
 
     function ϵ_Machine(Ts::Vector{Matrix{Float64}}, Tree::Parse_Tree,
         δ::Float64, μ_m::Float64, ϵ::Array{Float64, 1}, x_range::Array{Float64, 2}, k::Int64,
-        Partition::Tessellation{Point2{Float64}},
         s::Array{Int64, 1}, x::Array{Float64, 2}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
         C_states::Matrix{Int64}, start_state::Int64, Dang_States::Vector{Int64}, IG::Float64,
         T::Matrix{Float64}, I::Matrix{Float64}, eigval::Vector{ComplexF64},
@@ -372,7 +366,6 @@ mutable struct ϵ_Machine
         Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, C::Float64, Cμ::Float64, Ce::Float64, Cμe::Float64)     
 
         new(Ts, Tree, δ, μ_m, ϵ, x_range, k,
-        Partition, 
         s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
@@ -399,20 +392,6 @@ mutable struct ϵ_Machine
         μ_m = round(μ_m/μ_s)*μ_s # correction to prevent overflow of vectors
         k = 0 # machine step
         t_final = N*μ_s - μ_s
-
-        dims = length(x_range[:, 1])
-
-        if dims == 2
-            x_mid = (x_range[1, 2] + x_range[1, 1])/2
-            y_mid = (x_range[2, 2] + x_range[2, 1])/2
-            points = [Point(x_mid, y_mid) for _ in 1:1]
-            boundaries = Rectangle(Point2(x_range[1, 2], x_range[2, 2]), Point2(x_range[1, 1], x_range[2, 1]))
-            Partition = voronoicells(points, boundaries)
-        else
-            points = [Point(0.5, 0.5) for _ in 1:1]
-            boundaries = Rectangle(Point2(0, 0), Point2(1, 1))
-            Partition = voronoicells(points, boundaries)
-        end
         
         N = convert(Int64, Int(ceil(N*μ_s/μ_m)))
 
@@ -462,8 +441,7 @@ mutable struct ϵ_Machine
         Cαe = Array{Float64, 1}(undef, lα)
         Cαe = fill!(Cαe, 0.0)
 
-        ϵ_Machine(Ts, Tree, δ, μ_m, ϵ, x_range, k, 
-        Partition,
+        ϵ_Machine(Ts, Tree, δ, μ_m, ϵ, x_range, k,
         s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
         T, I, eigval, 
@@ -588,12 +566,15 @@ function Sampling(Deus::ϵ_Machine, x, μ_s)
 
             Deus.k = Deus.k + 1
   
-            Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i])
-            Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
+            #Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i])
+            #Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
 
-            if rand() >= 0.5
+            rnd = rand()
+            if rnd >= 2/3
+                Deus.s[Deus.k] = 2
+            elseif rnd >= 1/3
                 Deus.s[Deus.k] = 1
-            else
+            elseif rnd >= 0
                 Deus.s[Deus.k] = 0
             end
         end
@@ -741,13 +722,13 @@ function Representatives(Deus::ϵ_Machine)
         end
     end
 
-    Deus.Tree.H = Deus.Tree.H/num_cyl
+    Deus.Tree.H = Deus.Tree.H/Deus.k
 
     count_s = 0
 
     for i in 1:Deus.k
 
-        _, min = findmin(norm.(eachrow(abs.(Deus.x[i] .- Deus.Tree.reps[:, :]))))
+        _, min = findmin(norm.(eachrow(transpose(Deus.x[:, i]) .- Deus.Tree.reps[:, :])))
 
         if Deus.s[i] != Deus.Tree.Cs[min]
             count_s = count_s + 1 #the new symbol sequence is different from the first
@@ -1952,17 +1933,17 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
     max_iter = 20
     D_max = Deus.Tree.D
 
-    D = 10 # initial string/cylinder length
+    D = 4 # initial string/cylinder length
 
     count_s = 0
     iter = 1
     while iter <= max_iter
   
-        m = Int(floor(D/2))
+        m = 2#Int(floor(D/2))
         Deus.Tree = Parse_Tree(N, D, m)
 
         for i in 1:Deus.k - Deus.Tree.D + 1
-            mi = i + Deus.Tree.m - 1
+            mi = i + Deus.Tree.m
             add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], mi)
         end
 
@@ -1973,10 +1954,10 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
         println("count = ", count)
         println()
 
-        if ((count >= count_s && iter != 1) || count == 0) && D != D_max
+        if ((count >= count_s && iter > 3) || count == 0) && D != D_max
             D = D + 1
             iter = 0
-        elseif (count >= count_s && iter != 1) || count == 0
+        elseif (count >= count_s && iter > 3) || count == 0
             break
         end
 
@@ -1985,13 +1966,13 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
     end
     #----------------------------------------------------------
 
-    #= Tree_Isomorphism(Deus)
+    Tree_Isomorphism(Deus)
 
     #Statistical_Mechanics(Deus)
     Parametric_Statistical_Mechanics(Deus) # same as above but paramatrized to order α
     Load_values(Deus)
 
-    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation =#
+    Complexity_Series(Deus) # time evolution of complexity - knowledge relaxation
 
     return nothing
 end
