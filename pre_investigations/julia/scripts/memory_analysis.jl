@@ -14,6 +14,26 @@ include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("plotting.jl"))
 
+function reward(env)
+    #implement your reward function here
+
+    P_required = 466 # W
+    V_required = 230 # V
+
+    u_l1_index = findfirst(x -> x == "u_load1_c", env.state_ids)
+    print(u_l1_index) 
+    u_l1 = env.state[u_l1_index]
+
+    P_load = (env.norm_array[u_l1_index] * u_l1)^2 / 14
+    
+    # P_diff = -abs(P_required - P_load) 
+    # reward = exp(P_diff/130) - 1
+
+    reward = -(abs(V_required - (env.norm_array[u_l1_index] * u_l1))/300)
+
+    return reward
+end
+
 
 function collectresults(timer::TimerOutput, node::Int, env_cuda::Bool)
 
@@ -48,45 +68,53 @@ function memory_analysis(to, env_cuda, agent_cuda, num_nodes)
     CM = reduce(hcat, CM_list[1])'
     CM = convert(Matrix{Int}, CM)
 
-    nc = NodeConstructor(num_sources = num_nodes, num_loads = num_nodes, CM = CM)
+    # nc = NodeConstructor(num_sources = num_nodes, num_loads = num_nodes, CM = CM)
 
-    A, B, C, D = get_sys(nc)
+    # A, B, C, D = get_sys(nc)
 
-    limits = Dict("i_lim" => 20, "v_lim" => 600)
+    # limits = Dict("i_lim" => 20, "v_lim" => 600)
 
-    states = get_state_ids(nc)
-    norm_array = []
-    for state_name in states
-    if startswith(state_name, "i")
-        push!(norm_array, limits["i_lim"])
-    elseif startswith(state_name, "u")
-        push!(norm_array, limits["v_lim"])
-    end
-    end
+    # states = get_state_ids(nc)
+    # norm_array = []
+    # for state_name in states
+    # if startswith(state_name, "i")
+    #     push!(norm_array, limits["i_lim"])
+    # elseif startswith(state_name, "u")
+    #     push!(norm_array, limits["v_lim"])
+    # end
+    # end
 
-    ns = length(A[1,:])
-    na = length(B[1,:])
+    # ns = length(A[1,:])
+    # na = length(B[1,:])
 
-    # time step
-    ts = 1e-5
+    # # time step
+    # ts = 1e-5
 
-    V_source = 300
+    # V_source = 300
 
-    x0 = [ 0.0 for i = 1:length(A[1,:]) ]
+    # x0 = [ 0.0 for i = 1:length(A[1,:]) ]
 
-    if env_cuda
-    A = CuArray(A)
-    B = CuArray(B)
-    C = CuArray(C)
-    x0 = CuArray(x0)
-    end
+    # if env_cuda
+    # A = CuArray(A)
+    # B = CuArray(B)
+    # C = CuArray(C)
+    # x0 = CuArray(x0)
+    # end
 
-    env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, rewardfunction = reward, x0=x0, v_dc=V_source, ts=ts, convert_state_to_cpu=true, maxsteps=600)
+    # env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, rewardfunction = reward, x0=x0, v_dc=V_source, ts=ts, convert_state_to_cpu=true, maxsteps=600)
+    
+    env = SimEnv(num_sources = num_nodes, num_loads = num_nodes, CM = CM, 
+                # parameters = parameters, 
+                reward_function = reward, 
+                maxsteps=600, 
+                use_gpu=env_cuda)
+
+    ns = length(env.sys_d.A[1,:])
+    na = length(env.sys_d.B[1,:])
+
     agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
     hook = DataHook(save_best_NNA = true)
-
-
 
     println("Hook - Pre Experiment Stage")
     hookbefore = deepcopy(hook)
@@ -238,25 +266,7 @@ function memory_analysis(to, env_cuda, agent_cuda, num_nodes)
 end
 
 
-function reward(env)
-    #implement your reward function here
 
-    P_required = 466 # W
-    V_required = 230 # V
-
-    u_l1_index = findfirst(x -> x == "u_l1", env.state_ids)
-
-    u_l1 = env.state[u_l1_index]
-
-    P_load = (env.norm_array[u_l1_index] * u_l1)^2 / 14
-    
-    # P_diff = -abs(P_required - P_load) 
-    # reward = exp(P_diff/130) - 1
-
-    reward = -(abs(V_required - (env.norm_array[u_l1_index] * u_l1))/300)
-
-    return reward
-end
 
 
 env_cuda = false
