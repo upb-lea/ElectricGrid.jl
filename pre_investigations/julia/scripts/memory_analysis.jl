@@ -1,5 +1,5 @@
 using DrWatson
-quickactivate("../../.", "dare")
+@quickactivate "MicroGridSimWithRL"
 
 using BenchmarkTools
 using ReinforcementLearning
@@ -10,10 +10,9 @@ using PlotlyJS
 
 include(srcdir("nodeconstructor.jl"))
 include(srcdir("env.jl"))
-include(srcdir("agent_ddpg.jl"))
+include(srcdir("agent.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("plotting.jl"))
-
 
 function collectresults(timer::TimerOutput, node::Int, env_cuda::Bool)
 
@@ -82,11 +81,9 @@ function memory_analysis(to, env_cuda, agent_cuda, num_nodes)
     end
 
     env = SimEnv(A=A, B=B, C=C, norm_array=norm_array, state_ids = states, rewardfunction = reward, x0=x0, v_dc=V_source, ts=ts, convert_state_to_cpu=true, maxsteps=600)
-    agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
+    agent = create_agent(na = na, ns = ns, use_gpu = agent_cuda)
 
     hook = DataHook(save_best_NNA = true)
-
-
 
     println("Hook - Pre Experiment Stage")
     hookbefore = deepcopy(hook)
@@ -207,7 +204,7 @@ function memory_analysis(to, env_cuda, agent_cuda, num_nodes)
     println(""); println(""); println("");
 
 
-    println("Agent - Post Episode Stage")
+    println("Agent - Post Episode Stage") 
     agentbefore = deepcopy(agent)
     agent(POST_EPISODE_STAGE, env);
     agent = deepcopy(agentbefore)
