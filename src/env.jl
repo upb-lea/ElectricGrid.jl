@@ -36,6 +36,12 @@ mutable struct SimEnv <: AbstractEnv
     action
     action_ids
     action_delay_buffer
+    A
+    B
+    C
+    D
+    state_parameters
+    y
 end
 
 function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
@@ -63,6 +69,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     Ad = exp(A*ts)
     Bd = A \ (Ad - C) * B
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    state_parameters = get_state_paras(nc)
 
     if use_gpu
         Ad = CuArray(A)
@@ -278,7 +285,14 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         fill!(action_delay_buffer, zeros(length(action_space)))
     end
 
-    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, v_dc_arr, norm_array, convert_state_to_cpu, reward, action, action_ids, action_delay_buffer)
+    y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
+
+    SimEnv(nc, sys_d, action_space, state_space, 
+    false, featurize, prepare_action, reward_function, 
+    x0, x, t0, t, ts, state, maxsteps, 0, state_ids, 
+    v_dc, v_dc_arr, norm_array, convert_state_to_cpu, 
+    reward, action, action_ids, action_delay_buffer,
+    A, B, C, D, state_parameters, y)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -334,7 +348,6 @@ function (env::SimEnv)(action)
 
     env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
     env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
-    
 
     env.action = env.prepare_action(env)
     
@@ -373,6 +386,11 @@ function (env::SimEnv)(action)
     env.reward = env.reward_function(env)
 
     env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
+
+    # calcultaing the inductor voltages and capacitor currents
+
+    env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action)) ) .* (env.state_parameters)
+
 end
 
 function get_vDC_PV(I)

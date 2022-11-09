@@ -111,7 +111,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 2.5 # length in km
+l = 0.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -145,8 +145,8 @@ source["vdc"] = 800
 source["fltr"] = "LCL"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
-source["v_pu_set"] = 1.0
-source["mode"] = 5
+source["v_pu_set"] = 1.02
+source["mode"] = 1
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -158,10 +158,10 @@ source = Dict()
 source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LCL"
-source["p_set"] = 50e3
+source["p_set"] = -20e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
-source["mode"] = 5
+source["mode"] = 4
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -242,24 +242,32 @@ ma = MultiAgentGridController(Multi_Agents, action_ids)
 agentname = "agent"
 
 #_______________________________________________________________________________
-#%% Starting time simulation
+#%% Setting up data hooks
 
 #= plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c",
                 "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
                 "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
                 "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
-plt_state_ids = []               
-plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
+plt_state_ids = ["cable1_i_L_a"]               
+plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
 collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2],
-save_best_NNA = true, collect_reference = false, plot_rewards = false)
+save_best_NNA = false, collect_reference = false, plot_rewards = false)
+
+#_______________________________________________________________________________
+# Starting time simulation
 
 RLBase.run(ma, env, StopAfterEpisode(1), hook);
 
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(; hook = hook, actions_to_plot = [], episode = 1, 
+plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = 1, 
 pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2])
+#plot_hook_results(; hook = hook, episode = 1, vrms_to_plot = [1 2], states_to_plot = [], actions_to_plot = [])
+#= plot_hook_results(; hook = hook, 
+states_to_plot = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_i_C_filt_a", 
+"cable1_i_L_a", "source1_v_C_cables_a"], 
+actions_to_plot = [], episode = 1) =#
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

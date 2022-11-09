@@ -2,6 +2,8 @@ using Plots
 
 include("Complexity.jl")
 
+print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
+
 #_______________________________________________________________________________
 # Parameters - Time simulation
 
@@ -28,7 +30,7 @@ dim = 2 # dimensions of Poincare section
 N = convert(Int64, floor(t_final/μ_s)) + 1
 
 #Driven_Duffing!
-u0 = [1.0, 0.0, 0.0] # initial conditions
+u0 = [-1.0, -0.3, 0.0] # initial conditions
 tspan = (0.0, t_final)
 
 #Parameters
@@ -95,3 +97,5 @@ traj = plot(Deus.x[1, :], Deus.x[2, :],
             markerstrokewidth = 0,
             legend = false)
 display(traj)
+
+print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

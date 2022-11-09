@@ -6,7 +6,7 @@ mutable struct dare_setup
     hook
 end
 
-function create_setup(;num_sources = 0, num_loads = 0, CM = nothing, parameters = nothing, 
+function create_setup_2(;num_sources = 0, num_loads = 0, CM = nothing, parameters = nothing, 
                         t_end = 0.5, env_cuda = false, agent_cuda = false, hook = nothing)
 
     #-------------------------------------------------------------------------------

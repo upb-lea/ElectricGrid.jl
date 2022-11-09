@@ -64,7 +64,9 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     for source in hook.collect_sources
         para = env.nc.parameters["source"][source]
         indices = get_source_state_indices(env.nc,source)
+
         for id in indices["source$source"]["state_indices"]
+
             if !(env.state_ids[id] in hook.collect_state_ids)
                 push!(hook.collect_state_ids,env.state_ids[id])
                 if occursin("_L1", env.state_ids[id])
@@ -82,6 +84,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                 end
             end
         end
+
         for id in indices["source$source"]["action_indices"]
             if !(env.action_ids[id] in hook.collect_action_ids)
                 push!(hook.collect_action_ids,env.action_ids[id])
@@ -135,7 +138,6 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
         end
     end
 
-    #print(hook.extra_state_names)
     hook.A,hook.B ,_ ,_ = get_sys(env.nc)
     hook.collect_state_paras = get_state_paras(env.nc)
 
@@ -164,6 +166,10 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
+
+    if length(hook.policy_names) != length(agent.agents)
+        hook.policy_names = [s for s in keys(agent.agents)]
+    end
 
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
@@ -273,9 +279,8 @@ end
 
 function (hook::DataHook)(::PostActStage, agent, env)
 
-
     states_x = Vector( env.x )
-    opstates=(hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
+    opstates = (hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
     extra_state_cntr= 1
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
