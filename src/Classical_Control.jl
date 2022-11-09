@@ -733,7 +733,7 @@ function Source_Interface(env, Animo, name = nothing)
             Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.V_cable_loc[:, ns]]
         end
 
-        Source.p_q_filt[ns, :] =  p_q_theory(Source.V_filt_poc[ns, :, end], Source.I_filt_poc[ns, :, end])
+        Source.p_q_filt[ns, :] =  p_q_theory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :], Source.I_filt_inv[ns, :, end])
         
         #= if env.t > 0.12 && env.t < 0.12 + 2*Source.ts && ns == 1
             println()
@@ -859,7 +859,7 @@ function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
     else
 
         PQ_Control(pq0_ref = [0.0; 0.0; 0.0], Source, num_source, θ)
-        #Source.I_ref_dq0[num_source, :] = [0.0; 0.0; 0.0]
+        Source.I_ref_dq0[num_source, :] = [0.0; 0.0; 0.0]
         Current_Controller(Source, num_source, θ, ω)
     end
 
@@ -883,7 +883,7 @@ function PV_Control_Mode(Source::Classical_Controls, num_source, pq0)
     else
 
         PQ_Control(pq0_ref = [0.0; 0.0; 0.0], Source, num_source, θ)
-        #Source.I_ref_dq0[num_source, :] = [0.0; 0.0; 0.0]
+        Source.I_ref_dq0[num_source, :] = [0.0; 0.0; 0.0]
         Current_Controller(Source, num_source, θ, ω)
     end
 
@@ -1128,8 +1128,8 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
         pq0_ref = pq0_ref.*(Source.S[num_source]/norm(pq0_ref))
     end =#
 
-    #V_αβγ = Clarke_Transform(Source.V_filt_poc[num_source, :, end])
-    #I_αβγ = Clarke_Transform(Source.I_filt_poc[num_source, :, end])
+    #= V_αβγ = Clarke_Transform(Source.V_filt_poc[num_source, :, end])
+    I_αβγ = Clarke_Transform(Source.I_filt_poc[num_source, :, end]) =#
     V_αβγ = Clarke_Transform((Source.Vdc[num_source]/2)*Source.Vd_abc_new[num_source, :])
     I_αβγ = Clarke_Transform(Source.I_filt_inv[num_source, :, end])
 
@@ -1165,7 +1165,7 @@ function PV_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[
     Vg = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[num_source, :, end], 0)) #peak
 
     Kp = Source.V_kp[num_source]
-    Ki = 250*Source.V_ki[num_source]
+    Ki = Source.V_ki[num_source]
 
     V_err = Source.V_err[num_source, :, 1]
     V_err_t = Source.V_err_t[num_source, 1]
@@ -1177,9 +1177,6 @@ function PV_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[
 
     pq0_ref[2] = q_ref[1]
     Source.V_err_t[num_source, 1] = V_err_t[1]
-
-    #= Kp = Source.Vrms[num_source]*Source.ΔEmax/Source.Q[num_source]
-    pq0_ref[2] = Source.p_q_filt[num_source, 1] + V_err_new*Kp =#
 
     return pq0_ref
 end

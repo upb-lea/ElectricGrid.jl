@@ -167,8 +167,8 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
             xanchor="right",
             orientation="h"
         ),
-        width = 1000,
-        height = 650,
+        width = 800,
+        height = 550,
         margin=attr(l=100, r=80, b=80, t=100, pad=10)
     )
     

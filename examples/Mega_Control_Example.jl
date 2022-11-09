@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.5 #time in seconds, total simulation run time
+t_final = 1.5 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -111,7 +111,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 0.5 # length in km
+l = 2.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -145,8 +145,8 @@ source["vdc"] = 800
 source["fltr"] = "LCL"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
-source["v_pu_set"] = 1.02
-source["mode"] = 1
+source["v_pu_set"] = 1.0
+source["mode"] = 7
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -158,10 +158,10 @@ source = Dict()
 source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LCL"
-source["p_set"] = -20e3
+source["p_set"] = 20e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
-source["mode"] = 4
+source["mode"] = 3
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
