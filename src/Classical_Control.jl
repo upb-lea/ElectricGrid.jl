@@ -127,9 +127,11 @@ mutable struct Classical_Controls
     θ_droop::Matrix{Float64}
 
     #---------------------------------------------------------------------------
-    # PQ Mode
+    # PQ Mode (and PV Mode)
 
     pq0_set::Matrix{Float64}
+    V_pre_dq0::Array{Float64} # V_dq0 is the filtered value of this
+    V_dq0_inv::Matrix{Float64}  # V_dq0 filtered
 
     #---------------------------------------------------------------------------
     # (Self-)Synchronverter Mode
@@ -180,7 +182,7 @@ mutable struct Classical_Controls
         I_lim::Matrix{Float64},
         Δfmax::Float64, ΔEmax::Float64, τv::Vector{Float64}, τf::Vector{Float64},
         D::Matrix{Float64}, ω_droop::Array{Float64}, θ_droop::Matrix{Float64},
-        pq0_set::Matrix{Float64},
+        pq0_set::Matrix{Float64}, V_pre_dq0::Array{Float64}, V_dq0_inv::Matrix{Float64},
         J_sync::Vector{Float64}, K_sync::Vector{Float64}, ΔT_t::Vector{Float64},
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Vector{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Vector{Float64},
@@ -217,7 +219,7 @@ mutable struct Classical_Controls
         I_lim,
         Δfmax, ΔEmax, τv, τf,
         D, ω_droop, θ_droop,
-        pq0_set,
+        pq0_set, V_pre_dq0, V_dq0_inv,
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
@@ -357,9 +359,9 @@ mutable struct Classical_Controls
 
         Gi_cl = Array{TransferFunction, 1}(undef, num_sources)
 
-        I_dq0 = Array{Float64, 2}(undef, num_sources, phases)
+        I_dq0 = Array{Float64, 2}(undef, num_sources, 3)
         I_dq0 = fill!(I_dq0, 0)
-        I_ref_dq0 = Array{Float64, 2}(undef, num_sources, phases)
+        I_ref_dq0 = Array{Float64, 2}(undef, num_sources, 3)
         I_ref_dq0 = fill!(I_ref_dq0, 0)
         I_ref = Array{Float64, 2}(undef, num_sources, phases)
         I_ref = fill!(I_ref, 0)
@@ -393,9 +395,9 @@ mutable struct Classical_Controls
 
         Gv_cl = Array{TransferFunction, 1}(undef, num_sources)
 
-        V_dq0 = Array{Float64, 2}(undef, num_sources, phases)
+        V_dq0 = Array{Float64, 2}(undef, num_sources, 3)
         V_dq0 = fill!(V_dq0, 0)
-        V_ref_dq0 = Array{Float64, 2}(undef, num_sources, phases)
+        V_ref_dq0 = Array{Float64, 2}(undef, num_sources, 3)
         V_ref_dq0 = fill!(V_ref_dq0, 0)
 
         V_ref = Array{Float64, 2}(undef, num_sources, phases)
@@ -445,6 +447,12 @@ mutable struct Classical_Controls
 
         pq0_set = Array{Float64, 2}(undef, num_sources, 3) # real, imaginary, and zero power set points
         pq0_set = fill!(pq0_set, 0)
+
+        V_pre_dq0 = Array{Float64, 3}(undef, num_sources, 3, 3) # 3 for dq0, and 3 for history
+        V_pre_dq0 = fill!(V_pre_dq0, 0)
+
+        V_dq0_inv = Array{Float64, 2}(undef, num_sources, 3)
+        V_dq0_inv = fill!(V_dq0_inv, 0)
 
         #---------------------------------------------------------------------------
         # Synchronverter Mode
@@ -507,7 +515,7 @@ mutable struct Classical_Controls
         I_lim,
         Δfmax, ΔEmax, τv, τf,
         D, ω_droop, θ_droop,
-        pq0_set,
+        pq0_set, V_pre_dq0, V_dq0_inv,
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
@@ -725,7 +733,7 @@ function Source_Interface(env, Animo, name = nothing)
         elseif Source.filter_type[ns] == "LC"
 
             Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]] # cable
-            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.V_cap_loc[:, ns]] .- env.y[Source.V_cable_loc[:, ns]]
+            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] #.+ env.y[Source.V_cap_loc[:, ns]]# .- env.y[Source.V_cable_loc[:, ns]]
         
         elseif Source.filter_type[ns] == "L"
 
@@ -843,12 +851,18 @@ end
 
 function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
 
+    if norm(pq0) > Source.S[num_source]
+        pq0 = pq0.*(Source.S[num_source]/norm(pq0))
+    end
+
     Phase_Locked_Loop_3ph(Source, num_source)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 1)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 2)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 3)
     θ = Source.θpll[num_source, 1, end]
     ω = 2π*Source.fpll[num_source, 1, end]
+
+    Filtering(Source, num_source, θ)
 
     if Source.steps*Source.ts > 4/Source.fsys
 
@@ -874,6 +888,8 @@ function PV_Control_Mode(Source::Classical_Controls, num_source, pq0)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 3)
     θ = Source.θpll[num_source, 1, end] # phase a
     ω = 2π*Source.fpll[num_source, 1, end]
+
+    Filtering(Source, num_source, θ)
 
     if Source.steps*Source.ts > 4/Source.fsys
 
@@ -1124,37 +1140,28 @@ end
 
 function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
 
-    #= if norm(pq0_ref) > Source.S[num_source]
-        pq0_ref = pq0_ref.*(Source.S[num_source]/norm(pq0_ref))
-    end =#
-
-    #= V_αβγ = Clarke_Transform(Source.V_filt_poc[num_source, :, end])
-    I_αβγ = Clarke_Transform(Source.I_filt_poc[num_source, :, end]) =#
-    V_αβγ = Clarke_Transform((Source.Vdc[num_source]/2)*Source.Vd_abc_new[num_source, :])
-    I_αβγ = Clarke_Transform(Source.I_filt_inv[num_source, :, end])
-
     #-------------------------------------------------------------
 
+    V_αβγ = Inv_Park_Transform(Source.V_dq0_inv[num_source, :], θ)
     I_αβγ_ref = Inv_p_q_v(V_αβγ, pq0_ref)
-    Source.I_ref_dq0[num_source, :] = Park_Transform(I_αβγ_ref, θ) #maybe add current through capacitor?
+    Source.I_ref_dq0[num_source, :] = Park_Transform(I_αβγ_ref, θ)
 
     #-------------------------------------------------------------
+    I_αβγ = Clarke_Transform(Source.I_filt_inv[num_source, :, end])
 
     V_αβγ_ref = Inv_p_q_i(I_αβγ, pq0_ref)
 
     V_dq0_ref = Park_Transform(V_αβγ_ref, θ)
-    V_dq0 = Park_Transform(V_αβγ, θ)
 
     if sqrt(2/3)*norm(V_dq0_ref) > Source.v_max[num_source]
         V_dq0_ref = V_dq0_ref.*((Source.v_max[num_source])/(sqrt(2/3)*norm(V_dq0_ref) ))
     end
 
-    #-------------------------------------------------------------
-
     Source.V_ref[num_source, :] = Inv_DQ0_transform(V_dq0_ref, θ)
 
     Source.V_ref_dq0[num_source, :] = V_dq0_ref
-    Source.V_dq0[num_source, :] = V_dq0
+
+    #-------------------------------------------------------------
 
     return nothing
 end
@@ -1162,10 +1169,10 @@ end
 function PV_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
     
     Vn = sqrt(2)*Source.V_pu_set[num_source, 1]*Source.Vrms[num_source] #peak
-    Vg = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[num_source, :, end], 0)) #peak
+    Vg = sqrt(2/3)*norm(Source.V_dq0_inv[num_source, :]) #peak
 
     Kp = Source.V_kp[num_source]
-    Ki = Source.V_ki[num_source]
+    Ki = 150*Source.V_ki[num_source]
 
     V_err = Source.V_err[num_source, :, 1]
     V_err_t = Source.V_err_t[num_source, 1]
@@ -1344,13 +1351,10 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     PI_Controller(V_err_new, V_err, V_err_t, Kp, Ki, Source.ts)
 
     # cross-coupling / feedforward - need to add capacitance of cable
-    if Source.filter_type[num_source] == "LCL"
-
-        Source.I_lim[num_source, 1] = Source.I_lim[num_source, 1] + I_dq0_poc[1] 
-        - Source.Cf[num_source]*ω*V_dq0[2] 
-        Source.I_lim[num_source, 2] = Source.I_lim[num_source, 2] + I_dq0_poc[2] 
-        + Source.Cf[num_source]*ω*V_dq0[1] 
-    end
+    Source.I_lim[num_source, 1] = Source.I_lim[num_source, 1] + I_dq0_poc[1] 
+    - Source.Cf[num_source]*ω*V_dq0[2] 
+    Source.I_lim[num_source, 2] = Source.I_lim[num_source, 2] + I_dq0_poc[2] 
+    + Source.Cf[num_source]*ω*V_dq0[1] 
 
     # ---- Limiting Output (Saturation)
     Ip_ref = sqrt(2/3)*norm(Source.I_lim[num_source,:]) # peak set point
@@ -1531,15 +1535,13 @@ end
 
 function First_Order_LPF(fc, x, y, μ)
 
-    # 2nd Order Low Pass Butterworth Filter
+    k = size(x,2)
 
-    k = length(x)
-
-    # Zero Padding
+    #= # Zero Padding
     if k < 2
         x = [0 x]
         k = 2
-    end
+    end =#
 
     #apply pre-warping transformation
     ωa = (2/μ)*tan(fc*2π*μ/2)
@@ -1552,7 +1554,11 @@ function First_Order_LPF(fc, x, y, μ)
     α = ωd/(ωd + 1)
     β = (ωd - 1)/(ωd + 1)
 
-    y_new = -β*y + α*x[k] + α*x[k-1]
+    if size(x, 1) == 1
+        y_new = -β*y + α*x[k] + α*x[k-1]
+    else
+        y_new = -β*y .+ α*x[:, k] .+ α*x[:, k-1]
+    end
 
     return y_new
 end
@@ -1570,6 +1576,21 @@ function Third_Order_Integrator(y_i, μ, u)
     end
 
     return y_next
+end
+
+function Filtering(Source::Classical_Controls, num_source, θ)
+
+    V_inv = (Source.Vdc[num_source]/2)*Source.Vd_abc_new[num_source, :]
+
+    Source.V_pre_dq0[num_source, :, 1:end-1] = Source.V_pre_dq0[num_source, :, 2:end]
+    Source.V_pre_dq0[num_source, :, end] = DQ0_transform(V_inv, θ)
+
+    Source.V_dq0_inv[num_source, :] = First_Order_LPF(500, Source.V_pre_dq0[num_source, :, :], 
+    Source.V_dq0_inv[num_source, :], Source.ts)
+
+    #Source.V_dq0[num_source, :] = DQ0_transform(V_inv, θ)
+
+    return nothing
 end
 
 #-------------------------------------------------------------------------------
@@ -1859,6 +1880,8 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
     Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
 
     e = 1
+
+    Source.fsys = env.nc.parameters["grid"]["f_grid"]
 
     for ns in source_indices
 

@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 1.5 #time in seconds, total simulation run time
+t_final = 0.5 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -142,7 +142,7 @@ source_list = []
 
 source["pwr"] = 200e3
 source["vdc"] = 800
-source["fltr"] = "LCL"
+source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
@@ -155,13 +155,13 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 200e3
+source["pwr"] = 100e3
 source["vdc"] = 800
-source["fltr"] = "LCL"
-source["p_set"] = 20e3
+source["fltr"] = "LC"
+source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
-source["mode"] = 3
+source["mode"] = 4
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -248,10 +248,10 @@ agentname = "agent"
                 "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
                 "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
                 "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
-plt_state_ids = ["cable1_i_L_a"]               
+plt_state_ids = []               
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
-collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2],
+collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2],
 save_best_NNA = false, collect_reference = false, plot_rewards = false)
 
 #_______________________________________________________________________________
@@ -263,7 +263,7 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 # Plotting
 
 plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = 1, 
-pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2])
+pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [])
 #plot_hook_results(; hook = hook, episode = 1, vrms_to_plot = [1 2], states_to_plot = [], actions_to_plot = [])
 #= plot_hook_results(; hook = hook, 
 states_to_plot = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_i_C_filt_a", 

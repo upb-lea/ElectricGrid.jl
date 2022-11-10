@@ -41,7 +41,7 @@ mutable struct SimEnv <: AbstractEnv
     C
     D
     state_parameters
-    y
+    y #holds all of the inductor voltages and capacitor currents
 end
 
 function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
