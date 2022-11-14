@@ -134,6 +134,7 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
 setup = create_setup_2(parameters = parameters, CM = CM)
 
+run(setup, 1)
 #_______________________________________________________________________________
 # Plotting
 
