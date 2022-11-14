@@ -8,7 +8,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 # Parameters - Time simulation
 
 ω = 1
-t_final = 20e3*2π/ω
+t_final = 10e3*2π/ω
 μ_s = 2π/ω # time step in s
 
 #_______________________________________________________________________________

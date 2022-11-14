@@ -99,7 +99,7 @@ fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
         -1. -2. -3. 0.] =#
 
 CM = [ 0. 0. 1.
-        0. 0. 2
+        0. 0. 2.
         -1. -2. 0.]
 
 #= CM = [0. 1.
@@ -143,8 +143,8 @@ source_list = []
 source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LC"
-source["p_set"] = 50e3
-source["q_set"] = 10e3
+source["p_set"] = 50e3 #50 kilo Watts
+source["q_set"] = 10e3 # 10 kilo Vars
 source["v_pu_set"] = 1.0
 source["mode"] = 7
 source["control_type"] = "classic"
@@ -155,13 +155,13 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 100e3
+source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
-source["mode"] = 4
+source["mode"] = 7
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -262,7 +262,7 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = 1, 
+plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c"], actions_to_plot = [], episode = 1, 
 pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [])
 #plot_hook_results(; hook = hook, episode = 1, vrms_to_plot = [1 2], states_to_plot = [], actions_to_plot = [])
 #= plot_hook_results(; hook = hook, 

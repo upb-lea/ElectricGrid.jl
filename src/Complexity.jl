@@ -161,7 +161,7 @@ mutable struct Parse_Tree
         new(Nodes, N, D, L, Cyls, C_vols, reps, H, m)
     end
 
-    function Parse_Tree(N, D, m)
+    function Parse_Tree(N, D, m, H)
 
         Nodes = Array{Node, 1}(undef, 0)
         Nodes = [Nodes; Node(-1, 0)] # creating the root node
@@ -174,7 +174,6 @@ mutable struct Parse_Tree
         C_vols = Vector{Float64}(undef, 0)
 
         reps = Matrix{Float64}(undef, 0, 2)
-        H = 0.0
 
         Parse_Tree(Nodes, N, D, L, Cyls, C_vols, reps, H, m)
     end
@@ -385,7 +384,7 @@ mutable struct ϵ_Machine
         # Stochastic transitions on a Multigraph
         Ts = Vector{Matrix{Float64}}(undef, 0)
         C_states = Array{Int64, 2}(undef, 0, 4)
-        Tree = Parse_Tree(N, D, Int(floor(D/2)))
+        Tree = Parse_Tree(N, D)
         start_state = 0
         Dang_States = Array{Int64, 1}(undef, 0)
         IG = 0.0
@@ -559,15 +558,15 @@ function Dimensioning(Deus::ϵ_Machine, s)
     return x
 end
 
-function Sampling(Deus::ϵ_Machine, x, μ_s)
+function Sampling(Deus::ϵ_Machine, μ_s)
 
-    for i in axes(x, 2)
+    for i in axes(Deus.x, 2)
 
         if i%round(Deus.μ_m/μ_s) == 0
 
             Deus.k = Deus.k + 1
   
-            #Deus.s[Deus.k], _ = Partitioning(Deus, x[:, i])
+            #Deus.s[Deus.k], _ = Partitioning(Deus, Deus.x[:, i])
             #Deus.x_m[:, Deus.k] = Dimensioning(Deus, Deus.s[Deus.k])
 
             rnd = rand()
@@ -665,11 +664,9 @@ function add_Node(Tree::Parse_Tree, parent, s)
     return new_node
 end
 
-function Cylinder_Volumes(Deus::ϵ_Machine)
+function Cylinder_Volumes(Deus::ϵ_Machine, m)
 
-    Cyls = Deus.Tree.C
-
-    num_cyl = length(Cyls)
+    num_cyl = length(Deus.Tree.Cyls)
 
     lib = QHull.Library()
 
@@ -677,21 +674,22 @@ function Cylinder_Volumes(Deus::ϵ_Machine)
 
     for i in 1:num_cyl
 
-        if size(Cyls[i], 1) == 1 # this is a point
+        if size(Deus.Tree.Cyls[i], 1) == 1 # this is a point
 
             Deus.Tree.C_vols = [Deus.Tree.C_vols; 0.0]
     
-        elseif size(Cyls[i], 2) == 1 # these are scalar values
+        elseif size(Deus.x, 1) == 1 # these are scalar values
 
             Deus.Tree.C_vols = [Deus.Tree.C_vols; (maximum(Cyls[i]) - minimum(Cyls[i]))]
 
-        elseif size(Cyls[i], 1) == 2 # these is a line
+        elseif size(Deus.Tree.Cyls[i], 1) == 2 # these is a line
 
-            Deus.Tree.C_vols = [Deus.Tree.C_vols; norm(Cyls[i][1, :] .- Cyls[i][2, :])]
+            Deus.Tree.C_vols = [Deus.Tree.C_vols; 
+            norm(Deus.x[:, m + Deus.Tree.Cyls[i][1]] .- Deus.x[:, m + Deus.Tree.Cyls[i][2]])]
 
-        elseif size(Cyls[i], 1) > 2
+        elseif size(Deus.Tree.Cyls[i], 1) > 2
 
-            p = polyhedron(vrep(Cyls[i]) , lib)
+            p = polyhedron(vrep(Deus.x[:, m .+ Deus.Tree.Cyls[i]]) , lib)
             removevredundancy!(p)
             Deus.Tree.C_vols = [Deus.Tree.C_vols; p.volume]
         end
@@ -702,55 +700,123 @@ function Cylinder_Volumes(Deus::ϵ_Machine)
         end
     end
 
-    println(max_C_vol)
-
-    return nothing
+    return max_C_vol
 end
 
 function Symbolic_Shadowing(Deus::ϵ_Machine)
 
-    m = Deus.Tree.m
-    num_cyl = length(Deus.Tree.Cyls)
+    max_iter = 20
+    D_max = Deus.Tree.D
 
-    Deus.Tree.reps = Matrix{Float64}(undef, num_cyl, length(Deus.x[:, 1]))
-    Deus.Tree.H = 0
+    D = 4 # initial string/cylinder length
+    m_start = 2
 
-    s_new = Array{Int64, 1}(undef, Deus.k)
+    iter = 1
+        
+    m_opt = m_start
+    H_min = 0.0
 
-    for i in 1:num_cyl
+    count = Vector{Int64}(undef, 3)
 
-        Deus.Tree.reps[i, :] = sum(Deus.x[:, m .+ Deus.Tree.Cyls[i]], dims = 2)/length(Deus.Tree.Cyls[i])
-    end
+    while iter <= max_iter
+  
+        Deus.Tree = Parse_Tree(N, D, m_opt, H_min) # initialising an empty tree
 
-    count_s = 0
-
-    for i in 1:Deus.k
-
-        _, min_d = findmin(norm.(eachrow(transpose(Deus.x[:, i]) .- Deus.Tree.reps[:, :])))
-
-        if Deus.s[i] != Deus.s[Deus.Tree.Cyls[min_d][1] + m]
-            count_s = count_s + 1 #the new symbol sequence is different from the first
+        for i in 1:Deus.k - Deus.Tree.D + 1
+            add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], i)
         end
 
-        s_new[i] = Deus.s[Deus.Tree.Cyls[min_d][1] + m]
+        #= println("iter = ", iter)
+        println("D = ", D) =#
 
-    end
+        #_______________________________________________________________________________
 
-    if count_s != 0
-        Deus.s = s_new
-    end
+        num_cyl = length(Deus.Tree.Cyls)
+        Deus.Tree.reps = Matrix{Float64}(undef, num_cyl, length(Deus.x[:, 1]))
 
-    for i in 1:num_cyl
-        for j in eachindex(Deus.Tree.Cyls[i])
+        s_new = Array{Int64, 1}(undef, Deus.k)
+        reps_new = Matrix{Float64}(undef, num_cyl, length(Deus.x[:, 1]))
 
-            Deus.Tree.H = Deus.Tree.H + (norm(Deus.Tree.reps[i, :] 
-            .- transpose(Deus.x[:, m .+ Deus.Tree.Cyls[i][j]])))^2
+        for m in m_start:2#Deus.Tree.L
+
+            #_______________________________________________________________________________
+            # Representatives and Calculating the Expected/mean Squared Error
+
+            H = 0.0
+
+            for i in 1:num_cyl
+
+                reps_new[i, :] = sum(Deus.x[:, m .+ Deus.Tree.Cyls[i]], dims = 2)/length(Deus.Tree.Cyls[i])
+
+                for j in eachindex(Deus.Tree.Cyls[i])
+
+                    H = H + (norm(Deus.x[:, m + Deus.Tree.Cyls[i][j]] .- reps_new[i, :]))^2
+                end
+            end
+
+            H = H/Deus.k
+
+            # Saving the best results
+            if (m == m_start && iter == 1) || H < Deus.Tree.H
+
+                Deus.Tree.H = H
+                Deus.Tree.m = m
+                Deus.Tree.reps = reps_new
+                m_opt = m
+                H_min = H
+
+            elseif m == Deus.Tree.m
+
+                Deus.Tree.H = H
+                Deus.Tree.reps = reps_new
+                H_min = H
+            end
         end
+
+        #= println("Mean squared error = ", Deus.Tree.H)
+        println("Center point = ", Deus.Tree.m) =#
+
+        #_______________________________________________________________________________
+        # Now that the optimal parameters have been found, assign the new symbols
+
+        count[1:2] = count[2:3]
+        count[end] = 0
+
+        for i in 1:Deus.k
+
+            _, min_d = findmin(norm.(eachrow(transpose(Deus.x[:, i]) .- Deus.Tree.reps[:, :])))
+
+            if Deus.s[i] != Deus.s[Deus.Tree.Cyls[min_d][1] + Deus.Tree.m]
+                count[end] = count[end] + 1 #the new symbol sequence is different from the first
+            end
+
+            s_new[i] = Deus.s[Deus.Tree.Cyls[min_d][1] + Deus.Tree.m]
+        end
+
+        if count[end] != 0
+            Deus.s = s_new
+        end
+
+        #= println("count = ", count[end])
+        println() =#
+
+        if  D != D_max && (count[end] == 0 || iter == max_iter)
+
+            D = D + 1
+            iter = 0
+
+        elseif count[end] == 0 || all(count[1] .== count) # if it starts cycling
+            break
+        end
+
+        iter += 1
     end
+    #----------------------------------------------------------
 
-    Deus.Tree.H = Deus.Tree.H/Deus.k
+    println("Mean squared error = ", Deus.Tree.H)
+    println("count = ", count[end])
 
-    return count_s
+    return nothing
 end
 
 function Tree_Isomorphism(Deus::ϵ_Machine; Ancest::Vector{Int64} = [1], d = 0)
@@ -1942,42 +2008,9 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
     Deus.x = x_in
 
-    Sampling(Deus, x_in, μ_s)
+    Sampling(Deus, μ_s)
 
-    max_iter = 30
-    D_max = Deus.Tree.D
-
-    D = 4 # initial string/cylinder length
-
-    count_s = 0
-    iter = 1
-    while iter <= max_iter
-  
-        m = 2#Int(floor(D/2))
-        Deus.Tree = Parse_Tree(N, D, m)
-
-        for i in 1:Deus.k - Deus.Tree.D + 1
-            add_Nodes(Deus, Deus.s[i : (i + Deus.Tree.D - 1)], i)
-        end
-
-        println("iter = ", iter)
-        println("D = ", D)
-        count = Symbolic_Shadowing(Deus)
-        println("Mean squared error = ", Deus.Tree.H)
-        println("count = ", count)
-        println()
-
-        if  D != D_max && (count == 0 || iter == max_iter) #(count >= count_s && iter > 5) || 
-            D = D + 1
-            iter = 0
-        elseif count == 0 #|| (count >= count_s && iter > 5)
-            break
-        end
-
-        count_s = count 
-        iter += 1
-    end
-    #----------------------------------------------------------
+    Symbolic_Shadowing(Deus)
 
     #= Tree_Isomorphism(Deus)
 
