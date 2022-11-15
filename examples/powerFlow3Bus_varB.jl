@@ -11,8 +11,8 @@ v1 = 230
 theta1 = 0
 PL_1 = 0
 QL_1 = 0
-#Pmax_1 = 50000
-#Qmax_1 = 50000
+Pmax_1 = 50000
+Qmax_1 = 50000
 
 # Load Bus 2
 PL_2 = 100
@@ -41,32 +41,33 @@ b_variable = 1e9
 
 #B = [[2*B1, -B1, -B1],
 #B = [[B1+b_variable, b_variable, -B1],
- B = [[B1, b_variable, -B1],
-      [b_variable,          2*B1, -B1],
+ B = [[B1+b_variable, -b_variable, -B1],
+      [-b_variable,          2*B1, -B1],
       [-B1,                  -B1, 2*B1]]
 
 model = Model(Ipopt.Optimizer)
 
 # Variables including var_constraints
-@variable(model, 0 <= PG_1 <= 2000)
-@variable(model, QG_1 )
-@variable(model, 200 <= v2 <= 250)
+@variable(model, 99 <= PG_1 <= 101)
+@variable(model, 104 <= QG_1 <= 107)
+@variable(model, 227 <= v2 <= 231)
 @variable(model, -0.1 <= theta2 <= 0.1)
-@variable(model, theta3)
-@variable(model, QG_3 )
-@variable(model, b_var)
+@variable(model, -0.1 <= theta3 <= 0.1)
+@variable(model, 490 <= QG_3 <= 500)
+@variable(model, -2.1 <= b_var <= 100.0)
+
 # non-linear objectives
-@NLobjective(model, Min, abs(PG_1) + abs(QG_1) + abs(v2) + abs(theta2) + abs(theta3) + abs(QG_3))
+@NLobjective(model, Min, abs(PG_1)/200 + abs(QG_1)/500 + abs(v2)/240 + abs(theta2)/0.1 + abs(theta3)/0.1 + abs(QG_3)/700 + abs(b_var)/1.5)
 
 
 @NLconstraint(model, P_Bus1,
     v1 * v1 * (G[1][1] * cos(theta1 - theta1) + (B[1][1] + b_var) * sin(theta1 - theta1)) + 
-    v1 * v2 * (G[1][2] * cos(theta1 - theta2) + b_var * sin(theta1 - theta2)) +
+    v1 * v2 * (G[1][2] * cos(theta1 - theta2) - b_var * sin(theta1 - theta2)) +
     v1 * v3 * (G[1][3] * cos(theta1 - theta3) + B[1][3] * sin(theta1 - theta3)) 
     == PG_1 - PL_1)
 
 @NLconstraint(model, P_Bus2,
-    v2 * v1 * (G[2][1] * cos(theta2 - theta1) + b_var * sin(theta2 - theta1)) + 
+    v2 * v1 * (G[2][1] * cos(theta2 - theta1) - b_var * sin(theta2 - theta1)) + 
     v2 * v2 * (G[2][2] * cos(theta2 - theta2) + B[2][2] * sin(theta2 - theta2)) +
     v2 * v3 * (G[2][3] * cos(theta2 - theta3) + B[2][3] * sin(theta2 - theta3))
     == PG_2 - PL_2)
@@ -79,12 +80,12 @@ model = Model(Ipopt.Optimizer)
 
 @NLconstraint(model, Q_Bus1,
     v1 * v1 * (G[1][1] * sin(theta1 - theta1) - (B[1][1] + b_var) * cos(theta1 - theta1)) + 
-    v1 * v2 * (G[1][2] * sin(theta1 - theta2) - b_var * cos(theta1 - theta2)) +
+    v1 * v2 * (G[1][2] * sin(theta1 - theta2) + b_var * cos(theta1 - theta2)) +
     v1 * v3 * (G[1][3] * sin(theta1 - theta3) - B[1][3] * cos(theta1 - theta3))
     == QG_1 - QL_1)
 
 @NLconstraint(model, Q_Bus2,
-    v2 * v1 * (G[2][1] * sin(theta2 - theta1) - b_var * cos(theta2 - theta1)) + 
+    v2 * v1 * (G[2][1] * sin(theta2 - theta1) + b_var * cos(theta2 - theta1)) + 
     v2 * v2 * (G[2][2] * sin(theta2 - theta2) - B[2][2] * cos(theta2 - theta2)) +
     v2 * v3 * (G[2][3] * sin(theta2 - theta3) - B[2][3] * cos(theta2 - theta3))
     == QG_2 - QL_2)

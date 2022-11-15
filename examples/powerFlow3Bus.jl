@@ -11,8 +11,8 @@ v1 = 230
 theta1 = 0
 PL_1 = 0
 QL_1 = 0
-#Pmax_1 = 50000
-#Qmax_1 = 50000
+Pmax_1 = 50000
+Qmax_1 = 50000
 
 # Load Bus 2
 PL_2 = 100
@@ -21,7 +21,7 @@ QL_2 = 500
 QG_2 = 0
 
 # PV Bus 3 
-v3 = 235
+v3 = 230.3
 PL_3 = 100
 PG_3 = 100
 QL_3 = 100
@@ -44,8 +44,8 @@ B = [[2*B1, -B1, -B1],
 model = Model(Ipopt.Optimizer)
 
 # Variables including var_constraints
-@variable(model, PG_1 )
-@variable(model, QG_1 )
+@variable(model, 0 <= PG_1 <= Pmax_1)
+@variable(model, 0 <= QG_1 <= Qmax_1)
 @variable(model, 100 <= v2 <= 400)
 @variable(model, theta2)
 @variable(model, theta3)
