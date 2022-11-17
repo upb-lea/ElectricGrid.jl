@@ -351,6 +351,9 @@ mutable struct ϵ_Machine
     Ce::Float64 # Transition topological Complexity
     Cμe::Float64 # Statistical Edge Complexity
 
+    Hpe::Vector{Float64} # normalised permutation entropy 
+    hpe::Vector{Float64} # normalised permutation entropy per symbol
+
     function ϵ_Machine(Ts::Vector{Matrix{Float64}}, Tree::Parse_Tree,
         δ::Float64, μ_m::Float64, ϵ::Array{Float64, 1}, x_range::Array{Float64, 2}, k::Int64,
         s::Array{Int64, 1}, x::Array{Float64, 2}, x_m::Array{Float64, 2}, t_m::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64},
@@ -363,7 +366,8 @@ mutable struct ϵ_Machine
         eigval_α::Vector{Vector{ComplexF64}}, r_eigvecs_α::Vector{Matrix{ComplexF64}}, 
         l_eigvecs_α::Vector{Matrix{ComplexF64}}, Dα::Vector{Matrix{ComplexF64}}, pv_α::Vector{Vector{Float64}},
         Zα::Vector{Float64}, Hα::Vector{Float64}, hα::Vector{Float64}, Cα::Vector{Float64}, Cαe::Vector{Float64}, 
-        Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, C::Float64, Cμ::Float64, Ce::Float64, Cμe::Float64)     
+        Cμ_t::Vector{Float64}, h::Float64, hμ::Float64, C::Float64, Cμ::Float64, Ce::Float64, Cμe::Float64,
+        Hpe::Vector{Float64}, hpe::Vector{Float64})     
 
         new(Ts, Tree, δ, μ_m, ϵ, x_range, k,
         s, x, x_m, t_m,
@@ -375,8 +379,8 @@ mutable struct ϵ_Machine
         eigval_α, r_eigvecs_α, l_eigvecs_α, 
         Dα, pv_α,
         Zα, Hα, hα, Cα, Cαe,
-        Cμ_t, h, hμ, C, Cμ, Ce, Cμe)
-
+        Cμ_t, h, hμ, C, Cμ, Ce, Cμe,
+        Hpe, hpe)
     end
 
     function ϵ_Machine(N, D, ϵ, x_range, μ_m, μ_s; δ = 0.05)
@@ -384,7 +388,7 @@ mutable struct ϵ_Machine
         # Stochastic transitions on a Multigraph
         Ts = Vector{Matrix{Float64}}(undef, 0)
         C_states = Array{Int64, 2}(undef, 0, 4)
-        Tree = Parse_Tree(N, D)
+        Tree = Parse_Tree(N, D, 0, 0.0)
         start_state = 0
         Dang_States = Array{Int64, 1}(undef, 0)
         IG = 0.0
@@ -441,6 +445,11 @@ mutable struct ϵ_Machine
         Cαe = Array{Float64, 1}(undef, lα)
         Cαe = fill!(Cαe, 0.0)
 
+        Hpe = Array{Float64, 1}(undef, dim)
+        Hpe = fill!(Hpe, 0.0)
+        hpe = Array{Float64, 1}(undef, dim)
+        hpe = fill!(hpe, 0.0)
+
         ϵ_Machine(Ts, Tree, δ, μ_m, ϵ, x_range, k,
         s, x, x_m, t_m,
         C_states, start_state, Dang_States, IG,
@@ -451,7 +460,8 @@ mutable struct ϵ_Machine
         eigval_α, r_eigvecs_α, l_eigvecs_α, 
         Dα, pv_α,
         Zα, Hα, hα, Cα, Cαe,
-        Cμ_t, h, hμ, C, Cμ, Ce, Cμe)
+        Cμ_t, h, hμ, C, Cμ, Ce, Cμe,
+        Hpe, hpe)
     end
 end
 
@@ -705,7 +715,7 @@ end
 
 function Symbolic_Shadowing(Deus::ϵ_Machine)
 
-    max_iter = 20
+    max_iter = 50
     D_max = Deus.Tree.D
 
     D = 4 # initial string/cylinder length
@@ -813,8 +823,10 @@ function Symbolic_Shadowing(Deus::ϵ_Machine)
     end
     #----------------------------------------------------------
 
-    println("Mean squared error = ", Deus.Tree.H)
-    println("count = ", count[end])
+    println("\n____________________________________________________")
+    println("Symbolic Shadowing\n")
+    println("Mean squared error = ", round(Deus.Tree.H, digits = 3))
+    println("Replacement count = ", round(count[end], digits = 3))
 
     return nothing
 end
@@ -1202,6 +1214,16 @@ function Parametric_Statistical_Mechanics(Deus::ϵ_Machine)
             end
         end    
     end
+
+    println("\n____________________________________________________")
+    println("Statistical Mechanics\n")
+    println("Topological Entropy Rate, h = ", round(Deus.hα[1], digits = 3))
+    println("Metric Entropy Rate, hμ = ", round(Deus.hα[end], digits = 3))
+    println("Topolical Forecasting Entropy, C = ", round(Deus.Cα[1], digits = 3))
+    println("Metric Forecasting Entropy, Cμ = ", round(Deus.Cα[end], digits = 3))
+    println("Topolical Edge Complexity, Ce = ", round(Deus.Cαe[1], digits = 3))
+    println("Metric Edge Complexity, Cμe = ", round(Deus.Cαe[end], digits = 3))
+    println("Periods = ", round(2^(Deus.Hα[end]), digits = 3))
 
     return nothing
 end
@@ -2004,13 +2026,95 @@ function The_Wire(Deus::ϵ_Machine, symbols, ancest, Pr_c, cn)
     return state_ref
 end
 
+function Permutation_Entropy(Deus::ϵ_Machine, D)
+
+    #= Theory:
+        The permutation entropy appears to be very similar to the Lyapunov exponents.
+        Most importantly, it yields meaningful results in the presence of observational 
+        and dynamical noise. Permutation entropy is an appropriate complexity measure for 
+        chaotic time series. In contrast with all known complexity measures, a small noise 
+        does not essentially change the complexity for arbitrary real-world time series. 
+        Since the method is extremely fast and robust, it seems preferable when there are 
+        huge data sets and no time for preprocessing and fine-tuning of parameters. 
+        
+        Another advantage is that the symbol sequence comes naturally from the data, x, 
+        without further model assumptions. Partitions are found by comparison of 
+        neighbouring values of xt (i.e. ordinality). The entropies are calculated for d
+        ifferent embedding dimensions n (alphabet size). For practical purposes, n is 
+        recommended to be chosen between 3 and 7. 
+
+        The lower bound on the permutation entropy is 0 and the upper bound is log(n!). 
+        Hence, we can normalise the upper bound to 1. The lower bound is attained for an 
+        increasing or decreasing sequence of values, and the upper bound for a completely 
+        random system (i.i.d. sequence) wehere all n! possible permutations appear with 
+        the same probability. The time series presents some sort of dynamics when the 
+        normalised entropy is less that 1. 
+
+        It has been shown that for piecewise monotone interval maps, hpe, converges to the 
+        Kolmogorov-Sinai entropy rate with n -> ∞, but this convergence is rather slow.
+    =#
+
+    max_H = log(factorial(D), 2) # upper bound
+    Deus.k = size(Deus.x, 2)
+    divs = Deus.k - D + 1 # divisor
+
+    dims = size(Deus.x, 1) # dimensions of state space
+
+    rolling = Array{Float64, 1}(undef, D)
+    s_pe = Array{Float64, 1}(undef, D)
+
+    for d in 1:dims
+
+        N = divs*D
+        Deus.Tree = Parse_Tree(N, D, 0, 0.0) # initialising an empty tree
+
+        for i in 1:Deus.k 
+
+            rolling[1:end-1] = rolling[2:end]
+
+            if i < Deus.k
+                rolling[end] = Deus.x[d, i + 1] .- Deus.x[d, i]
+            end
+
+            if i >= D 
+
+                s_pe[1] = 0.0
+                s_pe[2] = rolling[1]
+
+                for j in 2:(D-1)
+
+                    s_pe[j+1] = s_pe[j] + rolling[j]
+                end
+
+                #s = sortperm.(eachrow(s_pe))
+                s = sortperm(s_pe) .- 1
+
+                if d == 2
+                    println()
+                    #println("i = ", i)
+                    println("x = ", Deus.x[1, i - D + 1:i])
+                    println("s_pe = ", s_pe)
+                    println("s = ", s)
+                    println("rolls = ", rolling)
+                end
+
+                add_Nodes(Deus, s, i - D + 1)
+            end
+        end
+
+
+    end
+
+    return nothing
+end
+
 function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
     Deus.x = x_in
 
     Sampling(Deus, μ_s)
 
-    Symbolic_Shadowing(Deus)
+    #Symbolic_Shadowing(Deus)
 
     #= Tree_Isomorphism(Deus)
 

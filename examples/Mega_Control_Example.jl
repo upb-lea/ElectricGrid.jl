@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.5 #time in seconds, total simulation run time
+t_final = 0.15 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -111,7 +111,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 2.5 # length in km
+l = 1.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -131,7 +131,7 @@ push!(cable_list, cable, cable)
     3 -> "PQ Control" - grid following controllable source/load (active and reactive Power)
     4 -> "PV Control" - grid following controllable source (active power and voltage magnitude)
 
-    5 -> "Droop Control" - simple grid forming with power balancing
+    5 -> "Droop Control" - simple grid forming with power balancing (i.e. load partitioning)
     6 -> "Full-Synchronverter" - droop control on real and imaginary powers
     7 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
@@ -143,9 +143,10 @@ source_list = []
 source["pwr"] = 200e3
 source["vdc"] = 800
 source["fltr"] = "LC"
-source["p_set"] = 50e3 #50 kilo Watts
-source["q_set"] = 10e3 # 10 kilo Vars
-source["v_pu_set"] = 1.0
+source["p_set"] = 100e3 #Watt
+source["q_set"] = 10e3 #VAr
+source["v_pu_set"] = 1.02 #p.u.
+source["v_δ_set"] = 0 # degrees
 source["mode"] = 7
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
@@ -155,12 +156,12 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 200e3
+source["pwr"] = 100e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
-source["v_pu_set"] = 1.0
+source["v_pu_set"] = 0.98
 source["mode"] = 7
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
@@ -251,7 +252,7 @@ agentname = "agent"
 plt_state_ids = []               
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
-collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2],
+collect_cables = [1 2], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2],
 save_best_NNA = false, collect_reference = false, plot_rewards = false)
 
 #_______________________________________________________________________________
@@ -261,8 +262,13 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 
 #_______________________________________________________________________________
 # Plotting
-
-plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c"], actions_to_plot = [], episode = 1, 
+#= st = ["source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
+"source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c",
+"source1_i_C_filt_a", "source1_i_C_filt_b", "source1_i_C_filt_c",
+"cable1_i_L_a", "cable1_i_L_b", "cable1_i_L_c",
+"source1_v_C_cables_a", "source1_v_C_cables_b", "source1_v_C_cables_c",
+"source1_i_C_cables_a", "source1_i_C_cables_b", "source1_i_C_cables_c"] =#
+plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = 1, 
 pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [])
 #plot_hook_results(; hook = hook, episode = 1, vrms_to_plot = [1 2], states_to_plot = [], actions_to_plot = [])
 #= plot_hook_results(; hook = hook, 

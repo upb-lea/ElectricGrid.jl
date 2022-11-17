@@ -7,8 +7,8 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 
-ω = 1
-t_final = 10e3*2π/ω
+ω = 0.5
+t_final = 15e3*2π/ω
 μ_s = 2π/ω # time step in s
 
 #_______________________________________________________________________________
@@ -35,8 +35,8 @@ tspan = (0.0, t_final)
 
 #Parameters
 #p = [m, δ, α, β, γ, ω]
-p = [1, 0.25, -1, 1, 0.4, ω] #ω = 1
-#p = [1, 0.02, 1, 5, 8, ω] #ω = 0.5
+#p = [1, 0.25, -1, 1, 0.4, ω] #ω = 1
+p = [1, 0.02, 1, 5, 8, ω] #ω = 0.5
 
 prob = ODEProblem(Driven_Duffing!, u0, tspan, p);
 
@@ -90,9 +90,9 @@ for i in 1:Deus.k
 end
 
 
-traj = plot(Deus.x[1, :], Deus.x[2, :], 
+traj = plot(Deus.x[1, 500:end], Deus.x[2, 500:end], 
             seriestype = :scatter,
-            markercolor = colrs,
+            markercolor = colrs[500:end],
             markersize = 1,
             markerstrokewidth = 0,
             legend = false)

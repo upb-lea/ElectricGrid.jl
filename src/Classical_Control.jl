@@ -424,8 +424,8 @@ mutable struct Classical_Controls
             frequency decrease between 3% and 5% (from nominal values)
         =#
 
-        Δfmax = 5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
-        ΔEmax = 0.5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
+        Δfmax = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
+        ΔEmax = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
         
         τv = Array{Float64, 1}(undef, num_sources)
         τv = fill!(τv, 0.002 ) # time constant of the voltage loop # 0.02
@@ -569,10 +569,10 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
             Source.V_cable_loc[:, s]  = findall(contains(s_idx*"_v_C_cable"), state_ids_classic)
             Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
 
-            if Source.filter_type[s] == "LC" # isnothing(findfirst(contains(s_idx*"_i_L2"), state_ids_classic))
+            if Source.filter_type[s] == "LC"
 
                 Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-                Source.I_poc_loc[:, s] = Source.V_cap_loc[:, s] # findall(contains(s_idx*"_i_L1"), state_ids_classic)
+                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_filt"), state_ids)
 
             elseif Source.filter_type[s] == "LCL"
 
@@ -668,6 +668,9 @@ function Classical_Control(Animo, env, name = nothing)
     Source_Interface(env, Animo, name)
     Source = Animo.Source
 
+    ramp = 1
+    t_end = 2/Source.fsys
+
     for s in 1:Source.num_sources
 
         if Source.Source_Modes[s] == "Swing"
@@ -677,24 +680,29 @@ function Classical_Control(Animo, env, name = nothing)
 
             Voltage_Control_Mode(Source, s)
         elseif Source.Source_Modes[s] == "PQ Control"
+
             PQ_Control_Mode(Source, s, Source.pq0_set[s, :])
         elseif Source.Source_Modes[s] == "PV Control"
+
             PV_Control_Mode(Source, s, Source.pq0_set[s, :])
         elseif Source.Source_Modes[s] == "Droop Control"
 
-            Droop_Control_Mode(Source, s)
+            Droop_Control_Mode(Source, s, ramp = ramp, t_end = t_end)
         elseif Source.Source_Modes[s] == "Full-Synchronverter"
-            smode = Source.Modes[Source.Source_Modes[s]] - 5
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
+
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 1, ramp = ramp, t_end = t_end)
         elseif Source.Source_Modes[s] == "Semi-Synchronverter"
-            smode = Source.Modes[Source.Source_Modes[s]] - 5
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = smode)
+
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, ramp = ramp, t_end = t_end)
         elseif Source.Source_Modes[s] == "Not Used 1"
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
+
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, ramp = ramp, t_end = t_end)
         elseif Source.Source_Modes[s] == "Not Used 2"
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
+
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, ramp = ramp, t_end = t_end)
         elseif Source.Source_Modes[s] == "Not Used 3"
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2)
+
+            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, ramp = ramp, t_end = t_end)
         end
     end
 
@@ -710,7 +718,7 @@ function Source_Interface(env, Animo, name = nothing)
 
     Source.steps = env.steps + 1
     ω = 2π*Source.fsys
-    Source.θsys = (Source.θsys + Source.ts*ω)%(2*π)
+    Source.θsys = (Source.θsys + Source.ts*ω)%(2π)
 
     if !isnothing(name)
         state = RLBase.state(env, name)
@@ -733,25 +741,16 @@ function Source_Interface(env, Animo, name = nothing)
         elseif Source.filter_type[ns] == "LC"
 
             Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]] # cable
-            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] #.+ env.y[Source.V_cap_loc[:, ns]]# .- env.y[Source.V_cable_loc[:, ns]]
-        
+            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
+
         elseif Source.filter_type[ns] == "L"
 
             Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]] # cable
-            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.V_cable_loc[:, ns]]
+            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end]
         end
 
         Source.p_q_filt[ns, :] =  p_q_theory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :], Source.I_filt_inv[ns, :, end])
         
-        #= if env.t > 0.12 && env.t < 0.12 + 2*Source.ts && ns == 1
-            println()
-            println("t = ", env.t)
-            println("i_cap_filt = ", env.y[Source.V_cap_loc[1, ns]])
-            println("i_cap_cable = ", env.y[Source.V_cable_loc[1, ns]])
-            println("i_L1 = ", Source.I_filt_inv[ns, 1, end])
-            println("i_poc = ", Source.I_filt_poc[ns, 1, end])
-            println("v_poc = ", Source.V_filt_poc[ns, 1, end])
-        end =#
     end
 
     Animo.Source = Source
@@ -832,10 +831,12 @@ function Droop_Control_Mode(Source::Classical_Controls, num_source; ramp = 0, t_
     pu = Source.V_pu_set[num_source, 1]
 
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end, ramp = ramp)
-    Dout = D_Ramp([2π*Source.Δfmax; Source.ΔEmax], Source.ts, Source.steps, t_end = t_end, ramp = ramp)
+    #=     
+        Dout = D_Ramp([2π*Source.Δfmax; Source.ΔEmax], Source.ts, Source.steps, t_end = t_end, ramp = ramp)
 
-    Source.D[num_source, 1] = Source.fsys*Dout[1]/Source.P[num_source]
-    Source.D[num_source, 2] = Vrms*Dout[2]/Source.Q[num_source]
+        Source.D[num_source, 1] = 2π*Source.fsys*Dout[1]/Source.P[num_source]
+        Source.D[num_source, 2] = Vrms*Dout[2]/Source.Q[num_source] 
+    =#
 
     Droop_Control(Source, num_source, Vrms = Vrms)
     θt = Source.θ_droop[num_source, 1]
@@ -911,14 +912,16 @@ function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [
     pu = Source.V_pu_set[num_source, 1]
 
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end, ramp = ramp)
-    Dout = D_Ramp([2π*Source.Δfmax; Source.ΔEmax], Source.ts, Source.steps, t_end = t_end, ramp = ramp)
+    #= 
+        Dout = D_Ramp([2π*Source.Δfmax; Source.ΔEmax], Source.ts, Source.steps, t_end = t_end, ramp = ramp)
 
-    Source.D[num_source, 1] = Source.S[num_source]/((2π)*(Source.fsys)*Source.fsys*Dout[1])
-    Source.D[num_source, 2] = Source.S[num_source]/(Vrms*sqrt(2)*Dout[2])
+        Source.D[num_source, 1] = Source.S[num_source]/((2π)*(Source.fsys)*Source.fsys*Dout[1])
+        Source.D[num_source, 2] = Source.S[num_source]/(Vrms*sqrt(2)*Dout[2])
 
-    # Synchronverter parameters
-    Source.J_sync[num_source] = Source.τf[num_source]*Source.D[num_source, 1]
-    Source.K_sync[num_source] = Source.τv[num_source]*Source.fsys*2π*Source.D[num_source, 2]
+        # Synchronverter parameters
+        Source.J_sync[num_source] = Source.τf[num_source]*Source.D[num_source, 1] #total mass moment of inertia of the rotating masses, kg*m^2
+        Source.K_sync[num_source] = Source.τv[num_source]*Source.fsys*2π*Source.D[num_source, 2] 
+    =#
 
     Synchronverter_Control(Source, num_source, pq0_ref = pq0_ref, Vrms = Vrms, mode = mode)
     θ_S = Source.θ_sync[num_source]
@@ -1172,7 +1175,7 @@ function PV_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[
     Vg = sqrt(2/3)*norm(Source.V_dq0_inv[num_source, :]) #peak
 
     Kp = Source.V_kp[num_source]
-    Ki = 150*Source.V_ki[num_source]
+    Ki = 250*Source.V_ki[num_source]
 
     V_err = Source.V_err[num_source, :, 1]
     V_err_t = Source.V_err_t[num_source, 1]
@@ -1204,7 +1207,6 @@ function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrm
         allowable voltage and frequency deviations.
     =#
 
-    μ = Source.ts
     ω = Source.ω_droop[num_source, 1, :]
     θ = Source.θ_droop[num_source, 1]
     p_q = Source.p_q_filt[num_source, :]
@@ -1212,7 +1214,7 @@ function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrm
     ω_new = Source.fsys*2*π - p_q[1]*Source.D[num_source, 1]
     Source.ω_droop[num_source, :, end] = [ω_new; ω_new; ω_new]
 
-    Source.θ_droop[num_source, 1] = Third_Order_Integrator(θ, μ, [ω[2:end]; ω_new])%(2*π)
+    Source.θ_droop[num_source, 1] = Third_Order_Integrator(θ, Source.ts, [ω[2:end]; ω_new])%(2*π)
     Source.θ_droop[num_source, 2] = (Source.θ_droop[num_source, 1] - 120*π/180)%(2*π)
     Source.θ_droop[num_source, 3] = (Source.θ_droop[num_source, 1] + 120*π/180)%(2*π)
 
@@ -1904,8 +1906,22 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             Source.Source_Modes[e] = modes[e]
         end
 
+        #Droop (and synchronverter) parameters
         Source.τv[e] = env.nc.parameters["source"][ns]["τv"] # time constant of the voltage loop
         Source.τf[e] = env.nc.parameters["source"][ns]["τf"] # time constant of the frequency loop
+
+        if Source.Source_Modes[e] == "Semi-Synchronverter" || Source.Source_Modes[e] == "Full-Synchronverter"
+
+            Source.D[e, 1] = Source.S[e]/((2π)*(Source.fsys)*Source.fsys*2π*Source.Δfmax)
+            Source.D[e, 2] = Source.S[e]/(Source.Vrms[e]*sqrt(2)*Source.ΔEmax)
+        else
+
+            Source.D[e, 1] = 2π*Source.fsys*2π*Source.Δfmax/Source.P[e]
+            Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.Q[e]
+        end
+
+        Source.J_sync[e] = Source.τf[e]*Source.D[e, 1] #total mass moment of inertia of the rotating masses, kg*m^2
+        Source.K_sync[e] = Source.τv[e]*Source.fsys*2π*Source.D[e, 2]
 
         Source.pq0_set[e, 1] = env.nc.parameters["source"][ns]["p_set"] # W, Real Power
         Source.pq0_set[e, 2] = env.nc.parameters["source"][ns]["q_set"] # VAi, Imaginary Power
