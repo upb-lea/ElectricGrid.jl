@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "MicroGridSimWithRL"
+@quickactivate "dare"
 
 # using PProf, Profile
 # using DifferentialEquations
@@ -122,7 +122,6 @@ function train_ddpg(timer::TimerOutput,
     reset_timer!(to)
     @timeit timer "Overall run" run(agent, env, timer, StopAfterEpisode(No_Episodes), hook)
         
-    
     nothing
 end
 

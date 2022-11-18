@@ -106,7 +106,7 @@ function memory_analysis(to, env_cuda, agent_cuda, num_nodes)
     env = SimEnv(num_sources = num_nodes, num_loads = num_nodes, CM = CM, 
                 # parameters = parameters, 
                 reward_function = reward, 
-                maxsteps=600, 
+                maxsteps=100, 
                 use_gpu=env_cuda)
 
     ns = length(env.sys_d.A[1,:])
@@ -116,157 +116,156 @@ function memory_analysis(to, env_cuda, agent_cuda, num_nodes)
 
     hook = DataHook(save_best_NNA = true)
 
-    println("Hook - Pre Experiment Stage")
-    hookbefore = deepcopy(hook)
-    hook(PRE_EXPERIMENT_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @time hook(PRE_EXPERIMENT_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @timeit to "hook_pre_experiment" hook(PRE_EXPERIMENT_STAGE, agent, env);
-    println(""); println(""); println("");
+    while !is_terminated(env)
+        println("Hook - Pre Experiment Stage")
+        hookbefore = deepcopy(hook)
+        hook(PRE_EXPERIMENT_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @time hook(PRE_EXPERIMENT_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @timeit to "hook_pre_experiment" hook(PRE_EXPERIMENT_STAGE, agent, env);
+        println(""); println(""); println("");
 
 
-    println("Agent - Pre Experiment Stage")
-    agentbefore = deepcopy(agent)
-    agent(PRE_EXPERIMENT_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @time agent(PRE_EXPERIMENT_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @timeit to "agent_pre_experiment" agent(PRE_EXPERIMENT_STAGE, env);
-    println(""); println(""); println("");
+        println("Agent - Pre Experiment Stage")
+        agentbefore = deepcopy(agent)
+        agent(PRE_EXPERIMENT_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @time agent(PRE_EXPERIMENT_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @timeit to "agent_pre_experiment" agent(PRE_EXPERIMENT_STAGE, env);
+        println(""); println(""); println("");
 
 
-    println("Agent - Pre Episode Stage")
-    agentbefore = deepcopy(agent)
-    agent(PRE_EPISODE_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @time agent(PRE_EPISODE_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @timeit to "agent_pre_episode" agent(PRE_EPISODE_STAGE, env);
-    println(""); println(""); println("");
+        println("Agent - Pre Episode Stage")
+        agentbefore = deepcopy(agent)
+        agent(PRE_EPISODE_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @time agent(PRE_EPISODE_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @timeit to "agent_pre_episode" agent(PRE_EPISODE_STAGE, env);
+        println(""); println(""); println("");
 
 
-    println("Hook - Pre Episode Stage")
-    hookbefore = deepcopy(hook)
-    hook(PRE_EPISODE_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @time hook(PRE_EPISODE_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @timeit to "hook_pre_episode" hook(PRE_EPISODE_STAGE, agent, env);
-    println(""); println(""); println("");
+        println("Hook - Pre Episode Stage")
+        hookbefore = deepcopy(hook)
+        hook(PRE_EPISODE_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @time hook(PRE_EPISODE_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @timeit to "hook_pre_episode" hook(PRE_EPISODE_STAGE, agent, env);
+        println(""); println(""); println("");
 
 
-    println("Agent - Get Action")
-    agentbefore = deepcopy(agent)
-    action = agent(env);
-    agent = deepcopy(agentbefore)
-    @time action = agent(env);
-    agent = deepcopy(agentbefore)
-    @timeit to "get_action" action = agent(env);
-    println(""); println(""); println("");
+        println("Agent - Get Action")
+        agentbefore = deepcopy(agent)
+        action = agent(env);
+        agent = deepcopy(agentbefore)
+        @time action = agent(env);
+        agent = deepcopy(agentbefore)
+        @timeit to "get_action" action = agent(env);
+        println(""); println(""); println("");
 
 
-    println("Agent - Pre Action Stage")
-    agentbefore = deepcopy(agent)
-    agent(PRE_ACT_STAGE, env, action);
-    agent = deepcopy(agentbefore)
-    @time agent(PRE_ACT_STAGE, env, action);
-    agent = deepcopy(agentbefore)
-    @timeit to "agent_pre_action" agent(PRE_ACT_STAGE, env, action);
-    println(""); println(""); println("");
+        println("Agent - Pre Action Stage")
+        agentbefore = deepcopy(agent)
+        agent(PRE_ACT_STAGE, env, action);
+        agent = deepcopy(agentbefore)
+        @time agent(PRE_ACT_STAGE, env, action);
+        agent = deepcopy(agentbefore)
+        @timeit to "agent_pre_action" agent(PRE_ACT_STAGE, env, action);
+        println(""); println(""); println("");
 
 
-    println("Hook - Pre Action Stage")
-    hookbefore = deepcopy(hook)
-    hook(PRE_ACT_STAGE, agent, env, action);
-    hook = deepcopy(hookbefore)
-    @time hook(PRE_ACT_STAGE, agent, env, action);
-    hook = deepcopy(hookbefore)
-    @timeit to "hook_pre_action" hook(PRE_ACT_STAGE, agent, env, action);
-    println(""); println(""); println("");
+        println("Hook - Pre Action Stage")
+        hookbefore = deepcopy(hook)
+        hook(PRE_ACT_STAGE, agent, env, action);
+        hook = deepcopy(hookbefore)
+        @time hook(PRE_ACT_STAGE, agent, env, action);
+        hook = deepcopy(hookbefore)
+        @timeit to "hook_pre_action" hook(PRE_ACT_STAGE, agent, env, action);
+        println(""); println(""); println("");
 
 
-    if env_cuda
-        println("Action CuArray Conversion")
-        if action isa Array
-            action = CuArray(action)
-            action = Array(action)
-            @time action = CuArray(action)
-            action = Array(action)
-            @timeit to "action_cuarray_conversion" action = CuArray(action)
-        else
-            action = CuArray([action])
-            action = Float64(Array(action))
-            @time action = CuArray([action])
-            action = Float64(Array(action))
-            @timeit to "action_cuarray_conversion" action = CuArray([action])
+        if env_cuda
+            println("Action CuArray Conversion")
+            if action isa Array
+                action = CuArray(action)
+                action = Array(action)
+                @time action = CuArray(action)
+                action = Array(action)
+                @timeit to "action_cuarray_conversion" action = CuArray(action)
+            else
+                action = CuArray([action])
+                action = Float64(Array(action))
+                @time action = CuArray([action])
+                action = Float64(Array(action))
+                @timeit to "action_cuarray_conversion" action = CuArray([action])
+            end
+            println(""); println(""); println("");
         end
+
+
+        println("Env Calculation")
+        envbefore = deepcopy(env)
+        env(action);
+        env = deepcopy(envbefore)
+        @time env(action);
+        env = deepcopy(envbefore)
+        @timeit to "env_step" env(action);
+        println(""); println(""); println("");
+
+
+        println("Agent - Post Action Stage")
+        agentbefore = deepcopy(agent)
+        agent(POST_ACT_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @time agent(POST_ACT_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @timeit to "agent_post_action" agent(POST_ACT_STAGE, env);
+        println(""); println(""); println("");
+
+
+        println("Hook - Post Action Stage")
+        hookbefore = deepcopy(hook)
+        hook(POST_ACT_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @time hook(POST_ACT_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @timeit to "hook_post_action" hook(POST_ACT_STAGE, agent, env);
+        println(""); println(""); println("");
+
+
+        println("Agent - Post Episode Stage")
+        agentbefore = deepcopy(agent)
+        agent(POST_EPISODE_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @time agent(POST_EPISODE_STAGE, env);
+        agent = deepcopy(agentbefore)
+        @timeit to "agent_post_episode" agent(POST_EPISODE_STAGE, env);
+        println(""); println(""); println("");
+
+
+        println("Hook - Post Episode Stage")
+        hookbefore = deepcopy(hook)
+        hook(POST_EPISODE_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @time hook(POST_EPISODE_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @timeit to "hook_post_episode" hook(POST_EPISODE_STAGE, agent, env);
+        println(""); println(""); println("");
+
+
+        println("Hook - Post Experiment Stage")
+        hookbefore = deepcopy(hook)
+        hook(POST_EXPERIMENT_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @time hook(POST_EXPERIMENT_STAGE, agent, env);
+        hook = deepcopy(hookbefore)
+        @timeit to "hook_post_experiment" hook(POST_EXPERIMENT_STAGE, agent, env);
         println(""); println(""); println("");
     end
-
-
-    println("Env Calculation")
-    envbefore = deepcopy(env)
-    env(action);
-    env = deepcopy(envbefore)
-    @time env(action);
-    env = deepcopy(envbefore)
-    @timeit to "env_step" env(action);
-    println(""); println(""); println("");
-
-
-    println("Agent - Post Action Stage")
-    agentbefore = deepcopy(agent)
-    agent(POST_ACT_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @time agent(POST_ACT_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @timeit to "agent_post_action" agent(POST_ACT_STAGE, env);
-    println(""); println(""); println("");
-
-
-    println("Hook - Post Action Stage")
-    hookbefore = deepcopy(hook)
-    hook(POST_ACT_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @time hook(POST_ACT_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @timeit to "hook_post_action" hook(POST_ACT_STAGE, agent, env);
-    println(""); println(""); println("");
-
-
-    println("Agent - Post Episode Stage")
-    agentbefore = deepcopy(agent)
-    agent(POST_EPISODE_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @time agent(POST_EPISODE_STAGE, env);
-    agent = deepcopy(agentbefore)
-    @timeit to "agent_post_episode" agent(POST_EPISODE_STAGE, env);
-    println(""); println(""); println("");
-
-
-    println("Hook - Post Episode Stage")
-    hookbefore = deepcopy(hook)
-    hook(POST_EPISODE_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @time hook(POST_EPISODE_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @timeit to "hook_post_episode" hook(POST_EPISODE_STAGE, agent, env);
-    println(""); println(""); println("");
-
-
-    println("Hook - Post Experiment Stage")
-    hookbefore = deepcopy(hook)
-    hook(POST_EXPERIMENT_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @time hook(POST_EXPERIMENT_STAGE, agent, env);
-    hook = deepcopy(hookbefore)
-    @timeit to "hook_post_experiment" hook(POST_EXPERIMENT_STAGE, agent, env);
-    println(""); println(""); println("");
 end
-
-
-
 
 
 env_cuda = false
@@ -278,7 +277,8 @@ sections = []
 results_time = DataFrame()
 results_allocated = DataFrame()
 
-nodes = [2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+# nodes = [2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+nodes = [60]
 
 for i = 1:length(nodes)
     reset_timer!(to)
