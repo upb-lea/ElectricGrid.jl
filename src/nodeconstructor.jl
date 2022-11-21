@@ -80,7 +80,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 4 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters))"
+        @assert length(keys(parameters["grid"])) == 6 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -163,6 +163,8 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
+        grid_properties["Δfmax"] = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
+        grid_properties["ΔEmax"] = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
         parameters["grid"] = grid_properties
 
     else
@@ -177,6 +179,12 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         end
         if !haskey(parameters["grid"], "f_grid")
             parameters["grid"]["f_grid"] = 50
+        end
+        if !haskey(parameters["grid"], "Δfmax")
+            parameters["grid"]["Δfmax"] = 0.5/100
+        end
+        if !haskey(parameters["grid"], "ΔEmax")
+            parameters["grid"]["ΔEmax"] = 5/100
         end
     end
 
@@ -216,6 +224,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         end
 
         num_LC_defined = 0
+        num_LCL_defined = 0
         source_type_fixed = 0
 
         for (index, source) in enumerate(parameters["source"])
@@ -281,8 +290,8 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 source["fltr"] = rand(["L", "LC", "LCL"])
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
-                source["fltr"] = "L"
-                println("WARNING: filterType not known! set to L filter, please choose L, LC, or LCL!")
+                source["fltr"] = "LC"
+                println("WARNING: The type of filter chosen is not known! set to the default (LC filter), otherwise please specify L, LC, or LCL!")
             end
             
 
@@ -290,6 +299,9 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 #Capacitor design
                 if source["fltr"] == "LC"
                     num_LC_defined += 1
+                end
+                if source["fltr"] == "LCL"
+                    num_LCL_defined += 1
                 end
                 if !haskey(source, "C")
                     Vorms = parameters["grid"]["v_rms"]*0.95
@@ -397,17 +409,17 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             push!(parameters["source"], _sample_fltr_L(parameters["grid"]))
             end
             # Validierung ob LC vorhanden ist?
-            if num_LC_defined == 0 &&  num_fltr_LC_undef == 0
-                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+            if num_LC_defined == 0 && num_fltr_LC_undef == 0 && num_fltr_LCL_undef == 0 
+                println("WARNING: No LC or LCL filters defined/set random, if wanted please set in parameter dict!")
             end
         else
 
-            if num_LC_defined == 0 
-                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+            if num_LC_defined == 0 && num_LCL_defined == 0 
+                println("WARNING: No LC or LCL filters defined/set random, if wanted please set in parameter dict!")
             end
         end
 
-        source_type_fixed > 0 && println("WARNING: $source_type_fixed sourceType not defined! set to ideal!")
+        source_type_fixed > 0 && println("WARNING: The type of $source_type_fixed source(s) is not defined! set to ideal!")
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     

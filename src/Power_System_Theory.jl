@@ -377,3 +377,48 @@ function Load_Impedance_2(S, pf, vrms; fsys = 50)
 
     return R, L_C, X, Z
 end
+
+function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+
+    #=
+    The filtering capacitors C should be chosen such that the resonant frequency
+    1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
+    frequency of the gird voltage, and ωs is the angular switching frequency
+    used to turn on/off the switches)
+    =#
+    Ir = ΔILf_ILf
+    Vr = ΔVCf_VCf
+
+    #____________________________________________________________
+    # Inductor Design
+    Vorms = Vrms*1.05
+    Vop = Vorms*sqrt(2)
+
+    Zl = 3*Vorms*Vorms/Sr
+
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+
+    ΔIlfmax = Ir*Iop
+
+    Lf = Vdc/(4*fs*ΔIlfmax)
+
+    #____________________________________________________________
+    # Capacitor Design
+    Vorms = Vrms*0.95
+    Vop = Vorms*sqrt(2)
+
+    Zl = 3*Vorms*Vorms/Sr
+
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+    Ir = Vdc/(4*fs*Lf*Iop)
+    ΔIlfmax = Ir*Iop
+    ΔVcfmax = Vr*Vop
+
+    Cf = ΔIlfmax/(8*fs*ΔVcfmax)
+
+    fc = 1/(2*π*sqrt(Lf*Cf))
+
+    return Lf, Cf, fc
+end

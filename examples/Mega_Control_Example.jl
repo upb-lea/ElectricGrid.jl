@@ -24,13 +24,13 @@ function reward(env, name = nothing)
     
     if !isnothing(name)
         if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_v_C_filt_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_v_C_filt_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_v_C_filt_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)
         else
-            u_l1_index = findfirst(x -> x == "source2_v_C_filt_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source2_v_C_filt_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source2_v_C_filt_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source2_v_C_cables_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source2_v_C_cables_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source2_v_C_cables_c", env.state_ids)
         end
 
         u_l1 = env.state[u_l1_index]
@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.15 #time in seconds, total simulation run time
+t_final = 0.2 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -111,7 +111,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 1.5 # length in km
+l = 0.5 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
@@ -140,17 +140,19 @@ source = Dict()
 
 source_list = []
 
-source["pwr"] = 200e3
-source["vdc"] = 800
-source["fltr"] = "LC"
+source["pwr"] = 200e3 #VA
+source["vdc"] = 800 #V
+source["fltr"] = "LCL"
 source["p_set"] = 100e3 #Watt
 source["q_set"] = 10e3 #VAr
-source["v_pu_set"] = 1.02 #p.u.
+source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
 source["mode"] = 7
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
+source["τv"] = 0.002
+source["τf"] = 0.002
 
 push!(source_list, source)
 
@@ -158,14 +160,17 @@ source = Dict()
 
 source["pwr"] = 100e3
 source["vdc"] = 800
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
-source["v_pu_set"] = 0.98
-source["mode"] = 7
+source["v_pu_set"] = 1.0
+source["v_δ_set"] = 0 # degrees
+source["mode"] = 3
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
+source["τv"] = 0.002
+source["τf"] = 0.002
 
 push!(source_list, source)
 
@@ -270,10 +275,5 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 "source1_i_C_cables_a", "source1_i_C_cables_b", "source1_i_C_cables_c"] =#
 plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = 1, 
 pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [])
-#plot_hook_results(; hook = hook, episode = 1, vrms_to_plot = [1 2], states_to_plot = [], actions_to_plot = [])
-#= plot_hook_results(; hook = hook, 
-states_to_plot = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_i_C_filt_a", 
-"cable1_i_L_a", "source1_v_C_cables_a"], 
-actions_to_plot = [], episode = 1) =#
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
