@@ -52,7 +52,7 @@ model = Model(Ipopt.Optimizer)
 @variable(model, -2 <= theta2 <= 2)
 
 # non-linear objectives
-@NLobjective(model, Min, PG_1 + QG_1 + v2 + theta2)
+@NLobjective(model, Min, abs(PG_1)/200 + abs(QG_1)/500 + abs(v2)/240 + abs(theta2)/0.1)
 
 
 @NLconstraint(model, P_Bus1,
