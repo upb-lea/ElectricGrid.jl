@@ -62,7 +62,7 @@ set_start_value(C_L, 0.0016)
 #B0 = (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + omega*C_L*L
 @NLexpression(model, B1, -omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2))
 @NLexpression(model, G1, ((omega*L)/X_R) /(((omega*L)/X_R)^2 + omega^2 * L^2))
-@NLexpression(model, B0, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + omega*C_L*L)
+@NLexpression(model, B0, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + omega*C_L*L/2)
 
 #= Goal:
 
@@ -74,8 +74,20 @@ set_start_value(C_L, 0.0016)
 #G = [[G1, -G1],
 #     [-G1, G1]]
 
-#B = [[B0, -B1],
-#     [-B1, B0]]
+#= a has 1 cable
+@NLexpression(model, Ba, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + 1*omega*C_L*L/2)
+b has 3 cable
+@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + 3*omega*C_L*L/2)
+c has 1 cable
+@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) +1*omega*C_L*L/2)
+d has 4 cable
+@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) +4*omega*C_L*L/2)
+
+B = [[Ba, -B1, -B2, -B3],
+     [-B1, Bb, -B4, -B5];
+     [-B2, -B4, Bc, -B6];
+     [-B3, -B5, -B6, Bd]]
+ =#
 
 @NLexpression(model, G[1:2, 1:2], 0)
 @NLexpression(model, B[1:2, 1:2], 0)
