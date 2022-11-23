@@ -54,65 +54,53 @@ function get_degree(CM = CM)
     result
 end
 
+function get_cable_connections(CM = CM)
+
+    result = Vector{Vector{Int64}}(undef, size(CM)[1])
+
+    for i=1:size(CM)[1]
+        result[i] = filter(x -> x != 0, abs.(CM[i,:]))
+    end
+
+    return result
+end
+
 @variable(model, cables[1 : maximum(CM), ["L", "X_R", "C_L"]])
+cable_conductance = Array{NonlinearExpression, 1}(undef, maximum(CM))
+cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, maximum(CM))
+cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, maximum(CM))
 
 for i=1:maximum(CM)
     set_bounds(cables[i, "L"], 0.00025, 0.0002, 0.0003)
     set_bounds(cables[i, "X_R"], 0.38, 0.1, 0.5)
     set_bounds(cables[i, "C_L"], 0.0016, 0.0001, 0.01)
+
+    cable_conductance[i] = @NLexpression(model, ((omega * cables[i, "L"]) / cables[i, "X_R"]) / (((omega*cables[i, "L"]) / cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2))
+    cable_susceptance_1[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)))
+    cable_susceptance_0[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)) + omega*cables[i, "C_L"]*cables[i, "L"]/2)
 end
 
-#----------------------------------------------------------------------------------
-# Setting up the conductance matrix
+cable_connections = get_cable_connections()
+G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes)
+B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes)
 
-degs = get_degree(CM)
+for i in 1:num_nodes
 
-G = Array{Float64, 2}(undef, num_nodes, num_nodes)
+    G[i, i] = @NLexpression(model, sum(cable_conductance[cable_connections[i]]))
 
-@NLexpression(model, G[1:num_nodes, 1:num_nodes], 0)
-for i = 1:num_nodes
+    for k in (i+1):num_nodes
 
-    for j = i:num_nodes
-
-        if j == i && CM[i, j] != 0
-
-            #R = (omega*L)/X_R
-            @NLexpression(model, G, ((omega*L)/X_R) /(((omega*L)/X_R)^2 + omega^2 * L^2))
-            G[i, j] = @NLexpression(model, G)
-
-        elseif CM[i, j] != 0
-
-            #R = (omega*L)/X_R
-            @NLexpression(model, G, ((omega*L)/X_R) /(((omega*L)/X_R)^2 + omega^2 * L^2))
-            G[i, j] = @NLexpression(model, -G)
-
+        if CM[i, k] != 0
+            cable_num = abs(CM[i, k])
+            G[i, k] = -1*cable_conductance[cable_num]
+            B[i, k] = -1*cable_susceptance_1[cable_num]
         else
 
-            G[i, j] = @NLexpression(model, 0.0)
+            G[i, k] = 0.0 #maybe these should be fixed variables set to 0.0
+            B[i, k] = 0.0
         end
     end
-end
 
-#----------------------------------------------------------------------------------
-# Setting up the susceptance matrix
-
-@NLexpression(model, B[1:num_nodes, 1:num_nodes], 0)
-for i=1:num_nodes
-
-    for j = i:num_nodes
-
-        if j == i
-
-            #C = C_L*L
-            @NLexpression(model, B, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + degs[i]*omega*C_L*L/2)
-            B[i, j] = @NLexpression(model, B)
-        else
-
-            #C = C_L*L
-            @NLexpression(model, B, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)))
-            B[i, j] = @NLexpression(model, B)
-        end
-    end
 end
 
 # Concuctance and Susceptance matrices -> get from nc.get_Ybus() -> real()/imag()
