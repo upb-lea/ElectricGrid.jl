@@ -19,7 +19,8 @@ mutable struct Classical_Controls
     filter_type::Vector{String}
     Lf::Vector{Float64} # Filter values
     Cf::Vector{Float64}
-    Rf_L::Vector{Float64} #inductor parasitic resistance
+    Rf_L1::Vector{Float64} #inductor parasitic resistance
+    Rf_L2::Vector{Float64} #inductor parasitic resistance
     Rf_C::Vector{Float64} #capacitor parasitic resistance
 
     #---------------------------------------------------------------------------
@@ -154,7 +155,8 @@ mutable struct Classical_Controls
     function Classical_Controls(Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
         i_max::Vector{Float64}, v_max::Vector{Float64}, filter_type::Vector{String},
-        Lf::Vector{Float64}, Cf::Vector{Float64}, Rf_L::Vector{Float64}, Rf_C::Vector{Float64},
+        Lf::Vector{Float64}, Cf::Vector{Float64}, 
+        Rf_L1::Vector{Float64}, Rf_L2::Vector{Float64}, Rf_C::Vector{Float64},
         T_eval::Int64, T_sp_rms::Float64, V_ph::Array{Float64}, I_ph::Array{Float64}, 
         p_q_inst::Matrix{Float64}, p_inst::Matrix{Float64}, Pm::Matrix{Float64}, Qm::Matrix{Float64},
         Modes::Dict{String, Int64}, Source_Modes::Vector{String},
@@ -191,7 +193,8 @@ mutable struct Classical_Controls
         new(Vdc, Vrms,
         S, P, Q,
         i_max, v_max, filter_type,
-        Lf, Cf, Rf_L, Rf_C,
+        Lf, Cf, 
+        Rf_L1, Rf_L2, Rf_C,
         T_eval, T_sp_rms, V_ph, I_ph, 
         p_q_inst, p_inst, Pm, Qm,
         Modes, Source_Modes,
@@ -254,8 +257,10 @@ mutable struct Classical_Controls
         Lf = fill!(Lf, 0)
         Cf = Array{Float64, 1}(undef, num_sources)
         Cf = fill!(Cf, 0)
-        Rf_L = Array{Float64, 1}(undef, num_sources)
-        Rf_L = fill!(Rf_L, 0.4)
+        Rf_L1 = Array{Float64, 1}(undef, num_sources)
+        Rf_L1 = fill!(Rf_L1, 0.4)
+        Rf_L2 = Array{Float64, 1}(undef, num_sources)
+        Rf_L2 = fill!(Rf_L2, 0.4)
         Rf_C = Array{Float64, 1}(undef, num_sources)
         Rf_C = fill!(Rf_C, 0.04)
 
@@ -487,7 +492,8 @@ mutable struct Classical_Controls
         Classical_Controls(Vdc, Vrms,
         S, P, Q,
         i_max, v_max, filter_type,
-        Lf, Cf, Rf_L, Rf_C,
+        Lf, Cf, 
+        Rf_L1, Rf_L2, Rf_C,
         T_eval, T_sp_rms, V_ph, I_ph, 
         p_q_inst, p_inst, Pm, Qm,
         Modes, Source_Modes,
@@ -1552,7 +1558,7 @@ function Filtering(Source::Classical_Controls, num_source, θ)
     return nothing
 end
 
-function Luenberger_Observer(u, y, A, B, C, Ke, ω)
+function Luenberger_Observer(Source::Classical_Controls, u, y, A, B, C, Ke, ω)
 
     if Source.filter_type[e] == "LCL"
 
@@ -1649,7 +1655,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
     # Current Controller
 
     # Short Circuit State Space
-    A = [-Source.Rf_L[num_source]/Source.Lf[num_source]]
+    A = [-Source.Rf_L1[num_source]/Source.Lf[num_source]]
     B = [1/(Source.Lf[num_source])]
     C = [1]
     D = [0]
@@ -1662,7 +1668,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
     Pade = tf([-dly/2, 1], [dly/2, 1]) # Pure first-order delay approximation
     PWM_gain = Source.Vdc[num_source]/2
 
-    #SC = tf([1/(1*Lf)], [1, Rf_L/Lf]) # = tf(sys_sc)
+    #SC = tf([1/(1*Lf)], [1, Rf_L1/Lf]) # = tf(sys_sc)
     Gsc_ol = minreal(tf_sys*Pade*PWM_gain*ZoH) # Full transfer function of plant
 
     min_fp = 300 # Hz, minimum allowable gain cross-over frequency
@@ -1815,7 +1821,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
         Srated = env.nc.parameters["source"][ns]["pwr"]
         Source.filter_type[e] = env.nc.parameters["source"][ns]["fltr"]
-        Source.Rf_L[e] = env.nc.parameters["source"][ns]["R1"]
+        Source.Rf_L1[e] = env.nc.parameters["source"][ns]["R1"]
         Source.Lf[e] = env.nc.parameters["source"][ns]["L1"]
         Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
         Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
@@ -1826,6 +1832,10 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         else
             Source.Cf[e] = 0.00001e-6
             Source.Rf_C[e] = 1*Source.Cf[e]
+        end
+
+        if Source.filter_type[e] == "LCL"
+            Source.Rf_L2[e] = env.nc.parameters["source"][ns]["R2"]
         end
 
         Source.S[e] = Srated
