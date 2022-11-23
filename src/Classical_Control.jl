@@ -1552,7 +1552,13 @@ function Filtering(Source::Classical_Controls, num_source, θ)
     return nothing
 end
 
-function Luenberger_Observer(u, y, A, B, C, Ke)
+function Luenberger_Observer(u, y, A, B, C, Ke, ω)
+
+    if Source.filter_type[e] == "LCL"
+
+        A = Array{Float64, 1}(undef, 3, 3)
+
+    end
 
 
     return x
@@ -1701,7 +1707,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
             Source.I_ki[num_source] = ki_i
             Source.Gi_cl[num_source] = Gi_cl
             
-            println("\nError. PI Current Controller with Positive Poles.")
+            println("\nWARNING: PI Current Controller with Positive Poles.")
             println("Suggestion: Decrease Simulation Time Step")
             println("Source = ", num_source,"\n")
         end
