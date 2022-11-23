@@ -106,7 +106,7 @@ function memory_analysis(to, env_cuda, agent_cuda, num_nodes)
     env = SimEnv(num_sources = num_nodes, num_loads = num_nodes, CM = CM, 
                 # parameters = parameters, 
                 reward_function = reward, 
-                maxsteps=10, 
+                maxsteps=600, 
                 use_gpu=env_cuda)
 
     ns = length(env.sys_d.A[1,:])
@@ -278,7 +278,7 @@ results_time = DataFrame()
 results_allocated = DataFrame()
 
 # nodes = [2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
-nodes = [2]
+nodes = [8]
 
 for i = 1:length(nodes)
     reset_timer!(to)

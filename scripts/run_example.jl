@@ -50,6 +50,77 @@ parameters = Dict{Any, Any}(
     "grid"   => Dict{Any, Any}("fs"=>10000.0, "phase"=>1, "v_rms"=>230)
 )
 
+function run(policy::AbstractPolicy,
+    env::AbstractEnv,
+    timer::TimerOutput,
+    stop_condition = StopAfterEpisode(1),
+    hook = EmptyHook(),
+    )
+
+    @timeit timer "inside run" begin
+
+        hook(PRE_EXPERIMENT_STAGE, policy, env)
+    
+        policy(PRE_EXPERIMENT_STAGE, env, timer)
+        is_stop = false
+        
+    @timeit timer "agent" begin
+        while !is_stop
+            reset!(env)
+        
+            policy(PRE_EPISODE_STAGE, env, timer)
+        
+            hook(PRE_EPISODE_STAGE, policy, env)
+
+            while !is_terminated(env) # one episode
+                action = policy(env, timer)
+
+                policy(PRE_ACT_STAGE, env, action, timer)
+        
+                
+                hook(PRE_ACT_STAGE, policy, env, action)
+               
+    end
+                if env.Ad isa CuArray
+                    @timeit timer "Agent prepare data" begin
+                        if action isa Array
+                            action = CuArray(action)
+                        else
+                            action = CuArray([action])
+                        end
+                    end
+                end
+        
+                @timeit timer "Env calculation" begin
+                    env(action)
+                end
+
+            @timeit timer "agent" begin
+                policy(POST_ACT_STAGE, env, timer)
+    
+                hook(POST_ACT_STAGE, policy, env)
+
+                if stop_condition(policy, env)
+                    is_stop = true
+                    break
+                end
+
+            end
+
+            end # end of an episode
+
+            if is_terminated(env)
+                policy(POST_EPISODE_STAGE, env, timer)  # let the policy see the last observation
+                hook(POST_EPISODE_STAGE, policy, env)
+                
+            end
+        end
+   
+            hook(POST_EXPERIMENT_STAGE, policy, env)
+        
+        hook
+    end
+end
 
 env = SimEnv(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, reward_function = reward, maxsteps=600, use_gpu=env_cuda)
 
@@ -59,6 +130,8 @@ na = length(env.sys_d.B[1,:])
 agent = create_agent_ddpg(na = na, ns = ns, use_gpu = env_cuda)
 
 hook = DataHook(save_best_NNA = true, plot_rewards = true)
+
+timer = TimerOutput()
 
 run(agent, env, StopAfterEpisode(80), hook)
 
