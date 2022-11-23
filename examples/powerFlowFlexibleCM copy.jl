@@ -3,6 +3,8 @@ import Ipopt
 
 model = Model(Ipopt.Optimizer)
 
+zero_expression = @NLexpression(model, 0.0)
+
 # Constant values
 f = 50
 omega = 2π*f
@@ -75,72 +77,44 @@ for i=1:maximum(CM)
     set_bounds(cables[i, "X_R"], 0.38, 0.1, 0.5)
     set_bounds(cables[i, "C_L"], 0.0016, 0.0001, 0.01)
 
+    #R = (omega*L)/X_R
+    #C = C_L*L
     cable_conductance[i] = @NLexpression(model, ((omega * cables[i, "L"]) / cables[i, "X_R"]) / (((omega*cables[i, "L"]) / cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2))
     cable_susceptance_1[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)))
     cable_susceptance_0[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)) + omega*cables[i, "C_L"]*cables[i, "L"]/2)
 end
 
 cable_connections = get_cable_connections()
-G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes)
-B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes)
+G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
+B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
 
 for i in 1:num_nodes
 
-    G[i, i] = @NLexpression(model, sum(cable_conductance[cable_connections[i]]))
+    # diagonal terms
+    G[i, i] = @NLexpression(model, sum( cable_conductance[cable_connections[i]][j] for j in 1:length(cable_connections[i])))
+    B[i, i] = @NLexpression(model, sum( cable_susceptance_0[cable_connections[i]][j] for j in 1:length(cable_connections[i])))
 
-    for k in (i+1):num_nodes
+    # off diagonal terms
+    for k in (i+1):num_nodes # this is over the upper triangle
 
         if CM[i, k] != 0
+
             cable_num = abs(CM[i, k])
-            G[i, k] = -1*cable_conductance[cable_num]
-            B[i, k] = -1*cable_susceptance_1[cable_num]
+
+            G[i, k] = @NLexpression(model, -1*cable_conductance[cable_num])
+            B[i, k] = @NLexpression(model, -1*cable_susceptance_1[cable_num])
+            G[k, i] = G[i, k]
+            B[k, i] = B[i, k]
+            
         else
 
-            G[i, k] = 0.0 #maybe these should be fixed variables set to 0.0
-            B[i, k] = 0.0
+            G[i, k] = zero_expression
+            B[i, k] = zero_expression
+            G[k, i] = zero_expression
+            B[k, i] = zero_expression
         end
     end
-
 end
-
-# Concuctance and Susceptance matrices -> get from nc.get_Ybus() -> real()/imag()
-#L = 0.00025
-#X_R = 0.38 # ratio of omega*L/R
-#C_L = 0.0016 # ratio of C/L
-#= @variable(model, 0.0002 <= L <= 0.0003)
-@variable(model, 0.1 <= X_R <= 0.5)
-@variable(model, 0.0001 <= C_L <= 0.01)
-
-set_start_value(L, 0.00025)
-set_start_value(X_R, 0.38)
-set_start_value(C_L, 0.0016) =#
-
-#C = C_L*L = 0.4e-6 
-#R = (omega*L)/X_R = 0.208 
-#B1 = -omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)
-#G1 = ((omega*L)/X_R) /(((omega*L)/X_R)^2 + omega^2 * L^2)
-#B0 = (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + omega*C_L*L
-#= @NLexpression(model, B1, -omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2))
-@NLexpression(model, G1, ((omega*L)/X_R) /(((omega*L)/X_R)^2 + omega^2 * L^2))
-@NLexpression(model, B0, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + omega*C_L*L/2) =#
-
-#= @NLexpression(model, G1, ((omega*L)/X_R) /(((omega*L)/X_R)^2 + omega^2 * L^2))
-@NLexpression(model, B1, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)))
-
-degs = get_degree(CM)
-#node a has 1 cables
-@NLexpression(model, Ba, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + degs[1]*omega*C_L*L/2)
-#node b has 1 cables
-@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + degs[2]*omega*C_L*L/2)
-#node c has 1 cables
-@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + degs[3]*omega*C_L*L/2)
-#node d has 3 cables
-@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + degs[4]*omega*C_L*L/2)
-
-B = [[Ba, 0, 0, -B1],
-     [0, Bb, 0, -B1];
-     [0, 0, Bc, -B1];
-     [-B1, -B1, -B1, Bd]] =#
 
 #= Goal:
 
@@ -148,37 +122,13 @@ B = [[Ba, 0, 0, -B1],
     Constraints (i.e. minimum and maximum) should be enforced on these values
 
 =#
+#= 
+    another constraint to add - the active power, P, should be less than the Surge Impedance Loading, SIL)
 
-#G = [[G1, -G1],
-#     [-G1, G1]]
+    SIL = 2*v^2*sqrt(cables[i, "C_L"])
 
-#= a has 1 cable
-@NLexpression(model, Ba, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + 1*omega*C_L*L/2)
-b has 3 cable
-@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) + 3*omega*C_L*L/2)
-c has 1 cable
-@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) +1*omega*C_L*L/2)
-d has 4 cable
-@NLexpression(model, Bb, (-omega * L /(((omega*L)/X_R)^2 + omega^2 * L^2)) +4*omega*C_L*L/2)
-
-B = [[Ba, -B1, -B2, -B3],
-     [-B1, Bb, -B4, -B5];
-     [-B2, -B4, Bc, -B6];
-     [-B3, -B5, -B6, Bd]]
- =#
-
-#= @NLexpression(model, G[1:4, 1:4], 0)
-@NLexpression(model, B[1:4, 1:4], 0)
-
-G[1,1] = @NLexpression(model, G1)
-G[1,2] = @NLexpression(model, -G1)
-G[2,1] = @NLexpression(model, -G1)
-G[2,2] = @NLexpression(model, G1)
-B[1,1] = @NLexpression(model, B0)
-B[1,2] = @NLexpression(model, -B1)
-B[2,1] = @NLexpression(model, -B1)
-B[2,2] = @NLexpression(model, B0) =#
-
+    nodes[i, "P"] < 2*v^2*sqrt(cables[i, "C_L"])
+=#
 
 # Variables including var_constraints
 @variable(model, 0 <= PG_1 <= Pmax_1)
@@ -198,22 +148,22 @@ set_start_value(theta2, 0)
 @NLconstraint(model, P_Bus1,
     v1 * v1 * (G[1,1] * cos(theta1 - theta1) + B[1,1] * sin(theta1 - theta1)) + 
     v1 * v2 * (G[1,2] * cos(theta1 - theta2) + B[1,2] * sin(theta1 - theta2))  
-    == PG_1 - PL_1)
+    == P)
 
 @NLconstraint(model, P_Bus2,
     v2 * v1 * (G[2,1] * cos(theta2 - theta1) + B[2,1] * sin(theta2 - theta1)) + 
     v2 * v2 * (G[2,2] * cos(theta2 - theta2) + B[2,2] * sin(theta2 - theta2)) 
-    == PG_2 - PL_2)
+    == P)
 
 @NLconstraint(model, Q_Bus1,
     v1 * v1 * (G[1,1] * sin(theta1 - theta1) - B[1,1] * cos(theta1 - theta1)) + 
     v1 * v2 * (G[1,2] * sin(theta1 - theta2) - B[1,2] * cos(theta1 - theta2)) 
-    == QG_1 - QL_1)
+    == Q)
 
 @NLconstraint(model, Q_Bus2,
     v2 * v1 * (G[2,1] * sin(theta2 - theta1) - B[2,1] * cos(theta2 - theta1)) + 
     v2 * v2 * (G[2,2] * sin(theta2 - theta2) - B[2,2] * cos(theta2 - theta2))  
-    == QG_2 - QL_2)
+    == Q)
 
 # Linear constraints:
 #@constraint(model, lc1, PG_1 + QG_1 <= Smax_1)
