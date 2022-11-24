@@ -90,9 +90,9 @@ cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, maximum(CM))
 
 for i=1:maximum(CM)
 
-    set_bounds(cables[i, "L"], 0.00025, 0.0002, 0.0003)
-    set_bounds(cables[i, "X_R"], 0.38, 0.1, 0.5)
-    set_bounds(cables[i, "C_L"], 0.0016, 0.0001, 0.01)
+    set_bounds(cables[i, "L"], 0.00025, 0.00023, 0.00026)
+    set_bounds(cables[i, "X_R"], 0.38, 0.37, 0.4)
+    set_bounds(cables[i, "C_L"], 0.0016, 0.0015, 0.0017)
 
     #R = (omega*L)/X_R
     #C = C_L*L
@@ -216,7 +216,7 @@ v1 * v2 * (G[1,2] * sin(theta1 - theta2) - B[1,2] * cos(theta1 - theta2))
 @NLobjective(model, Min, abs(sum(nodes[i,"P"] for i in 1:num_source))/1000
                         + abs(sum(nodes[i,"Q"] for i in 1:num_source))/1000
                         + sum(nodes[i,"v"] for i in num_source+1:num_nodes)/230
-                        + abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/(2π)
+                        + abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π
                         + sum( (nodes[i,"P"] - P_source_mean)^2 for i in 1:num_source)/num_source 
                         + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in 1:num_source)/num_source ) # the variance 
 
