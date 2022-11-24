@@ -67,12 +67,24 @@ function get_cable_connections(CM = CM)
     return result
 end
 
+function get_node_connections(CM = CM)
+
+    result = Vector{Vector{Int64}}(undef, size(CM)[1])
+
+    for i=1:size(CM)[1]
+        result[i] = findall(x -> x != 0, CM[i,:])
+    end
+
+    return result
+end
+
 @variable(model, cables[1 : maximum(CM), ["L", "X_R", "C_L"]])
 cable_conductance = Array{NonlinearExpression, 1}(undef, maximum(CM))
 cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, maximum(CM))
 cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, maximum(CM))
 
 for i=1:maximum(CM)
+
     set_bounds(cables[i, "L"], 0.00025, 0.0002, 0.0003)
     set_bounds(cables[i, "X_R"], 0.38, 0.1, 0.5)
     set_bounds(cables[i, "C_L"], 0.0016, 0.0001, 0.01)
@@ -84,15 +96,15 @@ for i=1:maximum(CM)
     cable_susceptance_0[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)) + omega*cables[i, "C_L"]*cables[i, "L"]/2)
 end
 
-cable_connections = get_cable_connections()
+cable_cons = get_cable_connections()
 G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
 B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
 
 for i in 1:num_nodes
 
     # diagonal terms
-    G[i, i] = @NLexpression(model, sum( cable_conductance[cable_connections[i]][j] for j in 1:length(cable_connections[i])))
-    B[i, i] = @NLexpression(model, sum( cable_susceptance_0[cable_connections[i]][j] for j in 1:length(cable_connections[i])))
+    G[i, i] = @NLexpression(model, sum( cable_conductance[cable_cons[i]][j] for j in 1:length(cable_cons[i])))
+    B[i, i] = @NLexpression(model, sum( cable_susceptance_0[cable_cons[i]][j] for j in 1:length(cable_cons[i])))
 
     # off diagonal terms
     for k in (i+1):num_nodes # this is over the upper triangle
@@ -122,49 +134,79 @@ end
     Constraints (i.e. minimum and maximum) should be enforced on these values
 
 =#
-#= 
-    another constraint to add - the active power, P, should be less than the Surge Impedance Loading, SIL)
-
-    SIL = 2*v^2*sqrt(cables[i, "C_L"])
-
-    nodes[i, "P"] < 2*v^2*sqrt(cables[i, "C_L"])
-=#
 
 # non-linear objectives
 #@NLobjective(model, Min, abs(sum(nodes[1:num_source,"P"]))/1000 + abs(sum(nodes[1:num_source,"Q"]))/1000 + sum(nodes[num_source+1:end,"v"])/230 + abs(sum(nodes[2:end,"theta"]))/(2π))
 
-function get_node_connections(CM = CM)
+n_cons = get_node_connections() 
 
-    result = Vector{Vector{Int64}}(undef, size(CM)[1])
+#= Nota Bene!
+TODO: every node should be added to its own vector
 
-    for i=1:size(CM)[1]
-        result[i] = findall(x -> x != 0, CM[i,:])
-    end
+n_cons = [[1, 4], [2, 4], [3, 4], [4, 1, 2, 3]] # for our example
 
-    return result
-end
+=#
 
 for i in 1:num_nodes
 
-    @NLconstraint(model, P_Bus1,
+    @NLconstraint(model, P_node_i,
 
-        #= for j in num_nodes
-            if CM[i,j] != 0
+    nodes[i, "P"] == nodes[i,"v"]*sum(nodes[n_cons,"v"]*((G[i, n_cons] * cos(nodes[i,"theta"] - nodes[n_cons,"theta"]) + B[i, n_cons] * sin(nodes[i,"theta"] - nodes[n_cons,"theta"]))))
+    
+    )
 
-            end
-        end =#
+    @NLconstraint(model, Q_node_i,
 
-        nodes[1,"v"] * nodes[1,"v"] * (G[1,1] * cos(theta1 - theta1) + B[1,1] * sin(theta1 - theta1)) + 
-        nodes[1,"v"]  * nodes[4,"v"]  * (G[1,4] * cos(theta1 - theta2) + B[1,4] * sin(theta1 - theta2))  
-        == nodes[1,"P"])
+    nodes[i, "Q"] == nodes[i,"v"]*sum(nodes[n_cons,"v"]*((G[i, n_cons] * sin(nodes[i,"theta"] - nodes[n_cons,"theta"]) - B[i, n_cons] * cos(nodes[i,"theta"] - nodes[n_cons,"theta"]))))
 
-    @NLconstraint(model, P_Bus2,
-        v2 * v1 * (G[2,1] * cos(theta2 - theta1) + B[2,1] * sin(theta2 - theta1)) + 
-        v2 * v2 * (G[2,2] * cos(theta2 - theta2) + B[2,2] * sin(theta2 - theta2)) 
-        == P)
+    )
+
+end
+
+# for every cable there should be two more constraints (because every cable is connected to 2 nodes)
+for i in 1:num_nodes
+
+    #= 
+    another constraint to add - the active power, P, should be less than 93% of the Surge Impedance Loading, SIL)
+
+    SIL = 2*v^2*sqrt(C/L)
+
+    P_cable < 2*v^2*sqrt(cables[i, "C_L"])
+
+    nodes[i, "P"] is the total active power flowing out of node I
+
+    P_cable is the active power flowing through the cable.
+
+    if a node has only one cable attached then P_cable = nodes[i, "P"]
+    =#
+
+    for j in 1:cable_cons
+
+        k = sending_end(j) # returns the other end where the cable is connected
+
+        P_cable = nodes[i, "v"]*nodes[k, "v"]*sin(abs(nodes[i,"v"] - nodes[k,"v"]))/B[i, k]
+
+        @NLconstraint(model, cable_j,
+
+        P_cable <= 0.93*2*nodes[i,"v"]^2*sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
+
+        )
+    end
 
 end
     
+#= 
+@NLconstraint(model, P_node_i,
+nodes[1,"v"] * nodes[1,"v"] * (G[1,1] * cos(theta1 - theta1) + B[1,1] * sin(theta1 - theta1)) + 
+nodes[1,"v"]  * nodes[4,"v"]  * (G[1,4] * cos(theta1 - theta2) + B[1,4] * sin(theta1 - theta2))  
+== nodes[1,"P"] )    
+    
+@NLconstraint(model, Q_node_i,
+v1 * v1 * (G[1,1] * sin(theta1 - theta1) - B[1,1] * cos(theta1 - theta1)) + 
+v1 * v2 * (G[1,2] * sin(theta1 - theta2) - B[1,2] * cos(theta1 - theta2)) 
+== QG_1)
+    
+=#
 
 # Linear constraints:
 #@constraint(model, lc1, PG_1 + QG_1 <= Smax_1)
