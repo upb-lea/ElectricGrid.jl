@@ -2092,6 +2092,9 @@ function Permutation_Entropy(Deus::ϵ_Machine, D)
         dynamical systems defined by ergodic maps on n-dimensional intervals. 
     =#
 
+    println("\n____________________________________________________")
+    println("Permutation Entropy")
+
     max_H = log(2, factorial(D)) # upper bound
     Deus.k = size(Deus.x, 2)
     divs = Deus.k - D + 1 # divisor
@@ -2141,9 +2144,9 @@ function Permutation_Entropy(Deus::ϵ_Machine, D)
         Deus.Hpe[d] = Deus.Hpe[d]/max_H
         Deus.hpe[d] = Deus.Hpe[d]/(D - 1)
 
-        println("\ndimension = ", d)
-        println("Permutation Entropy = ", round(Deus.Hpe[d], digits = 3))
-        println("Permutation Entropy per symbol = ", round(Deus.hpe[d], digits = 3))
+        println("\nDimension = ", d)
+        println("Permutation Entropy = ", round(Deus.Hpe[d], digits = 3), " bits")
+        println("Permutation Entropy per symbol = ", round(Deus.hpe[d], digits = 3), " bits")
     end
 
     return nothing
@@ -2155,7 +2158,7 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
     Sampling(Deus, μ_s)
 
-    Permutation_Entropy(Deus, 6)
+    Permutation_Entropy(Deus, 16)
 
     #Symbolic_Shadowing(Deus)
 
