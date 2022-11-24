@@ -2031,7 +2031,7 @@ function Permutation_Entropy(Deus::ϵ_Machine, D)
     #= Theory:
         The permutation entropy appears to be very similar to the Lyapunov exponents.
         Most importantly, it yields meaningful results in the presence of observational 
-        and dynamical noise. Permutation entropy is an appropriate complexity measure for 
+        and dynamical noise. Permutation entropy is an appropriate complexity measure for a  
         chaotic time series. In contrast with all known complexity measures, a small noise 
         does not essentially change the complexity for arbitrary real-world time series. 
         Since the method is extremely fast and robust, it seems preferable when there are 
@@ -2054,7 +2054,7 @@ function Permutation_Entropy(Deus::ϵ_Machine, D)
         Kolmogorov-Sinai entropy rate with n -> ∞, but this convergence is rather slow.
     =#
 
-    max_H = log(factorial(D), 2) # upper bound
+    max_H = log(2, factorial(D)) # upper bound
     Deus.k = size(Deus.x, 2)
     divs = Deus.k - D + 1 # divisor
 
@@ -2065,8 +2065,8 @@ function Permutation_Entropy(Deus::ϵ_Machine, D)
 
     for d in 1:dims
 
-        N = divs*D
-        Deus.Tree = Parse_Tree(N, D, 0, 0.0) # initialising an empty tree
+        #N = divs*D
+        Deus.Tree = Parse_Tree(Deus.k + 1, D, 0, 0.0) # initialising an empty tree
 
         for i in 1:Deus.k 
 
@@ -2089,20 +2089,23 @@ function Permutation_Entropy(Deus::ϵ_Machine, D)
                 #s = sortperm.(eachrow(s_pe))
                 s = sortperm(s_pe) .- 1
 
-                if d == 2
-                    println()
-                    #println("i = ", i)
-                    println("x = ", Deus.x[1, i - D + 1:i])
-                    println("s_pe = ", s_pe)
-                    println("s = ", s)
-                    println("rolls = ", rolling)
-                end
-
                 add_Nodes(Deus, s, i - D + 1)
             end
         end
 
+        Deus.Hpe[d] = 0.0
 
+        for j in eachindex(Deus.Tree.Cyls)
+
+            p_π = length(Deus.Tree.Cyls[j])/divs
+            Deus.Hpe[d] = Deus.Hpe[d] - p_π*log(2, p_π)
+        end
+        Deus.Hpe[d] = Deus.Hpe[d]/max_H
+        Deus.hpe[d] = Deus.Hpe[d]/(D - 1)
+
+        println("\ndimension = ", d)
+        println("Permutation Entropy = ", round(Deus.Hpe[d], digits = 3))
+        println("Permutation Entropy per symbol = ", round(Deus.hpe[d], digits = 3))
     end
 
     return nothing
@@ -2113,6 +2116,8 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
     Deus.x = x_in
 
     Sampling(Deus, μ_s)
+
+    Permutation_Entropy(Deus, 6)
 
     #Symbolic_Shadowing(Deus)
 
