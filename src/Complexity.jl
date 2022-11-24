@@ -141,6 +141,13 @@ mutable struct Parse_Tree
 
         The generating partition is defined as a partition for which the topological 
         entropy achieves its supremum. 
+
+        A tree machine is a subclass of finite-state automata with stochastic emission 
+        probabilities and deterministeic state and deterministic state transitions, given 
+        an emitted symbol. One follows recent symbols (the context) down the tree (deeper 
+        corresponding to more ancient symbols) and upon matching a terminal node, defines 
+        the state. The state emits independent symbols with a certain distribution. A 
+        tree with all nodes at depth D is a D-order Markov chain. 
     =#
 
     Nodes::Vector{Node}
