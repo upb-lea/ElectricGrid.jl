@@ -130,40 +130,41 @@ end
     nodes[i, "P"] < 2*v^2*sqrt(cables[i, "C_L"])
 =#
 
-# Variables including var_constraints
-@variable(model, 0 <= PG_1 <= Pmax_1)
-@variable(model, 0 <= QG_1 <= Qmax_1)
-@variable(model, 0 <= v2 <= 400)
-@variable(model, -2 <= theta2 <= 2)
-
-set_start_value(PG_1, 1004.9)
-set_start_value(QG_1, 488.6)
-set_start_value(v2, 230.0)
-set_start_value(theta2, 0)
-
 # non-linear objectives
-@NLobjective(model, Min, abs(PG_1)/200 + abs(QG_1)/500 + abs(v2)/240 + abs(theta2)/0.1)
+#@NLobjective(model, Min, abs(sum(nodes[1:num_source,"P"]))/1000 + abs(sum(nodes[1:num_source,"Q"]))/1000 + sum(nodes[num_source+1:end,"v"])/230 + abs(sum(nodes[2:end,"theta"]))/(2π))
 
+function get_node_connections(CM = CM)
 
-@NLconstraint(model, P_Bus1,
-    v1 * v1 * (G[1,1] * cos(theta1 - theta1) + B[1,1] * sin(theta1 - theta1)) + 
-    v1 * v2 * (G[1,2] * cos(theta1 - theta2) + B[1,2] * sin(theta1 - theta2))  
-    == P)
+    result = Vector{Vector{Int64}}(undef, size(CM)[1])
 
-@NLconstraint(model, P_Bus2,
-    v2 * v1 * (G[2,1] * cos(theta2 - theta1) + B[2,1] * sin(theta2 - theta1)) + 
-    v2 * v2 * (G[2,2] * cos(theta2 - theta2) + B[2,2] * sin(theta2 - theta2)) 
-    == P)
+    for i=1:size(CM)[1]
+        result[i] = findall(x -> x != 0, CM[i,:])
+    end
 
-@NLconstraint(model, Q_Bus1,
-    v1 * v1 * (G[1,1] * sin(theta1 - theta1) - B[1,1] * cos(theta1 - theta1)) + 
-    v1 * v2 * (G[1,2] * sin(theta1 - theta2) - B[1,2] * cos(theta1 - theta2)) 
-    == Q)
+    return result
+end
 
-@NLconstraint(model, Q_Bus2,
-    v2 * v1 * (G[2,1] * sin(theta2 - theta1) - B[2,1] * cos(theta2 - theta1)) + 
-    v2 * v2 * (G[2,2] * sin(theta2 - theta2) - B[2,2] * cos(theta2 - theta2))  
-    == Q)
+for i in 1:num_nodes
+
+    @NLconstraint(model, P_Bus1,
+
+        #= for j in num_nodes
+            if CM[i,j] != 0
+
+            end
+        end =#
+
+        nodes[1,"v"] * nodes[1,"v"] * (G[1,1] * cos(theta1 - theta1) + B[1,1] * sin(theta1 - theta1)) + 
+        nodes[1,"v"]  * nodes[4,"v"]  * (G[1,4] * cos(theta1 - theta2) + B[1,4] * sin(theta1 - theta2))  
+        == nodes[1,"P"])
+
+    @NLconstraint(model, P_Bus2,
+        v2 * v1 * (G[2,1] * cos(theta2 - theta1) + B[2,1] * sin(theta2 - theta1)) + 
+        v2 * v2 * (G[2,2] * cos(theta2 - theta2) + B[2,2] * sin(theta2 - theta2)) 
+        == P)
+
+end
+    
 
 # Linear constraints:
 #@constraint(model, lc1, PG_1 + QG_1 <= Smax_1)
