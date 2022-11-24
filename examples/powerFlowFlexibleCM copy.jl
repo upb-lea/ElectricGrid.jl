@@ -182,12 +182,17 @@ for i in 1:maximum(CM)
     j, k = Tuple(findfirst(x -> x == i, CM))
 
     cable_constraints[i] = @NLconstraint(model,
-        abs( nodes[j, "v"] * nodes[k, "v"] * sin(nodes[j,"theta"] - nodes[k,"theta"]) * ( B[j, k]))
+        abs( nodes[j, "v"] * nodes[k, "v"] * (G[j, k] * cos(nodes[j,"theta"] - nodes[k,"theta"]) + B[j, k] * sin(nodes[j,"theta"] - nodes[k,"theta"])))
         <= 0.93 * nodes[j,"v"] * nodes[k,"v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
     )
 
 end
-    
+  
+#value(0.93 * nodes[j,"v"] * nodes[k,"v"])*sqrt(value(cables[i, "C_L"]))
+#abs( value(nodes[j, "v"] * nodes[k, "v"]) * (value(G[j, k]) * cos(value(nodes[j,"theta"] - nodes[k,"theta"])) + value(B[j, k]) * sin(value(nodes[j,"theta"] - nodes[k,"theta"]))))
+#value(nodes[j, "v"] * nodes[k, "v"]) * (value(B[j, k]) * sin(value(nodes[j,"theta"] - nodes[k,"theta"])))
+#value(nodes[j, "v"] * nodes[k, "v"]) * (value(G[j, k]) * cos(value(nodes[j,"theta"] - nodes[k,"theta"])))
+
 #= 
 @NLconstraint(model, P_node_i,
 nodes[1,"v"] * nodes[1,"v"] * (G[1,1] * cos(theta1 - theta1) + B[1,1] * sin(theta1 - theta1)) + 
