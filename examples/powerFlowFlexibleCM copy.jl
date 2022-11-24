@@ -2,6 +2,7 @@ using JuMP
 import Ipopt
 
 model = Model(Ipopt.Optimizer)
+#set_optimizer_attributes(model, "tol" => 1e-1)
 
 zero_expression = @NLexpression(model, 0.0)
 
@@ -42,7 +43,10 @@ for i = 1:num_source+num_load
         set_bounds(nodes[i, "Q"], (num_load * -100.0) / num_source, -1000.0, 1000.0)
     else
         fix(nodes[i, "P"], -1000.0)
-        fix(nodes[i, "Q"], -100.0)
+        fix(nodes[i, "Q"], -1000.0)
+
+        set_bounds(nodes[i, "theta"], 0.0, -pi/2, pi/2)
+        set_bounds(nodes[i, "v"], 230.0, 0.95*230, 1.05*230)
     end
 end
 
@@ -73,6 +77,7 @@ function get_node_connections(CM = CM)
 
     for i=1:size(CM)[1]
         result[i] = findall(x -> x != 0, CM[i,:])
+        push!(result[i], i)
     end
 
     return result
@@ -135,63 +140,51 @@ end
 
 =#
 
-# non-linear objectives
-#@NLobjective(model, Min, abs(sum(nodes[1:num_source,"P"]))/1000 + abs(sum(nodes[1:num_source,"Q"]))/1000 + sum(nodes[num_source+1:end,"v"])/230 + abs(sum(nodes[2:end,"theta"]))/(2π))
+
 
 n_cons = get_node_connections() 
 
-#= Nota Bene!
-TODO: every node should be added to its own vector
+P_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
+Q_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
 
-n_cons = [[1, 4], [2, 4], [3, 4], [4, 1, 2, 3]] # for our example
-
-=#
 
 for i in 1:num_nodes
 
-    @NLconstraint(model, P_node_i,
+    P_node[i] = @NLconstraint(model,
 
-    nodes[i, "P"] == nodes[i,"v"]*sum(nodes[n_cons,"v"]*((G[i, n_cons] * cos(nodes[i,"theta"] - nodes[n_cons,"theta"]) + B[i, n_cons] * sin(nodes[i,"theta"] - nodes[n_cons,"theta"]))))
+    nodes[i, "P"] == nodes[i,"v"] * sum( nodes[j,"v"] * ((G[i, j] * cos(nodes[i,"theta"] - nodes[j,"theta"]) + B[i, j] * sin(nodes[i,"theta"] - nodes[j,"theta"]))) for j in n_cons[i])
     
     )
 
-    @NLconstraint(model, Q_node_i,
+    Q_node[i] = @NLconstraint(model,
 
-    nodes[i, "Q"] == nodes[i,"v"]*sum(nodes[n_cons,"v"]*((G[i, n_cons] * sin(nodes[i,"theta"] - nodes[n_cons,"theta"]) - B[i, n_cons] * cos(nodes[i,"theta"] - nodes[n_cons,"theta"]))))
+    nodes[i, "Q"] == nodes[i,"v"] * sum( nodes[j,"v"] * ((G[i, j] * sin(nodes[i,"theta"] - nodes[j,"theta"]) - B[i, j] * cos(nodes[i,"theta"] - nodes[j,"theta"]))) for j in n_cons[i])
 
     )
 
 end
 
 # for every cable there should be two more constraints (because every cable is connected to 2 nodes)
-for i in 1:num_nodes
+
+cable_constraints = Array{NonlinearConstraintRef, 1}(undef, maximum(CM))
+
+for i in 1:maximum(CM)
 
     #= 
-    another constraint to add - the active power, P, should be less than 93% of the Surge Impedance Loading, SIL)
-
-    SIL = 2*v^2*sqrt(C/L)
-
-    P_cable < 2*v^2*sqrt(cables[i, "C_L"])
-
-    nodes[i, "P"] is the total active power flowing out of node I
-
-    P_cable is the active power flowing through the cable.
-
-    if a node has only one cable attached then P_cable = nodes[i, "P"]
+        another constraint to add - the active power, P, should be less than 93% of the Surge Impedance Loading, SIL)
+        SIL = v^2*sqrt(C/L)
+        P_cable < 2*Vr*Vs*sqrt(cables[i, "C_L"])
+        nodes[i, "P"] is the total active power flowing out of node I
+        P_cable is the active power flowing through the cable.
+        if a node has only one cable attached then P_cable = nodes[i, "P"]
     =#
 
-    for j in 1:cable_cons
+    j, k = Tuple(findfirst(x -> x == i, CM))
 
-        k = sending_end(j) # returns the other end where the cable is connected
-
-        P_cable = nodes[i, "v"]*nodes[k, "v"]*sin(abs(nodes[i,"v"] - nodes[k,"v"]))/B[i, k]
-
-        @NLconstraint(model, cable_j,
-
-        P_cable <= 0.93*2*nodes[i,"v"]^2*sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
-
-        )
-    end
+    cable_constraints[i] = @NLconstraint(model,
+        abs( nodes[j, "v"] * nodes[k, "v"] * sin(nodes[j,"theta"] - nodes[k,"theta"]) * ( B[j, k]))
+        <= 0.93 * nodes[j,"v"] * nodes[k,"v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
+    )
 
 end
     
@@ -211,12 +204,33 @@ v1 * v2 * (G[1,2] * sin(theta1 - theta2) - B[1,2] * cos(theta1 - theta2))
 # Linear constraints:
 #@constraint(model, lc1, PG_1 + QG_1 <= Smax_1)
 
+
+#print(model)
+
+
+
+# non-linear objectives
+@NLexpression(model, P_source_mean, sum(nodes[j,"P"] for j in 1:num_source) / num_source)
+@NLexpression(model, Q_source_mean, sum(nodes[j,"Q"] for j in 1:num_source) / num_source)
+
+@NLobjective(model, Min, abs(sum(nodes[i,"P"] for i in 1:num_source))/1000
+                        + abs(sum(nodes[i,"Q"] for i in 1:num_source))/1000
+                        + sum(nodes[i,"v"] for i in num_source+1:num_nodes)/230
+                        + abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/(2π)
+                        + sum( (nodes[i,"P"] - P_source_mean)^2 for i in 1:num_source)/num_source 
+                        + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in 1:num_source)/num_source ) # the variance 
+
 optimize!(model)
 println("""
 termination_status = $(termination_status(model))
 primal_status      = $(primal_status(model))
 objective_value    = $(objective_value(model))
 """)
-println("PG1, QG1, v2, theta2, L, X_R, C_L")
-println("$(value(PG_1)), $(value(QG_1)), $(value(v2)), $(value(theta2)), $(value(L)), $(value(X_R)), $(value(C_L))")
 
+
+println()
+println()
+println(value.(nodes))
+
+println()
+println(value.(cables))
