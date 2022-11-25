@@ -21,6 +21,7 @@ CM = [  0   0   0   1
 num_source = 3
 num_load = 1
 num_nodes = num_source + num_load
+num_cables = maximum(CM)
 
 @variable(model, nodes[1 : num_source + num_load, ["v", "theta", "P", "Q"]])
 fix(nodes[1, "theta"], 0.0)
@@ -83,12 +84,12 @@ function get_node_connections(CM = CM)
     return result
 end
 
-@variable(model, cables[1 : maximum(CM), ["L", "X_R", "C_L"]])
-cable_conductance = Array{NonlinearExpression, 1}(undef, maximum(CM))
-cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, maximum(CM))
-cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, maximum(CM))
+@variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]])
+cable_conductance = Array{NonlinearExpression, 1}(undef, num_cables)
+cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, num_cables)
+cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, num_cables)
 
-for i=1:maximum(CM)
+for i=1:num_cables
 
     set_bounds(cables[i, "L"], 0.00025, 0.00023, 0.00026)
     set_bounds(cables[i, "X_R"], 0.38, 0.37, 0.4)
@@ -140,8 +141,6 @@ end
 
 =#
 
-
-
 n_cons = get_node_connections() 
 
 P_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
@@ -166,9 +165,9 @@ end
 
 # for every cable there should be two more constraints (because every cable is connected to 2 nodes)
 
-cable_constraints = Array{NonlinearConstraintRef, 1}(undef, maximum(CM))
+cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
 
-for i in 1:maximum(CM)
+for i in 1:num_cables
 
     #= 
         another constraint to add - the active power, P, should be less than 93% of the Surge Impedance Loading, SIL)
@@ -182,8 +181,8 @@ for i in 1:maximum(CM)
     j, k = Tuple(findfirst(x -> x == i, CM))
 
     cable_constraints[i] = @NLconstraint(model,
-        abs( nodes[j, "v"] * nodes[k, "v"] * (G[j, k] * cos(nodes[j,"theta"] - nodes[k,"theta"]) + B[j, k] * sin(nodes[j,"theta"] - nodes[k,"theta"])))
-        <= 0.93 * nodes[j,"v"] * nodes[k,"v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
+        abs( nodes[j, "v"] * nodes[k, "v"] * (G[j, k] * cos(nodes[j, "theta"] - nodes[k, "theta"]) + B[j, k] * sin(nodes[j, "theta"] - nodes[k, "theta"])))
+        <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
     )
 
 end
@@ -222,6 +221,8 @@ v1 * v2 * (G[1,2] * sin(theta1 - theta2) - B[1,2] * cos(theta1 - theta2))
                         + abs(sum(nodes[i,"Q"] for i in 1:num_source))/1000
                         + sum(nodes[i,"v"] for i in num_source+1:num_nodes)/230
                         + abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π
+                        + sum(1/cables[i, "X_R"] for i in 1:num_cables)
+                        + sum(cables[i, "L"] for i in 1:num_cables)
                         + sum( (nodes[i,"P"] - P_source_mean)^2 for i in 1:num_source)/num_source 
                         + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in 1:num_source)/num_source ) # the variance 
 
