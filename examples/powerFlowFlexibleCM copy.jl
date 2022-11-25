@@ -84,6 +84,15 @@ function get_node_connections(CM = CM)
     return result
 end
 
+cable_cons = get_cable_connections()
+node_cons = get_node_connections() 
+
+G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
+B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
+
+P_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
+Q_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
+
 @variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]])
 cable_conductance = Array{NonlinearExpression, 1}(undef, num_cables)
 cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, num_cables)
@@ -101,10 +110,6 @@ for i=1:num_cables
     cable_susceptance_1[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)))
     cable_susceptance_0[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)) + omega*cables[i, "C_L"]*cables[i, "L"]/2)
 end
-
-cable_cons = get_cable_connections()
-G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
-B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
 
 for i in 1:num_nodes
 
@@ -134,49 +139,25 @@ for i in 1:num_nodes
     end
 end
 
-#= Goal:
-
-    At the end the optimisation should solve for L, X_R, and C_L.
-    Constraints (i.e. minimum and maximum) should be enforced on these values
-
-=#
-
-n_cons = get_node_connections() 
-
-P_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
-Q_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
-
-
 for i in 1:num_nodes
 
     P_node[i] = @NLconstraint(model,
 
-    nodes[i, "P"] == nodes[i,"v"] * sum( nodes[j,"v"] * ((G[i, j] * cos(nodes[i,"theta"] - nodes[j,"theta"]) + B[i, j] * sin(nodes[i,"theta"] - nodes[j,"theta"]))) for j in n_cons[i])
+    nodes[i, "P"] == nodes[i,"v"] * sum( nodes[j,"v"] * ((G[i, j] * cos(nodes[i,"theta"] - nodes[j,"theta"]) + B[i, j] * sin(nodes[i,"theta"] - nodes[j,"theta"]))) for j in node_cons[i])
     
     )
 
     Q_node[i] = @NLconstraint(model,
 
-    nodes[i, "Q"] == nodes[i,"v"] * sum( nodes[j,"v"] * ((G[i, j] * sin(nodes[i,"theta"] - nodes[j,"theta"]) - B[i, j] * cos(nodes[i,"theta"] - nodes[j,"theta"]))) for j in n_cons[i])
+    nodes[i, "Q"] == nodes[i,"v"] * sum( nodes[j,"v"] * ((G[i, j] * sin(nodes[i,"theta"] - nodes[j,"theta"]) - B[i, j] * cos(nodes[i,"theta"] - nodes[j,"theta"]))) for j in node_cons[i])
 
     )
 
 end
 
-# for every cable there should be two more constraints (because every cable is connected to 2 nodes)
-
 cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
 
 for i in 1:num_cables
-
-    #= 
-        another constraint to add - the active power, P, should be less than 93% of the Surge Impedance Loading, SIL)
-        SIL = v^2*sqrt(C/L)
-        P_cable < 2*Vr*Vs*sqrt(cables[i, "C_L"])
-        nodes[i, "P"] is the total active power flowing out of node I
-        P_cable is the active power flowing through the cable.
-        if a node has only one cable attached then P_cable = nodes[i, "P"]
-    =#
 
     j, k = Tuple(findfirst(x -> x == i, CM))
 
@@ -186,33 +167,6 @@ for i in 1:num_cables
     )
 
 end
-  
-#value(0.93 * nodes[j,"v"] * nodes[k,"v"])*sqrt(value(cables[i, "C_L"]))
-#abs( value(nodes[j, "v"] * nodes[k, "v"]) * (sin(value(nodes[j, "theta"] - nodes[k, "theta"])))/(omega*value(cables[i, "L"])))
-#abs( value(nodes[j, "v"] * nodes[k, "v"]) * (value(G[j, k]) * cos(value(nodes[j,"theta"] - nodes[k,"theta"])) + value(B[j, k]) * sin(value(nodes[j,"theta"] - nodes[k,"theta"]))))
-#value(nodes[j, "v"] * nodes[k, "v"]) * (value(B[j, k]) * sin(value(nodes[j,"theta"] - nodes[k,"theta"])))
-#value(nodes[j, "v"] * nodes[k, "v"]) * (value(G[j, k]) * cos(value(nodes[j,"theta"] - nodes[k,"theta"])))
-
-#= 
-@NLconstraint(model, P_node_i,
-nodes[1,"v"] * nodes[1,"v"] * (G[1,1] * cos(theta1 - theta1) + B[1,1] * sin(theta1 - theta1)) + 
-nodes[1,"v"]  * nodes[4,"v"]  * (G[1,4] * cos(theta1 - theta2) + B[1,4] * sin(theta1 - theta2))  
-== nodes[1,"P"] )    
-    
-@NLconstraint(model, Q_node_i,
-v1 * v1 * (G[1,1] * sin(theta1 - theta1) - B[1,1] * cos(theta1 - theta1)) + 
-v1 * v2 * (G[1,2] * sin(theta1 - theta2) - B[1,2] * cos(theta1 - theta2)) 
-== QG_1)
-    
-=#
-
-# Linear constraints:
-#@constraint(model, lc1, PG_1 + QG_1 <= Smax_1)
-
-
-#print(model)
-
-
 
 # non-linear objectives
 @NLexpression(model, P_source_mean, sum(nodes[j,"P"] for j in 1:num_source) / num_source)
