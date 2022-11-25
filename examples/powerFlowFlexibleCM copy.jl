@@ -35,7 +35,7 @@ function set_bounds(variable, start_value, low_bound, up_bound)
     end
 end
 
-for i = 1:num_source+num_load
+for i = 1:num_nodes
     if i <= num_source
         fix(nodes[i, "v"], 230.0)
 
@@ -181,13 +181,14 @@ for i in 1:num_cables
     j, k = Tuple(findfirst(x -> x == i, CM))
 
     cable_constraints[i] = @NLconstraint(model,
-        abs( nodes[j, "v"] * nodes[k, "v"] * (G[j, k] * cos(nodes[j, "theta"] - nodes[k, "theta"]) + B[j, k] * sin(nodes[j, "theta"] - nodes[k, "theta"])))
+        abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*cables[i, "L"]))
         <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
     )
 
 end
   
 #value(0.93 * nodes[j,"v"] * nodes[k,"v"])*sqrt(value(cables[i, "C_L"]))
+#abs( value(nodes[j, "v"] * nodes[k, "v"]) * (sin(value(nodes[j, "theta"] - nodes[k, "theta"])))/(omega*value(cables[i, "L"])))
 #abs( value(nodes[j, "v"] * nodes[k, "v"]) * (value(G[j, k]) * cos(value(nodes[j,"theta"] - nodes[k,"theta"])) + value(B[j, k]) * sin(value(nodes[j,"theta"] - nodes[k,"theta"]))))
 #value(nodes[j, "v"] * nodes[k, "v"]) * (value(B[j, k]) * sin(value(nodes[j,"theta"] - nodes[k,"theta"])))
 #value(nodes[j, "v"] * nodes[k, "v"]) * (value(G[j, k]) * cos(value(nodes[j,"theta"] - nodes[k,"theta"])))
