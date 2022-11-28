@@ -167,7 +167,7 @@ for i in 1:num_cables
     )
 
 end
-
+#0.93 * value(nodes[j, "v"] * nodes[k, "v"]) * sqrt(value(cables[i, "C_L"]))
 # non-linear objectives
 @NLexpression(model, P_source_mean, sum(nodes[j,"P"] for j in 1:num_source) / num_source)
 @NLexpression(model, Q_source_mean, sum(nodes[j,"Q"] for j in 1:num_source) / num_source)
@@ -176,8 +176,9 @@ end
                         + abs(sum(nodes[i,"Q"] for i in 1:num_source))/1000
                         + sum(nodes[i,"v"] for i in num_source+1:num_nodes)/230
                         + abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π
-                        + sum(1/cables[i, "X_R"] for i in 1:num_cables)
-                        + sum(cables[i, "L"] for i in 1:num_cables)
+                        + sum(cables[i, "X_R"] for i in 1:num_cables)
+                        + sum(1/cables[i, "L"] for i in 1:num_cables)
+                        + sum(cables[i, "C_L"] for i in 1:num_cables)
                         + sum( (nodes[i,"P"] - P_source_mean)^2 for i in 1:num_source)/num_source 
                         + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in 1:num_source)/num_source ) # the variance 
 
