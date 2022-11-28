@@ -80,7 +80,7 @@ end
 
 mutable struct Parse_Tree
 
-    #=
+    #= Theory
         A window of width D is advanced through s one symbol at a time.
         Therefore, the window lags behind the process D number of time steps.
 
@@ -148,6 +148,13 @@ mutable struct Parse_Tree
         corresponding to more ancient symbols) and upon matching a terminal node, defines 
         the state. The state emits independent symbols with a certain distribution. A 
         tree with all nodes at depth D is a D-order Markov chain. 
+
+        The nontrivial issue, is estimating a suitable topolgy for the data, as that directly 
+        addresses the complexity versus predictability issue, whether to use a shallow tree 
+        whose nodes collect more data and hence are better local estimators or to use a deeper 
+        tree because it is necessary to distinguish distinct states recognizable from the data. 
+        There are 2^2^D topologies of binary trees with maximum depth no larger than D; for any but 
+        the smallest D, choosing among them would appear to be prohibitively expensive. 
     =#
 
     Nodes::Vector{Node}
@@ -2158,7 +2165,7 @@ function Cranking(Deus::ϵ_Machine, x_in, μ_s)
 
     Sampling(Deus, μ_s)
 
-    Permutation_Entropy(Deus, 16)
+    Permutation_Entropy(Deus, 6)
 
     #Symbolic_Shadowing(Deus)
 
