@@ -17,7 +17,8 @@ mutable struct Classical_Controls
 
     # Filter values
     filter_type::Vector{String}
-    Lf::Vector{Float64} # Filter values
+    Lf_1::Vector{Float64} # Filter values
+    Lf_2::Vector{Float64} # Filter values
     Cf::Vector{Float64}
     Rf_L1::Vector{Float64} #inductor parasitic resistance
     Rf_L2::Vector{Float64} #inductor parasitic resistance
@@ -73,6 +74,7 @@ mutable struct Classical_Controls
     # Interface (e.g. filters)
 
     V_filt_poc::Array{Float64}
+    V_filt_cap::Array{Float64}
     I_filt_poc::Array{Float64}
     I_filt_inv::Array{Float64}
     p_q_filt::Matrix{Float64}
@@ -104,7 +106,7 @@ mutable struct Classical_Controls
     V_δ_set::Matrix{Float64} # set points when also in swing mode
     V_pu_set::Matrix{Float64}
 
-    V_dq0::Matrix{Float64} # DQ0 of V_filt_poc
+    V_dq0::Matrix{Float64} # DQ0 of V_filt_cap
     V_ref_dq0::Matrix{Float64}
     V_ref::Matrix{Float64}
 
@@ -152,10 +154,19 @@ mutable struct Classical_Controls
     ΔT_err_t::Vector{Float64}
     ω_set::Vector{Float64}
 
+    #---------------------------------------------------------------------------
+    # Observer 
+
+    Ad::Array{Float64}
+    Bd::Matrix{Float64}
+    Cd::Matrix{Float64}
+    Dd::Matrix{Float64}
+    Ko::Matrix{Float64}
+
     function Classical_Controls(Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
         i_max::Vector{Float64}, v_max::Vector{Float64}, filter_type::Vector{String},
-        Lf::Vector{Float64}, Cf::Vector{Float64}, 
+        Lf_1::Vector{Float64}, Lf_2::Vector{Float64}, Cf::Vector{Float64}, 
         Rf_L1::Vector{Float64}, Rf_L2::Vector{Float64}, Rf_C::Vector{Float64},
         T_eval::Int64, T_sp_rms::Float64, V_ph::Array{Float64}, I_ph::Array{Float64}, 
         p_q_inst::Matrix{Float64}, p_inst::Matrix{Float64}, Pm::Matrix{Float64}, Qm::Matrix{Float64},
@@ -169,7 +180,7 @@ mutable struct Classical_Controls
         pll_err::Array{Float64}, pll_err_t::Matrix{Float64},
         vd::Array{Float64}, qvd::Array{Float64},
         fpll::Array{Float64}, θpll::Array{Float64},
-        V_filt_poc::Array{Float64},
+        V_filt_poc::Array{Float64}, V_filt_cap::Array{Float64}, 
         I_filt_poc::Array{Float64}, I_filt_inv::Array{Float64},
         p_q_filt::Matrix{Float64},
         Gi_cl::Array{TransferFunction},
@@ -188,12 +199,14 @@ mutable struct Classical_Controls
         J_sync::Vector{Float64}, K_sync::Vector{Float64}, ΔT_t::Vector{Float64},
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Vector{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Vector{Float64},
-        ΔT_err::Matrix{Float64}, ΔT_err_t::Vector{Float64}, ω_set::Vector{Float64})
+        ΔT_err::Matrix{Float64}, ΔT_err_t::Vector{Float64}, ω_set::Vector{Float64},
+        Ad::Array{Float64}, Bd::Matrix{Float64}, Cd::Matrix{Float64}, Dd::Matrix{Float64}, 
+        Ko::Matrix{Float64})
 
         new(Vdc, Vrms,
         S, P, Q,
         i_max, v_max, filter_type,
-        Lf, Cf, 
+        Lf_1, Lf_2, Cf, 
         Rf_L1, Rf_L2, Rf_C,
         T_eval, T_sp_rms, V_ph, I_ph, 
         p_q_inst, p_inst, Pm, Qm,
@@ -207,7 +220,7 @@ mutable struct Classical_Controls
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
-        V_filt_poc,
+        V_filt_poc, V_filt_cap, 
         I_filt_poc, I_filt_inv,
         p_q_filt,
         Gi_cl,
@@ -226,7 +239,9 @@ mutable struct Classical_Controls
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
-        ΔT_err, ΔT_err_t, ω_set)
+        ΔT_err, ΔT_err_t, ω_set,
+        Ad, Bd, Cd, Dd,
+        Ko)
     end
 
     function Classical_Controls(f_cntr, num_sources; phases = 3)
@@ -253,8 +268,10 @@ mutable struct Classical_Controls
 
         filter_type = Array{String, 1}(undef, num_sources)
         filter_type = fill!(filter_type, "LC")
-        Lf = Array{Float64, 1}(undef, num_sources)
-        Lf = fill!(Lf, 0)
+        Lf_1 = Array{Float64, 1}(undef, num_sources)
+        Lf_1 = fill!(Lf_1, 0)
+        Lf_2 = Array{Float64, 1}(undef, num_sources)
+        Lf_2 = fill!(Lf_2, 0)
         Cf = Array{Float64, 1}(undef, num_sources)
         Cf = fill!(Cf, 0)
         Rf_L1 = Array{Float64, 1}(undef, num_sources)
@@ -350,6 +367,8 @@ mutable struct Classical_Controls
 
         V_filt_poc = Array{Float64, 3}(undef, num_sources, phases, N)
         V_filt_poc = fill!(V_filt_poc, 0)
+        V_filt_cap = Array{Float64, 3}(undef, num_sources, phases, N)
+        V_filt_cap = fill!(V_filt_cap, 0)
 
         I_filt_poc = Array{Float64, 3}(undef, num_sources, phases, N)
         I_filt_poc = fill!(I_filt_poc, 0)
@@ -489,10 +508,19 @@ mutable struct Classical_Controls
         ω_set = Array{Float64, 1}(undef, num_sources)
         ω_set = fill!(ω_set, 0)
 
+        #---------------------------------------------------------------------------
+        # Observers
+
+        Ad = Array{Float64, 3}(undef, num_sources, 3, 3)
+        Bd = Array{Float64, 2}(undef, num_sources, 3)
+        Cd = Array{Float64, 2}(undef, num_sources, 3)
+        Dd = Array{Float64, 2}(undef, num_sources, 3)
+        Ko = Array{Float64, 2}(undef, num_sources, 3)
+
         Classical_Controls(Vdc, Vrms,
         S, P, Q,
         i_max, v_max, filter_type,
-        Lf, Cf, 
+        Lf_1, Lf_2, Cf, 
         Rf_L1, Rf_L2, Rf_C,
         T_eval, T_sp_rms, V_ph, I_ph, 
         p_q_inst, p_inst, Pm, Qm,
@@ -506,7 +534,7 @@ mutable struct Classical_Controls
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
-        V_filt_poc,
+        V_filt_poc, V_filt_cap,
         I_filt_poc, I_filt_inv,
         p_q_filt,
         Gi_cl,
@@ -525,7 +553,9 @@ mutable struct Classical_Controls
         J_sync, K_sync, ΔT_t,
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
-        ΔT_err, ΔT_err_t, ω_set)
+        ΔT_err, ΔT_err_t, ω_set,
+        Ad, Bd, Cd, Dd, 
+        Ko)
     end
 end
 
@@ -674,8 +704,8 @@ end
 
 function Classical_Control(Animo, env, name = nothing)
     
-    Source_Interface(env, Animo, name)
     Source = Animo.Source
+    Source_Interface(env, Source, name)
 
     ramp_end = 2/Source.fsys
 
@@ -720,13 +750,13 @@ function Classical_Control(Animo, env, name = nothing)
     return Action
 end
 
-function Source_Interface(env, Animo, name = nothing)
-
-    Source = Animo.Source
+function Source_Interface(env, Source::Classical_Controls, name = nothing)
 
     Source.steps = env.steps + 1
     ω = 2π*Source.fsys
     Source.θsys = (Source.θsys + Source.ts*ω)%(2π)
+
+    observer = false
 
     if !isnothing(name)
         state = RLBase.state(env, name)
@@ -734,7 +764,9 @@ function Source_Interface(env, Animo, name = nothing)
 
     for ns in 1:Source.num_sources
 
+        Source.V_filt_cap[ns, :, 1:end-1] = Source.V_filt_cap[ns, :, 2:end]
         Source.V_filt_poc[ns, :, 1:end-1] = Source.V_filt_poc[ns, :, 2:end]
+
         Source.I_filt_inv[ns, :, 1:end-1] = Source.I_filt_inv[ns, :, 2:end]  
         Source.I_filt_poc[ns, :, 1:end-1] = Source.I_filt_poc[ns, :, 2:end]
 
@@ -742,30 +774,41 @@ function Source_Interface(env, Animo, name = nothing)
 
         if Source.filter_type[ns] == "LCL"
 
-            Source.V_filt_poc[ns, :, end] = state[Source.V_cap_loc[:, ns]]
-            Source.I_filt_poc[ns, :, end] = state[Source.I_poc_loc[:, ns]]
+            if observer == true
+
+                Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+                Luenberger_Observer(Source, ns)
+                
+            else
+
+                Source.V_filt_cap[ns, :, end] = state[Source.V_cap_loc[:, ns]]
+
+                Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+                Source.I_filt_poc[ns, :, end] = state[Source.I_poc_loc[:, ns]]
+            end
 
         elseif Source.filter_type[ns] == "LC"
 
-            Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]] # cable
+            Source.V_filt_cap[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+
+            Source.V_filt_poc[ns, :, end] = Source.V_filt_cap[ns, :, end]
             Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
 
         elseif Source.filter_type[ns] == "L"
 
-            Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]] # cable
+            Source.V_filt_cap[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+
+            Source.V_filt_poc[ns, :, end] = Source.V_filt_cap[ns, :, end] 
             Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
         end
 
         Source.p_q_filt[ns, :] =  p_q_theory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :], Source.I_filt_inv[ns, :, end])
-        
     end
-
-    Animo.Source = Source
 
     return nothing
 end
 
-function Env_Interface(Source)
+function Env_Interface(Source::Classical_Controls)
 
     Action = [Source.Vd_abc_new[Source.Action_loc[x][1], Source.Action_loc[x][2]] for x in 1:length(Source.Action_loc)]
 
@@ -1017,7 +1060,7 @@ function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = 70,
     Ki = ωn^2 # tuning
     Kp = ξ*2*sqrt(Ki) # tuning
 
-    v_abc = Source.V_filt_poc[num_source, :, end]
+    v_abc = Source.V_filt_cap[num_source, :, end]
 
     f = Source.fpll[num_source, 1, :]
     θ = Source.θpll[num_source, 1, end]
@@ -1057,8 +1100,8 @@ function Phase_Locked_Loop_1ph(Source::Classical_Controls, num_source; Kp = 0.00
     range_1, cnt_end_1 = Integrator_Prep(i)
     range_2, _ = Integrator_Prep(i-1)
 
-    v_ph = Source.V_filt_poc[num_source, ph, end]
-    v_ph_r = Source.V_filt_poc[num_source, ph, range_1]
+    v_ph = Source.V_filt_cap[num_source, ph, end]
+    v_ph_r = Source.V_filt_cap[num_source, ph, range_1]
     f_1 = Source.fpll[num_source, ph, range_1]
     f_2 = Source.fpll[num_source, ph, range_2]
     θ = Source.θpll[num_source, ph, cnt_end_1]
@@ -1253,7 +1296,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
 
     Source.I_ref[num_source, :] = Inv_DQ0_transform(Source.I_ref_dq0[num_source, :], θ)
     Source.I_dq0[num_source, :] = DQ0_transform(Source.I_filt_inv[num_source, :, end], θ)
-    Source.V_dq0[num_source, :] = DQ0_transform(Source.V_filt_poc[num_source, :, end], θ)
+    Source.V_dq0[num_source, :] = DQ0_transform(Source.V_filt_cap[num_source, :, end], θ)
     V_dq0 = Source.V_dq0[num_source, :]
 
     I_dq0 = Source.I_dq0[num_source, :]
@@ -1273,9 +1316,9 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
 
     # cross-coupling / feedforward
     Source.s_lim[num_source, 1] = Source.s_lim[num_source, 1] - 
-    (Source.Lf[num_source]*ω*I_dq0[2] - V_dq0[1])*2/Source.Vdc[num_source]
+    (Source.Lf_1[num_source]*ω*I_dq0[2] - V_dq0[1])*2/Source.Vdc[num_source]
     Source.s_lim[num_source, 2] = Source.s_lim[num_source, 2] + 
-    (Source.Lf[num_source]*ω*I_dq0[1] + V_dq0[2])*2/Source.Vdc[num_source]
+    (Source.Lf_1[num_source]*ω*I_dq0[1] + V_dq0[2])*2/Source.Vdc[num_source]
 
     # ---- Limiting Output (Saturation)
     Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2/3)*norm(Source.s_lim[num_source,:]) # peak set point
@@ -1308,7 +1351,7 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     Ki = Source.V_ki[num_source]
 
     Source.V_ref_dq0[num_source, :] = DQ0_transform(Source.V_ref[num_source, :], θ)
-    Source.V_dq0[num_source, :] = DQ0_transform(Source.V_filt_poc[num_source, :, end], θ)
+    Source.V_dq0[num_source, :] = DQ0_transform(Source.V_filt_cap[num_source, :, end], θ)
 
     I_dq0_poc = DQ0_transform(Source.I_filt_poc[num_source, :, end], θ)
     V_dq0 = Source.V_dq0[num_source, :]
@@ -1384,7 +1427,7 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
 
     ωsys = Source.fsys*2π # nominal grid frequency
     Vn = sqrt(2)*Vrms # nominal peak POC voltage
-    Vg = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[num_source, :, end], 0)) # peak measured voltage
+    Vg = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_cap[num_source, :, end], 0)) # peak measured voltage
 
     #---- Integrate eq_new to find Mfif_new
 
@@ -1558,16 +1601,24 @@ function Filtering(Source::Classical_Controls, num_source, θ)
     return nothing
 end
 
-function Luenberger_Observer(Source::Classical_Controls, u, y, A, B, C, Ke, ω)
+function Luenberger_Observer(Source::Classical_Controls, num_source)
 
-    if Source.filter_type[e] == "LCL"
+    ns = num_source
 
-        A = Array{Float64, 1}(undef, 3, 3)
+    if Source.filter_type[ns] == "LCL"
+
+        xk1 = Source.Ad[ns, :, :]
+
+        Source.Ad[ns, :, :]
+        
+        Source.Bd[ns, :]
+        Source.Dd[ns, :]
+
+        Source.Cd[ns, :]
 
     end
 
-
-    return x
+    return nothing
 end
 
 #-------------------------------------------------------------------------------
@@ -1586,7 +1637,7 @@ function Measurements(Source::Classical_Controls)
 
     for ns in 1:Source.num_sources
 
-        V_poc = Source.V_filt_poc[ns, :, end]
+        V_poc = Source.V_filt_cap[ns, :, end]
         I_poc = Source.I_filt_poc[ns, :, end]
 
         Source.p_q_inst[ns, :] = p_q_theory(V_poc, I_poc) # real and imaginary powers
@@ -1599,7 +1650,7 @@ function Measurements(Source::Classical_Controls)
             θ = Source.θpll[ns, 1, i_range]
 
             # Voltages
-            v_signals = transpose(Source.V_filt_poc[ns, :, i_range])
+            v_signals = transpose(Source.V_filt_cap[ns, :, i_range])
             Source.V_ph[ns,  :, :] = RMS(θ, v_signals)
             Source.V_ph[ns,  :, 3] = Source.V_ph[ns,  :, 3]# .+ π/2
 
@@ -1655,8 +1706,8 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
     # Current Controller
 
     # Short Circuit State Space
-    A = [-Source.Rf_L1[num_source]/Source.Lf[num_source]]
-    B = [1/(Source.Lf[num_source])]
+    A = [-Source.Rf_L1[num_source]/Source.Lf_1[num_source]]
+    B = [1/(Source.Lf_1[num_source])]
     C = [1]
     D = [0]
     sys = ss(A, B, C, D) # continuous
@@ -1668,7 +1719,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
     Pade = tf([-dly/2, 1], [dly/2, 1]) # Pure first-order delay approximation
     PWM_gain = Source.Vdc[num_source]/2
 
-    #SC = tf([1/(1*Lf)], [1, Rf_L1/Lf]) # = tf(sys_sc)
+    #SC = tf([1/(1*Lf_1)], [1, Rf_L1/Lf_1]) # = tf(sys_sc)
     Gsc_ol = minreal(tf_sys*Pade*PWM_gain*ZoH) # Full transfer function of plant
 
     min_fp = 300 # Hz, minimum allowable gain cross-over frequency
@@ -1822,7 +1873,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         Srated = env.nc.parameters["source"][ns]["pwr"]
         Source.filter_type[e] = env.nc.parameters["source"][ns]["fltr"]
         Source.Rf_L1[e] = env.nc.parameters["source"][ns]["R1"]
-        Source.Lf[e] = env.nc.parameters["source"][ns]["L1"]
+        Source.Lf_1[e] = env.nc.parameters["source"][ns]["L1"]
         Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
         Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
 
@@ -1836,6 +1887,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
         if Source.filter_type[e] == "LCL"
             Source.Rf_L2[e] = env.nc.parameters["source"][ns]["R2"]
+            Source.Lf_2[e] = env.nc.parameters["source"][ns]["L2"]
         end
 
         Source.S[e] = Srated
@@ -1871,15 +1923,118 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         Source.V_pu_set[e, 1] = env.nc.parameters["source"][ns]["v_pu_set"]
         Source.V_δ_set[e, 1] = env.nc.parameters["source"][ns]["v_δ_set"]*π/180
 
-        Source.i_max[e] = env.nc.parameters["source"][ns]["i_limit"]
+        Source.i_max[e] = env.nc.parameters["source"][ns]["i_limit"] # should there be a 3? TODO
         Source.v_max[e] = env.nc.parameters["source"][ns]["v_limit"]/2
 
         Current_PI_LoopShaping(Source, e)
         Voltage_PI_LoopShaping(Source, e)
 
+        Observer_Initialiser(Source, e)
+
         e += 1
     end
 
     return nothing
+end
+
+function Observer_Initialiser(Source::Classical_Controls, num_source)
+
+    # Current Deadbeat Observer initialisation
+
+    #= Theory:
+        Regarding the selection of observer type, there are three alternatives which are 
+        the prediction-type observer, the current observer, and the reduced-order observer. 
+        In the prediction-type observer, the estimated states are determined based on the
+        past measurement or outputs. This means that the control signal does not utilize the 
+        most current information on outputs, which leads to the inaccuracy of estimated values 
+        and might cause control performance degradation. On the other hand, the reduced-order 
+        observer can solve the drawback of the prediction-type observer by using the measured 
+        states to estimate remaining unmeasurable states at the current time. However, if the 
+        measurement variables are noisy, the imprecise measured states may influence directly 
+        the feedback control inputs. For these reasons, the current full-state observer is 
+        employed for the three phase LCL-filtered inverter, which yields a precise estimation 
+        capability even under harmonically distorted grid voltage condition.
+
+        In continuous time we have seen, that the estimation error decreases asymptotically, i.e.,
+        it only vanishes completely for t->∞. In contrast, we can choose K in the discrete-time 
+        case such that the eigenvalues of (A - KCA) are at the origin. Finding a K with this 
+        property delivers a deadbeat observer, i.e., an observer which requires the minimum 
+        amount of time steps to reduce the estimation error to zero. For the n-dimensional system 
+        the deadbeat observer requires n steps to estimation error to zero. 
+    =#
+
+    ns = num_source
+
+    if Source.filter_type[ns] == "LCL"
+
+        A = Array{Float64, 2}(undef, 3, 3)
+
+        A = [-(Source.Rf_L1[ns] + Source.Rf_C[ns])/Source.Lf_1[ns] Source.Rf_C[ns]/Source.Lf_1[ns] -1/Source.Lf_1[ns];
+             Source.Rf_C[ns]/Source.Lf_2[ns] -(Source.Rf_L2[ns] + Source.Rf_C[ns])/Source.Lf_2[ns] +1/Source.Lf_2[ns];
+             1/Source.Cf[ns] -1/Source.Cf[ns] 0.0]
+
+        Source.Bd[ns, :] = [1/Source.Lf_1[ns]; 0; 0]
+        Source.Dd[ns, :] = [0; -1/Source.Lf_1[ns]; 0]
+
+        Source.Ad[ns, :, :] = exp(A*Source.ts)
+        
+        Source.Bd[ns, :] = inv(A)*(Source.Ad[ns, :, :] - I)*Source.Bd[ns, :]
+        Source.Dd[ns, :] = inv(A)*(Source.Ad[ns, :, :] - I)*Source.Dd[ns, :]
+
+        Source.Cd[ns, :] = [1. 0. 0.] # measuring the inverter current
+
+        A = Source.Ad[ns, :, :]
+        C = transpose(Source.Cd[ns, :])*Source.Ad[ns, :, :]
+
+        _, r = Observability(C, A)
+
+        if r != 3
+            println("\nERROR: The system is not observable. The rank of O is not equal to 3.")
+        end
+
+        A1_1 = A[1,1]
+        A1_2 = A[1,2]
+        A1_3 = A[1,3]
+        A2_1 = A[2,1]
+        A2_2 = A[2,2]
+        A2_3 = A[2,3]
+        A3_1 = A[3,1]
+        A3_2 = A[3,2]
+        A3_3 = A[3,3]
+
+        C1 = C[1]
+        C2 = C[2]
+        C3 = C[3]
+
+        Source.Ko[ns, 1] = -(- A1_1^3*A2_2*C2*C3 + A1_1^3*A2_3*C2^2 - A1_1^3*A3_2*C3^2 + A1_1^3*A3_3*C2*C3 + A1_1^2*A1_2*A2_1*C2*C3 + A1_1^2*A1_2*A2_2*C1*C3 - 2*A1_1^2*A1_2*A2_3*C1*C2 + A1_1^2*A1_2*A3_1*C3^2 - A1_1^2*A1_2*A3_3*C1*C3 - A1_1^2*A1_3*A2_1*C2^2 + A1_1^2*A1_3*A2_2*C1*C2 - A1_1^2*A1_3*A3_1*C2*C3 + 2*A1_1^2*A1_3*A3_2*C1*C3 - A1_1^2*A1_3*A3_3*C1*C2 - A1_1*A1_2^2*A2_1*C1*C3 + A1_1*A1_2^2*A2_3*C1^2 + A1_1*A1_2*A1_3*A2_1*C1*C2 - A1_1*A1_2*A1_3*A2_2*C1^2 - A1_1*A1_2*A1_3*A3_1*C1*C3 + A1_1*A1_2*A1_3*A3_3*C1^2 - A1_1*A1_2*A2_1*A2_2*C2*C3 + A1_1*A1_2*A2_1*A2_3*C2^2 - 2*A1_1*A1_2*A2_1*A3_2*C3^2 + 2*A1_1*A1_2*A2_1*A3_3*C2*C3 + A1_1*A1_2*A2_2^2*C1*C3 - A1_1*A1_2*A2_2*A2_3*C1*C2 + A1_1*A1_2*A2_2*A3_1*C3^2 - A1_1*A1_2*A2_2*A3_3*C1*C3 - A1_1*A1_2*A2_3*A3_1*C2*C3 + 2*A1_1*A1_2*A2_3*A3_2*C1*C3 - A1_1*A1_2*A2_3*A3_3*C1*C2 + A1_1*A1_3^2*A3_1*C1*C2 - A1_1*A1_3^2*A3_2*C1^2 + A1_1*A1_3*A2_1*A3_2*C2*C3 - A1_1*A1_3*A2_1*A3_3*C2^2 - 2*A1_1*A1_3*A2_2*A3_1*C2*C3 + A1_1*A1_3*A2_2*A3_2*C1*C3 + A1_1*A1_3*A2_2*A3_3*C1*C2 + 2*A1_1*A1_3*A2_3*A3_1*C2^2 - 2*A1_1*A1_3*A2_3*A3_2*C1*C2 - A1_1*A1_3*A3_1*A3_2*C3^2 + A1_1*A1_3*A3_1*A3_3*C2*C3 + A1_1*A1_3*A3_2*A3_3*C1*C3 - A1_1*A1_3*A3_3^2*C1*C2 + A1_2^2*A2_1^2*C2*C3 - A1_2^2*A2_1*A2_2*C1*C3 - A1_2^2*A2_1*A2_3*C1*C2 + A1_2^2*A2_1*A3_1*C3^2 - A1_2^2*A2_1*A3_3*C1*C3 + A1_2^2*A2_2*A2_3*C1^2 - A1_2^2*A2_3*A3_1*C1*C3 + A1_2^2*A2_3*A3_3*C1^2 - A1_2*A1_3*A2_1^2*C2^2 + 2*A1_2*A1_3*A2_1*A2_2*C1*C2 - A1_2*A1_3*A2_2^2*C1^2 + A1_2*A1_3*A3_1^2*C3^2 - 2*A1_2*A1_3*A3_1*A3_3*C1*C3 + A1_2*A1_3*A3_3^2*C1^2 - A1_2*A2_1*A2_2*A3_2*C3^2 + A1_2*A2_1*A2_2*A3_3*C2*C3 + A1_2*A2_1*A2_3*A3_2*C2*C3 - A1_2*A2_1*A2_3*A3_3*C2^2 + A1_2*A2_2^2*A3_1*C3^2 - A1_2*A2_2^2*A3_3*C1*C3 - 2*A1_2*A2_2*A2_3*A3_1*C2*C3 + A1_2*A2_2*A2_3*A3_2*C1*C3 + A1_2*A2_2*A2_3*A3_3*C1*C2 + A1_2*A2_3^2*A3_1*C2^2 - A1_2*A2_3^2*A3_2*C1*C2 - A1_3^2*A2_1*A3_1*C2^2 + A1_3^2*A2_1*A3_2*C1*C2 + A1_3^2*A2_2*A3_1*C1*C2 - A1_3^2*A2_2*A3_2*C1^2 - A1_3^2*A3_1^2*C2*C3 + A1_3^2*A3_1*A3_2*C1*C3 + A1_3^2*A3_1*A3_3*C1*C2 - A1_3^2*A3_2*A3_3*C1^2 - A1_3*A2_1*A3_2^2*C3^2 + 2*A1_3*A2_1*A3_2*A3_3*C2*C3 - A1_3*A2_1*A3_3^2*C2^2 + A1_3*A2_2*A3_1*A3_2*C3^2 - A1_3*A2_2*A3_1*A3_3*C2*C3 - A1_3*A2_2*A3_2*A3_3*C1*C3 + A1_3*A2_2*A3_3^2*C1*C2 - A1_3*A2_3*A3_1*A3_2*C2*C3 + A1_3*A2_3*A3_1*A3_3*C2^2 + A1_3*A2_3*A3_2^2*C1*C3 - A1_3*A2_3*A3_2*A3_3*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+        Source.Ko[ns, 2] = (A1_1^2*A2_1*A2_2*C2*C3 - A1_1^2*A2_1*A2_3*C2^2 + A1_1^2*A2_1*A3_2*C3^2 - A1_1^2*A2_1*A3_3*C2*C3 - A1_1*A1_2*A2_1^2*C2*C3 - A1_1*A1_2*A2_1*A2_2*C1*C3 + 2*A1_1*A1_2*A2_1*A2_3*C1*C2 - A1_1*A1_2*A2_1*A3_1*C3^2 + A1_1*A1_2*A2_1*A3_3*C1*C3 + A1_1*A1_3*A2_1^2*C2^2 - A1_1*A1_3*A2_1*A2_2*C1*C2 + A1_1*A1_3*A2_1*A3_1*C2*C3 - 2*A1_1*A1_3*A2_1*A3_2*C1*C3 + A1_1*A1_3*A2_1*A3_3*C1*C2 + A1_1*A2_1*A2_2^2*C2*C3 - A1_1*A2_1*A2_2*A2_3*C2^2 + A1_1*A2_1*A2_2*A3_2*C3^2 - A1_1*A2_1*A2_2*A3_3*C2*C3 - A1_1*A2_2^3*C1*C3 + A1_1*A2_2^2*A2_3*C1*C2 + A1_1*A2_2*A2_3*A3_1*C2*C3 - 2*A1_1*A2_2*A2_3*A3_2*C1*C3 + A1_1*A2_2*A2_3*A3_3*C1*C2 - A1_1*A2_3^2*A3_1*C2^2 + A1_1*A2_3^2*A3_2*C1*C2 + A1_1*A2_3*A3_1*A3_2*C3^2 - A1_1*A2_3*A3_1*A3_3*C2*C3 - A1_1*A2_3*A3_2*A3_3*C1*C3 + A1_1*A2_3*A3_3^2*C1*C2 + A1_2^2*A2_1^2*C1*C3 - A1_2^2*A2_1*A2_3*C1^2 - A1_2*A1_3*A2_1^2*C1*C2 + A1_2*A1_3*A2_1*A2_2*C1^2 + A1_2*A1_3*A2_1*A3_1*C1*C3 - A1_2*A1_3*A2_1*A3_3*C1^2 - A1_2*A2_1^2*A2_2*C2*C3 + A1_2*A2_1^2*A3_2*C3^2 - A1_2*A2_1^2*A3_3*C2*C3 + A1_2*A2_1*A2_2^2*C1*C3 + A1_2*A2_1*A2_2*A2_3*C1*C2 - 2*A1_2*A2_1*A2_2*A3_1*C3^2 + 2*A1_2*A2_1*A2_2*A3_3*C1*C3 - A1_2*A2_2^2*A2_3*C1^2 + A1_2*A2_2*A2_3*A3_1*C1*C3 - A1_2*A2_2*A2_3*A3_3*C1^2 + A1_2*A2_3^2*A3_1*C1*C2 - A1_2*A2_3^2*A3_2*C1^2 - A1_2*A2_3*A3_1^2*C3^2 + 2*A1_2*A2_3*A3_1*A3_3*C1*C3 - A1_2*A2_3*A3_3^2*C1^2 - A1_3^2*A2_1*A3_1*C1*C2 + A1_3^2*A2_1*A3_2*C1^2 + A1_3*A2_1^2*A2_2*C2^2 - A1_3*A2_1^2*A3_2*C2*C3 + A1_3*A2_1^2*A3_3*C2^2 - 2*A1_3*A2_1*A2_2^2*C1*C2 + 2*A1_3*A2_1*A2_2*A3_1*C2*C3 - A1_3*A2_1*A2_2*A3_2*C1*C3 - A1_3*A2_1*A2_2*A3_3*C1*C2 + A1_3*A2_2^3*C1^2 - 2*A1_3*A2_2*A2_3*A3_1*C1*C2 + 2*A1_3*A2_2*A2_3*A3_2*C1^2 + A1_3*A2_3*A3_1^2*C2*C3 - A1_3*A2_3*A3_1*A3_2*C1*C3 - A1_3*A2_3*A3_1*A3_3*C1*C2 + A1_3*A2_3*A3_2*A3_3*C1^2 + A2_1*A2_2^2*A3_2*C3^2 - A2_1*A2_2^2*A3_3*C2*C3 - A2_1*A2_2*A2_3*A3_2*C2*C3 + A2_1*A2_2*A2_3*A3_3*C2^2 + A2_1*A2_3*A3_2^2*C3^2 - 2*A2_1*A2_3*A3_2*A3_3*C2*C3 + A2_1*A2_3*A3_3^2*C2^2 - A2_2^3*A3_1*C3^2 + A2_2^3*A3_3*C1*C3 + 2*A2_2^2*A2_3*A3_1*C2*C3 - A2_2^2*A2_3*A3_2*C1*C3 - A2_2^2*A2_3*A3_3*C1*C2 - A2_2*A2_3^2*A3_1*C2^2 + A2_2*A2_3^2*A3_2*C1*C2 - A2_2*A2_3*A3_1*A3_2*C3^2 + A2_2*A2_3*A3_1*A3_3*C2*C3 + A2_2*A2_3*A3_2*A3_3*C1*C3 - A2_2*A2_3*A3_3^2*C1*C2 + A2_3^2*A3_1*A3_2*C2*C3 - A2_3^2*A3_1*A3_3*C2^2 - A2_3^2*A3_2^2*C1*C3 + A2_3^2*A3_2*A3_3*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+        Source.Ko[ns, 3] = -(- A1_1^2*A2_2*A3_1*C2*C3 + A1_1^2*A2_3*A3_1*C2^2 - A1_1^2*A3_1*A3_2*C3^2 + A1_1^2*A3_1*A3_3*C2*C3 + A1_1*A1_2*A2_1*A3_1*C2*C3 + A1_1*A1_2*A2_2*A3_1*C1*C3 - 2*A1_1*A1_2*A2_3*A3_1*C1*C2 + A1_1*A1_2*A3_1^2*C3^2 - A1_1*A1_2*A3_1*A3_3*C1*C3 - A1_1*A1_3*A2_1*A3_1*C2^2 + A1_1*A1_3*A2_2*A3_1*C1*C2 - A1_1*A1_3*A3_1^2*C2*C3 + 2*A1_1*A1_3*A3_1*A3_2*C1*C3 - A1_1*A1_3*A3_1*A3_3*C1*C2 - A1_1*A2_1*A2_2*A3_2*C2*C3 + A1_1*A2_1*A2_3*A3_2*C2^2 - A1_1*A2_1*A3_2^2*C3^2 + A1_1*A2_1*A3_2*A3_3*C2*C3 + A1_1*A2_2^2*A3_2*C1*C3 - A1_1*A2_2*A2_3*A3_2*C1*C2 - A1_1*A2_2*A3_1*A3_3*C2*C3 + A1_1*A2_2*A3_2*A3_3*C1*C3 + A1_1*A2_3*A3_1*A3_3*C2^2 + A1_1*A2_3*A3_2^2*C1*C3 - 2*A1_1*A2_3*A3_2*A3_3*C1*C2 - A1_1*A3_1*A3_2*A3_3*C3^2 + A1_1*A3_1*A3_3^2*C2*C3 + A1_1*A3_2*A3_3^2*C1*C3 - A1_1*A3_3^3*C1*C2 - A1_2^2*A2_1*A3_1*C1*C3 + A1_2^2*A2_3*A3_1*C1^2 + A1_2*A1_3*A2_1*A3_1*C1*C2 - A1_2*A1_3*A2_2*A3_1*C1^2 - A1_2*A1_3*A3_1^2*C1*C3 + A1_2*A1_3*A3_1*A3_3*C1^2 + A1_2*A2_1^2*A3_2*C2*C3 - A1_2*A2_1*A2_2*A3_2*C1*C3 - A1_2*A2_1*A2_3*A3_2*C1*C2 + 2*A1_2*A2_1*A3_1*A3_3*C2*C3 - 2*A1_2*A2_1*A3_2*A3_3*C1*C3 + A1_2*A2_2*A2_3*A3_2*C1^2 + A1_2*A2_2*A3_1^2*C3^2 - A1_2*A2_2*A3_1*A3_3*C1*C3 - A1_2*A2_3*A3_1^2*C2*C3 - A1_2*A2_3*A3_1*A3_3*C1*C2 + 2*A1_2*A2_3*A3_2*A3_3*C1^2 + A1_2*A3_1^2*A3_3*C3^2 - 2*A1_2*A3_1*A3_3^2*C1*C3 + A1_2*A3_3^3*C1^2 + A1_3^2*A3_1^2*C1*C2 - A1_3^2*A3_1*A3_2*C1^2 - A1_3*A2_1^2*A3_2*C2^2 + 2*A1_3*A2_1*A2_2*A3_2*C1*C2 - 2*A1_3*A2_1*A3_1*A3_3*C2^2 + A1_3*A2_1*A3_2^2*C1*C3 + A1_3*A2_1*A3_2*A3_3*C1*C2 - A1_3*A2_2^2*A3_2*C1^2 - A1_3*A2_2*A3_1^2*C2*C3 + 2*A1_3*A2_2*A3_1*A3_3*C1*C2 - A1_3*A2_2*A3_2*A3_3*C1^2 + A1_3*A2_3*A3_1^2*C2^2 - A1_3*A2_3*A3_2^2*C1^2 - A1_3*A3_1^2*A3_3*C2*C3 + A1_3*A3_1*A3_2*A3_3*C1*C3 + A1_3*A3_1*A3_3^2*C1*C2 - A1_3*A3_2*A3_3^2*C1^2 - A2_1*A2_2*A3_2^2*C3^2 + A2_1*A2_2*A3_2*A3_3*C2*C3 + A2_1*A2_3*A3_2^2*C2*C3 - A2_1*A2_3*A3_2*A3_3*C2^2 - A2_1*A3_2^2*A3_3*C3^2 + 2*A2_1*A3_2*A3_3^2*C2*C3 - A2_1*A3_3^3*C2^2 + A2_2^2*A3_1*A3_2*C3^2 - A2_2^2*A3_2*A3_3*C1*C3 - 2*A2_2*A2_3*A3_1*A3_2*C2*C3 + A2_2*A2_3*A3_2^2*C1*C3 + A2_2*A2_3*A3_2*A3_3*C1*C2 + A2_2*A3_1*A3_2*A3_3*C3^2 - A2_2*A3_1*A3_3^2*C2*C3 - A2_2*A3_2*A3_3^2*C1*C3 + A2_2*A3_3^3*C1*C2 + A2_3^2*A3_1*A3_2*C2^2 - A2_3^2*A3_2^2*C1*C2 - A2_3*A3_1*A3_2*A3_3*C2*C3 + A2_3*A3_1*A3_3^2*C2^2 + A2_3*A3_2^2*A3_3*C1*C3 - A2_3*A3_2*A3_3^2*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+        #= 
+        println("Ad = ", Source.Ad[ns, :, :])
+        println("Bd = ", Source.Bd[ns, :])
+        println("Dd = ", Source.Dd[ns, :])
+        println("Ko = ", Source.Ko[ns, :])
+        println("O, r = ", O, " ", r) =#
+    end
+
+    return nothing
+end
+
+function Observability(C, A; n = size(A,1))
+
+    O = Array{Float64, 2}(undef, n*size(C,1), size(A,2))
+
+    iter = size(C, 1)
+    dim = 1:iter
+
+    O[dim, :] = C
+
+    for i in 2:n
+
+        O[dim .+ iter, :] = O[dim, :]*A
+        dim = dim .+ iter
+    end
+
+    return O, rank(O)
 end
 

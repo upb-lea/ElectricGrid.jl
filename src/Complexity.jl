@@ -1335,7 +1335,8 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         one a machine is reconstructed from a data stream, its entropy is an estimate
         of the underlying process's entropy rate. If the entropy rate is low then we
         gain certainty as the process proceeds. The entropy rate, is the rate in bits per 
-        time step at which information is produced.
+        time step at which information is produced. The entropy rate is the expected number of 
+        bits per symbol required to describe the process.
 
         An ϵ-machine's entropy rate hμ(M) is the transition uncertainty averaged over all 
         of the causal states. μ is a normalised invariant measure for a symbolic dynamical 

@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.2 #time in seconds, total simulation run time
+t_final = 0.002 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -160,7 +160,7 @@ source = Dict()
 
 source["pwr"] = 100e3
 source["vdc"] = 800
-source["fltr"] = "LCL"
+source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
