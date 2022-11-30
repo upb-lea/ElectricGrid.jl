@@ -50,6 +50,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     collect_idq_ids = []
     collect_irms_ids = []
     collect_pq_ids = []
+    collect_debug = []
 
 end
 
@@ -174,6 +175,11 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     end
 
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
+
+        for idx in hook.collect_debug
+    
+            insertcols!(hook.tmp, "debug_$(idx)" => agent.agents["classic"]["policy"].policy.Source.debug[idx])           
+        end
 
         for idx in hook.collect_vdq_ids
 

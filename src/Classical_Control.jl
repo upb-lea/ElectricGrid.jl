@@ -37,6 +37,8 @@ mutable struct Classical_Controls
     Pm::Matrix{Float64}
     Qm::Matrix{Float64}
 
+    debug::Vector{Float64}
+
     #---------------------------------------------------------------------------
     # General System & Control
 
@@ -170,7 +172,7 @@ mutable struct Classical_Controls
         Rf_L1::Vector{Float64}, Rf_L2::Vector{Float64}, Rf_C::Vector{Float64},
         T_eval::Int64, T_sp_rms::Float64, V_ph::Array{Float64}, I_ph::Array{Float64}, 
         p_q_inst::Matrix{Float64}, p_inst::Matrix{Float64}, Pm::Matrix{Float64}, Qm::Matrix{Float64},
-        Modes::Dict{String, Int64}, Source_Modes::Vector{String},
+        debug::Vector{Float64}, Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64, phases::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
         ts::Float64, N::Int64, steps::Int64,
@@ -210,7 +212,7 @@ mutable struct Classical_Controls
         Rf_L1, Rf_L2, Rf_C,
         T_eval, T_sp_rms, V_ph, I_ph, 
         p_q_inst, p_inst, Pm, Qm,
-        Modes, Source_Modes,
+        debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
         ts, N, steps,
@@ -312,6 +314,9 @@ mutable struct Classical_Controls
         Pm = fill!(Pm, 0)
         Qm = Array{Float64, 2}(undef, num_sources, phases+1) # 4th column is total
         Qm = fill!(Qm, 0)
+
+        debug = Array{Float64, 1}(undef, 1) # put anything in here that needs to be debugged - for plotting
+        debug = fill!(debug, 0)
 
         #---------------------------------------------------------------------------
         # General System & Control
@@ -524,7 +529,7 @@ mutable struct Classical_Controls
         Rf_L1, Rf_L2, Rf_C,
         T_eval, T_sp_rms, V_ph, I_ph, 
         p_q_inst, p_inst, Pm, Qm,
-        Modes, Source_Modes,
+        debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
         ts, N, steps,

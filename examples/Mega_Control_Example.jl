@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.002 #time in seconds, total simulation run time
+t_final = 0.2 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -258,7 +258,7 @@ plt_state_ids = []
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
 collect_cables = [1 2], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2],
-save_best_NNA = false, collect_reference = false, plot_rewards = false)
+save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [1])
 
 #_______________________________________________________________________________
 # Starting time simulation
