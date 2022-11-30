@@ -164,6 +164,7 @@ mutable struct Classical_Controls
     Cd::Matrix{Float64}
     Dd::Matrix{Float64}
     Ko::Matrix{Float64}
+    wp::Array{Float64}
 
     function Classical_Controls(Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
@@ -203,7 +204,7 @@ mutable struct Classical_Controls
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Vector{Float64},
         ΔT_err::Matrix{Float64}, ΔT_err_t::Vector{Float64}, ω_set::Vector{Float64},
         Ad::Array{Float64}, Bd::Matrix{Float64}, Cd::Matrix{Float64}, Dd::Matrix{Float64}, 
-        Ko::Matrix{Float64})
+        Ko::Matrix{Float64}, wp::Array{Float64})
 
         new(Vdc, Vrms,
         S, P, Q,
@@ -243,7 +244,7 @@ mutable struct Classical_Controls
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
         Ad, Bd, Cd, Dd,
-        Ko)
+        Ko, wp)
     end
 
     function Classical_Controls(f_cntr, num_sources; phases = 3)
@@ -521,6 +522,7 @@ mutable struct Classical_Controls
         Cd = Array{Float64, 2}(undef, num_sources, 3)
         Dd = Array{Float64, 2}(undef, num_sources, 3)
         Ko = Array{Float64, 2}(undef, num_sources, 2)
+        wp = Array{Float64, 3}(undef, num_sources, phases, 2)
 
         Classical_Controls(Vdc, Vrms,
         S, P, Q,
@@ -560,7 +562,7 @@ mutable struct Classical_Controls
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
         Ad, Bd, Cd, Dd, 
-        Ko)
+        Ko, wp)
     end
 end
 
@@ -786,7 +788,7 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
 
         if Source.filter_type[ns] == "LCL"
 
-            if observer == true || 1 == 1
+            if observer == true
 
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
                 Luenberger_Observer(Source, ns)
@@ -1623,7 +1625,7 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         A11 = Source.Ad[ns, 1, 1]
         B = [Source.Ad[ns, 2:3, 1] Source.Bd[ns, 2:3] Source.Dd[ns, 2:3]]
         B1 = Source.Bd[ns, 1]
-        C = transpose(Source.Ad[ns, 1, 2:3]) #A12
+        C = Source.Ad[ns, 1, 2:3] #A12
         D1 = Source.Dd[ns, 1]
 
         K = Source.Ko[ns, :]
@@ -1634,19 +1636,17 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
             vₚ = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph]
             eₚ = Source.V_filt_poc[ns, ph, end - 1]
 
+            wp = Source.wp[ns, ph, :]
+
             u = [yₚ; vₚ; eₚ]
 
-            xpₚ = [Source.V_filt_cap[ns, ph, end-1];
-                  Source.I_filt_poc[ns, ph, end-1]]
-
-            wpₚ = xpₚ - yₚ*K
-
-            wp = (A - K*C*A)*wpₚ + (A*K - K*A11 - K*C*A*K)*yₚ - K*(B1*vₚ + D1*eₚ + C*B*u)
+            wp = (A - K*C*A)*wp + (A*K - K*A11 - K*C*A*K)*yₚ - K*(B1*vₚ + D1*eₚ + C*B*u)
 
             xp = wp + K*Source.I_filt_inv[ns, ph, end]
 
-            Source.V_filt_cap[ns, ph, end] = xp[1]
-            Source.I_filt_poc[ns, ph, end] = xp[2]
+            Source.I_filt_poc[ns, ph, end] = xp[1]
+            Source.V_filt_cap[ns, ph, end] = xp[2]
+            Source.wp[ns, ph, :] = wp
         end
 
     end
