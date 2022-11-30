@@ -258,7 +258,7 @@ plt_state_ids = []
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
 collect_cables = [1 2], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2],
-save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [1])
+save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [1 2])
 
 #_______________________________________________________________________________
 # Starting time simulation
@@ -273,7 +273,7 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 "cable1_i_L_a", "cable1_i_L_b", "cable1_i_L_c",
 "source1_v_C_cables_a", "source1_v_C_cables_b", "source1_v_C_cables_c",
 "source1_i_C_cables_a", "source1_i_C_cables_b", "source1_i_C_cables_c"] =#
-plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = 1, 
+plot_hook_results(; hook = hook, states_to_plot = ["source1_i_L2_a", "source1_v_C_filt_a"], actions_to_plot = [], episode = 1, 
 pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [])
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

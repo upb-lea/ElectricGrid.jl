@@ -792,13 +792,17 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
 
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
                 Luenberger_Observer(Source, ns)
+
+                Source.I_filt_poc[ns, :, end] = state[Source.I_poc_loc[:, ns]]
+                Source.V_filt_cap[ns, :, end] = state[Source.V_cap_loc[:, ns]]
                 
             else
 
                 Source.V_filt_cap[ns, :, end] = state[Source.V_cap_loc[:, ns]]
-
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+
                 Source.I_filt_poc[ns, :, end] = state[Source.I_poc_loc[:, ns]]
+                Source.V_filt_cap[ns, :, end] = state[Source.V_cap_loc[:, ns]]
             end
 
         elseif Source.filter_type[ns] == "LC"
@@ -1625,7 +1629,7 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         A11 = Source.Ad[ns, 1, 1]
         B = [Source.Ad[ns, 2:3, 1] Source.Bd[ns, 2:3] Source.Dd[ns, 2:3]]
         B1 = Source.Bd[ns, 1]
-        C = Source.Ad[ns, 1, 2:3] #A12
+        C = transpose(Source.Ad[ns, 1, 2:3]) #A12
         D1 = Source.Dd[ns, 1]
 
         K = Source.Ko[ns, :]
@@ -1640,12 +1644,18 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
 
             u = [yₚ; vₚ; eₚ]
 
-            wp = (A - K*C*A)*wp + (A*K - K*A11 - K*C*A*K)*yₚ - K*(B1*vₚ + D1*eₚ + C*B*u)
+            wp = (A - K*C*A)*(wp + K*yₚ) + (B - K*C*B)*u - K*(A11*yₚ + B1*vₚ + D1*eₚ)
 
             xp = wp + K*Source.I_filt_inv[ns, ph, end]
 
-            Source.I_filt_poc[ns, ph, end] = xp[1]
-            Source.V_filt_cap[ns, ph, end] = xp[2]
+            #= Source.I_filt_poc[ns, ph, end] = xp[1]
+            Source.V_filt_cap[ns, ph, end] = xp[2] =#
+
+            if ph == 1
+                Source.debug[1] = xp[1]
+                Source.debug[2] = xp[2]
+            end
+
             Source.wp[ns, ph, :] = wp
         end
 
