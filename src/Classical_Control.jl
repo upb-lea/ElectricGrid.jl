@@ -315,7 +315,7 @@ mutable struct Classical_Controls
         Qm = Array{Float64, 2}(undef, num_sources, phases+1) # 4th column is total
         Qm = fill!(Qm, 0)
 
-        debug = Array{Float64, 1}(undef, 1) # put anything in here that needs to be debugged - for plotting
+        debug = Array{Float64, 1}(undef, 6) # put anything in here that needs to be debugged - for plotting
         debug = fill!(debug, 0)
 
         #---------------------------------------------------------------------------
@@ -520,7 +520,7 @@ mutable struct Classical_Controls
         Bd = Array{Float64, 2}(undef, num_sources, 3)
         Cd = Array{Float64, 2}(undef, num_sources, 3)
         Dd = Array{Float64, 2}(undef, num_sources, 3)
-        Ko = Array{Float64, 2}(undef, num_sources, 3)
+        Ko = Array{Float64, 2}(undef, num_sources, 2)
 
         Classical_Controls(Vdc, Vrms,
         S, P, Q,
@@ -704,6 +704,13 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source.ΔT_err_t = fill!(Source.ΔT_err_t, 0)
     Source.ω_set = fill!(Source.ω_set, 0)
 
+    # fill these with initial conditions
+    Source.V_filt_poc = fill!(Source.V_filt_poc, 0)
+    Source.V_filt_cap = fill!(Source.V_filt_cap, 0)
+
+    Source.I_filt_poc = fill!(Source.I_filt_poc, 0)
+    Source.I_filt_inv = fill!(Source.I_filt_inv, 0)
+
     return nothing
 end
 
@@ -761,7 +768,7 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
     ω = 2π*Source.fsys
     Source.θsys = (Source.θsys + Source.ts*ω)%(2π)
 
-    observer = false
+    observer = true
 
     if !isnothing(name)
         state = RLBase.state(env, name)
@@ -779,7 +786,7 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
 
         if Source.filter_type[ns] == "LCL"
 
-            if observer == true
+            if observer == true || 1 == 1
 
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
                 Luenberger_Observer(Source, ns)
@@ -1612,14 +1619,35 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
 
     if Source.filter_type[ns] == "LCL"
 
-        xk1 = Source.Ad[ns, :, :]
+        A = Source.Ad[ns, 2:3, 2:3] #A22
+        A11 = Source.Ad[ns, 1, 1]
+        B = [Source.Ad[ns, 2:3, 1] Source.Bd[ns, 2:3] Source.Dd[ns, 2:3]]
+        B1 = Source.Bd[ns, 1]
+        C = transpose(Source.Ad[ns, 1, 2:3]) #A12
+        D1 = Source.Dd[ns, 1]
 
-        Source.Ad[ns, :, :]
-        
-        Source.Bd[ns, :]
-        Source.Dd[ns, :]
+        K = Source.Ko[ns, :]
 
-        Source.Cd[ns, :]
+        for ph in 1:Source.phases
+
+            yₚ = Source.I_filt_inv[ns, ph, end - 1]
+            vₚ = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph]
+            eₚ = Source.V_filt_poc[ns, ph, end - 1]
+
+            u = [yₚ; vₚ; eₚ]
+
+            xpₚ = [Source.V_filt_cap[ns, ph, end-1];
+                  Source.I_filt_poc[ns, ph, end-1]]
+
+            wpₚ = xpₚ - yₚ*K
+
+            wp = (A - K*C*A)*wpₚ + (A*K - K*A11 - K*C*A*K)*yₚ - K*(B1*vₚ + D1*eₚ + C*B*u)
+
+            xp = wp + K*Source.I_filt_inv[ns, ph, end]
+
+            Source.V_filt_cap[ns, ph, end] = xp[1]
+            Source.I_filt_poc[ns, ph, end] = xp[2]
+        end
 
     end
 
