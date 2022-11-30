@@ -16,16 +16,21 @@ omega = 2π*f
 CM = [  0   0   0   1
         0   0   0   2
         0   0   0   3
-        -1  -2  -3  0  ]
+        -1  -2  -3  0  ] # user specified
 
-num_source = 3
-num_load = 1
+#TODO: user specified disctances
+#distances = [1.0 2.3 .323]
+
+num_source = 3 # user
+num_load = 1 # user
+
+
 num_nodes = num_source + num_load
 num_cables = maximum(CM)
 
-@variable(model, nodes[1 : num_source + num_load, ["v", "theta", "P", "Q"]])
-fix(nodes[1, "theta"], 0.0)
-fix(nodes[1, "v"], 230.0)
+@variable(model, nodes[1 : num_nodes, ["v", "theta", "P", "Q"]])
+fix(nodes[1, "theta"], 0.0) # reference
+fix(nodes[1, "v"], 230.0) # reference should not be a load bus - ensure, TODO
 
 function set_bounds(variable, start_value, low_bound, up_bound)
     if !is_fixed(variable)
@@ -37,21 +42,21 @@ end
 
 for i = 1:num_nodes
     if i <= num_source
-        fix(nodes[i, "v"], 230.0)
+        fix(nodes[i, "v"], 230.0) # user may specify 1.05*230
 
-        set_bounds(nodes[i, "theta"], 0.0, -pi/2, pi/2)
-        set_bounds(nodes[i, "P"], (num_load * 1000.0) / num_source, -1000.0, 1000.0)
-        set_bounds(nodes[i, "Q"], (num_load * -100.0) / num_source, -1000.0, 1000.0)
+        set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # question, does this limit too much, should be more or less.
+        set_bounds(nodes[i, "P"], (num_load * 1000.0) / num_source, -1000.0, 1000.0) # come from parameter dict/user?
+        set_bounds(nodes[i, "Q"], (num_load * -100.0) / num_source, -1000.0, 1000.0) # P and Q are the average from power, excluding cable losses
     else
         fix(nodes[i, "P"], -1000.0)
         fix(nodes[i, "Q"], -1000.0)
 
-        set_bounds(nodes[i, "theta"], 0.0, -pi/2, pi/2)
+        set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
         set_bounds(nodes[i, "v"], 230.0, 0.95*230, 1.05*230)
     end
 end
 
-function get_degree(CM = CM)
+function get_degree(CM = CM) # how many cables are connected to a node? maybe remove function if not used
     result = zeros(Int, size(CM)[1])
 
     for i=1:size(CM)[1]
@@ -61,7 +66,7 @@ function get_degree(CM = CM)
     result
 end
 
-function get_cable_connections(CM = CM)
+function get_cable_connections(CM = CM) # which cables are connected to which nodes
 
     result = Vector{Vector{Int64}}(undef, size(CM)[1])
 
@@ -72,7 +77,7 @@ function get_cable_connections(CM = CM)
     return result
 end
 
-function get_node_connections(CM = CM)
+function get_node_connections(CM = CM) # which nodes are connected to each other, including the self-connections
 
     result = Vector{Vector{Int64}}(undef, size(CM)[1])
 
@@ -93,16 +98,19 @@ B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symme
 P_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
 Q_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
 
-@variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]])
+# As radius goes down resistance goes up, inductance goes up, capacitance goes down. Put in formulas for this.
+@variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]]) # this is wrong - #TODO ["radius"] for futute : ["radius", "conductivity"] 
 cable_conductance = Array{NonlinearExpression, 1}(undef, num_cables)
-cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, num_cables)
-cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, num_cables)
+cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, num_cables) # diagonals - where we add capacitances
+cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, num_cables) # off diagonals
 
 for i=1:num_cables
 
     set_bounds(cables[i, "L"], 0.00025, 0.00023, 0.00026)
     set_bounds(cables[i, "X_R"], 0.38, 0.37, 0.4)
     set_bounds(cables[i, "C_L"], 0.0016, 0.0015, 0.0017)
+
+    #set_bounds(cables[i, "radius"], 0.0016, 0.1, 0.25(?)) mm #TODO
 
     #R = (omega*L)/X_R
     #C = C_L*L
@@ -131,7 +139,7 @@ for i in 1:num_nodes
             
         else
 
-            G[i, k] = zero_expression
+            G[i, k] = zero_expression # a formula which returns 0.0
             B[i, k] = zero_expression
             G[k, i] = zero_expression
             B[k, i] = zero_expression
@@ -139,6 +147,7 @@ for i in 1:num_nodes
     end
 end
 
+# power flow constraints - this is perfect!!
 for i in 1:num_nodes
 
     P_node[i] = @NLconstraint(model,
@@ -156,13 +165,13 @@ for i in 1:num_nodes
 end
 
 cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
-
+# maybe remove this? but add as check after optimisation has been completed.
 for i in 1:num_cables
 
     j, k = Tuple(findfirst(x -> x == i, CM))
 
     cable_constraints[i] = @NLconstraint(model,
-        abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*cables[i, "L"]))
+        abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*cables[i, "L"])) # this formula is not quite correct - missing resistances and capacitances
         <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
     )
 
@@ -172,15 +181,22 @@ end
 @NLexpression(model, P_source_mean, sum(nodes[j,"P"] for j in 1:num_source) / num_source)
 @NLexpression(model, Q_source_mean, sum(nodes[j,"Q"] for j in 1:num_source) / num_source)
 
-@NLobjective(model, Min, abs(sum(nodes[i,"P"] for i in 1:num_source))/1000
+# TODO: normalisation, i.e. weighting between minimising P and Q, and minimising cable radius? Maybe use per unit system
+# normalisation : 1. max value
+#                 2. p.u. 0
+# Sbase_1_phase = sum(loads)
+# Vbase_rms = 230
+# Ibase_rms = f(Sbase_1_phase, Vbase_rms)
+# Zbase = f(Vbase_rms, Ibase_rms)
+@NLobjective(model, Min, abs(sum(nodes[i,"P"] for i in 1:num_source))/1000 # replace sum by mean or divide by 1000*num_source
                         + abs(sum(nodes[i,"Q"] for i in 1:num_source))/1000
-                        + sum(nodes[i,"v"] for i in num_source+1:num_nodes)/230
+                        + sum(nodes[i,"v"] for i in num_source+1:num_nodes)/230 # TODO: maybe wrong- minimise the deviation of voltage, excluding reference node (which does not neeed to be node 1)
                         + abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π
-                        + sum(cables[i, "X_R"] for i in 1:num_cables)
+                        + sum(cables[i, "X_R"] for i in 1:num_cables) # replaced with radius, how do we normalise radius??? idea: upper bound of radius times by number of cables
                         + sum(1/cables[i, "L"] for i in 1:num_cables)
                         + sum(cables[i, "C_L"] for i in 1:num_cables)
                         + sum( (nodes[i,"P"] - P_source_mean)^2 for i in 1:num_source)/num_source 
-                        + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in 1:num_source)/num_source ) # the variance 
+                        + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in 1:num_source)/num_source ) # the variance - not exactly right (but good enough)
 
 optimize!(model)
 println("""
