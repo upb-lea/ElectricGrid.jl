@@ -244,6 +244,7 @@ cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
 # Vbase_rms = 230
 # Ibase_rms = f(Sbase_1_phase, Vbase_rms)
 # Zbase = f(Vbase_rms, Ibase_rms)
+radius_upper_bound = upper_bound(cables[1, "radius"]);
 
 @NLobjective(model, Min, abs(sum(nodes[i,"P"]/1000 for i in 1:num_source)) # replace sum by mean or divide by 1000*num_source
                         + abs(sum(nodes[i,"Q"]/1000 for i in 1:num_source)) # take apparent power -- λ_1  
@@ -254,7 +255,7 @@ cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
                         # + sum(cables[i, "C_L"] for i in 1:num_cables) 
                         + sum( ((nodes[i,"P"] - P_source_mean)^2)/num_source for i in 1:num_source) 
                         + sum( ((nodes[i,"Q"] - Q_source_mean)^2)/num_source for i in 1:num_source) 
-                        # + sum( ((cables[i, "radius"] / upper_bound(cables[i, "radius"])) for i in 1:num_cables))
+                        + sum( ((cables[i, "radius"] / radius_upper_bound) for i in 1:num_cables))
                         ) # the variance - not exactly right (but good enough)
 
 optimize!(model)
