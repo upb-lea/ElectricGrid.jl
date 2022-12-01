@@ -146,6 +146,7 @@ for i=1:num_cables
     #TODO: AWG 6 - AWG 12 as discussed
     set_bounds(cables[i, "radius"], (2.05232e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
 
+    # assumption to lien to line
     L_cable[i] = @NLexpression(model, l * 4e-7 * log(D/(0.7788 * cables[i, "radius"])))  # m* H/m
 
     # resistivity remains constant ρ_(T=50) = 1.973e-8 
@@ -169,7 +170,7 @@ for i=1:num_cables
     # cable_susceptance_1[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)))
     cable_susceptance_1[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2))))
     # cable_susceptance_0[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)) + omega*cables[i, "C_L"]*cables[i, "L"]/2)
-    cable_susceptance_0[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2)) + C_cable[i]/2))
+    cable_susceptance_0[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2)) + omega*C_cable[i]/2))
 end
 
 
@@ -235,7 +236,8 @@ cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
 # non-linear objectives
 @NLexpression(model, P_source_mean, sum(nodes[j,"P"] for j in 1:num_source) / num_source)
 @NLexpression(model, Q_source_mean, sum(nodes[j,"Q"] for j in 1:num_source) / num_source)
-
+# add apparent power
+@NLexpression(power, P_apparent, )
 # TODO: normalisation, i.e. weighting between minimising P and Q, and minimising cable radius? Maybe use per unit system
 # normalisation : 1. max value
 #                 2. p.u. 
