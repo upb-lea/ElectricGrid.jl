@@ -212,7 +212,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         @assert num_undef_sources >= 0 "Expect the number of defined sources within the parameter dict to be less or equal to the number of sources in the env, but the entries within the parameter dict is $num_def_sources and the number of env sources is $num_sources."
 
         if num_undef_sources > 0
-            println("WARNING: The number of defined sources $num_def_sources is smaller than the number specified sources in the environment $num_sources, therefore the remaining $num_undef_sources sources are selected randomly!")
+            @warn "The number of defined sources $num_def_sources is smaller than the number specified sources in the environment $num_sources, therefore the remaining $num_undef_sources sources are selected randomly!"
         end
 
         num_LC_defined = 0
@@ -282,7 +282,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "L"
-                println("WARNING: filterType not known! set to L filter, please choose L, LC, or LCL!")
+                @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
             end
             
 
@@ -398,16 +398,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
             # Validierung ob LC vorhanden ist?
             if num_LC_defined == 0 &&  num_fltr_LC_undef == 0
-                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         else
 
             if num_LC_defined == 0 
-                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         end
 
-        source_type_fixed > 0 && println("WARNING: $source_type_fixed sourceType not defined! set to ideal!")
+        source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined! set to ideal!"
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     
@@ -466,17 +466,17 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         @assert num_undef_loads >= 0 "Expect the number of defined loads within the parameter dict to be less or equal to the number of loads in the env, but the entries within the parameter dict is $num_def_loads and the number of env loads is $num_loads."
 
         if num_undef_loads > 0
-            println("WARNING: The number of defined loads $num_def_loads is smaller than the number specified loads in the environment $num_loads, therefore the remaining $num_undef_loads loads are selected randomly!")
+            @warn "The number of defined loads $num_def_loads is smaller than the number specified loads in the environment $num_loads, therefore the remaining $num_undef_loads loads are selected randomly!"
         end
 
         for (index, load) in enumerate(parameters["load"])
             if !haskey(load, "impedance")
                 load["impedance"] = rand(["RLC","RL","RC","LC","R","L","C"])
-                print("WARNING! The type of load was not specified and is therefore drawn randomly!")
+                @warn "The type of load was not specified and is therefore drawn randomly!"
 
                 # TODO 
                 # if any(keys(load) in ["R", "L", "C"]
-                #   print(WARNING! In the load values were defined which were not used because the type load["impedance"] does not consider the value/s [LIST OF VALUES THAT ARE SPEZIFIED BUT NOT USED]!)
+                #   @warn "In the load values were defined which were not used because the type load["impedance"] does not consider the value/s [LIST OF VALUES THAT ARE SPEZIFIED BUT NOT USED]!"
 
             end
 
@@ -559,7 +559,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         @assert num_undef_cables >= 0 "Expect the number of defined cables within the parameter dict to be less or equal to the number of sources in the env, but the entries within the parameter dict is $num_def_cables and the number of env cables is $num_cables."
 
         if num_undef_cables > 0
-            println("WARNING: The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!")
+            @warn "The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!"
         end
 
         for (idx, cable) in enumerate(parameters["cable"])

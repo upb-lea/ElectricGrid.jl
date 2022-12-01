@@ -15,6 +15,7 @@ include("./MultiAgentGridController.jl")
 include("./plotting.jl")
 include("./data_hook.jl")
 include("./Dare_Wrapper.jl")
+include("./Dare_Logger.jl")
 
 #code to export all, taken from https://discourse.julialang.org/t/exportall/4970/18
 for n in names(@__MODULE__; all=true)
