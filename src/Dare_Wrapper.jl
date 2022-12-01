@@ -155,7 +155,7 @@ function create_setup_2(;num_sources = 0, num_loads = 0, CM = nothing, parameter
         return state
     end
 
-    function RLBase.action_space(env::SimEnv, name::String)
+    @eval function RLBase.action_space(env::SimEnv, name::String)
         if name == "agent"
             return Space(fill(-1.0..1.0, size(action_ids_agent)))
         else
