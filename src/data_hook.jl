@@ -43,13 +43,14 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     currentNNA = nothing
 
     collect_reference = false
-    collect_vdc_idx = []
+    collect_vdc_ids = []
 
-    collect_vdq_idx = []
-    collect_vrms_idx = []
-    collect_idq_idx = []
-    collect_irms_idx = []
-    collect_pq_idx = []
+    collect_vdq_ids = []
+    collect_vrms_ids = []
+    collect_idq_ids = []
+    collect_irms_ids = []
+    collect_pq_ids = []
+    collect_debug = []
 
 end
 
@@ -64,7 +65,9 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     for source in hook.collect_sources
         para = env.nc.parameters["source"][source]
         indices = get_source_state_indices(env.nc,source)
+
         for id in indices["source$source"]["state_indices"]
+
             if !(env.state_ids[id] in hook.collect_state_ids)
                 push!(hook.collect_state_ids,env.state_ids[id])
                 if occursin("_L1", env.state_ids[id])
@@ -72,9 +75,11 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                     push!(hook.extra_state_paras,para["R1"])
                     push!(hook.extra_state_names,replace(env.state_ids[id], "_L1" => "_R1"))
                 elseif occursin("v_C", env.state_ids[id])
-                    push!(hook.extra_state_ids,id)
-                    push!(hook.extra_state_paras,para["R_C"])
-                    push!(hook.extra_state_names, replace(env.state_ids[id], "v_C" => "i_R_C"))
+                    if haskey(para, "R_C")
+                        push!(hook.extra_state_ids,id)
+                        push!(hook.extra_state_paras,para["R_C"])
+                        push!(hook.extra_state_names, replace(env.state_ids[id], "v_C" => "i_R_C"))
+                    end
                 elseif occursin("_L2", env.state_ids[id])
                     push!(hook.extra_state_ids,id)
                     push!(hook.extra_state_paras,para["R2"])
@@ -82,6 +87,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
                 end
             end
         end
+
         for id in indices["source$source"]["action_indices"]
             if !(env.action_ids[id] in hook.collect_action_ids)
                 push!(hook.collect_action_ids,env.action_ids[id])
@@ -135,7 +141,6 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
         end
     end
 
-    #print(hook.extra_state_names)
     hook.A,hook.B ,_ ,_ = get_sys(env.nc)
     hook.collect_state_paras = get_state_paras(env.nc)
 
@@ -165,9 +170,18 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
 
+    if length(hook.policy_names) != length(agent.agents)
+        hook.policy_names = [s for s in keys(agent.agents)]
+    end
+
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
-        for idx in hook.collect_vdq_idx
+        for idx in hook.collect_debug
+    
+            insertcols!(hook.tmp, "debug_$(idx)" => agent.agents["classic"]["policy"].policy.Source.debug[idx])           
+        end
+
+        for idx in hook.collect_vdq_ids
 
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
@@ -176,7 +190,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_idq_idx
+        for idx in hook.collect_idq_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
                 insertcols!(hook.tmp, "source$(idx)_id" => agent.agents["classic"]["policy"].policy.Source.I_dq0[s_idx, 1])
@@ -184,7 +198,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_pq_idx
+        for idx in hook.collect_pq_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
                 insertcols!(hook.tmp, "source$(idx)_p" => agent.agents["classic"]["policy"].policy.Source.p_q_filt[s_idx, 1])
@@ -192,16 +206,16 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_vrms_idx
+        for idx in hook.collect_vrms_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
-                vrms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.V_filt_poc[s_idx, :, end], 0))
+                vrms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.V_filt_cap[s_idx, :, end], 0))
                 insertcols!(hook.tmp, "source$(idx)_vrms" => vrms)
                 #insertcols!(hook.tmp, "source$(idx)_vrms_a" => agent.agents["classic"]["policy"].policy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
-        for idx in hook.collect_irms_idx
+        for idx in hook.collect_irms_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
                 irms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.I_filt_poc[s_idx, :, end], 0))
@@ -212,7 +226,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
     end
 
-    for idx in hook.collect_vdc_idx
+    for idx in hook.collect_vdc_ids
         insertcols!(hook.tmp, "source$(idx)_vdc" => env.v_dc[idx])
     end
 
@@ -273,9 +287,8 @@ end
 
 function (hook::DataHook)(::PostActStage, agent, env)
 
-
     states_x = Vector( env.x )
-    opstates=(hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
+    opstates = (hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
     extra_state_cntr= 1
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)

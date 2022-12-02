@@ -36,6 +36,12 @@ mutable struct SimEnv <: AbstractEnv
     action
     action_ids
     action_delay_buffer
+    A
+    B
+    C
+    D
+    state_parameters
+    y #holds all of the inductor voltages and capacitor currents
 end
 
 function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
@@ -46,7 +52,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
     else
         # Construct standard env with 2 sources, 1 load
-        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)") #TODO: Clarify what there problem is
+        @info "Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)" #TODO: Clarify what there problem is
         CM = [ 0. 0. 1.
                0. 0. 2
               -1. -2. 0.]
@@ -63,6 +69,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     Ad = exp(A*ts)
     Bd = A \ (Ad - C) * B
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    state_parameters = get_state_paras(nc)
 
     if use_gpu
         Ad = CuArray(A)
@@ -126,7 +133,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     if isnothing(state_ids)
         if isnothing(nc)
             state_ids = []
-            println("WARNING: No state_ids array specified - observing states with DataHook not possible")
+            @warn "No state_ids array specified - observing states with DataHook not possible"
         else
             state_ids = get_state_ids(nc)
         end
@@ -135,7 +142,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     if isnothing(action_ids)
         if isnothing(nc)
             action_ids = []
-            println("WARNING: No state_ids array specified - observing states with DataHook not possible")
+            @warn "No state_ids array specified - observing states with DataHook not possible"
         else
             action_ids = get_action_ids(nc)
         end
@@ -172,24 +179,24 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                 # first value set to 0
                 v_dc[source_number] = 0
             else
-                println("WARNING: sourceType not known! vdc set to fixed value")
+                @warn "sourceType not known! vdc set to fixed value"
                 v_dc[source_number] = 800
                 fun = (env, G, T) -> 800
                 push!(v_dc_arr, fun)
                 vdc_fixed += 1
             end
         else
-            println("WARNING: sourceType not defined! vdc set to fixed value, if not wanted please define nc.parameters -> source -> source_type (e.g. = ideal")
+            @warn "sourceType not defined! vdc set to fixed value, if not wanted please define nc.parameters -> source -> source_type (e.g. = ideal"
             v_dc[source_number] = 800
             fun = (env, G, T) -> 800
             push!(v_dc_arr, fun)
             vdc_fixed += 1
         end
     end
-    vdc_fixed > 0 && println("WARNING: $vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc")
+    vdc_fixed > 0 && @warn "$vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc"
 
 
-    println("INFO: Normalization done based in defined parameterlimits")
+    @info "Normalization done based in defined parameterlimits"
     states = get_state_ids(nc)
 
     i_limit_fixed = 0
@@ -259,8 +266,8 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         end
     end
 
-    i_limit_fixed > 0 && println("WARNING: $i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit!")
-    v_limit_fixed > 0 && println("WARNING: $v_limit_fixed Voltage limits set to 1500 V - please define in nc.parameters -> source -> v_limit!")        
+    i_limit_fixed > 0 && @warn "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit!"
+    v_limit_fixed > 0 && @warn "$v_limit_fixed Voltage limits set to 1500 V - please define in nc.parameters -> source -> v_limit!"   
 
 
     if isnothing(reward)
@@ -278,7 +285,14 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         fill!(action_delay_buffer, zeros(length(action_space)))
     end
 
-    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, v_dc_arr, norm_array, convert_state_to_cpu, reward, action, action_ids, action_delay_buffer)
+    y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
+
+    SimEnv(nc, sys_d, action_space, state_space, 
+    false, featurize, prepare_action, reward_function, 
+    x0, x, t0, t, ts, state, maxsteps, 0, state_ids, 
+    v_dc, v_dc_arr, norm_array, convert_state_to_cpu, 
+    reward, action, action_ids, action_delay_buffer,
+    A, B, C, D, state_parameters, y)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -334,7 +348,6 @@ function (env::SimEnv)(action)
 
     env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
     env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
-    
 
     env.action = env.prepare_action(env)
     
@@ -373,6 +386,11 @@ function (env::SimEnv)(action)
     env.reward = env.reward_function(env)
 
     env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
+
+    # calcultaing the inductor voltages and capacitor currents
+
+    env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action)) ) .* (env.state_parameters)
+
 end
 
 function get_vDC_PV(I)

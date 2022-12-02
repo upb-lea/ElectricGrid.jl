@@ -80,7 +80,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 4 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters))"
+        @assert length(keys(parameters["grid"])) == 6 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -163,6 +163,8 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
+        grid_properties["Δfmax"] = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
+        grid_properties["ΔEmax"] = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
         parameters["grid"] = grid_properties
 
     else
@@ -177,6 +179,12 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         end
         if !haskey(parameters["grid"], "f_grid")
             parameters["grid"]["f_grid"] = 50
+        end
+        if !haskey(parameters["grid"], "Δfmax")
+            parameters["grid"]["Δfmax"] = 0.5/100
+        end
+        if !haskey(parameters["grid"], "ΔEmax")
+            parameters["grid"]["ΔEmax"] = 5/100
         end
     end
 
@@ -212,10 +220,11 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         @assert num_undef_sources >= 0 "Expect the number of defined sources within the parameter dict to be less or equal to the number of sources in the env, but the entries within the parameter dict is $num_def_sources and the number of env sources is $num_sources."
 
         if num_undef_sources > 0
-            println("WARNING: The number of defined sources $num_def_sources is smaller than the number specified sources in the environment $num_sources, therefore the remaining $num_undef_sources sources are selected randomly!")
+            @warn "The number of defined sources $num_def_sources is smaller than the number specified sources in the environment $num_sources, therefore the remaining $num_undef_sources sources are selected randomly!"
         end
 
         num_LC_defined = 0
+        num_LCL_defined = 0
         source_type_fixed = 0
 
         for (index, source) in enumerate(parameters["source"])
@@ -282,7 +291,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "L"
-                println("WARNING: filterType not known! set to L filter, please choose L, LC, or LCL!")
+                @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
             end
             
 
@@ -290,6 +299,9 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 #Capacitor design
                 if source["fltr"] == "LC"
                     num_LC_defined += 1
+                end
+                if source["fltr"] == "LCL"
+                    num_LCL_defined += 1
                 end
                 if !haskey(source, "C")
                     Vorms = parameters["grid"]["v_rms"]*0.95
@@ -371,6 +383,14 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             if !haskey(source, "v_δ_set")
                 source["v_δ_set"] = 0.0
             end
+
+            if !haskey(source, "mode")
+                source["mode"] = "Full-Synchronverter"
+            end
+
+            if !haskey(source, "control_type")
+                source["control_type"] = "classic"
+            end
         end
 
         if num_undef_sources > 0
@@ -390,18 +410,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
             # Validierung ob LC vorhanden ist?
             if num_LC_defined == 0 &&  num_fltr_LC_undef == 0
-                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         else
 
             if num_LC_defined == 0 
-                println("WARNING: No LC filter defined/set random, if wanted please set in parameter dict!")
+                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         end
 
-        
-
-        source_type_fixed > 0 && println("WARNING: $source_type_fixed sourceType not defined! set to ideal!")
+        source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined! set to ideal!"
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     
@@ -460,17 +478,17 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         @assert num_undef_loads >= 0 "Expect the number of defined loads within the parameter dict to be less or equal to the number of loads in the env, but the entries within the parameter dict is $num_def_loads and the number of env loads is $num_loads."
 
         if num_undef_loads > 0
-            println("WARNING: The number of defined loads $num_def_loads is smaller than the number specified loads in the environment $num_loads, therefore the remaining $num_undef_loads loads are selected randomly!")
+            @warn "The number of defined loads $num_def_loads is smaller than the number specified loads in the environment $num_loads, therefore the remaining $num_undef_loads loads are selected randomly!"
         end
 
         for (index, load) in enumerate(parameters["load"])
             if !haskey(load, "impedance")
                 load["impedance"] = rand(["RLC","RL","RC","LC","R","L","C"])
-                print("WARNING! The type of load was not specified and is therefore drawn randomly!")
+                @warn "The type of load was not specified and is therefore drawn randomly!"
 
                 # TODO 
                 # if any(keys(load) in ["R", "L", "C"]
-                #   print(WARNING! In the load values were defined which were not used because the type load["impedance"] does not consider the value/s [LIST OF VALUES THAT ARE SPEZIFIED BUT NOT USED]!)
+                #   @warn "In the load values were defined which were not used because the type load["impedance"] does not consider the value/s [LIST OF VALUES THAT ARE SPEZIFIED BUT NOT USED]!"
 
             end
 
@@ -553,7 +571,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         @assert num_undef_cables >= 0 "Expect the number of defined cables within the parameter dict to be less or equal to the number of sources in the env, but the entries within the parameter dict is $num_def_cables and the number of env cables is $num_cables."
 
         if num_undef_cables > 0
-            println("WARNING: The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!")
+            @warn "The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!"
         end
 
         for (idx, cable) in enumerate(parameters["cable"])
@@ -2013,13 +2031,13 @@ function get_state_ids(self::NodeConstructor)
     for s in 1:self.num_sources
         if self.parameters["source"][s]["fltr"]  == "LCL"
             push!(states, "source$s"*"_i_L1")    # i_f1; dann i_f2....
-            push!(states, "source$s"*"_v_C")
+            push!(states, "source$s"*"_v_C_filt")
             push!(states, "source$s"*"_i_L2")
             push!(states, "source$s"*"_v_C_cables")
         
         elseif self.parameters["source"][s]["fltr"]  == "LC"
             push!(states, "source$s"*"_i_L1")
-            push!(states, "source$s"*"_v_C")
+            push!(states, "source$s"*"_v_C_filt")
             push!(states, "source$s"*"_v_C_cables")
 
         elseif self.parameters["source"][s]["fltr"]  == "L"

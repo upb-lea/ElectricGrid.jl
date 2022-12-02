@@ -167,8 +167,8 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
             xanchor="right",
             orientation="h"
         ),
-        width = 1000,
-        height = 650,
+        width = 800,
+        height = 550,
         margin=attr(l=100, r=80, b=80, t=100, pad=10)
     )
     
@@ -190,26 +190,30 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
 
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
-        for idx in vdq_to_plot
+        for idx in hook.collect_debug
+            push!(traces, scatter(df, x = :time, y = Symbol("debug_$(idx)"), mode="lines", name = "debug_$(idx)"))
+        end
+        
+        for idx in vdq_to_plot #hook.collect_vdq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vd"), mode="lines", name = "source$(idx)_vd"))
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vq"), mode="lines", name = "source$(idx)_vq"))
         end
 
-        for idx in idq_to_plot
+        for idx in idq_to_plot #hook.collect_idq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_id"), mode="lines", name = "source$(idx)_id"))
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_iq"), mode="lines", name = "source$(idx)_iq"))
         end
 
-        for idx in pq_to_plot
+        for idx in pq_to_plot #hook.collect_pq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p"), mode="lines", name = "source$(idx)_p"))
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q"), mode="lines", name = "source$(idx)_q"))
         end
 
-        for idx in vrms_to_plot
+        for idx in vrms_to_plot #hook.collect_vrms_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms"), mode="lines", name = "source$(idx)_vrms"))
         end
 
-        for idx in irms_to_plot
+        for idx in irms_to_plot #hook.collect_irms_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms"), mode="lines", name = "source$(idx)_irms"))
         end
     end
