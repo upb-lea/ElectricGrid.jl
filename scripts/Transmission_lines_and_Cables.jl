@@ -5,8 +5,8 @@ using StatsBase
 using LinearAlgebra
 using FFTW
 using Expokit #for exponentials of sparse matrices
-using Polynomials
-using CurveFit
+#using Polynomials
+#using CurveFit
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
