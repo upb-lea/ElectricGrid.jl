@@ -1,15 +1,15 @@
 using Dare
 using Logging
 
-global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_date = true, log_file = true, log_level = Logging.Info))
+global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_date = false, log_file = true, log_level = Logging.Info))
 
 
-Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.5 #time in seconds, total simulation run time
+Timestep = 100
+t_final = 0.5
 ts = Timestep*1e-6
-t = 0:ts:t_final # time
+t = 0:ts:t_final
 
-fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
+fs = 1/ts
 
 CM = [ 0. 0. 1.
         0. 0. 2
@@ -28,9 +28,6 @@ parameters = Dict()
 parameters["source"] = [source1, source2]
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
-#setup = create_setup(parameters)
-
-# Define the environment
 
 num_sources = 2
 num_loads = 1
@@ -40,4 +37,4 @@ parameters = parameters, maxsteps = length(t), action_delay = 1)
 
 
 #example log
-@info "env created with" maxsteps = env.maxsteps x0 = env.x0
+@info "env created with" maxsteps = env.maxsteps x0 = env.x0 A = env.A

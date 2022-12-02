@@ -1,5 +1,8 @@
 using Dare
 using Test
+using Logging
+
+global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_date = false, log_file = false, log_level = Logging.Error))
 
 @testset "NodeConstructor" begin
     #sum of the output of get_fltr_distr should add up to the argument
@@ -51,3 +54,5 @@ end
 @testset "DataHook" begin
     
 end
+
+#@test π ≈ 3.14 atol=0.01

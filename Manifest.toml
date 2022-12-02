@@ -2,7 +2,7 @@
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "b1eb127bcd95d57d3f46387c3d2b92ba8ad1737d"
+project_hash = "00a2dcad25bb9b99707c51b4891e6c94ad8077a3"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Markdown", "Random", "RandomExtensions", "SparseArrays", "Test"]
