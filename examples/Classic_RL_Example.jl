@@ -53,11 +53,12 @@ push!(cable_list, cable, cable)
     1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
     2 -> "Voltage Control" - voltage source with controller dynamics
 
-    3 -> "PQ Control" - grid following controllable source/load
+    3 -> "PQ Control" - grid following controllable source/load (active and reactive Power)
+    4 -> "PV Control" - grid following controllable source (active power and voltage magnitude)
 
-    4 -> "Droop Control" - simple grid forming with power balancing
-    5 -> "Full-Synchronverter" - droop control on real and imaginary powers
-    6 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
+    5 -> "Droop Control" - simple grid forming with power balancing
+    6 -> "Full-Synchronverter" - droop control on real and imaginary powers
+    7 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
 =#
 
 source = Dict()
@@ -69,9 +70,11 @@ source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
-source["v_pu_set"] = 1.05
-source["mode"] = 6
+source["v_pu_set"] = 1.0
+source["mode"] = 7
 source["control_type"] = "classic"
+source["v_rip"] = 0.01537
+source["i_rip"] = 0.15
 
 push!(source_list, source)
 
@@ -83,8 +86,10 @@ source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
-source["mode"] = 3
+source["mode"] = 4
 source["control_type"] = "classic"
+source["v_rip"] = 0.01537
+source["i_rip"] = 0.15
 
 push!(source_list, source)
 
@@ -124,54 +129,12 @@ parameters["cable"] = cable_list
 parameters["load"] = load_list
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
-#setup = create_setup(parameters = parameters, CM = CM)
-
-# Define the environment
-
-num_sources = length(source_list)
-num_loads = length(load_list)
-
-env = SimEnv(reward_function = reward, featurize = featurize, 
-ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
-parameters = parameters, maxsteps = length(t), action_delay = 1)
-
-state_ids = get_state_ids(env.nc)
-action_ids = get_action_ids(env.nc)
-
-#_______________________________________________________________________________
-# Setting up the Classical Sources
-
-Animo = NamedPolicy("classic", Classical_Policy(env))
-
-state_ids_classic = Animo.policy.state_ids
-action_ids_classic = Animo.policy.action_ids
-
-Multi_Agents = Dict()
-Multi_Agent_list = []
-
-polc = Dict()
-
-polc["policy"] = Animo
-polc["state_ids"] = state_ids_classic
-polc["action_ids"] = action_ids_classic
-
-Multi_Agents[nameof(Animo)] = polc
-
-ma = MultiAgentGridController(Multi_Agents, action_ids)
-
-agentname = "agent"
-
 #_______________________________________________________________________________
 #%% Starting time simulation
 
-plt_state_ids = []#"source1_v_C_a", "source2_v_C_a", "source1_i_L1_a", "source2_i_L1_a"]
-plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, 
-collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2],
-save_best_NNA = true, collect_reference = false, plot_rewards = false)
+setup = create_setup_2(parameters = parameters, CM = CM)
 
-RLBase.run(ma, env, StopAfterEpisode(1), hook);
-
+run(setup, 1)
 #_______________________________________________________________________________
 # Plotting
 
