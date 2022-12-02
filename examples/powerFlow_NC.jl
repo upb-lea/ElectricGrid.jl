@@ -79,22 +79,77 @@ function layout_cabels(CM, num_source, num_load, parameters)
     num_cables = maximum(CM)
 
     @variable(model, nodes[1 : num_nodes, ["v", "theta", "P", "Q"]])
-    fix(nodes[1, "theta"], 0.0) # reference
-    fix(nodes[1, "v"], 230.0) # reference should not be a load bus - ensure + change depending on control mode?, #TODO
+   
+    # cal total load[pwr]
+    total_P_load = 3000 / 3    #TODO get from parameter dict!
+    total_Q_load = 300 / 3
+    total_S_source = 3000 / 3
+
+    idx_p_mean_cal = Array{NonlinearExpression, 1}(undef, 0)
+    idx_q_mean_cal = Array{NonlinearExpression, 1}(undef, 0)
+
+    #idx_p_mean_cal = @variable(model, [])
+    #idx_q_mean_cal = @variable(model, [])
 
     for i = 1:num_nodes
         if i <= num_source
-            #fix(nodes[i, "v"], 230.0) # user may specify 1.05*230
-            #TODO depending on the control mode! Check/change to not fixed?
-            fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
+            if parameters["source"][i]["control_type"] == "classic" 
+                
+                if parameters["source"][i]["mode"] in ["Swing", "Voltage Control", 1, 2] 
 
-            set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # question, does this limit too much, should be more or less.
-            set_bounds(nodes[i, "P"], (num_load * parameters["source"][i]["pwr"]) / num_source, -parameters["source"][i]["pwr"], parameters["source"][i]["pwr"]) # come from parameter dict/user?
-            set_bounds(nodes[i, "Q"], (num_load * parameters["source"][i]["pwr"]) / num_source, -parameters["source"][i]["pwr"], parameters["source"][i]["pwr"]) # P and Q are the average from power, excluding cable losses
+                    fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
+                    fix(nodes[1, "theta"], 0.0) 
+                    #set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # question, does this limit too much, should be more or less.
+                    
+                    set_bounds(nodes[i, "P"], (total_P_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # come from parameter dict/user?
+                    set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    push!(idx_p_mean_cal, @NLexpression(model, i))
+                    push!(idx_q_mean_cal, @NLexpression(model, i))
+
+                elseif parameters["source"][i]["mode"] in ["PQ Control", 3] 
+                    fix(nodes[i, "P"], parameters["source"][i]["p_set"])
+                    fix(nodes[i, "Q"], parameters["source"][i]["q_set"])
+            
+                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+
+                elseif parameters["source"][i]["mode"] in ["PV Control", 4] 
+                    fix(nodes[i, "P"], parameters["source"][i]["p_set"])
+                    fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
+                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    push!(idx_q_mean_cal, i)
+
+                elseif parameters["source"][i]["mode"] in ["Semi-Synchronverter", 7] 
+                    fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
+                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
+                    set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    push!(idx_p_mean_cal, i)
+                    push!(idx_q_mean_cal, i)
+                else
+                    # all variable - 
+                    set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) 
+                    set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+                    push!(idx_p_mean_cal, i)
+                    push!(idx_q_mean_cal, i)
+                end
+
+            else
+                # all variable - 
+                set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) 
+                set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+                push!(idx_p_mean_cal, i)
+                push!(idx_q_mean_cal, i)
+            end
+            #end
         else
-            #TODO: what if we have an active load? -> would sit in sources
-            fix(nodes[i, "P"], -parameters["load"][i-num_source]["pwr"])
-            fix(nodes[i, "Q"], -parameters["load"][i-num_source]["pwr"])
+            fix(nodes[i, "P"], -parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
+            fix(nodes[i, "Q"], -parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
     
             set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
             set_bounds(nodes[i, "v"], 230.0, 0.95*230, 1.05*230)
@@ -121,24 +176,40 @@ function layout_cabels(CM, num_source, num_load, parameters)
     Q_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
 
     # As radius goes down resistance goes up, inductance goes up, capacitance goes down. Put in formulas for this.
-    @variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]]) # this is wrong - #TODO ["radius"] for futute : ["radius", "conductivity"] 
+    #@variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]]) 
+    @variable(model, cables[1 : num_cables, ["radius"]])
+
+    L_cable = Array{NonlinearExpression, 1}(undef, num_cables)
+    R_cable = Array{NonlinearExpression, 1}(undef, num_cables)
+    C_cable = Array{NonlinearExpression, 1}(undef, num_cables)
+
     cable_conductance = Array{NonlinearExpression, 1}(undef, num_cables)
     cable_susceptance_0 = Array{NonlinearExpression, 1}(undef, num_cables) # diagonals - where we add capacitances
     cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, num_cables) # off diagonals
 
+
+    # fixed distance between cables
+    D = 0.5 #m
+
     for i=1:num_cables
+        
 
-        set_bounds(cables[i, "L"], 0.00025, 0.00023, 0.00026)
-        set_bounds(cables[i, "X_R"], 0.38, 0.37, 0.4)
-        set_bounds(cables[i, "C_L"], 0.0016, 0.0015, 0.0017)
+        set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
+        # assumption to line to line
+        L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(D/(0.7788 * cables[i, "radius"])))  # m* H/m
 
-        #set_bounds(cables[i, "radius"], 0.0016, 0.1, 0.25(?)) mm #TODO
+        # resistivity remains constant ρ_(T=50) = 1.973e-8 
+        R_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 1.973e-8 / (π * cables[i, "radius"]^2)) # m * Ω/m
 
-        #R = (omega*L)/X_R
-        #C = C_L*L
-        cable_conductance[i] = @NLexpression(model, ((omega * cables[i, "L"]) / cables[i, "X_R"]) / (((omega*cables[i, "L"]) / cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2))
-        cable_susceptance_1[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)))
-        cable_susceptance_0[i] = @NLexpression(model, (-omega * cables[i, "L"] / (((omega*cables[i, "L"])/cables[i, "X_R"])^2 + omega^2 * cables[i, "L"]^2)) + omega*cables[i, "C_L"]*cables[i, "L"]/2)
+        # X_R = 0.38 # ratio of omega*L/R
+        # X_R = omega * L(r)/R(r)
+
+        # line to neutral
+        C_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 2π * 8.854e-12 / (log(D/cables[i, "radius"]))) #m * F/m
+    
+        cable_conductance[i] = @NLexpression(model, (R_cable[i] / ((R_cable[i])^2 + (omega * L_cable[i])^2)))
+        cable_susceptance_1[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2))))
+        cable_susceptance_0[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2)) + omega*C_cable[i]/2))
     end
 
     for i in 1:num_nodes
@@ -188,6 +259,8 @@ function layout_cabels(CM, num_source, num_load, parameters)
 
     cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
     # maybe remove this? but add as check after optimisation has been completed.
+    #TODO: this back in? -> Septimus
+    #=
     for i in 1:num_cables
 
         j, k = Tuple(findfirst(x -> x == i, CM))
@@ -198,12 +271,29 @@ function layout_cabels(CM, num_source, num_load, parameters)
         )
 
     end
+    =#
     
-    #0.93 * value(nodes[j, "v"] * nodes[k, "v"]) * sqrt(value(cables[i, "C_L"]))
-    # non-linear objectives
-    @NLexpression(model, P_source_mean, sum(nodes[j,"P"] for j in 1:num_source) / num_source)
-    @NLexpression(model, Q_source_mean, sum(nodes[j,"Q"] for j in 1:num_source) / num_source)
 
+    # non-linear objectives
+    println()
+    println()
+    println(convert.(Int64,value.(idx_p_mean_cal)))
+    println(idx_q_mean_cal)
+    println()
+    println(nodes[convert.(Int64,value.(idx_p_mean_cal))[1],"P"])
+    println()
+    println(length(value.(idx_p_mean_cal)))
+    println()
+    
+    @NLexpression(model, P_source_mean, sum(nodes[convert.(Int64,value.(idx_p_mean_cal))[j],"P"] for j in 1:num_source) / num_source)
+
+    @NLexpression(model, P_source_mean, sum(nodes[convert.(Int64,value.(idx_p_mean_cal))[j],"P"] for j in 1:length(value.(idx_p_mean_cal))) / length(value.(idx_p_mean_cal)))
+    @NLexpression(model, Q_source_mean, sum(nodes[Int(j),"Q"] for j in convert.(Int64,value.(idx_q_mean_cal))) / length(value.(idx_q_mean_cal)))
+
+    @NLexpression(model, v_mean, sum(nodes[j,"v"] for j in 1:num_nodes) / num_nodes)
+
+    # add apparent power
+    @NLexpression(model, Power_apparent, sum(sqrt(nodes[i, "P"]^2 + nodes[i, "Q"]^2) for i in 1:num_source))
     # TODO: normalisation, i.e. weighting between minimising P and Q, and minimising cable radius? Maybe use per unit system
     # normalisation : 1. max value
     #                 2. p.u. 0
@@ -211,15 +301,20 @@ function layout_cabels(CM, num_source, num_load, parameters)
     # Vbase_rms = 230
     # Ibase_rms = f(Sbase_1_phase, Vbase_rms)
     # Zbase = f(Vbase_rms, Ibase_rms)
-    @NLobjective(model, Min, abs(sum(nodes[i,"P"] for i in 1:num_source))/1000 # replace sum by mean or divide by 1000*num_source
-                            + abs(sum(nodes[i,"Q"] for i in 1:num_source))/1000
-                            + sum(nodes[i,"v"] for i in num_source+1:num_nodes)/230 # TODO: maybe wrong- minimise the deviation of voltage, excluding reference node (which does not neeed to be node 1)
-                            + abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π
-                            + sum(cables[i, "X_R"] for i in 1:num_cables) # replaced with radius, how do we normalise radius??? idea: upper bound of radius times by number of cables
-                            + sum(1/cables[i, "L"] for i in 1:num_cables)
-                            + sum(cables[i, "C_L"] for i in 1:num_cables)
-                            + sum( (nodes[i,"P"] - P_source_mean)^2 for i in 1:num_source)/num_source 
-                            + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in 1:num_source)/num_source ) # the variance - not exactly right (but good enough)
+
+    radius_upper_bound = upper_bound(cables[1, "radius"]);
+
+    # Lagrangians
+    λ₁ = 0.01
+    λ₂ = 0.99
+
+    @NLobjective(model, Min, λ₁ *  Power_apparent / total_S_source
+                            + abs((v_mean - parameters["grid"]["v_rms"]) / parameters["grid"]["v_rms"])
+                            #+ abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π    # maybe helpfull?
+                            + sum( (nodes[i,"P"] - P_source_mean)^2 for i in in idx_p_mean_cal) / length(idx_p_mean_cal)
+                            + sum( (nodes[i,"Q"] - Q_source_mean)^2 for i in idx_q_mean_cal) / length(idx_q_mean_cal)  # the variance - not exactly right (but good enough)
+                            + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * radius_upper_bound )
+                            )
 
     optimize!(model)
     println("""
@@ -229,26 +324,36 @@ function layout_cabels(CM, num_source, num_load, parameters)
     """)
 
 
+
+    println()
+    println("Radius : $(value.(cables))")
+    println("")
+    println.("R :  $(value.(R_cable))")
+    println()
+    println.("L :  $(value.(L_cable))")
+    println()
+    println.("C :  $(value.(C_cable))")
+    
+
     println()
     println()
     println(value.(nodes))
 
-    println()
-    println(value.(cables))
-    
     #R = (omega*L)/X_R 
     #C = C_L*L
+    
     for (index, cable) in enumerate(parameters["cable"])
 
-        cable["L"] = value.(cables).data[index,1]
+        cable["L"] = value.(L_cable)[index]
         cable["Lb"] = cable["L"]/cable["len"]
 
-        cable["R"] = (omega*cable["L"])/value.(cables).data[index,2]
+        cable["R"] = value.(R_cable)[index]
         cable["Rb"] = cable["R"]/cable["len"]
 
-        cable["C"] = cable["L"]*value.(cables).data[index,3]
+        cable["C"] = value.(C_cable)[index]
         cable["Cb"] = cable["C"]/cable["len"]
     end
+    
 
     return parameters
 end
@@ -266,17 +371,20 @@ num_load = 1 # user
 
 parameters = Dict{Any, Any}(
     "source" => Any[
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0),
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0),
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0),
+                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => 2, "control_type" => "classic"),
+                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => 3, "control_type" => "classic",
+                                    "p_set"=>500, "q_set"=>500),
+                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic"),
+                    #Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => "PQ Control”"),
+                    #Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => "Voltage Control”"),
                     ],
     "load"   => Any[
                     #Dict{Any, Any}("R"=>10, "L" => 0.16, "impedance"=>"RL")#, "pwr"=>1000)
-                    Dict{Any, Any}("R"=>47.61, "L"=>0.0002336, "impedance"=>"RL")
+                    Dict{Any, Any}("R"=>58.7, "L"=>0.3863, "impedance"=>"RL")
                     ],
     "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "fg" => 50),
     "cable" => Any[
-                    Dict{Any, Any}("len"=>1),
+                    Dict{Any, Any}("len"=>2),
                     Dict{Any, Any}("len"=>1),
                     Dict{Any, Any}("len"=>1)
                     ]
@@ -287,8 +395,8 @@ for (index, load) in enumerate(parameters["load"])
     print(load)
     if !haskey(load, "pwr")
         # parallel R||L
-        Z = 1im*parameters["grid"]["fg"]*2*pi*load["R"]*load["L"]/(load["L"]+1im*parameters["grid"]["fg"]*2*pi*load["L"])
-        load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(Z)
+        Z = 1im*parameters["grid"]["fg"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["fg"]*2*pi*load["L"])
+        load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(Z) * parameters["grid"]["phase"]
     end
 end
 
@@ -296,107 +404,4 @@ end
 #TODO Take len in PFE into acount! (currently assuming 1km)
 parameters = layout_cabels(CM, num_source, num_load, parameters)
 
-
-
-
-
-
-
-
-#=
-##################################################
-layout_cabels(CM, num_source, num_load, parameters)#distances, P_bounds, Q_bounds, powerfactor)
-#_______________________________________________________________________________
-# Parameters - Time simulation
-Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.5 #time in seconds, total simulation run time
-
-ts = Timestep*1e-6
-t = 0:ts:t_final # time
-
-fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
-
-#_______________________________________________________________________________
-# State space representation
-CM = [ 0. 0. 1.
-        0. 0. 2
-        -1. -2. 0.]
-
-#-------------------------------------------------------------------------------
-# Cables
-
-cable_list = []
-
-# Network Cable Impedances
-l = 2.5 # length in km
-cable = Dict()
-cable["R"] = 0.208*l # Ω, line resistance 0.722#
-cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
-cable["C"] = 0.4e-6*l # 0.4e-6#
-
-#= push!(cable_list, cable, cable, cable) =#
-
-push!(cable_list, cable, cable)
-
-#-------------------------------------------------------------------------------
-# Sources
-source = Dict()
-
-source_list = []
-
-source["pwr"] = 200e3
-source["vdc"] = 800
-source["fltr"] = "LC"
-source["p_set"] = 50e3
-source["q_set"] = 10e3
-source["v_pu_set"] = 1.05
-
-push!(source_list, source)
-
-source["pwr"] = 200e3
-source["vdc"] = 800
-source["fltr"] = "LC"
-source["p_set"] = 50e3
-source["q_set"] = 10e3
-source["v_pu_set"] = 1.0
-
-push!(source_list, source)
-
-#-------------------------------------------------------------------------------
-# Loads
-
-load_list = []
-load = Dict()
-
-pwr_load = 50e3
-pf_load = 0.6
-R1_load, L_load, _, _ = Load_Impedance_2(pwr_load, pf_load, 230)
-#R2_load, C_load, _, _ = Load_Impedance_2(150e3, -0.8, 230)
-
-load["impedance"] = "RL"
-load["R"] = R1_load# + R2_load # 
-load["L"] = L_load
-load["pwr"] = pwr_load
-load["pf"] = pf_load
-#load["C"] = C_load
-
-push!(load_list, load)
-
-
-#-------------------------------------------------------------------------------
-# Amalgamation
-
-parameters["source"] = source_list
-parameters["cable"] = cable_list
-parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
-
-# Define the environment
-
-num_sources = length(source_list)
-num_loads = length(load_list)
-
-env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
-parameters = parameters, maxsteps = length(t), action_delay = 1)
-=#
 
