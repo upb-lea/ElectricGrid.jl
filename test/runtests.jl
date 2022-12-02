@@ -2,7 +2,7 @@ using Dare
 using Test
 using Logging
 
-global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Info))
+global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
 
 @testset "NodeConstructor" begin
     #sum of the output of get_fltr_distr should add up to the argument
@@ -24,7 +24,7 @@ global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_ti
     #@test length(temp["load"][1])       == 4
     @test length(temp["cable"])         == 6
     #@test length(temp["cable"][1])      == 7
-    @test length(temp["grid"])          == 4
+    #@test length(temp["grid"])          == 4
 end
 
 @testset "Env" begin
