@@ -102,7 +102,7 @@ Q_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
 #TODO ["radius"] for futute : ["radius", "conductivity"] 
 @variable(model, cables[1 : num_cables, ["radius"]]) # this is wrong - 
 
-# defining indivdual expressions for R, L, C as a fucntion of radius with length fixed
+# defining indivdual expressions for R, L, C as a function of radius with fixed length 
 #=
     
     # L = 0.00025
@@ -128,7 +128,6 @@ l = 1000 #m
 # fixed distance b/w cables
 D = 0.5 #m
 
-
 L_cable = Array{NonlinearExpression, 1}(undef, num_cables)
 R_cable = Array{NonlinearExpression, 1}(undef, num_cables)
 C_cable = Array{NonlinearExpression, 1}(undef, num_cables)
@@ -146,7 +145,7 @@ for i=1:num_cables
     #TODO: AWG 6 - AWG 12 as discussed
     set_bounds(cables[i, "radius"], (2.05232e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
 
-    # assumption to lien to line
+    # assumption to line to line
     L_cable[i] = @NLexpression(model, l * 4e-7 * log(D/(0.7788 * cables[i, "radius"])))  # m* H/m
 
     # resistivity remains constant ρ_(T=50) = 1.973e-8 
@@ -237,7 +236,7 @@ cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
 @NLexpression(model, P_source_mean, sum(nodes[j,"P"] for j in 1:num_source) / num_source)
 @NLexpression(model, Q_source_mean, sum(nodes[j,"Q"] for j in 1:num_source) / num_source)
 # add apparent power
-@NLexpression(power, P_apparent, )
+@NLexpression(model, Power_apparent, sum(sqrt(nodes[i, "P"]^2 + nodes[i, "Q"]^2) for i in 1:num_source))
 # TODO: normalisation, i.e. weighting between minimising P and Q, and minimising cable radius? Maybe use per unit system
 # normalisation : 1. max value
 #                 2. p.u. 
@@ -248,8 +247,13 @@ cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
 # Zbase = f(Vbase_rms, Ibase_rms)
 radius_upper_bound = upper_bound(cables[1, "radius"]);
 
-@NLobjective(model, Min, abs(sum(nodes[i,"P"]/1000 for i in 1:num_source)) # replace sum by mean or divide by 1000*num_source
-                        + abs(sum(nodes[i,"Q"]/1000 for i in 1:num_source)) # take apparent power -- λ_1  
+# Lagrangians
+λ₁ = 0.99
+λ₂ = 0.01
+
+@NLobjective(model, Min, λ₁ *  Power_apparent / (num_source * sqrt(2) * 1000)
+                        # + abs(sum(nodes[i,"P"]/1000 for i in 1:num_source)) # replace sum by mean or divide by 1000*num_source
+                        # + abs(sum(nodes[i,"Q"]/1000 for i in 1:num_source)) # take apparent power -- λ_1  
                         #  + sum(nodes[i,"v"]/230 for i in num_source+1:num_nodes) # TODO: maybe wrong- minimise the deviation of voltage, excluding reference node (which does not neeed to be node 1)
                         # + abs(sum(nodes[i,"theta"]/pi for i in 2:num_nodes)) # variances (?)
                         # + sum(cables[i, "X_R"] for i in 1:num_cables) # replaced with radius, how do we normalise radius??? idea: upper bound of radius times by number of cables
@@ -257,10 +261,11 @@ radius_upper_bound = upper_bound(cables[1, "radius"]);
                         # + sum(cables[i, "C_L"] for i in 1:num_cables) 
                         + sum( ((nodes[i,"P"] - P_source_mean)^2)/num_source for i in 1:num_source) 
                         + sum( ((nodes[i,"Q"] - Q_source_mean)^2)/num_source for i in 1:num_source) 
-                        + sum( ((cables[i, "radius"] / radius_upper_bound) for i in 1:num_cables))
+                        + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * radius_upper_bound )# num_cables
                         ) # the variance - not exactly right (but good enough)
 
 optimize!(model)
+
 println("""
 termination_status = $(termination_status(model))
 primal_status      = $(primal_status(model))
@@ -273,3 +278,13 @@ println(value.(nodes))
 
 println()
 println(value.(cables))
+
+println("")
+println.("R :  $(value.(R_cable))")
+
+
+println()
+println.("L :  $(value.(L_cable))")
+
+println()
+println.("C :  $(value.(C_cable))")
