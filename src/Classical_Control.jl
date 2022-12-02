@@ -855,7 +855,9 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
     Source.V_ref[num_source, :] = sqrt(2)*(Vrms)*cos.(θph)
 
-    Source.Vd_abc_new[num_source, :] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
+    #Source.Vd_abc_new[num_source, :] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
+
+    Source.Vd_abc_new[num_source, :] = 2*[100 100 100]/Source.Vdc[num_source]
 
     Phase_Locked_Loop_3ph(Source, num_source)
 

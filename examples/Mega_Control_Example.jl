@@ -28,9 +28,9 @@ function reward(env, name = nothing)
             u_l2_index = findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)
             u_l3_index = findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)
         else
-            u_l1_index = findfirst(x -> x == "source2_v_C_cables_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source2_v_C_cables_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source2_v_C_cables_c", env.state_ids)
+            u_l1_index = findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)
+            u_l2_index = findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)
+            u_l3_index = findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)
         end
 
         u_l1 = env.state[u_l1_index]
@@ -98,12 +98,12 @@ fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
         0. 0. 0. 3.
         -1. -2. -3. 0.] =#
 
-CM = [ 0. 0. 1.
+#= CM = [ 0. 0. 1.
         0. 0. 2.
-        -1. -2. 0.]
+        -1. -2. 0.] =#
 
-#= CM = [0. 1.
-   -1. 0.] =#
+CM = [0. 1.
+   -1. 0.]
 
 #-------------------------------------------------------------------------------
 # Cables
@@ -111,15 +111,17 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 # Network Cable Impedances
-l = 0.5 # length in km
+l = 0.005 # length in km
 cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
 cable["C"] = 0.4e-6*l # 0.4e-6#
 
-#= push!(cable_list, cable, cable, cable) =#
+#push!(cable_list, cable, cable, cable)
 
-push!(cable_list, cable, cable)
+#push!(cable_list, cable, cable)
+
+push!(cable_list, cable)
 
 #-------------------------------------------------------------------------------
 # Sources
@@ -147,7 +149,7 @@ source["p_set"] = 100e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 7
+source["mode"] = 1
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -158,21 +160,21 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 100e3
+#= source["pwr"] = 100e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 3
+source["mode"] = 1
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
 
-push!(source_list, source)
+push!(source_list, source) =#
 
 #= source = Dict()
 
@@ -193,9 +195,9 @@ load = Dict()
 R1_load, L_load, _, _ = Load_Impedance_2(100e3, 0.6, 230)
 #R2_load, C_load, _, _ = Load_Impedance_2(150e3, -0.8, 230)
 
-load["impedance"] = "RL"
-load["R"] = R1_load# + R2_load # 
-load["L"] = L_load
+load["impedance"] = "R"
+load["R"] = 2 #R1_load# + R2_load # 
+#load["L"] = L_load
 #load["C"] = C_load
 
 push!(load_list, load)
@@ -256,8 +258,8 @@ agentname = "agent"
                 "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
 plt_state_ids = []               
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
-collect_cables = [1 2], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2],
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1],
+collect_cables = [1], collect_vrms_ids = [1], collect_irms_ids = [1], collect_pq_ids = [1], collect_vdq_ids = [1],
 save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [1 2])
 
 #_______________________________________________________________________________
@@ -274,6 +276,6 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 "source1_v_C_cables_a", "source1_v_C_cables_b", "source1_v_C_cables_c",
 "source1_i_C_cables_a", "source1_i_C_cables_b", "source1_i_C_cables_c"] =#
 plot_hook_results(; hook = hook, states_to_plot = ["source1_i_L2_a", "source1_v_C_filt_a"], actions_to_plot = [], episode = 1, 
-pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [])
+pq_to_plot = [1], vrms_to_plot = [1], irms_to_plot = [1], vdq_to_plot = [])
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
