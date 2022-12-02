@@ -2,7 +2,7 @@ using Dare
 using Test
 using Logging
 
-global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_date = false, log_file = false, log_level = Logging.Error))
+global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Info))
 
 @testset "NodeConstructor" begin
     #sum of the output of get_fltr_distr should add up to the argument
