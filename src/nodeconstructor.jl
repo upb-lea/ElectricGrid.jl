@@ -1208,7 +1208,7 @@ function get_A_src(self::NodeConstructor, source_i)
         A_src = zeros(4,4)
         A_src[1,1] = -(parameter_i["R1"]+parameter_i["R_C"])/parameter_i["L1"]
         A_src[1,2] = -1/parameter_i["L1"]
-        A_src[1,3] = parameter_i["R2"]/parameter_i["L1"]
+        A_src[1,3] = parameter_i["R_C"]/parameter_i["L1"]
         A_src[2,1] = 1/parameter_i["C"]
         A_src[2,3] = -1/parameter_i["C"]
         A_src[3,1] = parameter_i["R_C"]/parameter_i["L2"]
@@ -1234,7 +1234,7 @@ function get_A_src(self::NodeConstructor, source_i)
     elseif parameter_i["fltr"] == "LC"
 
         A_src = zeros(3,3)
-        A_src[1,1] = -parameter_i["R1"]/parameter_i["L1"]
+        A_src[1,1] = -(parameter_i["R1"] + parameter_i["R_C"])/parameter_i["L1"]
         A_src[1,3] = -1/parameter_i["L1"]
         A_src[2,2] = -1/(parameter_i["C"]*parameter_i["R_C"])
         A_src[2,3] = 1/(parameter_i["C"]*parameter_i["R_C"])

@@ -309,7 +309,7 @@ function Inv_p_q_i(I_αβγ, pq0)
     return v_αβγ
 end
 
-function Load_Impedance(S, pf, vrms; fsys = 50)
+function Series_Load_Impedance(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
 
@@ -342,7 +342,7 @@ function Load_Impedance(S, pf, vrms; fsys = 50)
     return R, L_C, X, Z
 end
 
-function Load_Impedance_2(S, pf, vrms; fsys = 50)
+function Parallel_Load_Impedance(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
 
