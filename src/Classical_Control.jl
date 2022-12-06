@@ -316,7 +316,7 @@ mutable struct Classical_Controls
         Qm = Array{Float64, 2}(undef, num_sources, phases+1) # 4th column is total
         Qm = fill!(Qm, 0)
 
-        debug = Array{Float64, 1}(undef, 6) # put anything in here that needs to be debugged - for plotting
+        debug = Array{Float64, 1}(undef, 10) # put anything in here that needs to be debugged - for plotting
         debug = fill!(debug, 0)
 
         #---------------------------------------------------------------------------
@@ -521,8 +521,8 @@ mutable struct Classical_Controls
         Bd = Array{Float64, 2}(undef, num_sources, 3)
         Cd = Array{Float64, 2}(undef, num_sources, 3)
         Dd = Array{Float64, 2}(undef, num_sources, 3)
-        Ko = Array{Float64, 2}(undef, num_sources, 2)
-        wp = Array{Float64, 3}(undef, num_sources, phases, 2)
+        Ko = Array{Float64, 2}(undef, num_sources, 3)
+        wp = Array{Float64, 3}(undef, num_sources, phases, 3)
 
         Classical_Controls(Vdc, Vrms,
         S, P, Q,
@@ -721,7 +721,7 @@ function Classical_Control(Animo, env, name = nothing)
     Source = Animo.Source
     Source_Interface(env, Source, name)
 
-    ramp_end = 2/Source.fsys
+    ramp_end = 0.0#2/Source.fsys
 
     for s in 1:Source.num_sources
 
@@ -1626,7 +1626,7 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
 
     ns = num_source
 
-    if Source.filter_type[ns] == "LCL"
+    if Source.filter_type[ns] == "LCL"# && 1 == 2
 
         A = Source.Ad[ns, 2:3, 2:3] #A22
         A11 = Source.Ad[ns, 1, 1]
@@ -1635,15 +1635,27 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         C = transpose(Source.Ad[ns, 1, 2:3]) #A12
         D1 = Source.Dd[ns, 1]
 
-        K = Source.Ko[ns, :]
+        K = Source.Ko[ns, 1:2]
 
-        for ph in 1:Source.phases
+        #= A = Source.Ad[ns, :, :]
+        B = Source.Bd[ns, :]
+        D = Source.Dd[ns, :]
+        C = transpose(Source.Cd[ns, :])
+
+        K = Source.Ko[ns, 1:3] =#
+
+        for ph in 1:1#Source.phases
+
+            Source.debug[4] = Source.debug[5]
+            Source.debug[5] = Source.debug[6]
+            Source.debug[6] = Source.debug[7]
+            Source.debug[7] = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph]
 
             yₚ = Source.I_filt_inv[ns, ph, end-1]
-            vₚ = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph]
+            vₚ = Source.debug[6]#(Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph]
             eₚ = Source.V_filt_poc[ns, ph, end-1]
 
-            wp = Source.wp[ns, ph, :]
+            wp = Source.wp[ns, ph, 1:2]
 
             u = [yₚ; vₚ; eₚ]
 
@@ -1655,11 +1667,55 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
             Source.V_filt_cap[ns, ph, end] = xp[2] =#
 
             if ph == 1 && ns == 1
-                Source.debug[1] = xp[1]
-                Source.debug[2] = xp[2]
+                Source.debug[1] = Source.I_filt_inv[ns, ph, end] 
+                Source.debug[2] = xp[1]
+                Source.debug[3] = xp[2]
             end
 
-            Source.wp[ns, ph, :] = wp
+            Source.wp[ns, ph, 1:2] = wp
+
+            #= Source.debug[4] = Source.debug[5]
+            Source.debug[5] = Source.debug[6]
+            Source.debug[6] = Source.debug[7]
+            Source.debug[7] = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph]
+
+            y = Source.I_filt_inv[ns, ph, end] 
+            vₚ = Source.debug[6]#(Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph]
+            eₚ = Source.V_filt_poc[ns, ph, end-1]
+
+            wp = Source.wp[ns, ph, :]
+
+            wp = (A - K*C*A)*wp + (B - K*C*B)*vₚ + (D - K*C*D)*eₚ + K*y
+
+            #= Source.I_filt_inv[ns, ph, end] = wp[1]
+            Source.I_filt_poc[ns, ph, end] = wp[2]
+            Source.V_filt_cap[ns, ph, end] = wp[3] =#
+
+            if ph == 1 && ns == 1
+                Source.debug[1] = wp[1]
+                Source.debug[2] = wp[2]
+                Source.debug[3] = wp[3]
+            end
+
+            Source.wp[ns, ph, :] = wp =#
+            
+            Vbase_LN_rms = Source.Vrms[ns]
+            Ibase_rms = Source.S[ns]/(3*Source.Vrms[ns])
+            I_err = 100*abs(Source.I_filt_poc[ns, ph, end] - Source.debug[2])/(Ibase_rms*sqrt(2))
+            V_err = 100*abs(Source.V_filt_cap[ns, ph, end] - Source.debug[3])/(Vbase_LN_rms*sqrt(2))
+            mag_err = sqrt(I_err^2 + V_err^2)
+
+            if 1==1 || I_err > Source.debug[8]
+                Source.debug[8] = I_err
+            end
+            if 1==1 || V_err > Source.debug[9]
+                Source.debug[9] = V_err
+            end
+
+            if 1==1 || mag_err > Source.debug[10]
+                Source.debug[10] = mag_err
+            end
+
         end
 
     end
@@ -2047,6 +2103,32 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
         Source.Ko[ns, 1] = -(C[2]*A22[1, 1]^2 - A22[1, 2]*C[1]*A22[1, 1] + A22[1, 2]*A22[2, 1]*C[2] - A22[1, 2]*A22[2, 2]*C[1])/(A22[1, 2]*C[1]^2 - A22[2, 1]*C[2]^2 - A22[1, 1]*C[1]*C[2] + A22[2, 2]*C[1]*C[2])
         Source.Ko[ns, 2] = (C[1]*A22[2, 2]^2 - A22[2, 1]*C[2]*A22[2, 2] - A22[1, 1]*A22[2, 1]*C[2] + A22[1, 2]*A22[2, 1]*C[1])/(A22[1, 2]*C[1]^2 - A22[2, 1]*C[2]^2 - A22[1, 1]*C[1]*C[2] + A22[2, 2]*C[1]*C[2])
         
+
+        #= C = transpose(Source.Cd[ns, :])*Source.Ad[ns, :, :]
+        O, r = Observability(C, Source.Ad[ns, :, :])
+
+        A1_1 = Source.Ad[ns, 1, 1]
+        A1_2 = Source.Ad[ns, 1, 2]
+        A1_3 = Source.Ad[ns, 1, 3]
+        A2_1 = Source.Ad[ns, 2, 1]
+        A2_2 = Source.Ad[ns, 2, 2]
+        A2_3 = Source.Ad[ns, 2, 3]
+        A3_1 = Source.Ad[ns, 3, 1]
+        A3_2 = Source.Ad[ns, 3, 2]
+        A3_3 = Source.Ad[ns, 3, 3]
+
+        C1 = C[1]
+        C2 = C[2]
+        C3 = C[3]
+
+        Source.Ko[ns, 1] = -(- A1_1^3*A2_2*C2*C3 + A1_1^3*A2_3*C2^2 - A1_1^3*A3_2*C3^2 + A1_1^3*A3_3*C2*C3 + A1_1^2*A1_2*A2_1*C2*C3 + A1_1^2*A1_2*A2_2*C1*C3 - 2*A1_1^2*A1_2*A2_3*C1*C2 + A1_1^2*A1_2*A3_1*C3^2 - A1_1^2*A1_2*A3_3*C1*C3 - A1_1^2*A1_3*A2_1*C2^2 + A1_1^2*A1_3*A2_2*C1*C2 - A1_1^2*A1_3*A3_1*C2*C3 + 2*A1_1^2*A1_3*A3_2*C1*C3 - A1_1^2*A1_3*A3_3*C1*C2 - A1_1*A1_2^2*A2_1*C1*C3 + A1_1*A1_2^2*A2_3*C1^2 + A1_1*A1_2*A1_3*A2_1*C1*C2 - A1_1*A1_2*A1_3*A2_2*C1^2 - A1_1*A1_2*A1_3*A3_1*C1*C3 + A1_1*A1_2*A1_3*A3_3*C1^2 - A1_1*A1_2*A2_1*A2_2*C2*C3 + A1_1*A1_2*A2_1*A2_3*C2^2 - 2*A1_1*A1_2*A2_1*A3_2*C3^2 + 2*A1_1*A1_2*A2_1*A3_3*C2*C3 + A1_1*A1_2*A2_2^2*C1*C3 - A1_1*A1_2*A2_2*A2_3*C1*C2 + A1_1*A1_2*A2_2*A3_1*C3^2 - A1_1*A1_2*A2_2*A3_3*C1*C3 - A1_1*A1_2*A2_3*A3_1*C2*C3 + 2*A1_1*A1_2*A2_3*A3_2*C1*C3 - A1_1*A1_2*A2_3*A3_3*C1*C2 + A1_1*A1_3^2*A3_1*C1*C2 - A1_1*A1_3^2*A3_2*C1^2 + A1_1*A1_3*A2_1*A3_2*C2*C3 - A1_1*A1_3*A2_1*A3_3*C2^2 - 2*A1_1*A1_3*A2_2*A3_1*C2*C3 + A1_1*A1_3*A2_2*A3_2*C1*C3 + A1_1*A1_3*A2_2*A3_3*C1*C2 + 2*A1_1*A1_3*A2_3*A3_1*C2^2 - 2*A1_1*A1_3*A2_3*A3_2*C1*C2 - A1_1*A1_3*A3_1*A3_2*C3^2 + A1_1*A1_3*A3_1*A3_3*C2*C3 + A1_1*A1_3*A3_2*A3_3*C1*C3 - A1_1*A1_3*A3_3^2*C1*C2 + A1_2^2*A2_1^2*C2*C3 - A1_2^2*A2_1*A2_2*C1*C3 - A1_2^2*A2_1*A2_3*C1*C2 + A1_2^2*A2_1*A3_1*C3^2 - A1_2^2*A2_1*A3_3*C1*C3 + A1_2^2*A2_2*A2_3*C1^2 - A1_2^2*A2_3*A3_1*C1*C3 + A1_2^2*A2_3*A3_3*C1^2 - A1_2*A1_3*A2_1^2*C2^2 + 2*A1_2*A1_3*A2_1*A2_2*C1*C2 - A1_2*A1_3*A2_2^2*C1^2 + A1_2*A1_3*A3_1^2*C3^2 - 2*A1_2*A1_3*A3_1*A3_3*C1*C3 + A1_2*A1_3*A3_3^2*C1^2 - A1_2*A2_1*A2_2*A3_2*C3^2 + A1_2*A2_1*A2_2*A3_3*C2*C3 + A1_2*A2_1*A2_3*A3_2*C2*C3 - A1_2*A2_1*A2_3*A3_3*C2^2 + A1_2*A2_2^2*A3_1*C3^2 - A1_2*A2_2^2*A3_3*C1*C3 - 2*A1_2*A2_2*A2_3*A3_1*C2*C3 + A1_2*A2_2*A2_3*A3_2*C1*C3 + A1_2*A2_2*A2_3*A3_3*C1*C2 + A1_2*A2_3^2*A3_1*C2^2 - A1_2*A2_3^2*A3_2*C1*C2 - A1_3^2*A2_1*A3_1*C2^2 + A1_3^2*A2_1*A3_2*C1*C2 + A1_3^2*A2_2*A3_1*C1*C2 - A1_3^2*A2_2*A3_2*C1^2 - A1_3^2*A3_1^2*C2*C3 + A1_3^2*A3_1*A3_2*C1*C3 + A1_3^2*A3_1*A3_3*C1*C2 - A1_3^2*A3_2*A3_3*C1^2 - A1_3*A2_1*A3_2^2*C3^2 + 2*A1_3*A2_1*A3_2*A3_3*C2*C3 - A1_3*A2_1*A3_3^2*C2^2 + A1_3*A2_2*A3_1*A3_2*C3^2 - A1_3*A2_2*A3_1*A3_3*C2*C3 - A1_3*A2_2*A3_2*A3_3*C1*C3 + A1_3*A2_2*A3_3^2*C1*C2 - A1_3*A2_3*A3_1*A3_2*C2*C3 + A1_3*A2_3*A3_1*A3_3*C2^2 + A1_3*A2_3*A3_2^2*C1*C3 - A1_3*A2_3*A3_2*A3_3*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+        Source.Ko[ns, 2] = (A1_1^2*A2_1*A2_2*C2*C3 - A1_1^2*A2_1*A2_3*C2^2 + A1_1^2*A2_1*A3_2*C3^2 - A1_1^2*A2_1*A3_3*C2*C3 - A1_1*A1_2*A2_1^2*C2*C3 - A1_1*A1_2*A2_1*A2_2*C1*C3 + 2*A1_1*A1_2*A2_1*A2_3*C1*C2 - A1_1*A1_2*A2_1*A3_1*C3^2 + A1_1*A1_2*A2_1*A3_3*C1*C3 + A1_1*A1_3*A2_1^2*C2^2 - A1_1*A1_3*A2_1*A2_2*C1*C2 + A1_1*A1_3*A2_1*A3_1*C2*C3 - 2*A1_1*A1_3*A2_1*A3_2*C1*C3 + A1_1*A1_3*A2_1*A3_3*C1*C2 + A1_1*A2_1*A2_2^2*C2*C3 - A1_1*A2_1*A2_2*A2_3*C2^2 + A1_1*A2_1*A2_2*A3_2*C3^2 - A1_1*A2_1*A2_2*A3_3*C2*C3 - A1_1*A2_2^3*C1*C3 + A1_1*A2_2^2*A2_3*C1*C2 + A1_1*A2_2*A2_3*A3_1*C2*C3 - 2*A1_1*A2_2*A2_3*A3_2*C1*C3 + A1_1*A2_2*A2_3*A3_3*C1*C2 - A1_1*A2_3^2*A3_1*C2^2 + A1_1*A2_3^2*A3_2*C1*C2 + A1_1*A2_3*A3_1*A3_2*C3^2 - A1_1*A2_3*A3_1*A3_3*C2*C3 - A1_1*A2_3*A3_2*A3_3*C1*C3 + A1_1*A2_3*A3_3^2*C1*C2 + A1_2^2*A2_1^2*C1*C3 - A1_2^2*A2_1*A2_3*C1^2 - A1_2*A1_3*A2_1^2*C1*C2 + A1_2*A1_3*A2_1*A2_2*C1^2 + A1_2*A1_3*A2_1*A3_1*C1*C3 - A1_2*A1_3*A2_1*A3_3*C1^2 - A1_2*A2_1^2*A2_2*C2*C3 + A1_2*A2_1^2*A3_2*C3^2 - A1_2*A2_1^2*A3_3*C2*C3 + A1_2*A2_1*A2_2^2*C1*C3 + A1_2*A2_1*A2_2*A2_3*C1*C2 - 2*A1_2*A2_1*A2_2*A3_1*C3^2 + 2*A1_2*A2_1*A2_2*A3_3*C1*C3 - A1_2*A2_2^2*A2_3*C1^2 + A1_2*A2_2*A2_3*A3_1*C1*C3 - A1_2*A2_2*A2_3*A3_3*C1^2 + A1_2*A2_3^2*A3_1*C1*C2 - A1_2*A2_3^2*A3_2*C1^2 - A1_2*A2_3*A3_1^2*C3^2 + 2*A1_2*A2_3*A3_1*A3_3*C1*C3 - A1_2*A2_3*A3_3^2*C1^2 - A1_3^2*A2_1*A3_1*C1*C2 + A1_3^2*A2_1*A3_2*C1^2 + A1_3*A2_1^2*A2_2*C2^2 - A1_3*A2_1^2*A3_2*C2*C3 + A1_3*A2_1^2*A3_3*C2^2 - 2*A1_3*A2_1*A2_2^2*C1*C2 + 2*A1_3*A2_1*A2_2*A3_1*C2*C3 - A1_3*A2_1*A2_2*A3_2*C1*C3 - A1_3*A2_1*A2_2*A3_3*C1*C2 + A1_3*A2_2^3*C1^2 - 2*A1_3*A2_2*A2_3*A3_1*C1*C2 + 2*A1_3*A2_2*A2_3*A3_2*C1^2 + A1_3*A2_3*A3_1^2*C2*C3 - A1_3*A2_3*A3_1*A3_2*C1*C3 - A1_3*A2_3*A3_1*A3_3*C1*C2 + A1_3*A2_3*A3_2*A3_3*C1^2 + A2_1*A2_2^2*A3_2*C3^2 - A2_1*A2_2^2*A3_3*C2*C3 - A2_1*A2_2*A2_3*A3_2*C2*C3 + A2_1*A2_2*A2_3*A3_3*C2^2 + A2_1*A2_3*A3_2^2*C3^2 - 2*A2_1*A2_3*A3_2*A3_3*C2*C3 + A2_1*A2_3*A3_3^2*C2^2 - A2_2^3*A3_1*C3^2 + A2_2^3*A3_3*C1*C3 + 2*A2_2^2*A2_3*A3_1*C2*C3 - A2_2^2*A2_3*A3_2*C1*C3 - A2_2^2*A2_3*A3_3*C1*C2 - A2_2*A2_3^2*A3_1*C2^2 + A2_2*A2_3^2*A3_2*C1*C2 - A2_2*A2_3*A3_1*A3_2*C3^2 + A2_2*A2_3*A3_1*A3_3*C2*C3 + A2_2*A2_3*A3_2*A3_3*C1*C3 - A2_2*A2_3*A3_3^2*C1*C2 + A2_3^2*A3_1*A3_2*C2*C3 - A2_3^2*A3_1*A3_3*C2^2 - A2_3^2*A3_2^2*C1*C3 + A2_3^2*A3_2*A3_3*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+        Source.Ko[ns, 3] = -(- A1_1^2*A2_2*A3_1*C2*C3 + A1_1^2*A2_3*A3_1*C2^2 - A1_1^2*A3_1*A3_2*C3^2 + A1_1^2*A3_1*A3_3*C2*C3 + A1_1*A1_2*A2_1*A3_1*C2*C3 + A1_1*A1_2*A2_2*A3_1*C1*C3 - 2*A1_1*A1_2*A2_3*A3_1*C1*C2 + A1_1*A1_2*A3_1^2*C3^2 - A1_1*A1_2*A3_1*A3_3*C1*C3 - A1_1*A1_3*A2_1*A3_1*C2^2 + A1_1*A1_3*A2_2*A3_1*C1*C2 - A1_1*A1_3*A3_1^2*C2*C3 + 2*A1_1*A1_3*A3_1*A3_2*C1*C3 - A1_1*A1_3*A3_1*A3_3*C1*C2 - A1_1*A2_1*A2_2*A3_2*C2*C3 + A1_1*A2_1*A2_3*A3_2*C2^2 - A1_1*A2_1*A3_2^2*C3^2 + A1_1*A2_1*A3_2*A3_3*C2*C3 + A1_1*A2_2^2*A3_2*C1*C3 - A1_1*A2_2*A2_3*A3_2*C1*C2 - A1_1*A2_2*A3_1*A3_3*C2*C3 + A1_1*A2_2*A3_2*A3_3*C1*C3 + A1_1*A2_3*A3_1*A3_3*C2^2 + A1_1*A2_3*A3_2^2*C1*C3 - 2*A1_1*A2_3*A3_2*A3_3*C1*C2 - A1_1*A3_1*A3_2*A3_3*C3^2 + A1_1*A3_1*A3_3^2*C2*C3 + A1_1*A3_2*A3_3^2*C1*C3 - A1_1*A3_3^3*C1*C2 - A1_2^2*A2_1*A3_1*C1*C3 + A1_2^2*A2_3*A3_1*C1^2 + A1_2*A1_3*A2_1*A3_1*C1*C2 - A1_2*A1_3*A2_2*A3_1*C1^2 - A1_2*A1_3*A3_1^2*C1*C3 + A1_2*A1_3*A3_1*A3_3*C1^2 + A1_2*A2_1^2*A3_2*C2*C3 - A1_2*A2_1*A2_2*A3_2*C1*C3 - A1_2*A2_1*A2_3*A3_2*C1*C2 + 2*A1_2*A2_1*A3_1*A3_3*C2*C3 - 2*A1_2*A2_1*A3_2*A3_3*C1*C3 + A1_2*A2_2*A2_3*A3_2*C1^2 + A1_2*A2_2*A3_1^2*C3^2 - A1_2*A2_2*A3_1*A3_3*C1*C3 - A1_2*A2_3*A3_1^2*C2*C3 - A1_2*A2_3*A3_1*A3_3*C1*C2 + 2*A1_2*A2_3*A3_2*A3_3*C1^2 + A1_2*A3_1^2*A3_3*C3^2 - 2*A1_2*A3_1*A3_3^2*C1*C3 + A1_2*A3_3^3*C1^2 + A1_3^2*A3_1^2*C1*C2 - A1_3^2*A3_1*A3_2*C1^2 - A1_3*A2_1^2*A3_2*C2^2 + 2*A1_3*A2_1*A2_2*A3_2*C1*C2 - 2*A1_3*A2_1*A3_1*A3_3*C2^2 + A1_3*A2_1*A3_2^2*C1*C3 + A1_3*A2_1*A3_2*A3_3*C1*C2 - A1_3*A2_2^2*A3_2*C1^2 - A1_3*A2_2*A3_1^2*C2*C3 + 2*A1_3*A2_2*A3_1*A3_3*C1*C2 - A1_3*A2_2*A3_2*A3_3*C1^2 + A1_3*A2_3*A3_1^2*C2^2 - A1_3*A2_3*A3_2^2*C1^2 - A1_3*A3_1^2*A3_3*C2*C3 + A1_3*A3_1*A3_2*A3_3*C1*C3 + A1_3*A3_1*A3_3^2*C1*C2 - A1_3*A3_2*A3_3^2*C1^2 - A2_1*A2_2*A3_2^2*C3^2 + A2_1*A2_2*A3_2*A3_3*C2*C3 + A2_1*A2_3*A3_2^2*C2*C3 - A2_1*A2_3*A3_2*A3_3*C2^2 - A2_1*A3_2^2*A3_3*C3^2 + 2*A2_1*A3_2*A3_3^2*C2*C3 - A2_1*A3_3^3*C2^2 + A2_2^2*A3_1*A3_2*C3^2 - A2_2^2*A3_2*A3_3*C1*C3 - 2*A2_2*A2_3*A3_1*A3_2*C2*C3 + A2_2*A2_3*A3_2^2*C1*C3 + A2_2*A2_3*A3_2*A3_3*C1*C2 + A2_2*A3_1*A3_2*A3_3*C3^2 - A2_2*A3_1*A3_3^2*C2*C3 - A2_2*A3_2*A3_3^2*C1*C3 + A2_2*A3_3^3*C1*C2 + A2_3^2*A3_1*A3_2*C2^2 - A2_3^2*A3_2^2*C1*C2 - A2_3*A3_1*A3_2*A3_3*C2*C3 + A2_3*A3_1*A3_3^2*C2^2 + A2_3*A3_2^2*A3_3*C1*C3 - A2_3*A3_2*A3_3^2*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+
+        if r != size(Source.Ad[ns, :, :], 1)
+            println("\nERROR: The system is not observable. The rank of 'O' is not equal to $(size(A22, 1)).")
+        end =#
+
         #= println("Ad = ", Source.Ad[ns, :, :])
         println("Bd = ", Source.Bd[ns, :])
         println("Dd = ", Source.Dd[ns, :])
