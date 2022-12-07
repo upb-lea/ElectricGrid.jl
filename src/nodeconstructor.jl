@@ -1,6 +1,9 @@
 using Distributions
 using LinearAlgebra
 using StatsBase
+
+include(srcdir("Power_System_Theory.jl"))
+
 # using Intervals
 mutable struct NodeConstructor
     num_connections 
@@ -80,7 +83,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 6 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters))"
+        @assert length(keys(parameters["grid"])) == 6 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -553,9 +556,34 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
         end
 
+        # add Z and pwr to the parameter_load dict; needed for solving the power flow equations
+        # assuming all passive loads as parrallel connection of devices
+        for (index, load) in enumerate(parameters["load"])
+            if load["impedance"] == "R"
+                load["Z"] = load["R"]
+            elseif load["impedance"] == "L"
+                load["Z"] = 1im*2*pi*parameters["grid"]["f_grid"]*load["L"]
+            elseif load["impedance"] == "C"
+                load["Z"] = 1/(1im*2*pi*parameters["grid"]["f_grid"]*load["C"])
+            elseif load["impedance"] == "RL"
+                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
+            elseif load["impedance"] == "RC"
+                load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
+            elseif load["impedance"] == "LC"
+                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+            elseif load["impedance"] == "RLC"
+                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])                
+            end
+            
+            load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
+        end
     end
 
 
+    ################
+    # CHECK CABLES #
+    ################
+    
     if !haskey(parameters, "cable")
 
         cable_list = []
@@ -573,13 +601,14 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         if num_undef_cables > 0
             @warn "The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!"
         end
-
+        cable_from_pfe_idx = []
         for (idx, cable) in enumerate(parameters["cable"])
+            # solve powerflow equation (pfe) only if needed - but if not all values are give - take all values from pfe and overwrite the rest
             
             if !haskey(cable, "len")
                 cable["len"] = rand(Uniform(1e-3, 1e1))
             end
-            
+            #=
             if !haskey(cable, "Rb")
                 cable["Rb"] = 0.722 # TODO: Fixed?!
             end
@@ -591,6 +620,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             if !haskey(cable, "Lb")
                 cable["Lb"] = 0.264e-3 # TODO: Fixed?!
             end
+            
 
             if !haskey(cable, "R")
                 cable["R"] = cable["len"] * cable["Rb"]
@@ -603,7 +633,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             if !haskey(cable, "C")
                 cable["C"] = cable["len"] * cable["Cb"]
             end
+            =#
+            if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
+                @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation"
+                push!(cable_from_pfe_idx, idx)
+            end
 
+        end
+
+        if ! isempty(cable_from_pfe_idx)
+            parameters = layout_cabels(CM, num_sources, num_loads, parameters)
         end
 
         if num_undef_cables > 0
