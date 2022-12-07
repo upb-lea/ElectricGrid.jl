@@ -309,7 +309,7 @@ function Inv_p_q_i(I_αβγ, pq0)
     return v_αβγ
 end
 
-function Load_Impedance(S, pf, vrms; fsys = 50)
+function Load_Impedance_Series(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
 
@@ -342,7 +342,7 @@ function Load_Impedance(S, pf, vrms; fsys = 50)
     return R, L_C, X, Z
 end
 
-function Load_Impedance_2(S, pf, vrms; fsys = 50)
+function Load_Impedance_Parallel(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
 
@@ -531,9 +531,12 @@ function layout_cabels(CM, num_source, num_load, parameters)
             end
             #end
         else
-            println(-parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
-            fix(nodes[i, "P"], -parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
-            fix(nodes[i, "Q"], -parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
+            S = parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
+            P = S *parameters["load"][i-num_source]["pf"]
+            println("P_LOAD = $(P)")
+            println("Q_LOAD = $(sqrt(S^2 - P^2))")
+            fix(nodes[i, "P"], -P)
+            fix(nodes[i, "Q"], -sqrt(S^2 - P^2))
 
             set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
             set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
@@ -569,6 +572,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
         
 
         set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
+        #set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
         # assumption to line to line
         println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(D/(0.7788 * cables[i, "radius"])))  # m* H/m
@@ -635,18 +639,18 @@ function layout_cabels(CM, num_source, num_load, parameters)
     cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
     # maybe remove this? but add as check after optimisation has been completed.
     #TODO: this back in? -> Septimus
-    #=
+    
     for i in 1:num_cables
 
         j, k = Tuple(findfirst(x -> x == i, CM))
 
         cable_constraints[i] = @NLconstraint(model,
-            abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*cables[i, "L"])) # this formula is not quite correct - missing resistances and capacitances
-            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
+            abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*L_cable[i])) # this formula is not quite correct - missing resistances and capacitances
+            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(C_cable[i]/L_cable[i]) # check if there should be a 2 in the equation
         )
 
     end
-    =#
+    
     
 
     # non-linear objectives 
@@ -684,11 +688,15 @@ function layout_cabels(CM, num_source, num_load, parameters)
                             
 
     optimize!(model)
-    #=println("""
+    println("""
     termination_status = $(termination_status(model))
     primal_status      = $(primal_status(model))
     objective_value    = $(objective_value(model))
-    """)=#
+    """)
+
+    println()
+    println()
+    println(value.(nodes))
 
     
     for (index, cable) in enumerate(parameters["cable"])

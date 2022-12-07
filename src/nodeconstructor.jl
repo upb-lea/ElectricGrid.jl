@@ -561,21 +561,28 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         for (index, load) in enumerate(parameters["load"])
             if load["impedance"] == "R"
                 load["Z"] = load["R"]
+                load["pf"] = 1
             elseif load["impedance"] == "L"
                 load["Z"] = 1im*2*pi*parameters["grid"]["f_grid"]*load["L"]
+                load["pf"] = 0
             elseif load["impedance"] == "C"
                 load["Z"] = 1/(1im*2*pi*parameters["grid"]["f_grid"]*load["C"])
+                load["pf"] = 0
             elseif load["impedance"] == "RL"
                 load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
+                load["pf"] = cos(atan(load["R"]/(parameters["grid"]["f_grid"]*2*pi*load["L"])))
             elseif load["impedance"] == "RC"
                 load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
+                load["pf"] = cos(-atan(load["R"]*parameters["grid"]["f_grid"]*2*pi*load["C"]))
             elseif load["impedance"] == "LC"
                 load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
             elseif load["impedance"] == "RLC"
-                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])                
+                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+                # TODO PF RLC parallel             
             end
             
             load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
+            println(load["pf"])
         end
     end
 
@@ -642,6 +649,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         end
 
         if ! isempty(cable_from_pfe_idx)
+            println("START PFE")
             parameters = layout_cabels(CM, num_sources, num_loads, parameters)
         end
 

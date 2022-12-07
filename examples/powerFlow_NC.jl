@@ -60,7 +60,7 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
     return result
 end
 
-function layout_cabels(CM, num_source, num_load, parameters)
+function layout_cabelsasdasda(CM, num_source, num_load, parameters)
 
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
@@ -277,18 +277,18 @@ function layout_cabels(CM, num_source, num_load, parameters)
     cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
     # maybe remove this? but add as check after optimisation has been completed.
     #TODO: this back in? -> Septimus
-    #=
+    
     for i in 1:num_cables
 
         j, k = Tuple(findfirst(x -> x == i, CM))
 
         cable_constraints[i] = @NLconstraint(model,
             abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*cables[i, "L"])) # this formula is not quite correct - missing resistances and capacitances
-            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(cables[i, "C_L"]) # check if there should be a 2 in the equation
+            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(cables[i, "L"]/cables[i, "LC"]) # check if there should be a 2 in the equation
         )
 
     end
-    =#
+   
     
 
     # non-linear objectives 
@@ -426,23 +426,24 @@ end
 print(parameters["load"])
 #TODO ensure that len is defined in nodeconstructor before this function is called!
 #TODO Take len in PFE into acount! (currently assuming 1km)
-parameters2 = layout_cabels(CM, num_source, num_load, parameters)
+#parameters2 = layout_cabels(CM, num_source, num_load, parameters)
 
 
 
 # define same setting for env and check if 
 parameters_nc = Dict{Any, Any}(
     "source" => Any[
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic"),
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic",
+                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic"),
+                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic",
                                     "p_set"=>500, "q_set"=>500),
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic"),
+                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic"),
                     #Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => "PQ Control”"),
                     #Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => "Voltage Control”"),
                     ],
     "load"   => Any[
                     #Dict{Any, Any}("R"=>10, "L" => 0.16, "impedance"=>"RL")#, "pwr"=>1000)
-                    Dict{Any, Any}("R"=>R_load, "L"=>L_load, "impedance"=>"RL")
+                    #Dict{Any, Any}("R"=>R_load, "L"=>L_load, "impedance"=>"RL") # ->1kVA
+                    Dict{Any, Any}("R"=>3526.058777777777777776, "L"=>23.0003863038165653084, "impedance"=>"RL") # ->1000kVA
                     #Dict{Any, Any}("R"=>R_load, "C"=>C_load, "impedance"=>"RC")
                     ],
     "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>1, "v_rms"=>230, "f_grid" => 50),

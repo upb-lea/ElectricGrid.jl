@@ -240,7 +240,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                     norm_array[state_index] = load["v_limit"]
                 else
                     v_limit_fixed += 1
-                    norm_array[state_index] = 1500.0
+                    norm_array[state_index] = 1.15*nc.parameters["grid"]["v_rms"] * sqrt(2)
                 end
             end
         end
@@ -253,21 +253,23 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                     norm_array[state_index] = cable["i_limit"]
                 else
                     i_limit_fixed += 1
-                    norm_array[state_index] = 1000.0
+                    Zs = sqrt(nc.parameters["cable"][cable_number]["L"]/nc.parameters["cable"][cable_number]["C"])
+                    println(Zs)
+                    norm_array[state_index] = 1.5 * sqrt(2) * nc.parameters["grid"]["v_rms"]/ Zs
                 end
             elseif contains(states[state_index], "_v")
                 if haskey(cable, "v_limit")
                     norm_array[state_index] = cable["v_limit"]
                 else
                     v_limit_fixed += 1
-                    norm_array[state_index] = 1500.0
+                    norm_array[state_index] = 1.15*nc.parameters["grid"]["v_rms"] * sqrt(2)
                 end
             end
         end
     end
 
     i_limit_fixed > 0 && @warn "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit!"
-    v_limit_fixed > 0 && @warn "$v_limit_fixed Voltage limits set to 1500 V - please define in nc.parameters -> source -> v_limit!"   
+    v_limit_fixed > 0 && @warn "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit!"   
 
 
     if isnothing(reward)
