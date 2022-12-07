@@ -70,10 +70,8 @@ function layout_cabels(CM, num_source, num_load, parameters)
     # Constant values
     omega = 2π*parameters["grid"]["fs"]
 
-    # for every Source: v is fixed 230  #TODO: change depending on control mode?
+    # for every Source: v is fixed 230 
     # for one Source: theta is fixed 0
-    #TODO: user specified disctances
-    #distances = [1.0 2.3 .323]  -> get from parameter dict
 
     num_nodes = num_source + num_load
     num_cables = maximum(CM)
@@ -81,10 +79,9 @@ function layout_cabels(CM, num_source, num_load, parameters)
     @variable(model, nodes[1 : num_nodes, ["v", "theta", "P", "Q"]])
    
     # cal total load[pwr]
-
-    total_P_load = 0 #3000 / 3    #TODO get from parameter dict!
-    total_Q_load = 0 #300 / 3
-    total_S_source = 0 #3000 / 3
+    total_P_load = 0
+    total_Q_load = 0 
+    total_S_source = 0 
 
     for i = 1:num_nodes
         if i <= num_source
@@ -179,7 +176,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
             println(-parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
             fix(nodes[i, "P"], -parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
             fix(nodes[i, "Q"], -parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
-    
+
             set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
             set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
         end
@@ -314,18 +311,19 @@ function layout_cabels(CM, num_source, num_load, parameters)
     radius_lower_bound = lower_bound(cables[1, "radius"]);
 
     # Lagrangians
-    λ₁ = 0.01
-    λ₂ = 0.99
+    λ₁ = 0.99
+    λ₂ = 0.00001
 
     norm_P = length(idx_p_mean_cal)
     norm_Q = length(idx_q_mean_cal)
     @NLobjective(model, Min, λ₁ *  Power_apparent / total_S_source
-                            + abs((v_mean - parameters["grid"]["v_rms"]) / parameters["grid"]["v_rms"])
+                            #+ abs((v_mean - parameters["grid"]["v_rms"]) / parameters["grid"]["v_rms"])
                             #+ abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π    # maybe helpfull?
                             + sum( ((nodes[i,"P"] - P_source_mean)^2 )/ norm_P for i in idx_p_mean_cal) 
                             + sum( ((nodes[i,"Q"] - Q_source_mean)^2) / norm_Q for i in idx_q_mean_cal) # the variance - not exactly right (but good enough)
-                            + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * (radius_upper_bound- radius_lower_bound) )
+                            + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * (radius_upper_bound - radius_lower_bound) )
                             )
+                            
 
     optimize!(model)
     println("""
@@ -334,7 +332,12 @@ function layout_cabels(CM, num_source, num_load, parameters)
     objective_value    = $(objective_value(model))
     """)
 
-
+    println()
+    println()
+    println(value(Power_apparent)/total_S_source)
+    println(sum( (value.(cables[i, "radius"])  for i in 1:num_cables)) / (num_cables * (radius_upper_bound) ))
+    println()
+    println()
 
     println()
     println("Radius : $(value.(cables))")
