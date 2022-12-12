@@ -160,12 +160,19 @@ mutable struct Classical_Controls
     #---------------------------------------------------------------------------
     # Observer 
 
-    Ad::Array{Float64}
-    Bd::Array{Float64}
-    Cd::Matrix{Float64}
-    Dd::Matrix{Float64}
-    Ko::Matrix{Float64}
-    wp::Array{Float64}
+    Ad_DQ::Array{Float64}
+    Bd_DQ::Array{Float64}
+    Cd_DQ::Array{Float64}
+    Dd_DQ::Array{Float64}
+    Ko_DQ::Array{Float64}
+    xp_DQ::Matrix{Float64}
+
+    Ad_0::Array{Float64}
+    Bd_0::Array{Float64}
+    Cd_0::Matrix{Float64}
+    Dd_0::Matrix{Float64}
+    Ko_0::Matrix{Float64}
+    xp_0::Matrix{Float64}
 
     function Classical_Controls(Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64},
@@ -204,8 +211,10 @@ mutable struct Classical_Controls
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Vector{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Vector{Float64},
         ΔT_err::Matrix{Float64}, ΔT_err_t::Vector{Float64}, ω_set::Vector{Float64},
-        Ad::Array{Float64}, Bd::Array{Float64}, Cd::Matrix{Float64}, Dd::Matrix{Float64}, 
-        Ko::Matrix{Float64}, wp::Array{Float64})
+        Ad_DQ::Array{Float64}, Bd_DQ::Array{Float64}, Cd_DQ::Array{Float64}, Dd_DQ::Array{Float64}, 
+        Ko_DQ::Array{Float64}, xp_DQ::Matrix{Float64},
+        Ad_0::Array{Float64}, Bd_0::Array{Float64}, Cd_0::Matrix{Float64}, Dd_0::Matrix{Float64}, 
+        Ko_0::Matrix{Float64}, xp_0::Matrix{Float64})
 
         new(Vdc, Vrms,
         S, P, Q,
@@ -244,8 +253,10 @@ mutable struct Classical_Controls
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
-        Ad, Bd, Cd, Dd,
-        Ko, wp)
+        Ad_DQ, Bd_DQ, Cd_DQ, Dd_DQ,
+        Ko_DQ, xp_DQ,
+        Ad_0, Bd_0, Cd_0, Dd_0,
+        Ko_0, xp_0)
     end
 
     function Classical_Controls(f_cntr, num_sources; phases = 3, action_delay = 1)
@@ -518,12 +529,19 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # Observers
 
-        Ad = Array{Float64, 3}(undef, num_sources, 2, 2)
-        Bd = Array{Float64, 3}(undef, num_sources, 2, 3)
-        Cd = Array{Float64, 2}(undef, num_sources, 2)
-        Dd = Array{Float64, 2}(undef, num_sources, 3)
-        Ko = Array{Float64, 2}(undef, num_sources, 3)
-        wp = Array{Float64, 3}(undef, num_sources, phases, 3)
+        Ad_0 = Array{Float64, 3}(undef, num_sources, 2, 2)
+        Bd_0 = Array{Float64, 3}(undef, num_sources, 2, 3)
+        Cd_0 = Array{Float64, 2}(undef, num_sources, 2)
+        Dd_0 = Array{Float64, 2}(undef, num_sources, 3)
+        Ko_0 = Array{Float64, 2}(undef, num_sources, 2)
+        xp_0 = Array{Float64, 2}(undef, num_sources, 2)
+
+        Ad_DQ = Array{Float64, 3}(undef, num_sources, 4, 4)
+        Bd_DQ = Array{Float64, 3}(undef, num_sources, 4, 6)
+        Cd_DQ = Array{Float64, 3}(undef, num_sources, 2, 4)
+        Dd_DQ = Array{Float64, 3}(undef, num_sources, 2, 6)
+        Ko_DQ = Array{Float64, 3}(undef, num_sources, 4, 2)
+        xp_DQ = Array{Float64, 2}(undef, num_sources, 4)
 
         Classical_Controls(Vdc, Vrms,
         S, P, Q,
@@ -562,8 +580,10 @@ mutable struct Classical_Controls
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
-        Ad, Bd, Cd, Dd, 
-        Ko, wp)
+        Ad_DQ, Bd_DQ, Cd_DQ, Dd_DQ,
+        Ko_DQ, xp_DQ,
+        Ad_0, Bd_0, Cd_0, Dd_0,
+        Ko_0, xp_0)
     end
 end
 
@@ -864,18 +884,22 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
 
     θt = Source.θsys
     θph = [θt + δ; θt + δ - 120π/180; θt + δ + 120π/180]
+    θph = [θt; θt; θt]
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
     Source.V_ref[num_source, :] = sqrt(2)*(Vrms)*cos.(θph)
 
     Source.Vd_abc_new[num_source, :, end] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
 
-    Vdc = 100
+    #= Vdc = 100
     if Source.steps*Source.ts >= 0.005
         Vdc = 50
     end
-    Source.Vd_abc_new[num_source, :, end] = 2*Vdc*[1 1 1]/Source.Vdc[num_source]
+    Source.Vd_abc_new[num_source, :, end] = 2*Vdc*[1 1 1]/Source.Vdc[num_source] =#
 
-    Phase_Locked_Loop_3ph(Source, num_source)
+    #Phase_Locked_Loop_3ph(Source, num_source)
+
+    Source.fpll[num_source, :, end] = Source.fsys*[1 1 1]
+    Source.θpll[num_source, :, end] = θph
 
     return nothing
 end
@@ -906,13 +930,16 @@ function Droop_Control_Mode(Source::Classical_Controls, num_source; t_end = 0.04
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
 
     Droop_Control(Source, num_source, Vrms = Vrms)
-    θt = Source.θ_droop[num_source, 1]
+    θ = Source.θ_droop[num_source, 1]
     ω = Source.ω_droop[num_source, 1, end]
 
-    Voltage_Controller(Source, num_source, θt, ω)
-    Current_Controller(Source, num_source, θt, ω)
+    Voltage_Controller(Source, num_source, θ, ω)
+    Current_Controller(Source, num_source, θ, ω)
 
-    Phase_Locked_Loop_3ph(Source, num_source)
+    #Phase_Locked_Loop_3ph(Source, num_source)
+
+    Source.fpll[num_source, :, end] = (ω/2π)*[1 1 1]
+    Source.θpll[num_source, :, end] = [θ; θ - 120π/180; θ + 120π/180]
 
     return nothing
 end
@@ -983,7 +1010,10 @@ function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [
     Voltage_Controller(Source, num_source, Source.θ_sync[num_source], Source.ω_sync[num_source, end])
     Current_Controller(Source, num_source, Source.θ_sync[num_source], Source.ω_sync[num_source, end])
 
-    Phase_Locked_Loop_3ph(Source, num_source)
+    #Phase_Locked_Loop_3ph(Source, num_source)
+
+    Source.fpll[num_source, :, end] = (ω/2π)*[1 1 1]
+    Source.θpll[num_source, :, end] = [θ; θ - 120π/180; θ + 120π/180]
 
     return nothing
 end
@@ -1641,51 +1671,71 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
 
     ns = num_source
 
-    if Source.filter_type[ns] == "LCL"
+    f_sys = Source.fpll[ns, :, end]
+    ω = 2π*f_sys
 
-        A = Source.Ad[ns, :, :]
-        B = Source.Bd[ns, :, :]
-        C = transpose(Source.Cd[ns, :])
-        D = transpose(Source.Dd[ns, :])
+    if Source.Source_Modes[ns] == "Swing" || Source.Source_Modes[ns] == "Voltage Control"
+        θ = Source.θpll[num_source, 1, end]
+    else
+        θ = (Source.θpll[num_source, 1, end] + Source.ts*ω)%(2π)
+    end
 
-        K = Source.Ko[ns, 1:2]
+    if Source.filter_type[ns] == "LCL"# && 1 == 2
+
+        I_poc_DQ0 = [0.; 0.; 0.]
+        V_cap_DQ0 = [0.; 0.; 0.]
+
+        y_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end], θ)
+        yₚ_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end - 1], θ)
+        vₚ_DQ0 = DQ0_transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
+        eₚ_DQ0 = DQ0_transform(Source.V_filt_poc[ns, :, end - 1], θ)
+
+        #----------------------------------------------------------------------
+        # Zero sequence
+
+        A = Source.Ad_0[ns, :, :]
+        B = Source.Bd_0[ns, :, :]
+        C = transpose(Source.Cd_0[ns, :])
+        D = transpose(Source.Dd_0[ns, :])
+
+        K = Source.Ko_0[ns, 1:2]
 
         #----------------------------------------------------------------------
 
-        for ph in 1:1#Source.phases
+        y = y_DQ0[3]
 
-            y = Source.I_filt_inv[ns, ph, end]
+        yₚ = yₚ_DQ0[3]
+        vₚ = vₚ_DQ0[3]
+        eₚ = eₚ_DQ0[3]
 
-            yₚ = Source.I_filt_inv[ns, ph, end - 1]
-            vₚ = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph, end - Source.action_delay - 1]
-            eₚ = Source.V_filt_poc[ns, ph, end - 1]
+        uₚ = [yₚ; vₚ; eₚ]
 
-            uₚ = [yₚ; vₚ; eₚ]
+        Source.xp_0[ns, 1:2] = (A - K*C)*Source.xp_0[ns, 1:2] + (B - K*D)*uₚ + K*y
 
-            xp = Source.wp[ns, ph, 1:2]
-
-            xp = (A - K*C)*xp + (B - K*D)*uₚ + K*y
-
-            Source.wp[ns, ph, 1:2] = xp
-
-            if ph == 1 && ns == 1
-                Source.debug[1] = xp[1]
-                Source.debug[2] = xp[2]
-            end
-           
-            #----------------------------------------------------------------------
-
-            Vbase_LN_rms = Source.Vrms[ns]
-            Ibase_rms = Source.S[ns]/(3*Source.Vrms[ns])
-            I_err = abs(Source.I_filt_poc[ns, ph, end] - Source.debug[1])#/(Ibase_rms*sqrt(2))
-            V_err = abs(Source.V_filt_cap[ns, ph, end] - Source.debug[2])#/(Vbase_LN_rms*sqrt(2))
-
-            Source.debug[8] = Source.I_filt_poc[ns, ph, end] - Source.debug[1]
-            Source.debug[9] = Source.V_filt_cap[ns, ph, end] - Source.debug[2]
+        I_poc_DQ0[3] = Source.xp_0[ns, 1]
+        V_cap_DQ0[3] = Source.xp_0[ns, 2]
         
-            Source.debug[10] = sqrt(I_err^2 + V_err^2)
-            
-        end
+        #----------------------------------------------------------------------
+
+        I_poc_abc = Inv_DQ0_transform(I_poc_DQ0, θ)
+        V_cap_abc = Inv_DQ0_transform(V_cap_DQ0, θ)
+        
+        Source.debug[1] = sqrt(1/3)*norm(I_poc_DQ0) #IL2
+        Source.debug[2] = sqrt(1/3)*norm(V_cap_DQ0) #VC
+
+        I_poc_rms = sqrt(1/3)*norm(DQ0_transform(Source.I_filt_poc[ns, :, end], θ)) 
+        V_cap_rms = sqrt(1/3)*norm(DQ0_transform(Source.V_filt_cap[ns, :, end], θ)) 
+
+        Vbase_LN_rms = Source.Vrms[ns]
+        Ibase_rms = Source.S[ns]/(Source.phases*Source.Vrms[ns])
+
+        I_err = abs(I_poc_rms - Source.debug[1])/Ibase_rms
+        V_err = abs(V_cap_rms - Source.debug[2])/(Vbase_LN_rms)
+
+        Source.debug[8] = I_err
+        Source.debug[9] = V_err
+    
+        Source.debug[10] = sqrt(I_err^2 + V_err^2)
 
     end
 
@@ -2041,6 +2091,11 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
 
     if Source.filter_type[ns] == "LCL"
 
+        fsys = Source.fsys
+        ω = 2π*fsys
+
+        # Finding the phase/zero-sequence system dynamics
+
         A = [-(Source.Rf_L1[ns] + Source.Rf_C[ns])/Source.Lf_1[ns] Source.Rf_C[ns]/Source.Lf_1[ns] -1/Source.Lf_1[ns];
              Source.Rf_C[ns]/Source.Lf_2[ns] -(Source.Rf_L2[ns] + Source.Rf_C[ns])/Source.Lf_2[ns] +1/Source.Lf_2[ns];
              1/Source.Cf[ns] -1/Source.Cf[ns] 0.0]
@@ -2048,35 +2103,119 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
         B = [1/Source.Lf_1[ns]; 0; 0]
         D = [0; -1/Source.Lf_2[ns]; 0]
 
+        # Converting to DQ frame - under balanced symmetrical conditions the zero sequence variables can be removed
+        # if zero sequence is non-trivial then because the components are independent of DQ they can be observed independently
+
+        A_DQ = [A ω*I;
+                -ω*I A]
+
+        B_DQ = [B zeros(3,1);
+               zeros(3,1) B]
+
+        D_DQ = [D zeros(3,1);
+               zeros(3,1) D]
+
+        # reorganising matrices
+        A_DQ = Switch_Rows(A_DQ, 2, 4)
+        A_DQ = Switch_Rows(A_DQ, 3, 4)
+        A_DQ = Switch_Rows(A_DQ, 4, 5)
+
+        B_DQ = Switch_Rows(B_DQ, 2, 4)
+
+        D_DQ = Switch_Rows(D_DQ, 2, 3)
+        D_DQ = Switch_Rows(D_DQ, 4, 5)
+
         #------------------------------------------------------------------------------------------------
+        # DQ sequence observer
+        # Converting to discrete form
+
+        Ad = exp(A_DQ*Source.ts)
+        Bd = inv(A_DQ)*(Ad - I)*B_DQ
+        Dd = inv(A_DQ)*(Ad - I)*D_DQ
+
+        Source.Ad_DQ[ns, :, :] = Ad[3:end, 3:end]
+        Source.Bd_DQ[ns, :, :] = [Ad[3:end, 1:2] Bd[3:end, :] Dd[3:end, :]]
+        Source.Dd_DQ[ns, :, :] = [Ad[1:2, 1:2] Bd[1:2, 1:2] Dd[1:2, 1:2]]
+
+        Source.Cd_DQ[ns, :, :] = Ad[1:2, 3:end]
+
+        C = Source.Cd_DQ[ns, :, :]
+        _, r = Observability(C, Source.Ad_DQ[ns, :, :])
+
+        if r != size(Source.Ad_DQ[ns, :, :], 1)
+            @warn ("The DQ sequence states of the inverter are not observable. 
+            The rank of 'O' is not equal to $(size(Source.Ad_DQ[ns, :, :], 1)).")
+        end
+
+        A1_1 = Source.Ad_DQ[ns, 1, 1]
+        A1_2 = Source.Ad_DQ[ns, 1, 2]
+        A1_3 = Source.Ad_DQ[ns, 1, 3]
+        A1_4 = Source.Ad_DQ[ns, 1, 4]
+        A2_1 = Source.Ad_DQ[ns, 2, 1]
+        A2_2 = Source.Ad_DQ[ns, 2, 2]
+        A2_3 = Source.Ad_DQ[ns, 2, 3]
+        A2_4 = Source.Ad_DQ[ns, 2, 4]
+        A3_1 = Source.Ad_DQ[ns, 3, 1]
+        A3_2 = Source.Ad_DQ[ns, 3, 2]
+        A3_3 = Source.Ad_DQ[ns, 3, 3]
+        A3_4 = Source.Ad_DQ[ns, 3, 4]
+        A4_1 = Source.Ad_DQ[ns, 4, 1]
+        A4_2 = Source.Ad_DQ[ns, 4, 2]
+        A4_3 = Source.Ad_DQ[ns, 4, 3]
+        A4_4 = Source.Ad_DQ[ns, 4, 4]
+
+        C1_1 = C[1, 1]
+        C1_2 = C[1, 2]
+        C1_3 = C[1, 3]
+        C1_4 = C[1, 4]
+        C2_1 = C[2, 1]
+        C2_2 = C[2, 2]
+        C2_3 = C[2, 3]
+        C2_4 = C[2, 4]
+
+        Source.Ko_DQ[ns, 1, 1] = 1
+        Source.Ko_DQ[ns, 2, 1] = 1
+        Source.Ko_DQ[ns, 3, 1] = 1
+        Source.Ko_DQ[ns, 4, 1] = 1
+
+        Source.Ko_DQ[ns, 1, 2] = 1
+        Source.Ko_DQ[ns, 2, 2] = 1
+        Source.Ko_DQ[ns, 3, 2] = 1
+        Source.Ko_DQ[ns, 4, 2] = 1
+
+        #------------------------------------------------------------------------------------------------
+        # zero sequence observer
+
+        # Converting to discrete form
 
         Ad = exp(A*Source.ts)
         Bd = inv(A)*(Ad - I)*B
         Dd = inv(A)*(Ad - I)*D
 
-        Source.Ad[ns, :, :] = Ad[2:3, 2:3]
-        Source.Bd[ns, :, :] = [Ad[2:3, 1] Bd[2:3] Dd[2:3]]
-        Source.Dd[ns, :] = [Ad[1, 1]; Bd[1]; Dd[1]]
+        Source.Ad_0[ns, :, :] = Ad[2:3, 2:3]
+        Source.Bd_0[ns, :, :] = [Ad[2:3, 1] Bd[2:3] Dd[2:3]]
+        Source.Dd_0[ns, :] = [Ad[1, 1]; Bd[1]; Dd[1]]
 
-        Source.Cd[ns, :] = Ad[1, 2:3]
+        Source.Cd_0[ns, :] = Ad[1, 2:3]
 
-        C = transpose(Ad[1, 2:3])
-        _, r = Observability(C, Source.Ad[ns, :, :])
+        C = transpose(Source.Cd_0[ns, :])
+        _, r = Observability(C, Source.Ad_0[ns, :, :])
 
-        if r != size(Source.Ad[ns, :, :], 1)
-            println("\nERROR: The system is not observable. The rank of 'O' is not equal to $(size(Source.Ad[ns, :, :], 1)).")
+        if r != size(Source.Ad_0[ns, :, :], 1)
+            @warn ("The 0 sequence states of the inverter are not observable. 
+            The rank of 'O' is not equal to $(size(Source.Ad_0[ns, :, :], 1)).")
         end
 
-        A1_1 = Source.Ad[ns, 1, 1]
-        A1_2 = Source.Ad[ns, 1, 2]
-        A2_1 = Source.Ad[ns, 2, 1]
-        A2_2 = Source.Ad[ns, 2, 2]
+        A1_1 = Source.Ad_0[ns, 1, 1]
+        A1_2 = Source.Ad_0[ns, 1, 2]
+        A2_1 = Source.Ad_0[ns, 2, 1]
+        A2_2 = Source.Ad_0[ns, 2, 2]
 
         C1 = C[1]
         C2 = C[2]
 
-        Source.Ko[ns, 1] = -(C2*A1_1^2 - A1_2*C1*A1_1 + A1_2*A2_1*C2 - A1_2*A2_2*C1)/(A1_2*C1^2 - A2_1*C2^2 - A1_1*C1*C2 + A2_2*C1*C2)
-        Source.Ko[ns, 2] = (C1*A2_2^2 - A2_1*C2*A2_2 - A1_1*A2_1*C2 + A1_2*A2_1*C1)/(A1_2*C1^2 - A2_1*C2^2 - A1_1*C1*C2 + A2_2*C1*C2)
+        Source.Ko_0[ns, 1] = -(C2*A1_1^2 - A1_2*C1*A1_1 + A1_2*A2_1*C2 - A1_2*A2_2*C1)/(A1_2*C1^2 - A2_1*C2^2 - A1_1*C1*C2 + A2_2*C1*C2)
+        Source.Ko_0[ns, 2] = (C1*A2_2^2 - A2_1*C2*A2_2 - A1_1*A2_1*C2 + A1_2*A2_1*C1)/(A1_2*C1^2 - A2_1*C2^2 - A1_1*C1*C2 + A2_2*C1*C2)
         
         #------------------------------------------------------------------------------------------------
 
@@ -2107,5 +2246,31 @@ function Observability(C, A; n = size(A,1))
     end
 
     return O, rank(O)
+end
+
+function Switch_Rows(A, row_1, row_2)
+
+    num_rows = size(A, 1)
+    num_cols = size(A, 2)
+        
+    for i in 1:num_rows
+        
+        if i <= num_cols && row_1 <= num_rows && row_2 <= num_rows
+            temp = A[row_1, i]
+            A[row_1, i] = A[row_2, i]
+            A[row_2, i] = temp
+        end
+    end
+
+    for i in 1:num_cols
+        
+        if i <= num_rows && row_1 <= num_cols && row_2 <= num_cols
+            temp = A[i, row_1]
+            A[i, row_1] = A[i, row_2]
+            A[i, row_2] = temp
+        end
+    end
+
+    return A
 end
 

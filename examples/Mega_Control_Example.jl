@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.01 #time in seconds, total simulation run time
+t_final = 0.2 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -288,6 +288,6 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 "source1_v_C_cables_a", "source1_v_C_cables_b", "source1_v_C_cables_c",
 "source1_i_C_cables_a", "source1_i_C_cables_b", "source1_i_C_cables_c"] =#
 plot_hook_results(; hook = hook, states_to_plot = ["source1_i_L2_a", "source1_v_C_filt_a", "source1_v_C_cables_a" ], actions_to_plot = [], episode = 1, 
-pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [])
+pq_to_plot = [], vrms_to_plot = [1], irms_to_plot = [], vdq_to_plot = [])
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
