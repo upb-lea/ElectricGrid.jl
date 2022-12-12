@@ -1719,8 +1719,11 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
 
         I_poc_abc = Inv_DQ0_transform(I_poc_DQ0, θ)
         V_cap_abc = Inv_DQ0_transform(V_cap_DQ0, θ)
+
+        Source.debug[1] = I_poc_abc[1]
+        Source.debug[2] = V_cap_abc[1]
         
-        Source.debug[1] = sqrt(1/3)*norm(I_poc_DQ0) #IL2
+        #= Source.debug[1] = sqrt(1/3)*norm(I_poc_DQ0) #IL2
         Source.debug[2] = sqrt(1/3)*norm(V_cap_DQ0) #VC
 
         I_poc_rms = sqrt(1/3)*norm(DQ0_transform(Source.I_filt_poc[ns, :, end], θ)) 
@@ -1733,9 +1736,9 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         V_err = abs(V_cap_rms - Source.debug[2])/(Vbase_LN_rms)
 
         Source.debug[8] = I_err
-        Source.debug[9] = V_err
+        Source.debug[9] = V_err 
     
-        Source.debug[10] = sqrt(I_err^2 + V_err^2)
+        Source.debug[10] = sqrt(I_err^2 + V_err^2)=#
 
     end
 
