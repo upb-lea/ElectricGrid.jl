@@ -246,7 +246,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         
             #Inductor design
             if !haskey(source, "L1") 
-                #TODO: If LCL, then L1 = L1/2; L2 = L1
+                
                 Vorms = parameters["grid"]["v_rms"]*1.05
                 Vop = Vorms*sqrt(2)
             
@@ -275,15 +275,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
 
             if !haskey(source, "R1")
-                #TODO: @Septimus: why?
-                #source["R1"] = 400 * source["L1"]
+                
+                #= Example:
+                L_filter = 70e-6
+                R_filter = 1.1e-3
+                R_filter_C = 7e-3
+                C_filter = 250e-6
+                =#
 
-                # This is my suggestion
-                if source["fltr"] == "LC"
-                    source["R1"] = 200 * source["L1"] # can be as low as 20
-                else
-                    source["R1"] = 400 * source["L1"] # can be as low as 40
-                end
+                source["R1"] = 200 * source["L1"] # can be as low as 15
+                
             end
             
             if !haskey(source, "fltr")
@@ -304,6 +305,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                     num_LCL_defined += 1
                 end
                 if !haskey(source, "C")
+
                     Vorms = parameters["grid"]["v_rms"]*0.95
                     Vop = Vorms*sqrt(2)
 
@@ -312,20 +314,27 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                     Iorms = Vorms/Zl
                     Iop = Iorms*sqrt(2)
 
-                    if source["fltr"] == "LC"
-                        Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
-                    else
-                        Ir_d = source["vdc"]/(8*parameters["grid"]["fs"]*source["L1"]*Iop)
-                    end
+                    Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
+
                     ΔIlfmax = Ir_d*Iop
                     ΔVcfmax = source["v_rip"]*Vop
 
                     source["C"] = ΔIlfmax/(8*parameters["grid"]["fs"]*ΔVcfmax)
                 end
 
-                if !haskey(source, "R_C")
-                    source["R_C"] = 28*source["C"] 
+                if source["fltr"] == "LC" && !haskey(source, "R_C")
+                    source["R_C"] = 28*source["C"] # TODO: actually design the damping resistance
                 end  
+            end
+
+            if source["fltr"] == "LC" && 1/sqrt(source["L1"]*source["C"]) > parameters["grid"]["fs"]/2
+
+                @warn ("The LC filter parameters have been poorly chosen.
+                The filtering capacitors should be chosen such that the resonant 
+                frequency 1/sqrt(L*C) is approximately sqrt(ωn * ωs), where ωn 
+                is the angular frequency of the grid, and ωs is the angular 
+                switching frequency.")
+
             end
 
             if !haskey(source, "v_limit")
@@ -344,13 +353,102 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
 
             if  source["fltr"] == "LCL" && !haskey(source, "L2")
+
+                #= Theory:
+                    The attenuation of the LCL-filter is 60db/decade for frequencies above the 
+                    resonant frequency, therefore lower switching frequency for the converter 
+                    can be used. It also provides better decoupling between the filter and the 
+                    grid impedance and lower current ripple accross the grid inductor. 
+
+                    The LCL filter has good current ripple attenuattion even with small inductance 
+                    values. However it can bring also resonances and unstable states into the system. 
+                    Therefore the filter must be designed precisely accoring to the parameters of the 
+                    specific converter. 
+
+                    The importatnt parameter of the filter is its cut-off frequency. The cut-off 
+                    frequency of the filter must be minimally one half of the switching frequency of 
+                    the converter, because the filter must have enough attenuation in the range of the 
+                    converter's switching frequency.
+
+                    The LCL filter will be vulnerable to oscillation too and it will magnify frequencies 
+                    around its cut-off frequency. Therefore the filter is added with damping. The simplest 
+                    way is to add damping resistor. In general there are four possible places where the 
+                    resistor can be placed series/parallel to the inverter side inductor or series/parallel 
+                    to the filter capacitor.
+
+                    The variant with the resistor connected in series with the filter capacitor has been 
+                    chosen. The peak near the resonant frequency can be significantly attenuated. This is 
+                    a simple and reliable solution, but it increases the heat losses in the system and it 
+                    greatly decreases the efficiency of the filter. This problem can be solved by active 
+                    damping. Such a resistor reduces the voltage across the capacitor by a voltage proportional 
+                    to the current that flows through it. This can be also done in the control loop. The 
+                    current through the filter capacitor is measured and differentiatbed by the term 
+                    (s*Cf*R_C). A real resistor is not used and the calculated value is subtracted from the 
+                    demanded current. In this way the filter is actively damped with a virtual resistor 
+                    without any losses. The disadvantage of this method is that an additional current sensor 
+                    is required and the differentiator may bring noise problems because it amplifies high 
+                    frequency signals. 
+
+                =#
+
+                #TODO: add user warnings if the L, C, parameters they choose are stupid  (more than 0.5*fs)  
+                # also calculate the maximal power factor variation. If more than 5% add warning             
+
+                fc = parameters["grid"]["fs"]/2
+                ωc = 2π*fc
+
                 if !haskey(source, "L2")
-                    source["L2"] = deepcopy(source["L1"])
+
+                    source["L2"] = source["L1"]/(ωc^2*source["L1"]*source["C"] - 1)
+
+                    if source["L2"] < 0
+                        source["L2"] == 1e-6
+                        # TODO: add warning - the user choose bad ripple values
+                    end
                 end
                 
                 if !haskey(source, "R2")
-                    source["R2"] = deepcopy(source["R1"]) 
+
+                    source["R2"] = 200 * source["L2"]
                 end  
+
+                if !haskey(source, "R_C")
+
+                    source["R_C"] = 1/(3*ωc*source["C"])
+                end 
+
+            end
+
+            if source["fltr"] == "LCL"
+
+                fc = (1/2π)*sqrt((source["L1"] + source["L2"])/(source["L1"]*source["L2"]*source["C"]))
+
+                if fc > parameters["grid"]["fs"]/2
+
+                    @warn ("The LCL filter parameters have been poorly chosen.
+                    The cut-off frequency of the filter must be minimally one half 
+                    of the switching frequency of the converter, because the filter 
+                    must have enough attenuation in the range of the converter's 
+                    switching frequency.")
+                end
+
+                Vorms = parameters["grid"]["v_rms"]*0.95
+
+                # TODO: 3 should be gone when not 3 phase??
+                # TODO: warnings should not be printed for every source but rather in bulk.
+                # TODO: for which source is the warnings valid?? Print out the source number so 
+                # that the user knows which one to fixed
+
+                Zl = 3*Vorms*Vorms/source["pwr"]
+                Cb = 1/(2π*parameters["grid"]["f_grid"]*Zl)
+
+                if source["C"] > 0.05*Cb
+
+                    @warn ("The maximal power factor variation acceptable by the grid is 
+                    typically 5%. The filter capacitance exceeds this value.")
+
+                    # TODO: surely this is also valid for LC filters?
+                end
 
             end
 

@@ -418,7 +418,7 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
 
     Cf = ΔIlfmax/(8*fs*ΔVcfmax)
 
-    fc = 1/(2*π*sqrt(Lf*Cf))
+    fc = 1/(2π*sqrt(Lf*Cf))
 
     return Lf, Cf, fc
 end

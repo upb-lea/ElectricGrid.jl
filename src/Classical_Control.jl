@@ -869,12 +869,12 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
 
     Source.Vd_abc_new[num_source, :, end] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
 
-    #= Vdc = 100
+    Vdc = 100
     if Source.steps*Source.ts >= 0.005
         Vdc = 50
     end
     Source.Vd_abc_new[num_source, :, end] = 2*Vdc*[1 1 1]/Source.Vdc[num_source]
- =#
+
     Phase_Locked_Loop_3ph(Source, num_source)
 
     return nothing
@@ -1834,10 +1834,10 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
             Source.I_kp[num_source] = kp_i
             Source.I_ki[num_source] = ki_i
             Source.Gi_cl[num_source] = Gi_cl
-            
-            println("\nWARNING: PI Current Controller with Positive Poles.")
-            println("Suggestion: Decrease Simulation Time Step")
-            println("Source = ", num_source,"\n")
+
+            @warn ("PI Current Controller with Positive Poles. 
+            Suggestion: Decrease Simulation Time Step
+            Source: $(num_source)")
         end
     end
 
@@ -1920,9 +1920,9 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
             Source.V_ki[num_source] = ki_v
             Source.Gv_cl[num_source] = Gv_cl
 
-            println("\nWARNING: PI Voltage Controller with Positive Poles.")
-            println("Suggestion: Decrease Simulation Time Step")
-            println("Source = ", num_source,"\n")
+            @warn ("PI Voltage Controller with Positive Poles. 
+            Suggestion: Decrease Simulation Time Step
+            Source: $(num_source)")
         end
     end
 
@@ -2046,7 +2046,7 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
              1/Source.Cf[ns] -1/Source.Cf[ns] 0.0]
 
         B = [1/Source.Lf_1[ns]; 0; 0]
-        D = [0; -1/Source.Lf_1[ns]; 0]
+        D = [0; -1/Source.Lf_2[ns]; 0]
 
         #------------------------------------------------------------------------------------------------
 

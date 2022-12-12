@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.2 #time in seconds, total simulation run time
+t_final = 0.01 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -156,6 +156,13 @@ source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
 
+#= source["L1"] = 1e-3
+source["R1"] = 1e-3
+source["L2"] = 5e-3
+source["R2"] = 5e-3
+source["R_C"] = 1e-3
+source["C"] = 5e-3 =#
+
 push!(source_list, source)
 
 source = Dict()
@@ -176,7 +183,7 @@ source["τf"] = 0.002
 
 source["L1"] = 1e-3
 source["R1"] = 1e-3
-source["R_C"] = 1e-6
+source["R_C"] = 1e-3
 source["C"] = 1e-3
 
 push!(source_list, source)
