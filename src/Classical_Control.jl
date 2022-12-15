@@ -880,11 +880,11 @@ end
 function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
     
     δ = Source.V_δ_set[num_source, 1]
+    θ = Source.θsys
     pu = Source.V_pu_set[num_source, 1]
 
-    θt = Source.θsys
-    θph = [θt + δ; θt + δ - 120π/180; θt + δ + 120π/180]
-    θph = [θt; θt; θt]
+    θph = [θ + δ; θ + δ - 120π/180; θ + δ + 120π/180]
+    #θph = [θ; θ; θ]
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
     Source.V_ref[num_source, :] = sqrt(2)*(Vrms)*cos.(θph)
 
@@ -900,6 +900,8 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
 
     Source.fpll[num_source, :, end] = Source.fsys*[1 1 1]
     Source.θpll[num_source, :, end] = θph
+    Source.V_dq0[num_source, :] = DQ0_transform(Source.V_filt_cap[num_source, :, end], θ)
+    Source.I_dq0[num_source, :] = DQ0_transform(Source.I_filt_inv[num_source, :, end], θ)
 
     return nothing
 end
@@ -1691,16 +1693,14 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         eₚ_DQ0 = DQ0_transform(Source.V_filt_poc[ns, :, end - 1], θ)
 
         #----------------------------------------------------------------------
-        # Zero sequence
+        # Zero component
 
         A = Source.Ad_0[ns, :, :]
         B = Source.Bd_0[ns, :, :]
         C = transpose(Source.Cd_0[ns, :])
         D = transpose(Source.Dd_0[ns, :])
 
-        K = Source.Ko_0[ns, 1:2]
-
-        #----------------------------------------------------------------------
+        K = Source.Ko_0[ns, :]
 
         y = y_DQ0[3]
 
@@ -1710,20 +1710,49 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
 
         uₚ = [yₚ; vₚ; eₚ]
 
-        Source.xp_0[ns, 1:2] = (A - K*C)*Source.xp_0[ns, 1:2] + (B - K*D)*uₚ + K*y
+        Source.xp_0[ns, :] = (A - K*C)*Source.xp_0[ns, :] + (B - K*D)*uₚ + K*y
 
-        I_poc_DQ0[3] = Source.xp_0[ns, 1]
-        V_cap_DQ0[3] = Source.xp_0[ns, 2]
+        #I_poc_DQ0[3] = Source.xp_0[ns, 1]
+        #V_cap_DQ0[3] = Source.xp_0[ns, 2]
+        
+        #----------------------------------------------------------------------
+        # DQ components
+
+        A = Source.Ad_DQ[ns, :, :]
+        B = Source.Bd_DQ[ns, :, :]
+        C = Source.Cd_DQ[ns, :, :]
+        D = Source.Dd_DQ[ns, :, :]
+
+        K = Source.Ko_DQ[ns, :, :]
+
+        y = y_DQ0[1:2]
+
+        yₚ = yₚ_DQ0[1:2]
+        vₚ = vₚ_DQ0[1:2]
+        eₚ = eₚ_DQ0[1:2]
+
+        uₚ = [yₚ; vₚ; eₚ]
+
+        Source.xp_DQ[ns, :] = (A - K*C)*Source.xp_DQ[ns, :] + (B - K*D)*uₚ + K*y
+
+        I_poc_DQ0[1:2] = Source.xp_DQ[ns, 1:2]
+        V_cap_DQ0[1:2] = Source.xp_DQ[ns, 3:4]
         
         #----------------------------------------------------------------------
 
         I_poc_abc = Inv_DQ0_transform(I_poc_DQ0, θ)
         V_cap_abc = Inv_DQ0_transform(V_cap_DQ0, θ)
 
-        Source.debug[1] = I_poc_abc[1]
+        Source.debug[1] = V_cap_DQ0[1]
+        Source.debug[2] = V_cap_DQ0[2]
+
+        #= Source.debug[1] = I_poc_DQ0[1]
+        Source.debug[2] = I_poc_DQ0[2] =#
+
+        #= Source.debug[1] = I_poc_abc[1]
         Source.debug[2] = V_cap_abc[1]
         
-        #= Source.debug[1] = sqrt(1/3)*norm(I_poc_DQ0) #IL2
+        Source.debug[1] = sqrt(1/3)*norm(I_poc_DQ0) #IL2
         Source.debug[2] = sqrt(1/3)*norm(V_cap_DQ0) #VC
 
         I_poc_rms = sqrt(1/3)*norm(DQ0_transform(Source.I_filt_poc[ns, :, end], θ)) 
@@ -1738,7 +1767,7 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         Source.debug[8] = I_err
         Source.debug[9] = V_err 
     
-        Source.debug[10] = sqrt(I_err^2 + V_err^2)=#
+        Source.debug[10] = sqrt(I_err^2 + V_err^2) =#
 
     end
 
