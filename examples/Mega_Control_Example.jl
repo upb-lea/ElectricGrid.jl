@@ -156,9 +156,9 @@ source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
 
-source["L1"] = 0.0002
+source["L1"] = 0.002
 source["R1"] = 0.04
-source["L2"] = 0.0002
+source["L2"] = 0.002
 source["R2"] = 0.05
 source["R_C"] = 0.09
 source["C"] = 0.0003
