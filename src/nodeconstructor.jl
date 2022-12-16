@@ -394,7 +394,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 #TODO: add user warnings if the L, C, parameters they choose are stupid  (more than 0.5*fs)  
                 # also calculate the maximal power factor variation. If more than 5% add warning             
 
-                fc = parameters["grid"]["fs"]/2
+                fc = parameters["grid"]["fs"]/5
                 ωc = 2π*fc
 
                 if !haskey(source, "L2")
@@ -431,25 +431,6 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                     must have enough attenuation in the range of the converter's 
                     switching frequency.")
                 end
-
-                Vorms = parameters["grid"]["v_rms"]*0.95
-
-                # TODO: 3 should be gone when not 3 phase??
-                # TODO: warnings should not be printed for every source but rather in bulk.
-                # TODO: for which source is the warnings valid?? Print out the source number so 
-                # that the user knows which one to fixed
-
-                Zl = 3*Vorms*Vorms/source["pwr"]
-                Cb = 1/(2π*parameters["grid"]["f_grid"]*Zl)
-
-                if source["C"] > 0.05*Cb
-
-                    @warn ("The maximal power factor variation acceptable by the grid is 
-                    typically 5%. The filter capacitance exceeds this value.")
-
-                    # TODO: surely this is also valid for LC filters?
-                end
-
             end
 
             if !haskey(source, "source_type")
