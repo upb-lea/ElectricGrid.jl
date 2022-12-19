@@ -41,8 +41,8 @@ Ic = I1 + I2
 
 -v2 + I2*z2 + Ic*zc
 
-println("|I_inv| = ", abs(I1), " angle = ", angle(I1)*180/pi)
-println("|I_poc| = ", abs(I2), " angle = ", 180 + angle(I2)*180/pi)
+println("|i_L1_a| = ", abs(I1), " angle = ", angle(I1)*180/pi)
+println("|i_L2_a| = ", abs(I2), " angle = ", 180 + angle(I2)*180/pi)
 println("|v_cap| = ", abs(Ic*zc), " angle = ", angle(Ic*zc)*180/pi)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
