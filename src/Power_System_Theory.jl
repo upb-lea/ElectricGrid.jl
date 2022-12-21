@@ -712,5 +712,39 @@ function layout_cabels(CM, num_source, num_load, parameters)
     end
     
 
+    for i in 1:num_cables
+
+        j, k = Tuple(findfirst(x -> x == i, CM))
+
+        a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+        #println(omega*value.(L_cable)[i])
+        println()
+        println()
+        println(value.(B)[j,j])
+        println(value.(G)[j,j])
+        println()
+        println()
+
+        Y = (value.(R_cable)[i] -omega*value.(L_cable)[i]) 
+        V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) )
+        V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) )
+
+        println(Y*conj(V1-V2)*V1)
+        println()
+        println()
+
+        println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
+
+        println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
+        println()
+        println()
+        
+        dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
+
+        I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
+        println(I)
+
+    end
+
     return parameters
 end

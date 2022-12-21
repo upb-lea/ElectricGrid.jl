@@ -384,8 +384,8 @@ num_source = 3 # user
 num_load = 1 # user
 
 # example to calculate RC load for 1000 VA per phase
-R_load, C_load, _, Z = Load_Impedance_2(3000, -0.9, 230)
-R_load, L_load, _, Z = Load_Impedance_2(3000, 0.9, 230)
+R_load, C_load, _, Z = Load_Impedance_Parallel(3000, -0.9, 230)
+R_load, L_load, _, Z = Load_Impedance_Parallel(3000, 0.9, 230)
 
 
 parameters = Dict{Any, Any}(
@@ -460,7 +460,7 @@ println()
 println("sanity check if integration to nc was successfull")
 println()
 println("Optimization in this skript results in parameters of cable 1:")
-println(parameters2["cable"][1])
+println(parameters_nc["cable"][1])
 println()
 println()
 println("Optimization in NC results in parameters of cable 1:")
@@ -469,7 +469,7 @@ println()
 println()
 println("Since the load was passive we check if pwr for powerflow equation is calulated cerrectly here ande in NC")
 println("Optimization in this skript results in parameters of load 1:")
-println(parameters2["load"][1])
+println(parameters_nc["load"][1])
 println()
 println()
 println("Optimization in NC results in parameters of load 1:")
