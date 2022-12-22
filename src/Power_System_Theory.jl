@@ -710,9 +710,8 @@ function layout_cabels(CM, num_source, num_load, parameters)
         cable["C"] = value.(C_cable)[index]
         cable["Cb"] = cable["C"]/cable["len"]
     end
-    
 
-    for i in 1:num_cables
+     for i in 1:num_cables
 
         j, k = Tuple(findfirst(x -> x == i, CM))
 
@@ -726,11 +725,34 @@ function layout_cabels(CM, num_source, num_load, parameters)
         println()
 
         Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i]) 
-        V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) )
-        V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) )
+        V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
+        V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
         println()
         println("Aparent power:")
         println(conj(Y)*conj(V1-V2)*V1)
+
+        #= The correct methodology
+
+        Z = R + 1im*ω*L
+        Zₘ = abs(Z)
+        θᵧ = angle(Z)
+
+        Y = 1im*ω*C # C is the total capacitance of the line, not the halved capacitance
+        A = abs(1 + Y*Z/2) # where Y is the total susceptance of the cable (i.e. the quantity related to the capacitance to ground)
+        θₐ = angle(1 + Y*Z/2)
+
+        P = Vr*Vs*cos(θᵧ - δ)/(Zₘ) - A*Vr*Vr*cos(θᵧ - θₐ) # solve this equation to find δ such that P = 1.5*SIL = 1.5*sqrt(C/L)
+        δ = .....
+
+        Yₗ = 1/Z
+
+        Vr = vᵣ # magnitude of receiving end voltage - assume angle is 0.0
+        Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
+
+        Iₗ = abs(conj(Yₗ)*(Vr - Vs)) # this is the limit of the current through the line inductor
+
+        =#
+
         println()
         println()
 
