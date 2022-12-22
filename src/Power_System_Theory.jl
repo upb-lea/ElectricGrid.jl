@@ -725,11 +725,12 @@ function layout_cabels(CM, num_source, num_load, parameters)
         println()
         println()
 
-        Y = (value.(R_cable)[i] -omega*value.(L_cable)[i]) 
+        Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i]) 
         V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) )
         V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) )
-
-        println(Y*conj(V1-V2)*V1)
+        println()
+        println("Aparent power:")
+        println(conj(Y)*conj(V1-V2)*V1)
         println()
         println()
 
