@@ -741,16 +741,18 @@ function layout_cabels(CM, num_source, num_load, parameters)
         A = abs(1 + Y*Z/2) # where Y is the total susceptance of the cable (i.e. the quantity related to the capacitance to ground)
         θₐ = angle(1 + Y*Z/2)
 
-        #P = Vr*Vs*cos(θᵧ - δ)/(Zₘ) - A*Vr*Vr*cos(θᵧ - θₐ) # solve this equation to find δ such that 
+        #P = Vr*Vs*cos(θᵧ - δ)/(Zₘ) - A*Vr*Vr*cos(θᵧ - θₐ)/(Zₘ) # solve this equation to find δ
+        #Q = Vr*Vs*sin(θᵧ - δ)/(Zₘ) - A*Vr*Vr*sin(θᵧ - θₐ) /(Zₘ) # this equation might be helpful for debugging
+
         P = 1.5*vᵣ*vₛ*sqrt(C/L)
-        δ = -acos(Zₘ*(P + A*Vr*Vr*cos(θᵧ - θₐ))/(Vr*Vs)) + θᵧ
+        δ = -acos((P*Zₘ + A*Vr*Vr*cos(θᵧ - θₐ))/(Vr*Vs)) + θᵧ
 
         Yₗ = 1/Z
 
         Vr = vᵣ # magnitude of receiving end voltage - assume angle is 0.0
         Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
 
-        Iₗ = abs((Vs - Y*Vr)/Z) # this is our answer
+        Iₗ = abs((Vs - Y*Vr)/Z) # this is our answer, i.e. the limit to the current through the inductor
 
         # to check that the above works
         # 1. Set P = the active power calculated by the solver
