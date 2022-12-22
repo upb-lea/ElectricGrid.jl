@@ -742,7 +742,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
         θₐ = angle(1 + Y*Z/2)
 
         #P = Vr*Vs*cos(θᵧ - δ)/(Zₘ) - A*Vr*Vr*cos(θᵧ - θₐ) # solve this equation to find δ such that 
-        P = 1.5*SIL = 1.5*vᵣ*vₛ*sqrt(C/L)
+        P = 1.5*vᵣ*vₛ*sqrt(C/L)
         δ = -acos(Zₘ*(P + A*Vr*Vr*cos(θᵧ - θₐ))/(Vr*Vs)) + θᵧ
 
         Yₗ = 1/Z
