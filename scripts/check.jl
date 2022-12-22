@@ -46,3 +46,29 @@ println("|I_poc| = ", abs(I2), " angle = ", 180 + angle(I2)*180/pi)
 println("|v_cap| = ", abs(Ic*zc), " angle = ", angle(Ic*zc)*180/pi)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
+
+
+a = sqrt(100000)
+b = 101 
+c = -300
+
+if a^2 < b^2 + c^2
+
+    k = 3 # always an integer (we have infinite solutions)
+    δ₁ = 2*atan((b + (- a^2 + b^2 + c^2)^(1/2))/(a + c)) + 2*pi*k # set of solutions 1
+    δ₂ = 2*atan((b - (- a^2 + b^2 + c^2)^(1/2))/(a + c)) + 2*pi*k # set of solutions 2
+
+    eq1 = b*sin(δ₁) + c*cos(δ₁) - a
+    eq2 = b*sin(δ₂) + c*cos(δ₂) - a
+
+    if round(eq1, digits = 3) != 0.0 || round(eq2, digits = 3) != 0.0
+
+        println("No viable solution found")
+    end
+
+else
+    println("No viable solution found")
+end
+
+println("δ₁ = ", round((δ₁*180/pi)%(2π), digits = 3), " degrees")
+println("δ₂ = ", round((δ₂*180/pi)%(2π), digits = 3), " degrees")
