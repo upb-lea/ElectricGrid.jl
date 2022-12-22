@@ -754,9 +754,11 @@ function layout_cabels(CM, num_source, num_load, parameters)
         Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
         Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
 
-        Iₗ = abs((Vs - A*Vr)/Z) # this is our answer, i.e. the limit to the current through the cable inductor
+        Iₗ = abs((Vs - A*Vr)/Z) # this is almost our answer - probably this equation isn't right
 
         Yₗ = 1/Z # for debugging
+
+        #Iₗ = abs(conj(Yₗ)*(Vr - Vs)) # this is probably the answer we are looking for - the limit of the current through the cable inductor
 
         # to check that the above works (also for debugging)
         # 1. Set P = the active power calculated by the solver
