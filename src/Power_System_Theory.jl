@@ -738,19 +738,23 @@ function layout_cabels(CM, num_source, num_load, parameters)
         θᵧ = angle(Z)
 
         Y = 1im*ω*C # C is the total capacitance of the line, not the halved capacitance
-        A = abs(1 + Y*Z/2) # where Y is the total susceptance of the cable (i.e. the quantity related to the capacitance to ground)
-        θₐ = angle(1 + Y*Z/2)
+        A = 1 + Y*Z/2
+        Aₘ = abs(A)
+        θₐ = angle(A)
 
-        #P = Vr*Vs*cos(θᵧ - δ)/(Zₘ) - A*Vr*Vr*cos(θᵧ - θₐ)/(Zₘ) # solve this equation to find δ
-        #Q = Vr*Vs*sin(θᵧ - δ)/(Zₘ) - A*Vr*Vr*sin(θᵧ - θₐ) /(Zₘ) # this equation might be helpful for debugging
+        #P = vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ) # solve this equation to find δ
+        #Q = vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ) /(Zₘ) # this equation might be helpful for debugging
+
+        vᵣ = .... # magnitude of receiving end voltage
+        vₛ = .... # magnitude of sending end voltage
 
         P = 1.5*vᵣ*vₛ*sqrt(C/L)
-        δ = -acos((P*Zₘ + A*Vr*Vr*cos(θᵧ - θₐ))/(Vr*Vs)) + θᵧ
+        δ = -acos((P*Zₘ + Aₘ*Vr*Vr*cos(θᵧ - θₐ))/(Vr*Vs)) + θᵧ
 
-        Vr = vᵣ # magnitude of receiving end voltage - assume angle is 0.0
+        Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
         Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
 
-        Iₗ = abs((Vs - Y*Vr)/Z) # this is our answer, i.e. the limit to the current through the inductor
+        Iₗ = abs((Vs - A*Vr)/Z) # this is our answer, i.e. the limit to the current through the cable inductor
 
         Yₗ = 1/Z # for debugging
 
