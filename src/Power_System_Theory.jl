@@ -752,6 +752,11 @@ function layout_cabels(CM, num_source, num_load, parameters)
 
         Iₗ = abs(conj(Yₗ)*(Vr - Vs)) # this is the limit of the current through the line inductor
 
+        # to check that the above works
+        # 1. Set P = the active power calculated by the solver
+        # 2. Verify that δ is the difference in angles between the sending and receiving node voltages
+        # 3. Verify that S = Vs*conj(Yₗ)*(Vr - Vs) gives the correct active and reactive power calculated by solver
+
         =#
 
         println()
