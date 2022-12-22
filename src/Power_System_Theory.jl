@@ -756,6 +756,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
         # 1. Set P = the active power calculated by the solver
         # 2. Verify that δ is the difference in angles between the sending and receiving node voltages
         # 3. Verify that S = Vs*conj(Yₗ)*(Vr - Vs) gives the correct active and reactive power calculated by solver
+        # 4. Verify that Iₗ = abs(conj(Yₗ)*(Vs - Vr)), because flipping the sending and receiving ends should not make a difference
 
         =#
 
