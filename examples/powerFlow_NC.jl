@@ -449,8 +449,8 @@ parameters_nc = Dict{Any, Any}(
     "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>1, "v_rms"=>230, "f_grid" => 50),
     "cable" => Any[
                     Dict{Any, Any}("len"=>1),
-                    Dict{Any, Any}("len"=>1),
-                    Dict{Any, Any}("len"=>1)
+                    Dict{Any, Any}("len"=>2),
+                    Dict{Any, Any}("len"=>3)
                     ]
 )
 env = SimEnv(ts = 1e-4, use_gpu = false, CM = CM, num_sources = num_source, num_loads = num_load, parameters = parameters_nc, maxsteps = 100, action_delay = 1)
