@@ -760,7 +760,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
         vₛ = value.(nodes[k, "v"]) # magnitude of sending end voltage
 
         #P = 1.5*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-        P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
+        P = value.(nodes[k, "P"]) # maybe should be value.(nodes[k, "P"])
         δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
 
         Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
@@ -779,10 +779,11 @@ function layout_cabels(CM, num_source, num_load, parameters)
         # 5. Verify that Iₗ = abs(conj(Yₗ)*(Vr - Vs)), the sending end current
         # 6. Verify that Iₗ = abs(conj(Yₗ)*(Vs - Vr)), because flipping the sending and receiving ends should not make a difference
 
+        S = sqrt(value.(nodes[k, "P"])^2 + value.(nodes[k, "Q"])^2)
         println("\nDebugging\n")
         println("2. δ = ", δ)
-        println("3. S₁ = ", Vs*conj(Yₗ)*(Vr - Vs))
-        println("4. S₂ = ", Vs*Iₗ)
+        println("3. S = ", S," S₁ ?= ", Vs*conj(Yₗ)*(Vr - Vs))
+        println("4. S = ", S, "S₂ ?= ", Vs*Iₗ, "?= ", Vs*I₂)
         println("5. Iₗ = ", Iₗ, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
         println("6. I₂ = ", I₂, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
         println()
