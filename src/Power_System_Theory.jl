@@ -711,54 +711,65 @@ function layout_cabels(CM, num_source, num_load, parameters)
         cable["Cb"] = cable["C"]/cable["len"]
     end
 
-     for i in 1:num_cables
+    for i in 1:num_cables
 
         j, k = Tuple(findfirst(x -> x == i, CM))
 
-        a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-        #println(omega*value.(L_cable)[i])
-        println()
-        println()
-        println(value.(B)[j,j])
-        println(value.(G)[j,j])
-        println()
-        println()
+        #= Legacy code
+            a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+            #println(omega*value.(L_cable)[i])
+            println()
+            println()
+            println(value.(B)[j,j])
+            println(value.(G)[j,j])
+            println()
+            println()
 
-        Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i]) 
-        V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-        V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-        println()
-        println("Aparent power:")
-        println(conj(Y)*conj(V1-V2)*V1)
+            Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i]) 
+            V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
+            V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
+            println()
+            println("Aparent power:")
+            println(conj(Y)*conj(V1-V2)*V1) 
 
-        #= The correct methodology
+            println()
+            println()
 
-        Z = R + 1im*ω*L
+            println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
+
+            println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
+            println()
+            println()
+            
+            dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
+
+            I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
+            println(I)
+        =#
+
+        Z = value.(R_cable)[i] + 1im*omega*value.(L_cable)[i]
         Zₘ = abs(Z)
         θᵧ = angle(Z)
 
-        Y = 1im*ω*C # C is the total capacitance of the line, not the halved capacitance
+        Y = 1im*omega*value.(C_cable)[i] # C is the total capacitance of the line, not the halved capacitance
         A = 1 + Y*Z/2
         Aₘ = abs(A)
         θₐ = angle(A)
 
-        #P = vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ) # solve this equation to find δ
-        #Q = vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ) /(Zₘ) # this equation might be helpful for debugging
+        vᵣ = value.(nodes[j, "v"]) # magnitude of receiving end voltage
+        vₛ = value.(nodes[k, "v"]) # magnitude of sending end voltage
 
-        vᵣ = .... # magnitude of receiving end voltage
-        vₛ = .... # magnitude of sending end voltage
-
-        P = 1.5*vᵣ*vₛ*sqrt(C/L)
-        δ = -acos((P*Zₘ + Aₘ*Vr*Vr*cos(θᵧ - θₐ))/(Vr*Vs)) + θᵧ
+        #P = 1.5*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+        P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
+        δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
 
         Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
         Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
 
-        Iₗ = abs((Vs - A*Vr)/Z) # this is almost our answer - probably this equation isn't right
-
         Yₗ = 1/Z # for debugging
+        Iₗ = abs(conj(Yₗ)*(Vr - Vs))
 
-        #Iₗ = abs(conj(Yₗ)*(Vr - Vs)) # this is probably the answer we are looking for - the limit of the current through the cable inductor
+        I₂ = abs((Vs - A*Vr)/Z) # this is almost our answer - probably this equation isn't right
 
         # to check that the above works (also for debugging)
         # 1. Set P = the active power calculated by the solver
@@ -768,21 +779,52 @@ function layout_cabels(CM, num_source, num_load, parameters)
         # 5. Verify that Iₗ = abs(conj(Yₗ)*(Vr - Vs)), the sending end current
         # 6. Verify that Iₗ = abs(conj(Yₗ)*(Vs - Vr)), because flipping the sending and receiving ends should not make a difference
 
+        println("\nDebugging\n")
+        println("2. δ = ", δ)
+        println("3. S₁ = ", Vs*conj(Yₗ)*(Vr - Vs))
+        println("4. S₂ = ", Vs*Iₗ)
+        println("5. Iₗ = ", Iₗ, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
+        println("6. I₂ = ", I₂, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
+        println()
+
+        #= The correct methodology
+
+            Z = R + 1im*ω*L
+            Zₘ = abs(Z)
+            θᵧ = angle(Z)
+
+            Y = 1im*ω*C # C is the total capacitance of the line, not the halved capacitance
+            A = 1 + Y*Z/2
+            Aₘ = abs(A)
+            θₐ = angle(A)
+
+            #P = vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ) # solve this equation to find δ
+            #Q = vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ) /(Zₘ) # this equation might be helpful for debugging
+
+            vᵣ = .... # magnitude of receiving end voltage
+            vₛ = .... # magnitude of sending end voltage
+
+            P = 1.5*vᵣ*vₛ*sqrt(C/L)
+            δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
+
+            Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
+            Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
+
+            Iₗ = abs((Vs - A*Vr)/Z) # this is almost our answer - probably this equation isn't right
+
+            Yₗ = 1/Z # for debugging
+
+            #Iₗ = abs(conj(Yₗ)*(Vr - Vs)) # this is probably the answer we are looking for - the limit of the current through the cable inductor
+
+            # to check that the above works (also for debugging)
+            # 1. Set P = the active power calculated by the solver
+            # 2. Verify that δ is the difference in angles between the sending and receiving node voltages
+            # 3. Verify that S = Vs*conj(Yₗ)*(Vr - Vs) gives the correct active and reactive power calculated by solver
+            # 4. Verify that S = Vs*Iₗ gives the correct active and reactive power calculated by solver
+            # 5. Verify that Iₗ = abs(conj(Yₗ)*(Vr - Vs)), the sending end current
+            # 6. Verify that Iₗ = abs(conj(Yₗ)*(Vs - Vr)), because flipping the sending and receiving ends should not make a difference
+
         =#
-
-        println()
-        println()
-
-        println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
-
-        println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
-        println()
-        println()
-        
-        dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
-
-        I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
-        println(I)
 
     end
 
