@@ -1996,6 +1996,193 @@ function Integrator_Prep(i; Order = 3)
     return range, cnt_end
 end
 
+function Luenberger_Observer(Source::Classical_Controls, num_source)
+
+    ns = num_source
+
+    f_sys = Source.fpll[ns, 1, end]
+    ω = 2π*f_sys
+    θ = Source.θpll[num_source, 1, end]
+
+    if Source.filter_type[ns] == "LCL"
+
+        I_poc_DQ0 = [0.; 0.; 0.]
+        V_cap_DQ0 = [0.; 0.; 0.]
+
+        y_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end], θ)
+
+        vₚ_DQ0 = DQ0_transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
+        yₚ_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+        eₚ_DQ0 = DQ0_transform(Source.V_filt_poc[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+
+        #----------------------------------------------------------------------
+        # Zero component
+
+        A = Source.Ad_0[ns, :, :]
+        B = Source.Bd_0[ns, :, :]
+        C = transpose(Source.Cd_0[ns, :])
+        D = transpose(Source.Dd_0[ns, :])
+
+        K = Source.Ko_0[ns, :]
+
+        y = y_DQ0[3]
+
+        yₚ = yₚ_DQ0[3]
+        vₚ = vₚ_DQ0[3]
+        eₚ = eₚ_DQ0[3]
+
+        uₚ = [yₚ; vₚ; eₚ]
+
+        Source.xp_0[ns, :] = (A - K*C)*Source.xp_0[ns, :] + (B - K*D)*uₚ + K*y
+
+        I_poc_DQ0[3] = Source.xp_0[ns, 1]
+        V_cap_DQ0[3] = Source.xp_0[ns, 2]
+        
+        #----------------------------------------------------------------------
+        # DQ components
+
+        A = Source.Ad_DQ[ns, :, :]
+        B = Source.Bd_DQ[ns, :, :]
+        C = Source.Cd_DQ[ns, :, :]
+        D = Source.Dd_DQ[ns, :, :]
+
+        K = Source.Ko_DQ[ns, :, :]
+
+        y = y_DQ0[1:2]
+
+        yₚ = yₚ_DQ0[1:2]
+        vₚ = vₚ_DQ0[1:2]
+        eₚ = eₚ_DQ0[1:2]
+
+        uₚ = [yₚ; vₚ; eₚ]
+
+        Source.xp_DQ[ns, :] = (A - K*C)*Source.xp_DQ[ns, :] + (B - K*D)*uₚ + K*y
+        #Source.xp_DQ[ns, :] = A*Source.xp_DQ[ns, :] + B*uₚ + K*(y - D*uₚ - C*Source.xp_DQ[ns, :])
+
+        I_poc_DQ0[1:2] = Source.xp_DQ[ns, 1:2]
+        V_cap_DQ0[1:2] = Source.xp_DQ[ns, 3:4]
+
+        Source.debug[9] = Inv_DQ0_transform([I_poc_DQ0[1]; I_poc_DQ0[2]; 0.0], θ + 0.5*Source.ts*ω)[1]
+        Source.debug[10] = Inv_DQ0_transform([V_cap_DQ0[1]; V_cap_DQ0[2]; 0.0], θ + 0.5*Source.ts*ω)[1]
+
+        #3333333
+
+        #= y = y_DQ0[1:2]
+        vₚ = vₚ_DQ0[1:2]
+        eₚ = eₚ_DQ0[1:2]
+
+        Source.xp_DQ[ns, :] = (A - K*C*A)*Source.xp_DQ[ns, :] + (B - K*C*B)*vₚ + (D - K*C*D)*eₚ + K*y
+
+        I_poc_DQ0[1] = Source.xp_DQ[ns, 2]
+        I_poc_DQ0[2] = Source.xp_DQ[ns, 5]
+        V_cap_DQ0[1] = Source.xp_DQ[ns, 3]
+        V_cap_DQ0[2] = Source.xp_DQ[ns, 6] =#
+
+        #3333333
+        
+        #----------------------------------------------------------------------    
+
+        #= 
+
+            #Phase_Locked_Loop_3ph(Source, ns)
+
+            yₚ_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end - 1], θ - 1.0*Source.ts*ω)
+            iₚ_DQ0 = DQ0_transform(Source.I_filt_poc[ns, :, end - 1], θ - 1.0*Source.ts*ω)
+            cₚ_DQ0 = DQ0_transform(Source.V_filt_cap[ns, :, end - 1], θ - 1.0*Source.ts*ω)
+
+            v_DQ0 = DQ0_transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
+            e_DQ0 = DQ0_transform(Source.V_filt_poc[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+
+            #= Vpeak = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[ns, :, end - 1], 0)) 
+            θph_1 = Source.θpll[num_source, 1, end] - 1.5*Source.ts*ω
+            
+            θph = [θph_1; θph_1 - 120π/180; θph_1 + 120π/180]
+            e = Vpeak*cos.(θph)
+
+            e_DQ0 = DQ0_transform(e, θ) =#
+
+            if Source.steps*Source.ts >= 0.0
+
+                xₚ = Source.debug[1:6]
+
+            else
+                xₚ = [yₚ_DQ0[1:2]; iₚ_DQ0[1:2]; cₚ_DQ0[1:2]]
+                #xₚ = [yₚ_DQ0[1]; iₚ_DQ0[1]; cₚ_DQ0[1]; yₚ_DQ0[2]; iₚ_DQ0[2]; cₚ_DQ0[2]]
+            end
+
+            x = Source.Ad_DQ[ns, :, :]*xₚ + Source.Bd_DQ[ns, :, :]*v_DQ0[1:2] + Source.Dd_DQ[ns, :, :]*e_DQ0[1:2]
+
+            Source.debug[1] = x[1] #i1_d (inv)
+            Source.debug[2] = x[2] #i1_q (inv)
+            Source.debug[3] = x[3] #i2_d (poc)
+            Source.debug[4] = x[4] #i2_q (poc)
+            Source.debug[5] = x[5] #vc_d (cap)
+            Source.debug[6] = x[6] #vc_q (cap)
+
+            Source.debug[7] = Inv_DQ0_transform([x[1]; x[2]; 0.0], θ + 0.5*Source.ts*ω)[1]
+            Source.debug[8] = Inv_DQ0_transform([x[3]; x[4]; 0.0], θ + 0.5*Source.ts*ω)[1]
+        =#
+
+        #***********************
+
+        #= 
+            #= Vpeak = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[ns, :, end - 1], 0)) 
+            θph_1 = Source.θpll[num_source, 1, end] - 1.5*Source.ts*ω
+            
+            θph = [θph_1; θph_1 - 120π/180; θph_1 + 120π/180]
+            e = Vpeak*cos.(θph)
+
+            e_DQ0 = DQ0_transform(e, θ - 1.0*Source.ts*ω) =#
+
+            A = [-(Source.Rf_L1[ns] + Source.Rf_C[ns])/Source.Lf_1[ns] Source.Rf_C[ns]/Source.Lf_1[ns] -1/Source.Lf_1[ns];
+                Source.Rf_C[ns]/Source.Lf_2[ns] -(Source.Rf_L2[ns] + Source.Rf_C[ns])/Source.Lf_2[ns] 1/Source.Lf_2[ns];
+                1/Source.Cf[ns] -1/Source.Cf[ns] 0.0]
+
+            B = [1/Source.Lf_1[ns]; 0; 0]
+            D = [0; -1/Source.Lf_2[ns]; 0]
+            B₂ = [B D]
+
+            Ad = exp(A*Source.ts)
+            Bd = inv(A)*(Ad - I)*B
+            Dd = inv(A)*(Ad - I)*D
+
+            Bd₂ = inv(A)*(Ad - I)*B₂
+
+            v = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, 1, end - Source.action_delay - 1]
+
+            #= Vpeak = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[ns, :, end - 1], 0)) 
+            θph = Source.θpll[num_source, 1, end] - 1.5*Source.ts*ω # half for ZOH??, 1 for going back one time step
+            
+            e = Vpeak*cos(θph) #Vpeak*cos(θ - (1.0 + Source.action_delay)*Source.ts*ω - 37.07233458449781*pi/180)  =#
+            
+            xₚ = Source.debug[11:13]
+
+            x = Ad*xₚ + Bd*v + Dd*e[1]
+            #x = Ad*xₚ + Bd₂*[v; e]
+
+            Source.debug[11] = x[1] #i1_a (inv - first inductor)
+            Source.debug[12] = x[2] #i2_a (poc - second inductor)
+            Source.debug[13] = x[3] #vc_a (cap)
+
+            Source.debug[14] = Vpeak*cos(θph[1] + 0.5*Source.ts*ω) # Vpeak*cos(θ - Source.action_delay*Source.ts*ω - 37.07233458449781*pi/180)# correcting for the lag of the measurements??
+        
+            # it appears that every (action) signal is delayed by 0.5 - the pll works correctly given the signals
+            
+            Source.debug[15] = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, 1, end - Source.action_delay - 1]
+
+            θph =  (- (θ + (-Source.action_delay + 0.0)*Source.ts*ω) + Source.θpll[num_source, 1, end])
+            if θph < π
+                θph = θph + 2π 
+            end
+            Source.debug[16] = (2π - θph)*180/π  
+        =#
+       
+    end
+
+    return nothing
+end
+
+
 #-------------------------------------------------------------------------------
 
 function Measurements(Source::Classical_Controls)

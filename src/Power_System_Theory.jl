@@ -48,6 +48,11 @@ function RMS(θ, t_signals)
     return rms
 end
 
+function DQ_RMS(i_abc)
+
+    return i_rms = sqrt(1/3)*norm(DQ0_transform(i_abc, 0)[1:2])
+end
+
 function Clarke_Transform(v_abc)
     #= Also known as the alpha-beta-(gamma), αβγ transformation. Implementing
     below is the the power invariant version, such that the matrix is unitary.
