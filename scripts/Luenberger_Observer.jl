@@ -1,6 +1,5 @@
 using LinearAlgebra
 using StatsBase
-using LinearAlgebra
 using Combinatorics
 
 function Observability(C, A; n = size(A,1))
@@ -176,11 +175,11 @@ p = [2. 0. 1.;
 
 K, _ = Multi_Gain_Matrix_par(A, C, λ, p)
 
-println()
+#= println()
 println("K = ", round.(K, digits = 3))
 println("v = ", round.(v, digits = 3))
 println("p = ", round.(p, digits = 3))
-println("λ = ", round.(eigvals(A - K*C), digits = 3))
+println("λ = ", round.(eigvals(A - K*C), digits = 3)) =#
 
 A = [0 1 0;
     0 0 1;
@@ -196,9 +195,10 @@ K = Ackermann_Gain_Matrix(A, C, λ)
 println("K = ", round.(K, digits = 3))
 println("λ = ", real(round.(eigvals(A - K*C), digits = 3))) =#
 
-A = [0. 1 0;
-     0 0 1;
-     0. 2 -1]
+A = [0. 1 0 ;
+     0 0 1 ;
+     0. 2 -1 ;
+     ]
 
 B = [0. 1.;
      1. 1.;
@@ -216,5 +216,26 @@ println("F = ", round.(F, digits = 3))
 println("v = ", round.(v, digits = 3))
 println("p = ", round.(p, digits = 3))
 println("λ = ", real(round.(eigvals(A - B*F), digits = 3))) =#
+
+A = [23.0    1.0  262.0    8.0;
+    -1.0   23.0   -8.0  262.0;
+    -20.0   -1.0   40.0    1.0;
+    1.0  -20.0   -1.0   40.0]
+
+C = [10.0   0.0  -36.0   -1.0;
+    -0.0  10.0    1.0  -36.0]
+
+p = [2. 0. 1. 1.5;
+     0.5 2. 0. 1.]
+
+λ = [-0.0 -0.0 -0.1 -0.1]
+
+K, _ = Multi_Gain_Matrix_par(A, C, λ, p)
+
+println()
+println("K = ", round.(K, digits = 3))
+println("v = ", round.(v, digits = 3))
+println("p = ", round.(p, digits = 3))
+println("λ = ", real.(round.(eigvals(A - K*C), digits = 3)))
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

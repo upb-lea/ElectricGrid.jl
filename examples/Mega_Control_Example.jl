@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.1 #time in seconds, total simulation run time
+t_final = 0.2 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -155,6 +155,11 @@ source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
+source["std_asy"] = 100 # asymptotic standard deviation
+#source["κ"] = 3 # mean reversion parameter
+source["σ"] = 1000 # Brownian motion scale i.e. ∝ diffusion parameter
+source["γ"] = 400 # asymptotoic mean
+source["X₀"] = 600 # initial values
 
 #= source["L1"] = 0.002
 source["R1"] = 0.04
@@ -176,7 +181,7 @@ source = Dict()
 
 source["pwr"] = 100e3
 source["vdc"] = 800
-source["fltr"] = "L"
+source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
@@ -187,6 +192,10 @@ source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
+source["std_asy"] = 0 # asymptotic standard deviation
+source["σ"] = 0.0 # Brownian motion scale i.e. ∝ diffusion parameter
+source["γ"] = 0 # asymptotoic mean
+source["X₀"] = 0 # initial values
 
 #= source["L1"] = 1e-3
 source["R1"] = 0.05 =#
@@ -275,9 +284,9 @@ agentname = "agent"
                 "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
 plt_state_ids = []               
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1],
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
 collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2],
-save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [1 2])
+save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [1 2 3])
 
 #_______________________________________________________________________________
 # Starting time simulation

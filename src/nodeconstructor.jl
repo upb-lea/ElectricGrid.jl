@@ -276,7 +276,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             if !haskey(source, "R1")
                 
-                #= Example:
+                #= Practical Example:
                 L_filter = 70e-6
                 R_filter = 1.1e-3
                 R_filter_C = 7e-3
@@ -295,7 +295,6 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
             end
             
-
             if (source["fltr"] == "LC" || source["fltr"] == "LCL")
                 #Capacitor design
                 if source["fltr"] == "LC"
@@ -446,9 +445,30 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 source["τf"] = 0.002 # time constant of the frequency loop # 0.002
             end
 
+            if !haskey(source, "pf") # power factor
+
+                if !haskey(source, "p_set") && !haskey(source, "q_set")
+
+                    source["pf"] = 0.8 # power factor
+
+                elseif haskey(source, "q_set") && !haskey(source, "p_set")
+
+                    p_set = sqrt(source["pwr"]^2 - source["q_set"]^2)
+                    source["pf"] = p_set/source["pwr"]
+
+                elseif haskey(source, "p_set") && !haskey(source, "q_set")
+
+                    source["pf"] = source["p_set"]/source["pwr"]
+
+                elseif haskey(source, "p_set") && haskey(source, "q_set")
+
+                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)
+                    source["pf"] = source["p_set"]/s_set
+                end
+            end
+
             if !haskey(source, "p_set")
-                pf = 0.8 # power factor
-                source["p_set"] = source["pwr"]*pf
+                source["p_set"] = source["pwr"]*source["pf"]
             end
 
             if !haskey(source, "q_set")
@@ -464,11 +484,59 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
 
             if !haskey(source, "mode")
-                source["mode"] = "Full-Synchronverter"
+                source["mode"] = "Semi-Synchronverter"
             end
 
             if !haskey(source, "control_type")
                 source["control_type"] = "classic"
+            end
+
+            if !haskey(source, "γ") # asymptotoic mean
+                source["γ"] = source["p_set"]
+            end
+
+            if !haskey(source, "std_asy") || haskey(source, "κ")# asymptotic standard deviation
+
+                #std_asy = sqrt(σ^2/(2*κ)) # asymptotic standard deviation
+                if !haskey(source, "σ")
+
+                    source["std_asy"] = 0.0
+                elseif !haskey(source, "κ")
+
+                    source["std_asy"] = source["γ"]/10
+                else
+
+                    source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
+                end
+            end
+
+            if !haskey(source, "κ") # mean reversion parameter
+
+                if source["std_asy"] == 0.0
+
+                    source["κ"] = 0.0
+                else
+
+                    source["κ"] = source["σ"]^2/(2*source["std_asy"]^2)
+                end
+            end
+
+            if !haskey(source, "σ") # Brownian motion scale i.e. ∝ diffusion parameter
+                source["σ"] = 0.0
+            end
+
+            if !haskey(source, "X₀") # initial values
+                source["X₀"] = source["p_set"]
+            end
+
+            if !haskey(source, "Δt") # time step
+
+                steps = 4 # ... steps in a cycle
+                source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+
+            elseif haskey(source, "Δt")
+
+                source["Δt"] = round(source["Δt"]*(parameters["grid"]["fs"]))/parameters["grid"]["fs"]
             end
         end
 
