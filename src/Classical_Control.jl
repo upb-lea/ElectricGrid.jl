@@ -860,7 +860,6 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
 
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
                 Luenberger_Observer(Source, ns)
-                
             else
 
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
@@ -917,7 +916,7 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
     Vrms = Ramp(Source.V_pu_set[num_source, 1]*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
     Source.V_ref[num_source, :] = sqrt(2)*(Vrms)*cos.(θph)
 
-    if Source.steps*Source.ts >= 0.1 && num_source == 2
+    if Source.steps*Source.ts >= 0.1 && num_source == 5
 
         Vdc = 150
 
@@ -1749,18 +1748,17 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         uₚ = [yₚ_DQ0[1:2]; vₚ_DQ0[1:2]; eₚ_DQ0[1:2]]
 
         Source.xp_DQ[ns, :] = (A - K*C)*Source.xp_DQ[ns, :] + (B - K*D)*uₚ + K*y_DQ0[1:2]
-        #Source.xp_DQ[ns, :] = A*Source.xp_DQ[ns, :] + B*uₚ
 
         I_poc_DQ0[1:2] = Source.xp_DQ[ns, 1:2]
         V_cap_DQ0[1:2] = Source.xp_DQ[ns, 3:4]
-
-        Source.debug[1] = Inv_DQ0_transform(I_poc_DQ0, θ + 0.5*Source.ts*ω)[1]
-        Source.debug[2] = Inv_DQ0_transform(V_cap_DQ0, θ + 0.5*Source.ts*ω)[1]
         
         #----------------------------------------------------------------------   
         
         Source.I_filt_poc[ns, :, end] = Inv_DQ0_transform(I_poc_DQ0, θ + 0.5*Source.ts*ω)
         Source.V_filt_cap[ns, :, end] = Inv_DQ0_transform(V_cap_DQ0, θ + 0.5*Source.ts*ω)
+
+        Source.debug[1] = Source.I_filt_poc[ns, 1, end]
+        Source.debug[2] = Source.V_filt_cap[ns, 1, end]
        
     end
 
@@ -2218,10 +2216,10 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
         # Solving (A - K*C)^4 = [0]
 
         #λ = [0.0; 0.0; -0.15; -0.15]
-        λ = [0.0; 0.0; 0.0; 0.0]
+        λ = [0.0; 0.001; 0.001; 0.0]
 
-        p = [2. 0. 1. 1.5;
-             0.5 2. 0. 1.]
+        p = [2.0 1.0 1.0 1.5;
+             0.0 2.0 0.5 1.0]
 
         Source.Ko_DQ[ns, :, :],   = Multi_Gain_Matrix_par(Source.Ad_DQ[ns, :, :], Source.Cd_DQ[ns, :, :], λ, p)
         λₒ = round.(eigvals(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :]), digits = 3)
@@ -2382,7 +2380,7 @@ function Multi_Gain_Matrix_par(A, C, λ, p)
         v[:, i] = -transpose(p[:, i])*C*inv(I*λ[i] - A)
     end
     
-    if round(det(v), digits = 3) != 0
+    if round(det(v), digits = 9) != 0 || 1 == 1
         K = inv(transpose(v))*transpose(p)
     else
         K = fill!(K, 0.)

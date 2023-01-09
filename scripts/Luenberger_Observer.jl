@@ -171,15 +171,17 @@ C = [0. 1. 0.;
 p = [2. 0. 1.;
      0. 2. 0.]
 
-λ = [-1 -8 -2]
+λ = [-2 -2 -10]
+
+_, r = Observability(C, A)
 
 K, _ = Multi_Gain_Matrix_par(A, C, λ, p)
 
-#= println()
+println()
 println("K = ", round.(K, digits = 3))
 println("v = ", round.(v, digits = 3))
 println("p = ", round.(p, digits = 3))
-println("λ = ", round.(eigvals(A - K*C), digits = 3)) =#
+println("λ = ", round.(eigvals(A - K*C), digits = 3))
 
 A = [0 1 0;
     0 0 1;
@@ -197,8 +199,7 @@ println("λ = ", real(round.(eigvals(A - K*C), digits = 3))) =#
 
 A = [0. 1 0 ;
      0 0 1 ;
-     0. 2 -1 ;
-     ]
+     0. 2 -1];
 
 B = [0. 1.;
      1. 1.;
@@ -225,17 +226,17 @@ A = [23.0    1.0  262.0    8.0;
 C = [10.0   0.0  -36.0   -1.0;
     -0.0  10.0    1.0  -36.0]
 
-p = [2. 0. 1. 1.5;
-     0.5 2. 0. 1.]
+p = [2.5 8. 1. 1.5;
+     0.5 2. 9. 1.2]
 
-λ = [-0.0 -0.0 -0.1 -0.1]
+λ = [-0.0 -0.0 -0.01 -0.01]
 
 K, _ = Multi_Gain_Matrix_par(A, C, λ, p)
 
-println()
+#= println()
 println("K = ", round.(K, digits = 3))
 println("v = ", round.(v, digits = 3))
 println("p = ", round.(p, digits = 3))
-println("λ = ", real.(round.(eigvals(A - K*C), digits = 3)))
+println("λ = ", real.(round.(eigvals(A - K*C), digits = 3))) =#
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

@@ -158,8 +158,8 @@ source["τf"] = 0.002
 source["std_asy"] = 100 # asymptotic standard deviation
 #source["κ"] = 3 # mean reversion parameter
 source["σ"] = 1000 # Brownian motion scale i.e. ∝ diffusion parameter
-source["γ"] = 400 # asymptotoic mean
-source["X₀"] = 600 # initial values
+source["γ"] = 320 # asymptotoic mean
+source["X₀"] = 500 # initial value
 
 #= source["L1"] = 0.002
 source["R1"] = 0.04
@@ -167,13 +167,6 @@ source["L2"] = 0.002
 source["R2"] = 0.05
 source["R_C"] = 0.09
 source["C"] = 0.003 =#
-
-#= source["L1"] = 0.0002
-source["R1"] = 0.04
-source["L2"] = 0.00002
-source["R2"] = 0.005
-source["R_C"] = 0.09
-source["C"] = 0.0003 =#
 
 push!(source_list, source)
 
