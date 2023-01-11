@@ -772,7 +772,9 @@ function layout_cabels(CM, num_source, num_load, parameters)
 
         I₂ = ((Vs - A*Vr)/Z) 
 
-        println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor") 
+        #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
+        
+        parameters["cable"][i]["i_limit"] = abs(Iₗ)
 
         #= 
         S = sqrt(P^2 + Q^2)

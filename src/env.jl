@@ -253,9 +253,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                     norm_array[state_index] = cable["i_limit"]
                 else
                     i_limit_fixed += 1
-                    Zs = sqrt(nc.parameters["cable"][cable_number]["L"]/nc.parameters["cable"][cable_number]["C"])
-                    println(Zs)
-                    norm_array[state_index] = 1.5 * sqrt(2) * nc.parameters["grid"]["v_rms"]/ Zs
+                    norm_array[state_index] = 1000
                 end
             elseif contains(states[state_index], "_v")
                 if haskey(cable, "v_limit")
