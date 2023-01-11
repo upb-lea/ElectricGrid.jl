@@ -5,6 +5,12 @@ using ControlSystems
 using CUDA
 using DataStructures
 
+#= # might be better for large sparse matrices
+using SparseArrays
+using LinearAlgebra
+using FastExpm 
+=#
+
 include("./custom_control.jl")
 include("./nodeconstructor.jl")
 include("./pv_module.jl")
@@ -66,14 +72,14 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
 
     A, B, C, D = get_sys(nc)
-    Ad = exp(A*ts)
-    Bd = A \ (Ad - C) * B
+    Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
+    Bd = A \ (Ad - I) * B
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     state_parameters = get_state_paras(nc)
 
     if use_gpu
         Ad = CuArray(A)
-        Bd = CuArray(B)
+        Bd = CuArray(B) 
         C = CuArray(C)
         if isa(D, Array)
             D = CuArray(D)
@@ -316,6 +322,7 @@ function RLBase.reset!(env::SimEnv)
     if !isnothing(env.action_delay_buffer)
         empty!(env.action_delay_buffer)
         fill!(env.action_delay_buffer, zeros(length(env.action_space)))
+        env.action = zeros(length(env.action_space))
     end
     env.t = env.t0
     env.steps = 0

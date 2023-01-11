@@ -48,6 +48,11 @@ function RMS(θ, t_signals)
     return rms
 end
 
+function DQ_RMS(i_abc)
+
+    return i_rms = sqrt(1/3)*norm(DQ0_transform(i_abc, 0)[1:2])
+end
+
 function Clarke_Transform(v_abc)
     #= Also known as the alpha-beta-(gamma), αβγ transformation. Implementing
     below is the the power invariant version, such that the matrix is unitary.
@@ -309,7 +314,7 @@ function Inv_p_q_i(I_αβγ, pq0)
     return v_αβγ
 end
 
-function Load_Impedance_Series(S, pf, vrms; fsys = 50)
+function Series_Load_Impedance(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
 
@@ -342,7 +347,7 @@ function Load_Impedance_Series(S, pf, vrms; fsys = 50)
     return R, L_C, X, Z
 end
 
-function Load_Impedance_Parallel(S, pf, vrms; fsys = 50)
+function Parallel_Load_Impedance(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
 
@@ -418,7 +423,7 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
 
     Cf = ΔIlfmax/(8*fs*ΔVcfmax)
 
-    fc = 1/(2*π*sqrt(Lf*Cf))
+    fc = 1/(2π*sqrt(Lf*Cf))
 
     return Lf, Cf, fc
 end

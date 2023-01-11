@@ -1996,6 +1996,193 @@ function Integrator_Prep(i; Order = 3)
     return range, cnt_end
 end
 
+function Luenberger_Observer(Source::Classical_Controls, num_source)
+
+    ns = num_source
+
+    f_sys = Source.fpll[ns, 1, end]
+    ω = 2π*f_sys
+    θ = Source.θpll[num_source, 1, end]
+
+    if Source.filter_type[ns] == "LCL"
+
+        I_poc_DQ0 = [0.; 0.; 0.]
+        V_cap_DQ0 = [0.; 0.; 0.]
+
+        y_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end], θ)
+
+        vₚ_DQ0 = DQ0_transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
+        yₚ_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+        eₚ_DQ0 = DQ0_transform(Source.V_filt_poc[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+
+        #----------------------------------------------------------------------
+        # Zero component
+
+        A = Source.Ad_0[ns, :, :]
+        B = Source.Bd_0[ns, :, :]
+        C = transpose(Source.Cd_0[ns, :])
+        D = transpose(Source.Dd_0[ns, :])
+
+        K = Source.Ko_0[ns, :]
+
+        y = y_DQ0[3]
+
+        yₚ = yₚ_DQ0[3]
+        vₚ = vₚ_DQ0[3]
+        eₚ = eₚ_DQ0[3]
+
+        uₚ = [yₚ; vₚ; eₚ]
+
+        Source.xp_0[ns, :] = (A - K*C)*Source.xp_0[ns, :] + (B - K*D)*uₚ + K*y
+
+        I_poc_DQ0[3] = Source.xp_0[ns, 1]
+        V_cap_DQ0[3] = Source.xp_0[ns, 2]
+        
+        #----------------------------------------------------------------------
+        # DQ components
+
+        A = Source.Ad_DQ[ns, :, :]
+        B = Source.Bd_DQ[ns, :, :]
+        C = Source.Cd_DQ[ns, :, :]
+        D = Source.Dd_DQ[ns, :, :]
+
+        K = Source.Ko_DQ[ns, :, :]
+
+        y = y_DQ0[1:2]
+
+        yₚ = yₚ_DQ0[1:2]
+        vₚ = vₚ_DQ0[1:2]
+        eₚ = eₚ_DQ0[1:2]
+
+        uₚ = [yₚ; vₚ; eₚ]
+
+        Source.xp_DQ[ns, :] = (A - K*C)*Source.xp_DQ[ns, :] + (B - K*D)*uₚ + K*y
+        #Source.xp_DQ[ns, :] = A*Source.xp_DQ[ns, :] + B*uₚ + K*(y - D*uₚ - C*Source.xp_DQ[ns, :])
+
+        I_poc_DQ0[1:2] = Source.xp_DQ[ns, 1:2]
+        V_cap_DQ0[1:2] = Source.xp_DQ[ns, 3:4]
+
+        Source.debug[9] = Inv_DQ0_transform([I_poc_DQ0[1]; I_poc_DQ0[2]; 0.0], θ + 0.5*Source.ts*ω)[1]
+        Source.debug[10] = Inv_DQ0_transform([V_cap_DQ0[1]; V_cap_DQ0[2]; 0.0], θ + 0.5*Source.ts*ω)[1]
+
+        #3333333
+
+        #= y = y_DQ0[1:2]
+        vₚ = vₚ_DQ0[1:2]
+        eₚ = eₚ_DQ0[1:2]
+
+        Source.xp_DQ[ns, :] = (A - K*C*A)*Source.xp_DQ[ns, :] + (B - K*C*B)*vₚ + (D - K*C*D)*eₚ + K*y
+
+        I_poc_DQ0[1] = Source.xp_DQ[ns, 2]
+        I_poc_DQ0[2] = Source.xp_DQ[ns, 5]
+        V_cap_DQ0[1] = Source.xp_DQ[ns, 3]
+        V_cap_DQ0[2] = Source.xp_DQ[ns, 6] =#
+
+        #3333333
+        
+        #----------------------------------------------------------------------    
+
+        #= 
+
+            #Phase_Locked_Loop_3ph(Source, ns)
+
+            yₚ_DQ0 = DQ0_transform(Source.I_filt_inv[ns, :, end - 1], θ - 1.0*Source.ts*ω)
+            iₚ_DQ0 = DQ0_transform(Source.I_filt_poc[ns, :, end - 1], θ - 1.0*Source.ts*ω)
+            cₚ_DQ0 = DQ0_transform(Source.V_filt_cap[ns, :, end - 1], θ - 1.0*Source.ts*ω)
+
+            v_DQ0 = DQ0_transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
+            e_DQ0 = DQ0_transform(Source.V_filt_poc[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+
+            #= Vpeak = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[ns, :, end - 1], 0)) 
+            θph_1 = Source.θpll[num_source, 1, end] - 1.5*Source.ts*ω
+            
+            θph = [θph_1; θph_1 - 120π/180; θph_1 + 120π/180]
+            e = Vpeak*cos.(θph)
+
+            e_DQ0 = DQ0_transform(e, θ) =#
+
+            if Source.steps*Source.ts >= 0.0
+
+                xₚ = Source.debug[1:6]
+
+            else
+                xₚ = [yₚ_DQ0[1:2]; iₚ_DQ0[1:2]; cₚ_DQ0[1:2]]
+                #xₚ = [yₚ_DQ0[1]; iₚ_DQ0[1]; cₚ_DQ0[1]; yₚ_DQ0[2]; iₚ_DQ0[2]; cₚ_DQ0[2]]
+            end
+
+            x = Source.Ad_DQ[ns, :, :]*xₚ + Source.Bd_DQ[ns, :, :]*v_DQ0[1:2] + Source.Dd_DQ[ns, :, :]*e_DQ0[1:2]
+
+            Source.debug[1] = x[1] #i1_d (inv)
+            Source.debug[2] = x[2] #i1_q (inv)
+            Source.debug[3] = x[3] #i2_d (poc)
+            Source.debug[4] = x[4] #i2_q (poc)
+            Source.debug[5] = x[5] #vc_d (cap)
+            Source.debug[6] = x[6] #vc_q (cap)
+
+            Source.debug[7] = Inv_DQ0_transform([x[1]; x[2]; 0.0], θ + 0.5*Source.ts*ω)[1]
+            Source.debug[8] = Inv_DQ0_transform([x[3]; x[4]; 0.0], θ + 0.5*Source.ts*ω)[1]
+        =#
+
+        #***********************
+
+        #= 
+            #= Vpeak = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[ns, :, end - 1], 0)) 
+            θph_1 = Source.θpll[num_source, 1, end] - 1.5*Source.ts*ω
+            
+            θph = [θph_1; θph_1 - 120π/180; θph_1 + 120π/180]
+            e = Vpeak*cos.(θph)
+
+            e_DQ0 = DQ0_transform(e, θ - 1.0*Source.ts*ω) =#
+
+            A = [-(Source.Rf_L1[ns] + Source.Rf_C[ns])/Source.Lf_1[ns] Source.Rf_C[ns]/Source.Lf_1[ns] -1/Source.Lf_1[ns];
+                Source.Rf_C[ns]/Source.Lf_2[ns] -(Source.Rf_L2[ns] + Source.Rf_C[ns])/Source.Lf_2[ns] 1/Source.Lf_2[ns];
+                1/Source.Cf[ns] -1/Source.Cf[ns] 0.0]
+
+            B = [1/Source.Lf_1[ns]; 0; 0]
+            D = [0; -1/Source.Lf_2[ns]; 0]
+            B₂ = [B D]
+
+            Ad = exp(A*Source.ts)
+            Bd = inv(A)*(Ad - I)*B
+            Dd = inv(A)*(Ad - I)*D
+
+            Bd₂ = inv(A)*(Ad - I)*B₂
+
+            v = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, 1, end - Source.action_delay - 1]
+
+            #= Vpeak = sqrt(2/3)*norm(DQ0_transform(Source.V_filt_poc[ns, :, end - 1], 0)) 
+            θph = Source.θpll[num_source, 1, end] - 1.5*Source.ts*ω # half for ZOH??, 1 for going back one time step
+            
+            e = Vpeak*cos(θph) #Vpeak*cos(θ - (1.0 + Source.action_delay)*Source.ts*ω - 37.07233458449781*pi/180)  =#
+            
+            xₚ = Source.debug[11:13]
+
+            x = Ad*xₚ + Bd*v + Dd*e[1]
+            #x = Ad*xₚ + Bd₂*[v; e]
+
+            Source.debug[11] = x[1] #i1_a (inv - first inductor)
+            Source.debug[12] = x[2] #i2_a (poc - second inductor)
+            Source.debug[13] = x[3] #vc_a (cap)
+
+            Source.debug[14] = Vpeak*cos(θph[1] + 0.5*Source.ts*ω) # Vpeak*cos(θ - Source.action_delay*Source.ts*ω - 37.07233458449781*pi/180)# correcting for the lag of the measurements??
+        
+            # it appears that every (action) signal is delayed by 0.5 - the pll works correctly given the signals
+            
+            Source.debug[15] = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, 1, end - Source.action_delay - 1]
+
+            θph =  (- (θ + (-Source.action_delay + 0.0)*Source.ts*ω) + Source.θpll[num_source, 1, end])
+            if θph < π
+                θph = θph + 2π 
+            end
+            Source.debug[16] = (2π - θph)*180/π  
+        =#
+       
+    end
+
+    return nothing
+end
+
+
 #-------------------------------------------------------------------------------
 
 function Measurements(Source::Classical_Controls)
@@ -2411,3 +2598,230 @@ end
 
     return nothing
 end =#
+
+function Observer_Initialiser(Source::Classical_Controls, num_source)
+
+    # Predictive Deadbeat Reduced-Order Observer initialisation
+
+    #= Theory:
+        Regarding the selection of observer type, there are three alternatives which are 
+        the prediction-type observer, the current observer, and the reduced-order observer. 
+        In the prediction-type observer, the estimated states are determined based on the
+        past measurement or outputs. This means that the control signal does not utilize the 
+        most current information on outputs, which leads to the inaccuracy of estimated values 
+        and might cause control performance degradation. On the other hand, the reduced-order 
+        observer can solve the drawback of the prediction-type observer by using the measured 
+        states to estimate remaining unmeasurable states at the current time. However, if the 
+        measurement variables are noisy, the imprecise measured states may influence directly 
+        the feedback control inputs. For these reasons, the current full-state observer is 
+        employed for the three phase LCL-filtered inverter, which yields a precise estimation 
+        capability even under harmonically distorted grid voltage condition. However, in general 
+        if we do have full knowledge about some states and creating a full-state observer is not 
+        required. The reduced-order observer only estimates the unmeasured states. The amplification 
+        of (measurement) noise in the system can be mitigated by introducing an auxiliary estimate.
+
+        In continuous time we have seen, that the estimation error decreases asymptotically, i.e.,
+        it only vanishes completely for t->∞. In contrast, we can choose K in the discrete-time 
+        case such that the eigenvalues of (A - KCA) are at the origin. Finding a K with this 
+        property delivers a deadbeat observer, i.e., an observer which requires the minimum 
+        amount of time steps to reduce the estimation error to zero. For the n-dimensional system 
+        the deadbeat observer requires n steps to estimation error to zero. 
+    =#
+
+    ns = num_source
+
+    if Source.filter_type[ns] == "LCL"
+
+        A = Array{Float64, 2}(undef, 3, 3)
+
+        A = [-(Source.Rf_L1[ns] + Source.Rf_C[ns])/Source.Lf_1[ns] Source.Rf_C[ns]/Source.Lf_1[ns] -1/Source.Lf_1[ns];
+             Source.Rf_C[ns]/Source.Lf_2[ns] -(Source.Rf_L2[ns] + Source.Rf_C[ns])/Source.Lf_2[ns] +1/Source.Lf_2[ns];
+             1/Source.Cf[ns] -1/Source.Cf[ns] 0.0]
+
+        B = [1/Source.Lf_1[ns]; 0; 0]
+        D = [0; -1/Source.Lf_1[ns]; 0]
+
+        #------------------------------------------------------------------------------------------------
+
+        Ad = exp(A*Source.ts)
+        Bd = inv(A)*(Ad - I)*B
+        Dd = inv(A)*(Ad - I)*D
+
+        Source.Ad[ns, :, :] = Ad[2:3, 2:3]
+        Source.Bd[ns, :, :] = [Ad[2:3, 1] Bd[2:3] Dd[2:3]]
+        Source.Dd[ns, :] = [Ad[1, 1] Bd[1] Dd[1]]
+
+        Source.Cd[ns, :] = Ad[1, 2:3]
+
+        C = transpose(Ad[1, 2:3])
+        _, r = Observability(C, Source.Ad[ns, :, :])
+
+        if r != size(Source.Ad[ns, :, :], 1)
+            println("\nERROR: The system is not observable. The rank of 'O' is not equal to $(size(Source.Ad[ns, :, :], 1)).")
+        end
+
+        A1_1 = Source.Ad[ns, 1, 1]
+        A1_2 = Source.Ad[ns, 1, 2]
+        A2_1 = Source.Ad[ns, 2, 1]
+        A2_2 = Source.Ad[ns, 2, 2]
+
+        C1 = C[1]
+        C2 = C[2]
+
+        Source.Ko[ns, 1] = -(C2*A1_1^2 - A1_2*C1*A1_1 + A1_2*A2_1*C2 - A1_2*A2_2*C1)/(A1_2*C1^2 - A2_1*C2^2 - A1_1*C1*C2 + A2_2*C1*C2)
+        Source.Ko[ns, 2] = (C1*A2_2^2 - A2_1*C2*A2_2 - A1_1*A2_1*C2 + A1_2*A2_1*C1)/(A1_2*C1^2 - A2_1*C2^2 - A1_1*C1*C2 + A2_2*C1*C2)
+        
+        #------------------------------------------------------------------------------------------------
+
+        #= 
+        Source.Ad[ns, :, :] = exp(A*Source.ts)
+        
+        Source.Bd[ns, :] = inv(A)*(Source.Ad[ns, :, :] - I)*B
+        Source.Dd[ns, :] = inv(A)*(Source.Ad[ns, :, :] - I)*D
+
+        Source.Cd[ns, :] = [1. 0. 0.] # measuring the inverter current
+
+        C = transpose(Source.Cd[ns, :])*Source.Ad[ns, :, :]
+        O, r = Observability(C, Source.Ad[ns, :, :])
+
+        A1_1 = Source.Ad[ns, 1, 1]
+        A1_2 = Source.Ad[ns, 1, 2]
+        A1_3 = Source.Ad[ns, 1, 3]
+        A2_1 = Source.Ad[ns, 2, 1]
+        A2_2 = Source.Ad[ns, 2, 2]
+        A2_3 = Source.Ad[ns, 2, 3]
+        A3_1 = Source.Ad[ns, 3, 1]
+        A3_2 = Source.Ad[ns, 3, 2]
+        A3_3 = Source.Ad[ns, 3, 3]
+
+        C1 = C[1]
+        C2 = C[2]
+        C3 = C[3]
+
+        Source.Ko[ns, 1] = -(- A1_1^3*A2_2*C2*C3 + A1_1^3*A2_3*C2^2 - A1_1^3*A3_2*C3^2 + A1_1^3*A3_3*C2*C3 + A1_1^2*A1_2*A2_1*C2*C3 + A1_1^2*A1_2*A2_2*C1*C3 - 2*A1_1^2*A1_2*A2_3*C1*C2 + A1_1^2*A1_2*A3_1*C3^2 - A1_1^2*A1_2*A3_3*C1*C3 - A1_1^2*A1_3*A2_1*C2^2 + A1_1^2*A1_3*A2_2*C1*C2 - A1_1^2*A1_3*A3_1*C2*C3 + 2*A1_1^2*A1_3*A3_2*C1*C3 - A1_1^2*A1_3*A3_3*C1*C2 - A1_1*A1_2^2*A2_1*C1*C3 + A1_1*A1_2^2*A2_3*C1^2 + A1_1*A1_2*A1_3*A2_1*C1*C2 - A1_1*A1_2*A1_3*A2_2*C1^2 - A1_1*A1_2*A1_3*A3_1*C1*C3 + A1_1*A1_2*A1_3*A3_3*C1^2 - A1_1*A1_2*A2_1*A2_2*C2*C3 + A1_1*A1_2*A2_1*A2_3*C2^2 - 2*A1_1*A1_2*A2_1*A3_2*C3^2 + 2*A1_1*A1_2*A2_1*A3_3*C2*C3 + A1_1*A1_2*A2_2^2*C1*C3 - A1_1*A1_2*A2_2*A2_3*C1*C2 + A1_1*A1_2*A2_2*A3_1*C3^2 - A1_1*A1_2*A2_2*A3_3*C1*C3 - A1_1*A1_2*A2_3*A3_1*C2*C3 + 2*A1_1*A1_2*A2_3*A3_2*C1*C3 - A1_1*A1_2*A2_3*A3_3*C1*C2 + A1_1*A1_3^2*A3_1*C1*C2 - A1_1*A1_3^2*A3_2*C1^2 + A1_1*A1_3*A2_1*A3_2*C2*C3 - A1_1*A1_3*A2_1*A3_3*C2^2 - 2*A1_1*A1_3*A2_2*A3_1*C2*C3 + A1_1*A1_3*A2_2*A3_2*C1*C3 + A1_1*A1_3*A2_2*A3_3*C1*C2 + 2*A1_1*A1_3*A2_3*A3_1*C2^2 - 2*A1_1*A1_3*A2_3*A3_2*C1*C2 - A1_1*A1_3*A3_1*A3_2*C3^2 + A1_1*A1_3*A3_1*A3_3*C2*C3 + A1_1*A1_3*A3_2*A3_3*C1*C3 - A1_1*A1_3*A3_3^2*C1*C2 + A1_2^2*A2_1^2*C2*C3 - A1_2^2*A2_1*A2_2*C1*C3 - A1_2^2*A2_1*A2_3*C1*C2 + A1_2^2*A2_1*A3_1*C3^2 - A1_2^2*A2_1*A3_3*C1*C3 + A1_2^2*A2_2*A2_3*C1^2 - A1_2^2*A2_3*A3_1*C1*C3 + A1_2^2*A2_3*A3_3*C1^2 - A1_2*A1_3*A2_1^2*C2^2 + 2*A1_2*A1_3*A2_1*A2_2*C1*C2 - A1_2*A1_3*A2_2^2*C1^2 + A1_2*A1_3*A3_1^2*C3^2 - 2*A1_2*A1_3*A3_1*A3_3*C1*C3 + A1_2*A1_3*A3_3^2*C1^2 - A1_2*A2_1*A2_2*A3_2*C3^2 + A1_2*A2_1*A2_2*A3_3*C2*C3 + A1_2*A2_1*A2_3*A3_2*C2*C3 - A1_2*A2_1*A2_3*A3_3*C2^2 + A1_2*A2_2^2*A3_1*C3^2 - A1_2*A2_2^2*A3_3*C1*C3 - 2*A1_2*A2_2*A2_3*A3_1*C2*C3 + A1_2*A2_2*A2_3*A3_2*C1*C3 + A1_2*A2_2*A2_3*A3_3*C1*C2 + A1_2*A2_3^2*A3_1*C2^2 - A1_2*A2_3^2*A3_2*C1*C2 - A1_3^2*A2_1*A3_1*C2^2 + A1_3^2*A2_1*A3_2*C1*C2 + A1_3^2*A2_2*A3_1*C1*C2 - A1_3^2*A2_2*A3_2*C1^2 - A1_3^2*A3_1^2*C2*C3 + A1_3^2*A3_1*A3_2*C1*C3 + A1_3^2*A3_1*A3_3*C1*C2 - A1_3^2*A3_2*A3_3*C1^2 - A1_3*A2_1*A3_2^2*C3^2 + 2*A1_3*A2_1*A3_2*A3_3*C2*C3 - A1_3*A2_1*A3_3^2*C2^2 + A1_3*A2_2*A3_1*A3_2*C3^2 - A1_3*A2_2*A3_1*A3_3*C2*C3 - A1_3*A2_2*A3_2*A3_3*C1*C3 + A1_3*A2_2*A3_3^2*C1*C2 - A1_3*A2_3*A3_1*A3_2*C2*C3 + A1_3*A2_3*A3_1*A3_3*C2^2 + A1_3*A2_3*A3_2^2*C1*C3 - A1_3*A2_3*A3_2*A3_3*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+        Source.Ko[ns, 2] = (A1_1^2*A2_1*A2_2*C2*C3 - A1_1^2*A2_1*A2_3*C2^2 + A1_1^2*A2_1*A3_2*C3^2 - A1_1^2*A2_1*A3_3*C2*C3 - A1_1*A1_2*A2_1^2*C2*C3 - A1_1*A1_2*A2_1*A2_2*C1*C3 + 2*A1_1*A1_2*A2_1*A2_3*C1*C2 - A1_1*A1_2*A2_1*A3_1*C3^2 + A1_1*A1_2*A2_1*A3_3*C1*C3 + A1_1*A1_3*A2_1^2*C2^2 - A1_1*A1_3*A2_1*A2_2*C1*C2 + A1_1*A1_3*A2_1*A3_1*C2*C3 - 2*A1_1*A1_3*A2_1*A3_2*C1*C3 + A1_1*A1_3*A2_1*A3_3*C1*C2 + A1_1*A2_1*A2_2^2*C2*C3 - A1_1*A2_1*A2_2*A2_3*C2^2 + A1_1*A2_1*A2_2*A3_2*C3^2 - A1_1*A2_1*A2_2*A3_3*C2*C3 - A1_1*A2_2^3*C1*C3 + A1_1*A2_2^2*A2_3*C1*C2 + A1_1*A2_2*A2_3*A3_1*C2*C3 - 2*A1_1*A2_2*A2_3*A3_2*C1*C3 + A1_1*A2_2*A2_3*A3_3*C1*C2 - A1_1*A2_3^2*A3_1*C2^2 + A1_1*A2_3^2*A3_2*C1*C2 + A1_1*A2_3*A3_1*A3_2*C3^2 - A1_1*A2_3*A3_1*A3_3*C2*C3 - A1_1*A2_3*A3_2*A3_3*C1*C3 + A1_1*A2_3*A3_3^2*C1*C2 + A1_2^2*A2_1^2*C1*C3 - A1_2^2*A2_1*A2_3*C1^2 - A1_2*A1_3*A2_1^2*C1*C2 + A1_2*A1_3*A2_1*A2_2*C1^2 + A1_2*A1_3*A2_1*A3_1*C1*C3 - A1_2*A1_3*A2_1*A3_3*C1^2 - A1_2*A2_1^2*A2_2*C2*C3 + A1_2*A2_1^2*A3_2*C3^2 - A1_2*A2_1^2*A3_3*C2*C3 + A1_2*A2_1*A2_2^2*C1*C3 + A1_2*A2_1*A2_2*A2_3*C1*C2 - 2*A1_2*A2_1*A2_2*A3_1*C3^2 + 2*A1_2*A2_1*A2_2*A3_3*C1*C3 - A1_2*A2_2^2*A2_3*C1^2 + A1_2*A2_2*A2_3*A3_1*C1*C3 - A1_2*A2_2*A2_3*A3_3*C1^2 + A1_2*A2_3^2*A3_1*C1*C2 - A1_2*A2_3^2*A3_2*C1^2 - A1_2*A2_3*A3_1^2*C3^2 + 2*A1_2*A2_3*A3_1*A3_3*C1*C3 - A1_2*A2_3*A3_3^2*C1^2 - A1_3^2*A2_1*A3_1*C1*C2 + A1_3^2*A2_1*A3_2*C1^2 + A1_3*A2_1^2*A2_2*C2^2 - A1_3*A2_1^2*A3_2*C2*C3 + A1_3*A2_1^2*A3_3*C2^2 - 2*A1_3*A2_1*A2_2^2*C1*C2 + 2*A1_3*A2_1*A2_2*A3_1*C2*C3 - A1_3*A2_1*A2_2*A3_2*C1*C3 - A1_3*A2_1*A2_2*A3_3*C1*C2 + A1_3*A2_2^3*C1^2 - 2*A1_3*A2_2*A2_3*A3_1*C1*C2 + 2*A1_3*A2_2*A2_3*A3_2*C1^2 + A1_3*A2_3*A3_1^2*C2*C3 - A1_3*A2_3*A3_1*A3_2*C1*C3 - A1_3*A2_3*A3_1*A3_3*C1*C2 + A1_3*A2_3*A3_2*A3_3*C1^2 + A2_1*A2_2^2*A3_2*C3^2 - A2_1*A2_2^2*A3_3*C2*C3 - A2_1*A2_2*A2_3*A3_2*C2*C3 + A2_1*A2_2*A2_3*A3_3*C2^2 + A2_1*A2_3*A3_2^2*C3^2 - 2*A2_1*A2_3*A3_2*A3_3*C2*C3 + A2_1*A2_3*A3_3^2*C2^2 - A2_2^3*A3_1*C3^2 + A2_2^3*A3_3*C1*C3 + 2*A2_2^2*A2_3*A3_1*C2*C3 - A2_2^2*A2_3*A3_2*C1*C3 - A2_2^2*A2_3*A3_3*C1*C2 - A2_2*A2_3^2*A3_1*C2^2 + A2_2*A2_3^2*A3_2*C1*C2 - A2_2*A2_3*A3_1*A3_2*C3^2 + A2_2*A2_3*A3_1*A3_3*C2*C3 + A2_2*A2_3*A3_2*A3_3*C1*C3 - A2_2*A2_3*A3_3^2*C1*C2 + A2_3^2*A3_1*A3_2*C2*C3 - A2_3^2*A3_1*A3_3*C2^2 - A2_3^2*A3_2^2*C1*C3 + A2_3^2*A3_2*A3_3*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+        Source.Ko[ns, 3] = -(- A1_1^2*A2_2*A3_1*C2*C3 + A1_1^2*A2_3*A3_1*C2^2 - A1_1^2*A3_1*A3_2*C3^2 + A1_1^2*A3_1*A3_3*C2*C3 + A1_1*A1_2*A2_1*A3_1*C2*C3 + A1_1*A1_2*A2_2*A3_1*C1*C3 - 2*A1_1*A1_2*A2_3*A3_1*C1*C2 + A1_1*A1_2*A3_1^2*C3^2 - A1_1*A1_2*A3_1*A3_3*C1*C3 - A1_1*A1_3*A2_1*A3_1*C2^2 + A1_1*A1_3*A2_2*A3_1*C1*C2 - A1_1*A1_3*A3_1^2*C2*C3 + 2*A1_1*A1_3*A3_1*A3_2*C1*C3 - A1_1*A1_3*A3_1*A3_3*C1*C2 - A1_1*A2_1*A2_2*A3_2*C2*C3 + A1_1*A2_1*A2_3*A3_2*C2^2 - A1_1*A2_1*A3_2^2*C3^2 + A1_1*A2_1*A3_2*A3_3*C2*C3 + A1_1*A2_2^2*A3_2*C1*C3 - A1_1*A2_2*A2_3*A3_2*C1*C2 - A1_1*A2_2*A3_1*A3_3*C2*C3 + A1_1*A2_2*A3_2*A3_3*C1*C3 + A1_1*A2_3*A3_1*A3_3*C2^2 + A1_1*A2_3*A3_2^2*C1*C3 - 2*A1_1*A2_3*A3_2*A3_3*C1*C2 - A1_1*A3_1*A3_2*A3_3*C3^2 + A1_1*A3_1*A3_3^2*C2*C3 + A1_1*A3_2*A3_3^2*C1*C3 - A1_1*A3_3^3*C1*C2 - A1_2^2*A2_1*A3_1*C1*C3 + A1_2^2*A2_3*A3_1*C1^2 + A1_2*A1_3*A2_1*A3_1*C1*C2 - A1_2*A1_3*A2_2*A3_1*C1^2 - A1_2*A1_3*A3_1^2*C1*C3 + A1_2*A1_3*A3_1*A3_3*C1^2 + A1_2*A2_1^2*A3_2*C2*C3 - A1_2*A2_1*A2_2*A3_2*C1*C3 - A1_2*A2_1*A2_3*A3_2*C1*C2 + 2*A1_2*A2_1*A3_1*A3_3*C2*C3 - 2*A1_2*A2_1*A3_2*A3_3*C1*C3 + A1_2*A2_2*A2_3*A3_2*C1^2 + A1_2*A2_2*A3_1^2*C3^2 - A1_2*A2_2*A3_1*A3_3*C1*C3 - A1_2*A2_3*A3_1^2*C2*C3 - A1_2*A2_3*A3_1*A3_3*C1*C2 + 2*A1_2*A2_3*A3_2*A3_3*C1^2 + A1_2*A3_1^2*A3_3*C3^2 - 2*A1_2*A3_1*A3_3^2*C1*C3 + A1_2*A3_3^3*C1^2 + A1_3^2*A3_1^2*C1*C2 - A1_3^2*A3_1*A3_2*C1^2 - A1_3*A2_1^2*A3_2*C2^2 + 2*A1_3*A2_1*A2_2*A3_2*C1*C2 - 2*A1_3*A2_1*A3_1*A3_3*C2^2 + A1_3*A2_1*A3_2^2*C1*C3 + A1_3*A2_1*A3_2*A3_3*C1*C2 - A1_3*A2_2^2*A3_2*C1^2 - A1_3*A2_2*A3_1^2*C2*C3 + 2*A1_3*A2_2*A3_1*A3_3*C1*C2 - A1_3*A2_2*A3_2*A3_3*C1^2 + A1_3*A2_3*A3_1^2*C2^2 - A1_3*A2_3*A3_2^2*C1^2 - A1_3*A3_1^2*A3_3*C2*C3 + A1_3*A3_1*A3_2*A3_3*C1*C3 + A1_3*A3_1*A3_3^2*C1*C2 - A1_3*A3_2*A3_3^2*C1^2 - A2_1*A2_2*A3_2^2*C3^2 + A2_1*A2_2*A3_2*A3_3*C2*C3 + A2_1*A2_3*A3_2^2*C2*C3 - A2_1*A2_3*A3_2*A3_3*C2^2 - A2_1*A3_2^2*A3_3*C3^2 + 2*A2_1*A3_2*A3_3^2*C2*C3 - A2_1*A3_3^3*C2^2 + A2_2^2*A3_1*A3_2*C3^2 - A2_2^2*A3_2*A3_3*C1*C3 - 2*A2_2*A2_3*A3_1*A3_2*C2*C3 + A2_2*A2_3*A3_2^2*C1*C3 + A2_2*A2_3*A3_2*A3_3*C1*C2 + A2_2*A3_1*A3_2*A3_3*C3^2 - A2_2*A3_1*A3_3^2*C2*C3 - A2_2*A3_2*A3_3^2*C1*C3 + A2_2*A3_3^3*C1*C2 + A2_3^2*A3_1*A3_2*C2^2 - A2_3^2*A3_2^2*C1*C2 - A2_3*A3_1*A3_2*A3_3*C2*C3 + A2_3*A3_1*A3_3^2*C2^2 + A2_3*A3_2^2*A3_3*C1*C3 - A2_3*A3_2*A3_3^2*C1*C2)/(A1_1^2*A2_2*C1*C2*C3 - A1_1^2*A2_3*C1*C2^2 + A1_1^2*A3_2*C1*C3^2 - A1_1^2*A3_3*C1*C2*C3 - A1_1*A1_2*A2_1*C1*C2*C3 - A1_1*A1_2*A2_2*C1^2*C3 + 2*A1_1*A1_2*A2_3*C1^2*C2 - A1_1*A1_2*A3_1*C1*C3^2 + A1_1*A1_2*A3_3*C1^2*C3 + A1_1*A1_3*A2_1*C1*C2^2 - A1_1*A1_3*A2_2*C1^2*C2 + A1_1*A1_3*A3_1*C1*C2*C3 - 2*A1_1*A1_3*A3_2*C1^2*C3 + A1_1*A1_3*A3_3*C1^2*C2 + A1_1*A2_1*A2_2*C2^2*C3 - A1_1*A2_1*A2_3*C2^3 + A1_1*A2_1*A3_2*C2*C3^2 - A1_1*A2_1*A3_3*C2^2*C3 - A1_1*A2_2^2*C1*C2*C3 + A1_1*A2_2*A2_3*C1*C2^2 + A1_1*A2_2*A3_1*C2*C3^2 - A1_1*A2_2*A3_2*C1*C3^2 - A1_1*A2_3*A3_1*C2^2*C3 + A1_1*A2_3*A3_3*C1*C2^2 + A1_1*A3_1*A3_2*C3^3 - A1_1*A3_1*A3_3*C2*C3^2 - A1_1*A3_2*A3_3*C1*C3^2 + A1_1*A3_3^2*C1*C2*C3 + A1_2^2*A2_1*C1^2*C3 - A1_2^2*A2_3*C1^3 - A1_2*A1_3*A2_1*C1^2*C2 + A1_2*A1_3*A2_2*C1^3 + A1_2*A1_3*A3_1*C1^2*C3 - A1_2*A1_3*A3_3*C1^3 - A1_2*A2_1^2*C2^2*C3 + A1_2*A2_1*A2_2*C1*C2*C3 + A1_2*A2_1*A2_3*C1*C2^2 - 2*A1_2*A2_1*A3_1*C2*C3^2 + 2*A1_2*A2_1*A3_2*C1*C3^2 - A1_2*A2_2*A2_3*C1^2*C2 - A1_2*A2_2*A3_1*C1*C3^2 + A1_2*A2_2*A3_3*C1^2*C3 + 3*A1_2*A2_3*A3_1*C1*C2*C3 - 2*A1_2*A2_3*A3_2*C1^2*C3 - A1_2*A2_3*A3_3*C1^2*C2 - A1_2*A3_1^2*C3^3 + 2*A1_2*A3_1*A3_3*C1*C3^2 - A1_2*A3_3^2*C1^2*C3 - A1_3^2*A3_1*C1^2*C2 + A1_3^2*A3_2*C1^3 + A1_3*A2_1^2*C2^3 - 2*A1_3*A2_1*A2_2*C1*C2^2 + 2*A1_3*A2_1*A3_1*C2^2*C3 - 3*A1_3*A2_1*A3_2*C1*C2*C3 + A1_3*A2_1*A3_3*C1*C2^2 + A1_3*A2_2^2*C1^2*C2 + A1_3*A2_2*A3_2*C1^2*C3 - A1_3*A2_2*A3_3*C1^2*C2 - 2*A1_3*A2_3*A3_1*C1*C2^2 + 2*A1_3*A2_3*A3_2*C1^2*C2 + A1_3*A3_1^2*C2*C3^2 - A1_3*A3_1*A3_2*C1*C3^2 - A1_3*A3_1*A3_3*C1*C2*C3 + A1_3*A3_2*A3_3*C1^2*C3 + A2_1*A2_2*A3_2*C2*C3^2 - A2_1*A2_2*A3_3*C2^2*C3 - A2_1*A2_3*A3_2*C2^2*C3 + A2_1*A2_3*A3_3*C2^3 + A2_1*A3_2^2*C3^3 - 2*A2_1*A3_2*A3_3*C2*C3^2 + A2_1*A3_3^2*C2^2*C3 - A2_2^2*A3_1*C2*C3^2 + A2_2^2*A3_3*C1*C2*C3 + 2*A2_2*A2_3*A3_1*C2^2*C3 - A2_2*A2_3*A3_2*C1*C2*C3 - A2_2*A2_3*A3_3*C1*C2^2 - A2_2*A3_1*A3_2*C3^3 + A2_2*A3_1*A3_3*C2*C3^2 + A2_2*A3_2*A3_3*C1*C3^2 - A2_2*A3_3^2*C1*C2*C3 - A2_3^2*A3_1*C2^3 + A2_3^2*A3_2*C1*C2^2 + A2_3*A3_1*A3_2*C2*C3^2 - A2_3*A3_1*A3_3*C2^2*C3 - A2_3*A3_2^2*C1*C3^2 + A2_3*A3_2*A3_3*C1*C2*C3)
+
+        if r != size(Source.Ad[ns, :, :], 1)
+            println("\nERROR: The system is not observable. The rank of 'O' is not equal to $(size(Source.Ad[ns, :, :], 1)).")
+        end =#
+
+        #= println("ns = ", ns)
+        println("Ad = ", Source.Ad[ns, :, :])
+        println("Bd = ", Source.Bd[ns, :, :])
+        println("Dd = ", Source.Dd[ns, :])
+        println("Ko = ", Source.Ko[ns, :])
+        println("r = ", r) =#
+    end
+
+    return nothing
+end
+
+function Observability(C, A; n = size(A,1))
+
+    O = Array{Float64, 2}(undef, n*size(C,1), size(A,2))
+
+    iter = size(C, 1)
+    dim = 1:iter
+
+    O[dim, :] = C
+
+    for i in 2:n
+
+        O[dim .+ iter, :] = O[dim, :]*A
+        dim = dim .+ iter
+    end
+
+    return O, rank(O)
+end
+
+function Luenberger_Observer(Source::Classical_Controls, num_source)
+
+    ns = num_source
+
+    if Source.filter_type[ns] == "LCL" #&& 1 == 2
+
+        A = Source.Ad[ns, :, :]
+        B = Source.Bd[ns, :, :]
+        C = transpose(Source.Cd[ns, :])
+        D = transpose(Source.Dd[ns, :])
+
+        K = Source.Ko[ns, 1:2]
+
+        #----------------------------------------------------------------------
+
+        #= A = Source.Ad[ns, :, :]
+        B = Source.Bd[ns, :]
+        D = Source.Dd[ns, :]
+        C = transpose(Source.Cd[ns, :])
+
+        K = Source.Ko[ns, 1:3] =#
+
+        for ph in 1:1#Source.phases
+
+            y = Source.I_filt_inv[ns, ph, end]
+
+            yₚ = Source.I_filt_inv[ns, ph, end - 1]
+            vₚ = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph, end - Source.action_delay - 1]
+            eₚ = Source.V_filt_poc[ns, ph, end - 1]
+
+            uₚ = [yₚ; vₚ; eₚ]
+
+            wp = Source.wp[ns, ph, 1:2]
+
+            wp = (A - K*C)*wp + (B - K*D)*uₚ + K*y
+
+            xp = wp
+
+            Source.wp[ns, ph, 1:2] = wp
+
+            #= Source.I_filt_poc[ns, ph, end] = xp[1]
+            Source.V_filt_cap[ns, ph, end] = xp[2] =#
+
+            if ph == 1 && ns == 1
+                Source.debug[1] = Source.I_filt_inv[ns, ph, end] 
+                Source.debug[2] = xp[1]
+                Source.debug[3] = xp[2]
+            end
+           
+            #----------------------------------------------------------------------
+
+            #= y = Source.I_filt_inv[ns, ph, end] 
+            vₚ = (Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, ph, end - Source.action_delay - 1]
+            eₚ = Source.V_filt_poc[ns, ph, end-1]
+
+            wp = Source.wp[ns, ph, :]
+
+            wp = (A - K*C*A)*wp + (B - K*C*B)*vₚ + (D - K*C*D)*eₚ + K*y
+
+            Source.wp[ns, ph, :] = wp
+
+            #= Source.I_filt_inv[ns, ph, end] = wp[1]
+            Source.I_filt_poc[ns, ph, end] = wp[2]
+            Source.V_filt_cap[ns, ph, end] = wp[3] =#
+
+            if ph == 1 && ns == 1
+                Source.debug[1] = wp[1]
+                Source.debug[2] = wp[2]
+                Source.debug[3] = wp[3]
+            end =#
+
+            #----------------------------------------------------------------------
+
+            Vbase_LN_rms = Source.Vrms[ns]
+            Ibase_rms = Source.S[ns]/(3*Source.Vrms[ns])
+            I_err = abs(Source.I_filt_poc[ns, ph, end] - Source.debug[2])#/(Ibase_rms*sqrt(2))
+            V_err = abs(Source.V_filt_cap[ns, ph, end] - Source.debug[3])#/(Vbase_LN_rms*sqrt(2))
+
+            Source.debug[7] = Source.I_filt_poc[ns, ph, end] - Source.debug[1]
+            Source.debug[8] = Source.I_filt_poc[ns, ph, end] - Source.debug[2]
+            Source.debug[9] = Source.V_filt_cap[ns, ph, end] - Source.debug[3]
+        
+            Source.debug[10] = sqrt(I_err^2 + V_err^2)
+            
+        end
+
+    end
+
+    return nothing
+end
