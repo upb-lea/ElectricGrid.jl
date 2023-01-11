@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.2 #time in seconds, total simulation run time
+t_final = 600e-6 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -142,14 +142,14 @@ source = Dict()
 
 source_list = []
 
-source["pwr"] = 200e3 #VA
+source["pwr"] = 2000e3 #VA
 source["vdc"] = 800 #V
 source["fltr"] = "LCL"
 source["p_set"] = 100e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 7
+source["mode"] = 1
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -160,6 +160,7 @@ source["std_asy"] = 100 # asymptotic standard deviation
 source["σ"] = 1000 # Brownian motion scale i.e. ∝ diffusion parameter
 source["γ"] = 320 # asymptotoic mean
 source["X₀"] = 500 # initial value
+source["Δt"] = ts
 
 #= source["L1"] = 0.002
 source["R1"] = 0.04
@@ -172,7 +173,7 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 100e3
+source["pwr"] = 1000e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
@@ -185,10 +186,11 @@ source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
-source["std_asy"] = 0 # asymptotic standard deviation
-source["σ"] = 0.0 # Brownian motion scale i.e. ∝ diffusion parameter
-source["γ"] = 0 # asymptotoic mean
-source["X₀"] = 0 # initial values
+source["std_asy"] = 50 # asymptotic standard deviation
+source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion parameter
+source["γ"] = -320 # asymptotoic mean
+source["X₀"] = -500 # initial values
+source["Δt"] = 4
 
 #= source["L1"] = 1e-3
 source["R1"] = 0.05 =#
@@ -279,12 +281,12 @@ plt_state_ids = []
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
 collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2],
-save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [1 2 3])
+save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [5 6])
 
 #_______________________________________________________________________________
 # Starting time simulation
-
-RLBase.run(ma, env, StopAfterEpisode(1), hook);
+num_eps = 2
+RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 
 #_______________________________________________________________________________
 # Plotting
@@ -296,7 +298,11 @@ RLBase.run(ma, env, StopAfterEpisode(1), hook);
 "source1_i_C_cables_a", "source1_i_C_cables_b", "source1_i_C_cables_c"] =#
 #= plot_hook_results(; hook = hook, states_to_plot = ["source1_i_L2_a", "source1_v_C_filt_a", "source1_v_C_cables_a" ], actions_to_plot = [], episode = 1, 
 pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
-plot_hook_results(; hook = hook, states_to_plot = ["source1_i_L2_a", "source1_v_C_filt_a"], actions_to_plot = [], episode = 1, 
-pq_to_plot = [], vrms_to_plot = [1], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+
+for eps in 1:num_eps
+
+    plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = ["source1_u_a", "source2_u_a"], episode = eps, 
+    pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+end
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

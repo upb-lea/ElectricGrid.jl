@@ -92,7 +92,7 @@ function Multi_Gain_Matrix_par(A, C, λ, p)
     return K, v
 end
 
-function Multi_Gain_Matrix_vec(A, C, λ; v = Matrix(I, size(A,1), size(A,2)))
+function Multi_Gain_Matrix_vec(A, C, λ, v)
 
     n = size(A, 1)
     p = Array{Float64, 2}(undef, size(C,1), size(C,2))
@@ -175,13 +175,21 @@ p = [2. 0. 1.;
 
 _, r = Observability(C, A)
 
-K, _ = Multi_Gain_Matrix_par(A, C, λ, p)
+K, v = Multi_Gain_Matrix_par(A, C, λ, p)
+
+#= println()
+println("K = ", round.(K, digits = 3))
+println("v = ", round.(v, digits = 3))
+println("p = ", round.(p, digits = 3))
+println("λ = ", round.(eigvals(A - K*C), digits = 3))
+
+K, p = Multi_Gain_Matrix_vec(A, C, λ, v)
 
 println()
 println("K = ", round.(K, digits = 3))
 println("v = ", round.(v, digits = 3))
 println("p = ", round.(p, digits = 3))
-println("λ = ", round.(eigvals(A - K*C), digits = 3))
+println("λ = ", round.(eigvals(A - K*C), digits = 3)) =#
 
 A = [0 1 0;
     0 0 1;
@@ -238,5 +246,53 @@ println("K = ", round.(K, digits = 3))
 println("v = ", round.(v, digits = 3))
 println("p = ", round.(p, digits = 3))
 println("λ = ", real.(round.(eigvals(A - K*C), digits = 3))) =#
+
+#= B = [23.0    40.0  2.0    100.0;
+    1.0   -10.0   8.0  2.0;
+    30.0   -17.0   40.0    -1.0;
+    6.0  2.0   1.0   -40.0]
+
+B = B + transpose(B)
+A = A + transpose(A)
+ =#
+ A = [1 0; 0 -1]
+ B = [2 1; 1 2]
+
+λ = eigvals(A)
+v = -1*eigvecs(A)
+
+#= println("A = ")
+display(A)
+println("λ = ")
+display(round.(λ, digits = 2))
+println("v = ")
+display(round.(v, digits = 2))
+ =#
+for i in 1:length(λ)
+
+    test = round.((A - I*λ[i])*v[:,i], digits = 3)
+    if maximum(abs.(test)) != 0
+        println("i = ", i, " test = ", test)
+    end
+end
+
+λ, v = eigen(A, B)
+
+v = v
+
+println("A = ")
+display(A)
+println("λ = ")
+display(round.(λ, digits = 2))
+println("v = ")
+display(round.(v, digits = 2))
+
+for i in 1:length(λ)
+
+    test = round.((A - B*λ[i])*v[:,i], digits = 3)
+    if maximum(abs.(test)) != 0
+        println("i = ", i, " test = ", test)
+    end
+end
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

@@ -536,7 +536,13 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             elseif haskey(source, "Δt")
 
-                source["Δt"] = round(source["Δt"]*(parameters["grid"]["fs"]))/parameters["grid"]["fs"]
+                if typeof(source["Δt"]) == Int
+
+                    steps = source["Δt"] # ... steps in a cycle
+                    source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+                else
+                    source["Δt"] = round(source["Δt"]*(parameters["grid"]["fs"]))/parameters["grid"]["fs"]
+                end
             end
         end
 

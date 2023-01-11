@@ -186,7 +186,9 @@ mutable struct Classical_Controls
     γ::Vector{Float64} # asymptotoic mean
 
     X::Vector{Float64}
+    X₀::Vector{Float64}
     rol::Vector{Int64}
+    cnt::Vector{Int64}
 
     function Classical_Controls(Vdc::Vector{Float64}, Vrms::Vector{Float64},
         S::Vector{Float64}, P::Vector{Float64}, Q::Vector{Float64}, pf::Vector{Float64},
@@ -230,7 +232,7 @@ mutable struct Classical_Controls
         Ad_0::Array{Float64}, Bd_0::Array{Float64}, Cd_0::Matrix{Float64}, Dd_0::Matrix{Float64}, 
         Ko_0::Matrix{Float64}, xp_0::Matrix{Float64},
         κ::Vector{Float64}, σ::Vector{Float64}, γ::Vector{Float64}, 
-        X::Vector{Float64}, rol::Vector{Int64})
+        X::Vector{Float64}, X₀::Vector{Float64}, rol::Vector{Int64}, cnt::Vector{Int64})
 
         new(Vdc, Vrms,
         S, P, Q, pf,
@@ -273,7 +275,7 @@ mutable struct Classical_Controls
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
         Ko_0, xp_0,
-        κ, σ, γ, X, rol)
+        κ, σ, γ, X, X₀, rol, cnt)
     end
 
     function Classical_Controls(f_cntr, num_sources; phases = 3, action_delay = 1)
@@ -570,7 +572,10 @@ mutable struct Classical_Controls
         γ = Array{Float64, 1}(undef, num_sources) # asymptotoic mean
 
         X = Array{Float64, 1}(undef, num_sources)
+        X₀ = Array{Float64, 1}(undef, num_sources)
         rol = Array{Int64, 1}(undef, num_sources)
+        cnt = Array{Int64, 1}(undef, num_sources)
+        cnt = fill!(cnt, 0)
 
         Classical_Controls(Vdc, Vrms,
         S, P, Q, pf,
@@ -613,7 +618,7 @@ mutable struct Classical_Controls
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
         Ko_0, xp_0,
-        κ, σ, γ, X, rol)
+        κ, σ, γ, X, X₀, rol, cnt)
     end
 end
 
@@ -778,6 +783,10 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source.I_filt_poc = fill!(Source.I_filt_poc, 0)
     Source.I_filt_inv = fill!(Source.I_filt_inv, 0)
 
+    Source.X = Source.X₀ # initial conditions for stochastic process
+
+    Source.debug = fill!(Source.debug, 0)
+
     return nothing
 end
 
@@ -786,9 +795,9 @@ function Classical_Control(Animo, env, name = nothing)
     Source = Animo.Source
     Source_Interface(env, Source, name)
 
-    ramp_end = 2/Source.fsys
+    ramp_end = 0#2/Source.fsys
 
-    for s in 1:Source.num_sources
+    Threads.@threads for s in 1:Source.num_sources
 
         if Source.Source_Modes[s] == "Swing"
 
@@ -825,6 +834,7 @@ function Classical_Control(Animo, env, name = nothing)
 
     Action = Env_Interface(Source)
     Measurements(Source)
+
     Ornstein_Uhlenbeck(Source, t_start = ramp_end)
 
     return Action
@@ -842,7 +852,7 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
         state = RLBase.state(env, name)
     end
 
-    for ns in 1:Source.num_sources
+    Threads.@threads for ns in 1:Source.num_sources
 
         Source.Vd_abc_new[ns, :, 1:end-1] = Source.Vd_abc_new[ns, :, 2:end] 
 
@@ -909,6 +919,12 @@ function Ramp(final, μ, i; t_end = 0.02)
 end
 
 function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
+
+    if num_source == 1 
+        Source.debug[5] = Source.Vd_abc_new[num_source, 1, end]*Source.Vdc[num_source]/2
+    else
+        Source.debug[6] = Source.Vd_abc_new[num_source, 1, end]*Source.Vdc[num_source]/2
+    end
     
     θ = Source.θsys + Source.V_δ_set[num_source, 1] - 0.5*Source.ts*2π*Source.fsys
     θph = [θ; θ - 120π/180; θ + 120π/180]
@@ -916,7 +932,7 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
     Vrms = Ramp(Source.V_pu_set[num_source, 1]*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
     Source.V_ref[num_source, :] = sqrt(2)*(Vrms)*cos.(θph)
 
-    if Source.steps*Source.ts >= 0.1 && num_source == 5
+    if Source.steps*Source.ts >= 0.1 && 1 == 5
 
         Vdc = 150
 
@@ -1771,28 +1787,35 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls; t_start = 0.04)
 
     if Source.steps*Source.ts >= t_start
 
-        for ns in 1:Source.num_sources
+        Threads.@threads for ns in 1:Source.num_sources
 
             κ = Source.κ[ns] # mean reversion parameter
             γ = Source.γ[ns] # asymptotoic mean
             σ = Source.σ[ns] # Brownian motion scale i.e. ∝ diffusion parameter
 
-            if κ != 0 && γ != 0 && σ != 0 && Source.steps%Source.rol[ns] == 0
+            if κ != 0 && γ != 0 && σ != 0
 
-                if ns == 1
-                    Source.debug[3] = Source.X[ns]
-                else
-                    Source.debug[4] = Source.X[ns]
+                Source.cnt[ns] += 1
+                
+                if Source.cnt[ns] == Source.rol[ns]
+
+                    Source.cnt[ns] = 0
+
+                    Δt = Source.rol[ns]*Source.ts
+
+                    # Euler Maruyama
+                    #Source.X[ns] = Source.X[ns] + κ*(γ .- Source.X[ns])*Δt + σ*sqrt(Δt)*randn()
+                    #std_asy = sqrt(σ^2/(2*κ)) # asymptotic standard deviation
+
+                    std_dt = sqrt(σ^2/(2*κ) * (1 - exp(-2*κ*Δt)))
+                    Source.X[ns] = γ .+ exp(-κ*Δt)*(Source.X[ns] .- γ) + std_dt*randn()
+
+                    if ns == 1
+                        Source.debug[3] = Source.X[ns]
+                    else
+                        Source.debug[4] = Source.X[ns]
+                    end
                 end
-
-                Δt = Source.rol[ns]*Source.ts
-
-                # Euler Maruyama
-                #Source.X[ns] = Source.X[ns] + κ*(γ .- Source.X[ns])*Δt + σ*sqrt(Δt)*randn()
-                #std_asy = sqrt(σ^2/(2*κ)) # asymptotic standard deviation
-
-                std_dt = sqrt(σ^2/(2*κ) * (1 - exp(-2*κ*Δt)))
-                Source.X[ns] = γ .+ exp(-κ*Δt)*(Source.X[ns] .- γ) + std_dt*randn()
 
             end
 
@@ -2111,6 +2134,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         Source.γ[e] = env.nc.parameters["source"][ns]["γ"] # asymptotic mean
 
         Source.X[e] = env.nc.parameters["source"][ns]["X₀"] # initial values
+        Source.X₀[e] = Source.X[e]
         Source.rol[e] = convert(Int64, round(env.nc.parameters["source"][ns]["Δt"]*env.nc.parameters["grid"]["fs"]))
 
         Current_PI_LoopShaping(Source, e)
@@ -2126,7 +2150,7 @@ end
 
 function Observer_Initialiser(Source::Classical_Controls, num_source)
 
-    # Predictive Deadbeat Reduced-Order Observer initialisation
+    # Predictive Approximate Deadbeat Reduced-Order Observer
 
     #= Theory:
         Regarding the selection of observer type, there are three alternatives which are 
@@ -2215,8 +2239,7 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
         #------------------------------------------------------------------------------------------------
         # Solving (A - K*C)^4 = [0]
 
-        #λ = [0.0; 0.0; -0.15; -0.15]
-        λ = [0.0; 0.001; 0.001; 0.0]
+        λ = [0.001; 0.001; 0.0; 0.0]
 
         p = [2.0 1.0 1.0 1.5;
              0.0 2.0 0.5 1.0]

@@ -1,10 +1,17 @@
 using DrWatson
 @quickactivate "dare"
 
-npast = 4 #Past Series size
+using PlotlyJS
+
+include(srcdir("Kernel_Machine.jl"))
+include(srcdir("Dif_Map.jl"))
+
+print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
+
+npast = 10 #Past Series size
 nfuture = 5 #Future series size
 
-N = 5 #Number of training samples
+N = 5000 #Number of training samples
 
 scale = 1 #bandwidth
 
@@ -34,4 +41,35 @@ for i in 1:series_length
     end
 end
 
+println("\n1. Generating gram matrices")
 Gx, Gy, index_map = series_Gxy(series, scale, npast, nfuture)
+
+#= println("Gx = ")
+display(Gx)
+println("Gy = ")
+display(Gy) =#
+
+# Compute the state similarity matrix. See the paper
+println("\n2. Computing Gs")
+Gs = embed_states(Gx, Gy)
+
+#= println("Gs = ")
+display(Gs) =#
+
+# Compute a spectral basis for representing the causal states. See the paper
+println("\n3. Projection")
+eigenvalues, basis, coords = spectral_basis(Gs)
+
+#= println("eigenvalues = ")
+display(eigenvalues)
+println("basis = ")
+display(basis)
+println("coords = ")
+display(coords) =#
+
+df = DataFrame(Ψ₁ = coords[:,2])
+p = plot(df, x = :Ψ₁, kind = "histogram", nbinsx = 100)
+
+display(p)
+
+print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
