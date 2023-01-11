@@ -725,6 +725,7 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source = Animo.Source
 
     Source.steps = 0
+    Source.θsys = 0.0
 
     Source.vd = fill!(Source.vd, 0.0)
     Source.qvd = fill!(Source.qvd, 0.0)
@@ -919,12 +920,6 @@ function Ramp(final, μ, i; t_end = 0.02)
 end
 
 function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
-
-    if num_source == 1 
-        Source.debug[5] = Source.Vd_abc_new[num_source, 1, end]*Source.Vdc[num_source]/2
-    else
-        Source.debug[6] = Source.Vd_abc_new[num_source, 1, end]*Source.Vdc[num_source]/2
-    end
     
     θ = Source.θsys + Source.V_δ_set[num_source, 1] - 0.5*Source.ts*2π*Source.fsys
     θph = [θ; θ - 120π/180; θ + 120π/180]
@@ -1793,7 +1788,7 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls; t_start = 0.04)
             γ = Source.γ[ns] # asymptotoic mean
             σ = Source.σ[ns] # Brownian motion scale i.e. ∝ diffusion parameter
 
-            if κ != 0 && γ != 0 && σ != 0
+            if σ != 0
 
                 Source.cnt[ns] += 1
                 
