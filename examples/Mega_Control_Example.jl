@@ -301,7 +301,7 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 
 for eps in 1:num_eps
 
-    plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = ["source1_u_a", "source2_u_a"], episode = eps, 
+    plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = ["source1_u_a"], episode = eps, 
     pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
 end
 
