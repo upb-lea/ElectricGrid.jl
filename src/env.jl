@@ -322,6 +322,7 @@ function RLBase.reset!(env::SimEnv)
     if !isnothing(env.action_delay_buffer)
         empty!(env.action_delay_buffer)
         fill!(env.action_delay_buffer, zeros(length(env.action_space)))
+        env.action = zeros(length(env.action_space))
     end
     env.t = env.t0
     env.steps = 0
