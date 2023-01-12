@@ -1,6 +1,8 @@
 #_______________________________________________________________________________
 # Kernel Machines
 
+using LinearAlgebra
+
 function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing, localdiff = 0, take2skipX = 0)
 
     #=
@@ -57,8 +59,6 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
             Returns the indices of the valid (not NaN) and contiguous (past,future) pairs. For each returned row/col index of the dpast, dfuture matrices, the idxmap specifies what data in the original series that (past,future) reference pair refers to.
     
     =#
-
-    # the series themselves could also be a numpy array or a dask array
 
     series_list = [series]
 
@@ -415,7 +415,7 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
     # outer loops can now be parallelized - all have about the same duration
    if n%2 == 1  m = n else m = n-1 end
    
-   for k in (n+1)÷2:n - 1
+   Threads.@threads for k in (n+1)÷2:n - 1
 
         for l in 0:k - 1
 
@@ -526,7 +526,7 @@ function parallel_add_lowtri(total, mat)
     if N%2 == 1 M = N else N-1 end
         
     # outer loops can be parallelized - all have about the same duration
-    for k in (N+1) ÷ 2:N - 1
+    Threads.@threads for k in (N+1) ÷ 2:N - 1
 
         for l in 0:k - 1
 
@@ -543,7 +543,7 @@ function parallel_add_lowtri(total, mat)
         end
     end
 
-    for d in 1:N
+    Threads.@threads for d in 1:N
 
         total[d,d] += mat[d,d]
     end
@@ -558,7 +558,7 @@ function parallel_exp_lowtri(mat, scale)
     invscale = 1/scale
         
     # outer loops can be parallelized - all have about the same duration
-    for k in (N+1) ÷ 2:N - 1
+    Threads.@threads for k in (N+1) ÷ 2:N - 1
 
         for l in 0:k - 1
 
@@ -579,7 +579,7 @@ function parallel_exp_lowtri(mat, scale)
         end
     end
 
-    for d in 1:N
+    Threads.@threads for d in 1:N
         mat[d,d] = exp(mat[d,d] * invscale)
     end
 
@@ -594,22 +594,26 @@ function embed_states(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = fa
     Arguments:
         Gx: a similarity matrix of pasts X. Gx[i,j] = kernel_X(x_i, x_j) with kernel_X a reproducing kernel for X.
         Gy: a similarity matrix of futures Y.
-        eps: amount of regularization. The theory requires a regularizer and shows that the regularized estimator is consistent in the limit of N -> infinity. In practice, using a too small regularizer may cause divergence, too large causes innaccuracies.
-        normalize: whether to renormalize the returned similarity matrix, so that each entry along the diagonal is 1. See below.
+        eps: amount of regularization. The theory requires a regularizer and shows that the regularized 
+        estimator is consistent in the limit of N -> infinity. In practice, using a too small regularizer 
+        may cause divergence, too large causes innaccuracies.
+        normalize: whether to renormalize the returned similarity matrix, so that each entry along the 
+        diagonal is 1. See below.
         return_embedder: whether to return an embedder object for new, unknown data. Default is False
         
     Returns:
+
         Gs: A similarity matrix between each causal states. Entries Gs[i,j] can be seen as inner products between states S_i and S_j. With normalized kernels, such as used in series_Gxy, then state vectors should also be normalized. Also, theoretically, that matrix should be positive definite. In practice, numerical innacuracies and estimating from finite samples may destroy both previous properties. Renormalization is performed by default, but if positive definiteness issues happens, try using a larger regularizer.
 
         embedder: (if return_embedder is True) A matrix for embedding new Kx kernel similarity vectors
-
     """
     
     # Solve is good enough : produces 1/N entries with N = num dups
-    Omega = (Gx + I*eps) \ Gx
+    #Omega = (Gx + I*eps) \ Gx
 
-    #from . import nnls_impl
-    #Omega = nnls_impl.nnls(Gx + np.diag(np.ones(Gx.shape[0])*eps), Gx)
+    Omega = copy(Gx)
+    ldiv!(qr(Gx + I*eps), Omega)
+
     Omega = 0.5 * (Omega + transpose(Omega)) # should not be needed
     
     embedder = transpose(Omega) * Gy
@@ -649,10 +653,6 @@ function embed_states(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = fa
         # just to be extra safe, avoid floating-point residual errors
         Gs[diagind(Gs)] .= 1.0
         
-        # Tests - this is also possible, using Gs after normalization, 
-        # but does not improve the accuracy of the embedder
-        #embedder = np.linalg.solve(Omega, Gs).T
-        #embedder = 0.5 * (embedder + embedder.T)
     end
     
     if return_embedder

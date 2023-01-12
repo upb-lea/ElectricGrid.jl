@@ -80,7 +80,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 600e-6 #time in seconds, total simulation run time
+t_final = 1.0 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -142,24 +142,24 @@ source = Dict()
 
 source_list = []
 
-source["pwr"] = 2000e3 #VA
+source["pwr"] = 200e3 #VA
 source["vdc"] = 800 #V
 source["fltr"] = "LCL"
-source["p_set"] = 100e3 #Watt
+source["p_set"] = 150e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 1
+source["mode"] = 7
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
-source["std_asy"] = 100 # asymptotic standard deviation
+source["std_asy"] = 50 # asymptotic standard deviation
 #source["κ"] = 3 # mean reversion parameter
-source["σ"] = 1000 # Brownian motion scale i.e. ∝ diffusion parameter
-source["γ"] = 320 # asymptotoic mean
-source["X₀"] = 500 # initial value
+source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+source["γ"] = 0 # asymptotoic mean
+source["X₀"] = 0 # initial value
 source["Δt"] = ts
 
 #= source["L1"] = 0.002
@@ -173,14 +173,14 @@ push!(source_list, source)
 
 source = Dict()
 
-source["pwr"] = 1000e3
+source["pwr"] = 100e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 1
+source["mode"] = 7
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -188,8 +188,8 @@ source["τv"] = 0.002
 source["τf"] = 0.002
 source["std_asy"] = 50 # asymptotic standard deviation
 source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion parameter
-source["γ"] = -320 # asymptotoic mean
-source["X₀"] = -500 # initial values
+source["γ"] = 0 # asymptotoic mean
+source["X₀"] = 0 # initial values
 source["Δt"] = 4
 
 #= source["L1"] = 1e-3
@@ -216,9 +216,9 @@ load = Dict()
 R1_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.6, 230)
 #R2_load, C_load, _, _ = Parallel_Load_Impedance(150e3, -0.8, 230)
 
-load["impedance"] = "R"
+load["impedance"] = "RL"
 load["R"] = R1_load# + R2_load # 
-#load["L"] = L_load
+load["L"] = L_load
 #load["C"] = C_load
 
 push!(load_list, load)
@@ -280,12 +280,12 @@ agentname = "agent"
 plt_state_ids = []               
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
-collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2],
-save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [5 6])
+collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2],
+save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [3 4])
 
 #_______________________________________________________________________________
 # Starting time simulation
-num_eps = 2
+num_eps = 1
 RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 
 #_______________________________________________________________________________
@@ -301,8 +301,8 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 
 for eps in 1:num_eps
 
-    plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = ["source1_u_a"], episode = eps, 
-    pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+    plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = eps, 
+    pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
 end
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
