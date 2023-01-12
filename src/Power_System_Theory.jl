@@ -1,3 +1,6 @@
+using JuMP
+import Ipopt
+
 function RMS(θ, t_signals)
 
     # Calcutates the DC offset, RMS magnitude, and phase angle relative to the
@@ -537,8 +540,8 @@ function layout_cabels(CM, num_source, num_load, parameters)
         else
             S = parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             P = S *parameters["load"][i-num_source]["pf"]
-            println("P_LOAD = $(P)")
-            println("Q_LOAD = $(sqrt(S^2 - P^2))")
+            #println("P_LOAD = $(P)")
+            #println("Q_LOAD = $(sqrt(S^2 - P^2))")
             fix(nodes[i, "P"], -P)
             fix(nodes[i, "Q"], -sqrt(S^2 - P^2))
 
@@ -578,7 +581,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
         set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
         #set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
         # assumption to line to line
-        println(parameters["cable"][i]["len"])
+        #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(D/(0.7788 * cables[i, "radius"])))  # m* H/m
 
         # resistivity remains constant ρ_(T=50) = 1.973e-8 
@@ -692,15 +695,15 @@ function layout_cabels(CM, num_source, num_load, parameters)
                             
 
     optimize!(model)
-    println("""
+    #= println("""
     termination_status = $(termination_status(model))
     primal_status      = $(primal_status(model))
     objective_value    = $(objective_value(model))
-    """)
+    """) =#
 
+    #= println()
     println()
-    println()
-    println(value.(nodes))
+    println(value.(nodes)) =#
 
     
     for (index, cable) in enumerate(parameters["cable"])

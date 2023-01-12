@@ -1,6 +1,3 @@
-using JuMP
-import Ipopt
-
 #using dare   warum geht das nicht?
 using DrWatson
 @quickactivate "dare"
