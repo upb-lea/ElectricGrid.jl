@@ -2143,7 +2143,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
     return nothing
 end
 
-function Observer_Initialiser(Source::Classical_Controls, num_source)
+function Observer_Initialiser(Source::Classical_Controls, ns)
 
     # Predictive Approximate Deadbeat Reduced-Order Observer
 
@@ -2172,12 +2172,9 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
         the deadbeat observer requires n steps to estimation error to zero. 
     =#
 
-    ns = num_source
-
     if Source.filter_type[ns] == "LCL"
 
-        fsys = Source.fsys
-        ω = 2π*fsys
+        ω = 2π*Source.fsys
 
         # Finding the phase/zero-sequence system dynamics
 
@@ -2241,10 +2238,8 @@ function Observer_Initialiser(Source::Classical_Controls, num_source)
 
         Source.Ko_DQ[ns, :, :],   = Multi_Gain_Matrix_par(Source.Ad_DQ[ns, :, :], Source.Cd_DQ[ns, :, :], λ, p)
         λₒ = round.(eigvals(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :]), digits = 3)
-
-        err = maximum(abs.(sort(λ) .- λₒ))
         
-        if err != 0 
+        if maximum(abs.(sort(λ) .- λₒ)) != 0 
             Source.Ko_DQ[ns, :, :] = fill!(Source.Ko_DQ[ns, :, :], 0.)
         end
 
@@ -2310,6 +2305,7 @@ function Switch_Rows(A, row_1, row_2)
     for i in 1:num_rows
         
         if i <= num_cols && row_1 <= num_rows && row_2 <= num_rows
+
             temp = A[row_1, i]
             A[row_1, i] = A[row_2, i]
             A[row_2, i] = temp
@@ -2319,6 +2315,7 @@ function Switch_Rows(A, row_1, row_2)
     for i in 1:num_cols
         
         if i <= num_rows && row_1 <= num_cols && row_2 <= num_cols
+
             temp = A[i, row_1]
             A[i, row_1] = A[i, row_2]
             A[i, row_2] = temp
@@ -2333,7 +2330,6 @@ function charpoly_coef(λ)
     # given the roots, this function finds the coefficients
 
     n = length(λ)
-    ds = 1:n
 
     λ = -1*λ
 
@@ -2341,7 +2337,7 @@ function charpoly_coef(λ)
 
     for i in 1:length(λ)
 
-        x = combinations(ds, n-i+1)
+        x = combinations(1:n, n-i+1)
         y = collect(x)
 
         α[i] = 0.0

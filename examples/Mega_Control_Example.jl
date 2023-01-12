@@ -145,7 +145,7 @@ source_list = []
 source["pwr"] = 200e3 #VA
 source["vdc"] = 800 #V
 source["fltr"] = "LCL"
-source["p_set"] = 100e3 #Watt
+source["p_set"] = 150e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
@@ -157,7 +157,7 @@ source["τv"] = 0.002
 source["τf"] = 0.002
 source["std_asy"] = 50 # asymptotic standard deviation
 #source["κ"] = 3 # mean reversion parameter
-source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion parameter
+source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["γ"] = 0 # asymptotoic mean
 source["X₀"] = 0 # initial value
 source["Δt"] = ts
@@ -213,12 +213,12 @@ push!(source_list, source) =#
 load_list = []
 load = Dict()
 
-R1_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+R1_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.6, 230)
 #R2_load, C_load, _, _ = Parallel_Load_Impedance(150e3, -0.8, 230)
 
-load["impedance"] = "R"
+load["impedance"] = "RL"
 load["R"] = R1_load# + R2_load # 
-#load["L"] = L_load
+load["L"] = L_load
 #load["C"] = C_load
 
 push!(load_list, load)

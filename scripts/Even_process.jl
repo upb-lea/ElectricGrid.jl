@@ -2,6 +2,7 @@ using DrWatson
 @quickactivate "dare"
 
 using PlotlyJS
+using DataFrames
 
 include(srcdir("Kernel_Machine.jl"))
 include(srcdir("Dif_Map.jl"))
@@ -58,7 +59,7 @@ display(Gs) =#
 
 # Compute a spectral basis for representing the causal states. See the paper
 println("\n3. Projection")
-eigenvalues, basis, coords = spectral_basis(Gs)
+eigenvalues, basis, coords, info = spectral_basis(Gs, num_basis = 2, scaled = false)
 
 #= println("eigenvalues = ")
 display(eigenvalues)

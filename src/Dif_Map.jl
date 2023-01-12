@@ -1,6 +1,6 @@
 using KrylovKit
 
-function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1, overwrite = false)
+function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
 
     """
     Spectral decomposition of the similarity matrix, *after normalization*.
@@ -25,13 +25,6 @@ function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1, overw
         Normalization exponent for the diffusion-map like algorithm. 
         
         The default of 1 allows the inference of the geometry, with minimal interference from the density.
-        
-    use_dask : bool, optional
-        Whether to distribute the computations with Dask:
-        
-        - None (default): Use the package flag (itself defaulting to False)
-        - False or 0: Do not use Dask. Numpy and scipy have better linear algebra support than Dask, so it may better to use higher-level parallelism and perform DMap_K computations as a single Dask task, even if Dask is used for other functions
-        - True or 1: Use Dask for this function. If the data would not fit in memory on one machine, or if the numpy/scipy are not parallelized and multiple cores are available, then it may be advantageous to activate Dask internally in this function to parallelize computations.
         
     overwrite : Bool, optional
         Whether to use the memory in Gs for the computations. This has no effect when using Dask. False by default.
@@ -100,7 +93,7 @@ function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1, overw
 
     end
 
-    eigval, eigvec, _ = geneigsolve((0.5*(mat + transpose(mat)), diagm(q)), num_basis, :LM; krylovdim = N)
+    eigval, eigvec, info = geneigsolve((mat, diagm(q)), num_basis, :LM; krylovdim = num_basis + 1, issymmetric = true)
     eigvec = reduce(hcat, eigvec)
     
     if eigen_cutoff >= 0
@@ -131,9 +124,9 @@ function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1, overw
     # and replace D by D*u[0,0]**2 and 
 
     if scaled
-        return eigval, eigvec_l, eigvec_r .* transpose(eigval)
+        return eigval, eigvec_l, eigvec_r .* transpose(eigval), info
     end
 
-    return eigval, eigvec_l, eigvec_r
+    return eigval, eigvec_l, eigvec_r, info
 end
     

@@ -427,3 +427,42 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
 
     return Lf, Cf, fc
 end
+
+"""
+    R, L = Fault_Level(S, X_R, Vrms; fsys = 50)
+
+# Arguments
+- `S::Float`: 3 phase Fault Level [VA]
+- `X/R::Float`: the (Short Circuit) ratio of reactance to resistance
+- `Vrms::Float`: Line to Neutral rms voltage of external network [V]
+
+# Keyword Arguments
+- `fsys::Float`: system frequency [Hz]
+
+# Return Values
+- `R::Float`: effective resistance [Ω]
+- `L::Float`: effective inductance [H]
+
+# Theory
+An external network is often characterised by its Fault level and its X/R ratio. In particular the 
+Fault Level is a measure of the strength of a network. It is the amount of apparent power that the 
+network can supply when a three-phase bolted to ground fault is applied at the point of connection.
+From these values an effective resistance and inductance can be calculated. Typical values of X/R 
+ratios are in the range of 0.5 to 1.5, for distribution networks. Transmission networks operating
+at higher voltages tend to have higher X/R ratios.
+
+"""
+function Fault_Level(S, X_R, Vrms; fsys = 50)
+
+    rad = atan(X_R)
+
+    I_fault = S/(3*Vrms)
+    Z = Vrms/I_fault
+
+    R = Z*cos(rad)
+    X = Z*sin(rad)
+
+    L = X/(2π*fsys)
+
+    return R, L
+end
