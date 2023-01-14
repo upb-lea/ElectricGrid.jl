@@ -86,8 +86,7 @@ function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
         end
 
         q = (1) ./ q
-        # This is equivalent to np.diag(qinv) @ mat @ np.diag(qinv),
-        # but using broadcasting and reusing memory
+
         mat = mat .* reshape(q, :, 1)
         mat = mat .* reshape(q, 1, :)
 
@@ -99,9 +98,6 @@ function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
     if eigen_cutoff >= 0
 
         num_basis = sum(eigval .>= eigen_cutoff)
-        # This was for preserving the trace proportion
-        #cs = np.cumsum(eigval)
-        #num_basis = np.sum( cs / cs[-1] < 1 - eigen_cutoff) + 1
     end
     
     if num_basis < size(eigval, 1)
@@ -110,18 +106,11 @@ function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
         eigvec = copy(eigvec[:, 1:num_basis])
     end
     
-    # Normalization so that eigvec_r[:,0] entries are all 1
-    # and that eigvec_l[:,0] matches a density
+    # Normalization so that eigvec_r[:,1] entries are all 1
+    # and that eigvec_l[:,1] matches a density
 
-    eigvec_r = eigvec / eigvec[1,1]
+    eigvec_r = eigvec ./ eigvec[:, 1]
     eigvec_l = eigvec .* (q * eigvec[1,1])
-    
-    # If we want symmetric eigenvectors, but still wish to normalize,
-    # for example for use with SEC code, then another possibility
-    # is to note that, with u = eigvec:
-    # (u.T / u[0,0]) @ (np.diag(D) * u[0,0]**2) @ (u / u[0,0])
-    # Hence, we can use eigvec_r in place of u
-    # and replace D by D*u[0,0]**2 and 
 
     if scaled
         return eigval, eigvec_l, eigvec_r .* transpose(eigval), info

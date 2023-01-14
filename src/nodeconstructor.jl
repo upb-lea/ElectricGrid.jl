@@ -2,7 +2,7 @@ using Distributions
 using LinearAlgebra
 using StatsBase
 
-include(srcdir("Power_System_Theory.jl"))
+include("./Power_System_Theory.jl")
 
 # using Intervals
 mutable struct NodeConstructor

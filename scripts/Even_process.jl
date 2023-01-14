@@ -12,7 +12,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 npast = 10 #Past Series size
 nfuture = 5 #Future series size
 
-N = 5000 #Number of training samples
+N = 5 #Number of training samples
 
 scale = 1 #bandwidth
 
@@ -69,7 +69,7 @@ println("coords = ")
 display(coords) =#
 
 df = DataFrame(Ψ₁ = coords[:,2])
-p = plot(df, x = :Ψ₁, kind = "histogram", nbinsx = 100)
+p = plot(df, x = :Ψ₁, kind = "histogram", nbinsx = 100, histnorm="probability density")
 
 display(p)
 

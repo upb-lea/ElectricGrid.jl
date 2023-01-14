@@ -1,6 +1,5 @@
-using Plots
-
-include("Complexity.jl")
+using DrWatson
+@quickactivate "dare"
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
 
@@ -72,7 +71,10 @@ Cranking(Deus, Poincare[1:2, :], μ_s)
 #_______________________________________________________________________________
 #%% Plots
 
-traj = plot(sol, idxs = (1, 2))
+u = reduce(hcat, sol.u)
+df = DataFrame(u1 = u[1,:], u2 = u[2,:])
+
+plot(df, x = :u1, y = :u2)
 #display(traj)
 
 #traj = plot(sol, idxs = (1, 2))
@@ -90,12 +92,12 @@ for i in 1:Deus.k
 end
 
 
-traj = plot(Deus.x[1, 500:end], Deus.x[2, 500:end], 
+#= traj = plot(Deus.x[1, 500:end], Deus.x[2, 500:end], 
             seriestype = :scatter,
             markercolor = colrs[500:end],
             markersize = 1,
             markerstrokewidth = 0,
             legend = false)
-display(traj)
+display(traj) =#
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

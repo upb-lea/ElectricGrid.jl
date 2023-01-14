@@ -160,7 +160,7 @@ source["std_asy"] = 50 # asymptotic standard deviation
 source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["γ"] = 0 # asymptotoic mean
 source["X₀"] = 0 # initial value
-source["Δt"] = ts
+source["Δt"] = ts # time step
 
 #= source["L1"] = 0.002
 source["R1"] = 0.04

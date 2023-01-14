@@ -29,7 +29,8 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
         A list of floats specifies a different scale for each data source.
          
         npast: take that consecutive number of samples for building an observed past. 
-        If a single integer is provided it applies to all series. Different values can be provided for different data sources (=each series). 
+        If a single integer is provided it applies to all series. Different values can be provided 
+        for different data sources (=each series). 
         It is assumed that data samples are measured at matching times for each data source, 
             hence the first causal state can only be computed after the-largest-npast values have been observed.
         
@@ -43,11 +44,18 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
         qcflags : quality control flags. <= 0 means invalid data. optional, but if present there must be one qcflag per sample
         
         localdiff: how to compute the differences between the sequences, pasts and futures. 
-        The default is 0 = just take the difference. This assumes that what matters are the series absolute values. localdiff = 1 removes the average (weigthed using decay) of each sequence before taking their differences. This may be useful for eliminating a slow drift due to the sensor itself, which should be removed from data. localdiff = 2 means that the "present" value is used as reference. This assumes that what matters are relative variations around the "present" value. Warning: this gives equal importance to all such variations. For example, a fluctuation of -3°C in summer (from ~25°C) is not the same as a fluctuation of -3°C in winter (which may very well cross the freezing point).
+        The default is 0 = just take the difference. This assumes that what matters are the 
+        series absolute values. localdiff = 1 removes the average (weigthed using decay) of 
+        each sequence before taking their differences. This may be useful for eliminating a 
+        slow drift due to the sensor itself, which should be removed from data. localdiff = 2 
+        means that the "present" value is used as reference. This assumes that what matters 
+        are relative variations around the "present" value. Warning: this gives equal importance 
+        to all such variations. For example, a fluctuation of -3°C in summer (from ~25°C) is not 
+        the same as a fluctuation of -3°C in winter (which may very well cross the freezing point).
         
         take2skipX : int, optional (default 0)
-            performs a special kind of subsampling: two consecutive samples are retained, X samples are discarded, 
-            then this (X+2) sequence repeats. This scheme is designed to preserve consecutive entries for building a shift operator while still allowing subsampling of very large series. The classic subsampling scheme (take one out of X) can also be applied a priori to the original series, but it is equivalent to a (bad) low-pass filtering. Then, the shift operator would be computed on consecutive entries of the subsampled series, hence at a different time scale. The take2skipX allows to still work on the original time scale. Both can be combined (after appropriate low-pass filtering).
+        performs a special kind of subsampling: two consecutive samples are retained, X samples are discarded, 
+        then this (X+2) sequence repeats. This scheme is designed to preserve consecutive entries for building a shift operator while still allowing subsampling of very large series. The classic subsampling scheme (take one out of X) can also be applied a priori to the original series, but it is equivalent to a (bad) low-pass filtering. Then, the shift operator would be computed on consecutive entries of the subsampled series, hence at a different time scale. The take2skipX allows to still work on the original time scale. Both can be combined (after appropriate low-pass filtering).
         
     Returns:
         dpast, dfuture: two square matrices of size N, between each observed sequences of a past/future sample pairs.
@@ -102,7 +110,6 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
             total_lx = parallel_add_lowtri(total_lx, lx)
             total_ly = parallel_add_lowtri(total_ly, ly)
         end
-
     end
    
     # This modifies the arguments - restores the upper part
@@ -447,7 +454,7 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
             sy[j,i] = sumy
         end
     end
-        
+    
     return sx, sy
 end
 
@@ -465,7 +472,7 @@ function sxy_logk(i, j, series, concat_valid_map, npast, nfuture, localdiff, ker
         # diff of these => weighted avg of diffs
         r = 1
 
-        for t in 0:npast-1
+        for t in 0:npast-1 # TODO: Can this loop be parallelized?
 
             d = series[i-t, :] - series[j-t, :]
             delta += d * r
@@ -589,7 +596,8 @@ end
 function embed_states(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = false)
 
     """
-    Compute a similarity matrix for the embedded causal states, seen as distributions P(Y|X), using the conditional mean embedding.
+    Compute a similarity matrix for the embedded causal states, seen as distributions P(Y|X), 
+    using the conditional mean embedding.
 
     Arguments:
         Gx: a similarity matrix of pasts X. Gx[i,j] = kernel_X(x_i, x_j) with kernel_X a reproducing kernel for X.
@@ -603,18 +611,22 @@ function embed_states(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = fa
         
     Returns:
 
-        Gs: A similarity matrix between each causal states. Entries Gs[i,j] can be seen as inner products between states S_i and S_j. With normalized kernels, such as used in series_Gxy, then state vectors should also be normalized. Also, theoretically, that matrix should be positive definite. In practice, numerical innacuracies and estimating from finite samples may destroy both previous properties. Renormalization is performed by default, but if positive definiteness issues happens, try using a larger regularizer.
+        Gs: A similarity matrix between each causal states. Entries Gs[i,j] can be seen as inner products 
+        between states S_i and S_j. 
+        With normalized kernels, such as used in series_Gxy, then state vectors should also be normalized. 
+        Also, theoretically, that matrix should be positive definite. In practice, numerical innacuracies 
+        and estimating from finite samples may destroy both previous properties. Renormalization is performed 
+        by default, but if positive definiteness issues happens, try using a larger regularizer.
 
         embedder: (if return_embedder is True) A matrix for embedding new Kx kernel similarity vectors
     """
     
-    # Solve is good enough : produces 1/N entries with N = num dups
     #Omega = (Gx + I*eps) \ Gx
 
     Omega = copy(Gx)
-    ldiv!(qr(Gx + I*eps), Omega)
+    ldiv!(factorize(Gx + I*eps), Omega)
 
-    Omega = 0.5 * (Omega + transpose(Omega)) # should not be needed
+    Omega = Symmetric(Omega) # should not be needed
     
     embedder = transpose(Omega) * Gy
     
