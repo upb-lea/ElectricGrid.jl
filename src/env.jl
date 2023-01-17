@@ -5,6 +5,11 @@ using ControlSystems
 using CUDA
 using DataStructures
 
+#= # might be better for large sparse matrices
+using SparseArrays
+using FastExpm 
+=#
+
 include("./custom_control.jl")
 include("./nodeconstructor.jl")
 include("./pv_module.jl")
@@ -66,8 +71,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
 
     A, B, C, D = get_sys(nc)
-    Ad = exp(A*ts)
-    Bd = A \ (Ad - I) * B
+    Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
+    #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
+    Bd = (Ad - I) * B
+    ldiv!(qr(A), Bd)
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     state_parameters = get_state_paras(nc)
 
@@ -240,7 +247,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                     norm_array[state_index] = load["v_limit"]
                 else
                     v_limit_fixed += 1
-                    norm_array[state_index] = 1500.0
+                    norm_array[state_index] = 1.15*nc.parameters["grid"]["v_rms"] * sqrt(2)
                 end
             end
         end
@@ -253,21 +260,21 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                     norm_array[state_index] = cable["i_limit"]
                 else
                     i_limit_fixed += 1
-                    norm_array[state_index] = 1000.0
+                    norm_array[state_index] = 1000
                 end
             elseif contains(states[state_index], "_v")
                 if haskey(cable, "v_limit")
                     norm_array[state_index] = cable["v_limit"]
                 else
                     v_limit_fixed += 1
-                    norm_array[state_index] = 1500.0
+                    norm_array[state_index] = 1.15*nc.parameters["grid"]["v_rms"] * sqrt(2)
                 end
             end
         end
     end
 
     i_limit_fixed > 0 && @warn "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit!"
-    v_limit_fixed > 0 && @warn "$v_limit_fixed Voltage limits set to 1500 V - please define in nc.parameters -> source -> v_limit!"   
+    v_limit_fixed > 0 && @warn "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit!"   
 
 
     if isnothing(reward)
@@ -313,9 +320,11 @@ end
 function RLBase.reset!(env::SimEnv)
     env.state = env.convert_state_to_cpu ? Array(env.featurize(env.x0, env.t0)) : env.featurize(env.x0, env.t0)
     env.x = env.x0
+    env.y = fill!(env.y, 0.0) #TODO: y0
     if !isnothing(env.action_delay_buffer)
         empty!(env.action_delay_buffer)
         fill!(env.action_delay_buffer, zeros(length(env.action_space)))
+        env.action = zeros(length(env.action_space))
     end
     env.t = env.t0
     env.steps = 0

@@ -1308,7 +1308,7 @@ function Statistical_Mechanics(Deus::ϵ_Machine)
         If we have a sequence of n random variables, a natural question to ask is "how does the
         entropy of the sequence grow with n. When the entropy rate exists in the limit, then
         we can define a related quantity for the entropy rate, which is a different notion 
-        of entropy rate. The first is the per symbol entropy of the n random variables, and 
+        of entropy. The first is the per symbol entropy of the n random variables, and 
         the second is the conditional entropy of the last random variable given the past. For 
         stationary processes the limits exists in both cases and they are equal. The significance 
         of the entropy rate of a stochastic process arises from the Asymptotic Equipartition Property
@@ -3106,3 +3106,13 @@ function Driven_Duffing!(du, u, p, t)
 
     return du
 end
+
+
+ 
+
+
+
+    
+
+
+

@@ -1,6 +1,12 @@
 using Distributions
 using LinearAlgebra
 using StatsBase
+using Graphs
+using GraphPlot
+using PlotlyJS
+
+include("./Power_System_Theory.jl")
+
 # using Intervals
 mutable struct NodeConstructor
     num_connections 
@@ -80,7 +86,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 6 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters))"
+        @assert length(keys(parameters["grid"])) == 6 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -276,7 +282,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             if !haskey(source, "R1")
                 
-                #= Example:
+                #= Practical Example:
                 L_filter = 70e-6
                 R_filter = 1.1e-3
                 R_filter_C = 7e-3
@@ -295,7 +301,6 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
             end
             
-
             if (source["fltr"] == "LC" || source["fltr"] == "LCL")
                 #Capacitor design
                 if source["fltr"] == "LC"
@@ -446,9 +451,30 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 source["τf"] = 0.002 # time constant of the frequency loop # 0.002
             end
 
+            if !haskey(source, "pf") # power factor
+
+                if !haskey(source, "p_set") && !haskey(source, "q_set")
+
+                    source["pf"] = 0.8 # power factor
+
+                elseif haskey(source, "q_set") && !haskey(source, "p_set")
+
+                    p_set = sqrt(source["pwr"]^2 - source["q_set"]^2)
+                    source["pf"] = p_set/source["pwr"]
+
+                elseif haskey(source, "p_set") && !haskey(source, "q_set")
+
+                    source["pf"] = source["p_set"]/source["pwr"]
+
+                elseif haskey(source, "p_set") && haskey(source, "q_set")
+
+                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)
+                    source["pf"] = source["p_set"]/s_set
+                end
+            end
+
             if !haskey(source, "p_set")
-                pf = 0.8 # power factor
-                source["p_set"] = source["pwr"]*pf
+                source["p_set"] = source["pwr"]*source["pf"]
             end
 
             if !haskey(source, "q_set")
@@ -464,11 +490,65 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
 
             if !haskey(source, "mode")
-                source["mode"] = "Full-Synchronverter"
+                source["mode"] = "Semi-Synchronverter"
             end
 
             if !haskey(source, "control_type")
                 source["control_type"] = "classic"
+            end
+
+            if !haskey(source, "γ") # asymptotoic mean
+                source["γ"] = source["p_set"]
+            end
+
+            if !haskey(source, "std_asy") || haskey(source, "κ")# asymptotic standard deviation
+
+                #std_asy = sqrt(σ^2/(2*κ)) # asymptotic standard deviation
+                if !haskey(source, "σ")
+
+                    source["std_asy"] = 0.0
+                elseif !haskey(source, "κ")
+
+                    source["std_asy"] = source["γ"]/10
+                else
+
+                    source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
+                end
+            end
+
+            if !haskey(source, "κ") # mean reversion parameter
+
+                if source["std_asy"] == 0.0
+
+                    source["κ"] = 0.0
+                else
+
+                    source["κ"] = source["σ"]^2/(2*source["std_asy"]^2)
+                end
+            end
+
+            if !haskey(source, "σ") # Brownian motion scale i.e. ∝ diffusion parameter
+                source["σ"] = 0.0
+            end
+
+            if !haskey(source, "X₀") # initial values
+                source["X₀"] = source["p_set"]
+            end
+
+            if !haskey(source, "Δt") # time step
+
+                steps = 4 # ... steps in a cycle
+                source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+
+            elseif haskey(source, "Δt")
+
+                if typeof(source["Δt"]) == Int
+
+                    steps = source["Δt"] # ... steps in a cycle
+                    source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+                else
+                    source["Δt"] = round(source["Δt"]*(parameters["grid"]["fs"]))/parameters["grid"]["fs"]
+                end
             end
         end
 
@@ -632,9 +712,41 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
         end
 
+        # add Z and pwr to the parameter_load dict; needed for solving the power flow equations
+        # assuming all passive loads as parrallel connection of devices
+        for (index, load) in enumerate(parameters["load"])
+            if load["impedance"] == "R"
+                load["Z"] = load["R"]
+                load["pf"] = 1
+            elseif load["impedance"] == "L"
+                load["Z"] = 1im*2*pi*parameters["grid"]["f_grid"]*load["L"]
+                load["pf"] = 0
+            elseif load["impedance"] == "C"
+                load["Z"] = 1/(1im*2*pi*parameters["grid"]["f_grid"]*load["C"])
+                load["pf"] = 0
+            elseif load["impedance"] == "RL"
+                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
+                load["pf"] = cos(atan(load["R"]/(parameters["grid"]["f_grid"]*2*pi*load["L"])))
+            elseif load["impedance"] == "RC"
+                load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
+                load["pf"] = cos(-atan(load["R"]*parameters["grid"]["f_grid"]*2*pi*load["C"]))
+            elseif load["impedance"] == "LC"
+                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+            elseif load["impedance"] == "RLC"
+                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+                # TODO PF RLC parallel             
+            end
+            
+            load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
+            println(load["pf"])
+        end
     end
 
 
+    ################
+    # CHECK CABLES #
+    ################
+    
     if !haskey(parameters, "cable")
 
         cable_list = []
@@ -652,13 +764,14 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         if num_undef_cables > 0
             @warn "The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!"
         end
-
+        cable_from_pfe_idx = []
         for (idx, cable) in enumerate(parameters["cable"])
+            # solve powerflow equation (pfe) only if needed - but if not all values are give - take all values from pfe and overwrite the rest
             
             if !haskey(cable, "len")
                 cable["len"] = rand(Uniform(1e-3, 1e1))
             end
-            
+            #=
             if !haskey(cable, "Rb")
                 cable["Rb"] = 0.722 # TODO: Fixed?!
             end
@@ -670,6 +783,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             if !haskey(cable, "Lb")
                 cable["Lb"] = 0.264e-3 # TODO: Fixed?!
             end
+            
 
             if !haskey(cable, "R")
                 cable["R"] = cable["len"] * cable["Rb"]
@@ -682,7 +796,17 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             if !haskey(cable, "C")
                 cable["C"] = cable["len"] * cable["Cb"]
             end
+            =#
+            if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
+                @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation"
+                push!(cable_from_pfe_idx, idx)
+            end
 
+        end
+
+        if ! isempty(cable_from_pfe_idx)
+            println("START PFE")
+            parameters = layout_cabels(CM, num_sources, num_loads, parameters)
         end
 
         if num_undef_cables > 0
@@ -2316,41 +2440,108 @@ function get_load_state_indices(self::NodeConstructor,loads)
 end
 
 function draw_graph(self::NodeConstructor)
-    """Plots a graph according to the CM matrix
+    CM = self.CM
+    parameters = self.parameters
 
-    Red nodes corresponse to a source.
-    Lightblue nodes corresponse to a load.
-    """
-    # TODO: @Jan Needed?
-    # edges = []
-    # color = []
-    # for i in range(1, self.num_connections+1):
-    #     (row, col) = np.where(self.CM==i)
-    #     (row_idx, col_idx) = (row[0]+1, col[0]+1)
-    #     edges.append((row_idx, col_idx))
-    #     if row_idx <= self.num_sources:
-    #         color.append('red')
-    #     else:
-    #         color.append('blue')
-    #     end
-    # end
+    CMtemp = CM + -2 * LowerTriangular(CM)
 
-    # G = nx.Graph(edges)
+    G = SimpleGraph(CMtemp)
 
-    # color_map = []
+    # Position nodes
+    pos_x, pos_y = GraphPlot.shell_layout(G)
 
-    # for node in G:
-    #     if node <= self.num_sources:
-    #         color_map.append("red")
-    #     else:
-    #         color_map.append("lightblue")
-    #     end
-    # end
+    # Create plot points
+    edge_x = []
+    edge_y = []
 
-    # nx.draw(G, node_color=color_map, with_labels = True)
-    # plt.show()
+    for edge in edges(G)
+        push!(edge_x, pos_x[src(edge)])
+        push!(edge_x, pos_x[dst(edge)])
+        push!(edge_x, nothing)
+        push!(edge_y, pos_y[src(edge)])
+        push!(edge_y, pos_y[dst(edge)])
+        push!(edge_y, nothing)
+    end
 
-    # pass
+    #  Color nodes
+    color_map = []
+    node_descriptions = []
+
+    for source in parameters["source"]
+        push!(node_descriptions, "Source: " * source["fltr"])
+
+        if source["fltr"] == "LCL"
+        push!(color_map, "#FF8800")
+        elseif source["fltr"] == "LC"
+        push!(color_map, "#FF6600")
+        elseif source["fltr"] == "L"
+        push!(color_map, "#FF3300")
+        end
+    end
+
+    for load in parameters["load"]
+        push!(node_descriptions, "Load: " * load["impedance"])
+
+        if load["impedance"] == "RLC"
+        push!(color_map, "#8F00D1")
+        elseif load["impedance"] == "LC"
+        push!(color_map, "#4900A8")
+        elseif load["impedance"] == "RL"
+        push!(color_map, "#3A09C0")
+        elseif load["impedance"] == "RC"
+        push!(color_map, "#0026FF")
+        elseif load["impedance"] == "L"
+        push!(color_map, "#0066FF")
+        elseif load["impedance"] == "C"
+        push!(color_map, "#00CCFF")
+        elseif load["impedance"] == "R"
+        push!(color_map, "#00F3E7")
+        end
+    end
+    
+
+    # Create edges
+    edges_trace = scatter(
+        mode="lines",
+        x=edge_x,
+        y=edge_y,
+        line=attr(
+            width=0.8,
+            color="#113"
+        ),
+    )
+
+    # Create nodes
+    nodes_trace = scatter(
+        x=pos_x,
+        y=pos_y,
+        mode="markers",
+        text = node_descriptions,
+        marker=attr(
+            color=color_map,
+            size=13,
+            line=attr(
+                color="Black",
+                width=1
+                )
+        )
+    )
+
+    # Create Plot
+    pl = PlotlyBase.Plot(
+        [edges_trace, nodes_trace],
+        PlotlyBase.Layout(
+            plot_bgcolor="#f1f3f7",
+            hovermode="closest",
+            showlegend=false,
+            showarrow=false,
+            dragmode="select",
+            xaxis=attr(showgrid=false, zeroline=false, showticklabels=false),
+            yaxis=attr(showgrid=false, zeroline=false, showticklabels=false)
+        )
+    )
+
+    display(pl)
 end
 
 function get_Y_bus(self::NodeConstructor)
