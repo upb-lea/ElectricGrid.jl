@@ -1,16 +1,5 @@
-using DrWatson
-@quickactivate "dare"
-
+using Dare
 using ReinforcementLearning
-using PlotlyJS
-
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
-include(srcdir("agent_ddpg.jl"))
-include(srcdir("data_hook.jl"))
-include(srcdir("Classical_Control.jl"))
-include(srcdir("Power_System_Theory.jl"))
-include(srcdir("MultiAgentGridController.jl"))
 
 function reference(t)
     

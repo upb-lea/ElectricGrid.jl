@@ -68,21 +68,21 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
     
     =#
 
-    series_list = [series]
+    series_list = series
 
-    nseries = size(series_list, 1)
+    nseries = size(series_list, 1) # the number of sources
 
-    if length(scale) == 1 scales_list = scale else scales_list = scale*nseries end
+    if length(scale) != 1 scales_list = scale else scales_list = scale*ones(nseries) end
 
-    if length(npast) == 1 npasts_list = npast else npasts_list = npast*nseries end
+    if length(npast) != 1 npasts_list = npast else npasts_list = Int.(npast*ones(nseries)) end
 
-    if length(nfuture) == 1 nfutures_list = nfuture else nfutures_list = nfuture*nseries end
+    if length(nfuture) != 1 nfutures_list = nfuture else nfutures_list = Int.(nfuture*ones(nseries)) end
 
-    if length(decay) == 1 decays_list = decay else decays_list = decay*nseries end
+    if length(decay) != 1 decays_list = decay else decays_list = decay*ones(nseries) end
 
-    if length(localdiff) == 1 localdiff_list = localdiff else localdiff_list = localdiff*nseries end
+    if length(localdiff) != 1 localdiff_list = localdiff else localdiff_list = localdiff*ones(nseries) end
 
-    if length(localdiff) == 1 localdiff_list = localdiff else localdiff_list = localdiff*nseries end
+    if length(localdiff) != 1 localdiff_list = localdiff else localdiff_list = localdiff*ones(nseries) end
 
     if qcflags === nothing
 
@@ -91,11 +91,11 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
 
         if isa(qcflags, Dict) || isa(qcflags, Tuple) qcflags_list = qcflags else qcflags_list = [ qcflags ] end
     end
-        
+
     total_lx, total_ly = nothing, nothing
-    
+
     index_map = compute_index_map_multiple_sources(series_list, npasts_list, nfutures_list, qcflags_list, take2skipX = take2skipX)
-    
+
     for (ser, sca, npa, nfu, dec, ldiff) in zip(series_list, scales_list, npasts_list, nfutures_list, decays_list, localdiff_list)
         
         # ser may itself be a list, this is handled by series_xy_logk
@@ -134,8 +134,8 @@ function compute_index_map_multiple_sources(series_list, npasts_list, nfutures_l
     # are common to all sources.
     # Then, pass that global index map to the _logk function
     
-    max_npast = max(npasts_list)
-    max_nfuture = max(nfutures_list)
+    max_npast = maximum(npasts_list)
+    max_nfuture = maximum(nfutures_list)
     
     valid_map = nothing
 
@@ -311,7 +311,7 @@ function compute_index_map_single_source(series, npast, nfuture; skip_start = 0,
             end
 
         end
-
+        
         valid_idx = (1:n)[valid_pf]
             
         if concat_idx_map === nothing
@@ -530,7 +530,7 @@ function parallel_add_lowtri(total, mat)
     WARNING: ONLY ADDS THE LOWER PART
     """
     N = size(mat, 1)
-    if N%2 == 1 M = N else N-1 end
+    if N%2 == 1 M = N else M = N-1 end
         
     # outer loops can be parallelized - all have about the same duration
     Threads.@threads for k in (N+1) ÷ 2:N - 1
