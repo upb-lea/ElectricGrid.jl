@@ -1399,7 +1399,7 @@ end
 
 
 """
-    get_A_src(self::NodeConstructor, source_i)
+    get_A_src(self::NodeConstructor, source_i) 
 
 Create the A_src entry for a source in the A matrix.
 """
@@ -1437,10 +1437,10 @@ function get_A_src(self::NodeConstructor, source_i)
     elseif parameter_i["fltr"] == "LC"
 
         A_src = zeros(3,3)
-        A_src[1,1] = -(parameter_i["R1"] + parameter_i["R_C"])/parameter_i["L1"]
+        A_src[1,1] = -(parameter_i["R1"])/parameter_i["L1"]
         A_src[1,3] = -1/parameter_i["L1"]
-        A_src[2,2] = -1/(parameter_i["C"])
-        A_src[2,3] = 1/(parameter_i["C"])
+        A_src[2,2] = -1/(parameter_i["C"]*parameter_i["R_C"])
+        A_src[2,3] = 1/(parameter_i["C"]*parameter_i["R_C"])
         
         C_sum =  0
         
@@ -1456,8 +1456,8 @@ function get_A_src(self::NodeConstructor, source_i)
         end
         
         A_src[3,1] = C_sum^(-1)
-        A_src[3,2] = (C_sum)^(-1)
-        A_src[3,3] = -(C_sum)^(-1)
+        A_src[3,2] = 1/parameter_i["R_C"]*(C_sum)^(-1)
+        A_src[3,3] = -1/parameter_i["R_C"]*(C_sum)^(-1)
 
     elseif parameter_i["fltr"] == "L"
 
