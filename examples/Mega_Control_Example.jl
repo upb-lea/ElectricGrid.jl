@@ -234,7 +234,7 @@ parameters = Dict()
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
+parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end" => 0.0)
 
 #setup = create_setup(parameters)
 
