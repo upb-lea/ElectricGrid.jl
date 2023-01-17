@@ -1,6 +1,9 @@
 using Distributions
 using LinearAlgebra
 using StatsBase
+using Graphs
+using GraphPlot
+using PlotlyJS
 
 include("./Power_System_Theory.jl")
 
@@ -2437,41 +2440,108 @@ function get_load_state_indices(self::NodeConstructor,loads)
 end
 
 function draw_graph(self::NodeConstructor)
-    """Plots a graph according to the CM matrix
+    CM = self.CM
+    parameters = self.parameters
 
-    Red nodes corresponse to a source.
-    Lightblue nodes corresponse to a load.
-    """
-    # TODO: @Jan Needed?
-    # edges = []
-    # color = []
-    # for i in range(1, self.num_connections+1):
-    #     (row, col) = np.where(self.CM==i)
-    #     (row_idx, col_idx) = (row[0]+1, col[0]+1)
-    #     edges.append((row_idx, col_idx))
-    #     if row_idx <= self.num_sources:
-    #         color.append('red')
-    #     else:
-    #         color.append('blue')
-    #     end
-    # end
+    CMtemp = CM + -2 * LowerTriangular(CM)
 
-    # G = nx.Graph(edges)
+    G = SimpleGraph(CMtemp)
 
-    # color_map = []
+    # Position nodes
+    pos_x, pos_y = GraphPlot.shell_layout(G)
 
-    # for node in G:
-    #     if node <= self.num_sources:
-    #         color_map.append("red")
-    #     else:
-    #         color_map.append("lightblue")
-    #     end
-    # end
+    # Create plot points
+    edge_x = []
+    edge_y = []
 
-    # nx.draw(G, node_color=color_map, with_labels = True)
-    # plt.show()
+    for edge in edges(G)
+        push!(edge_x, pos_x[src(edge)])
+        push!(edge_x, pos_x[dst(edge)])
+        push!(edge_x, nothing)
+        push!(edge_y, pos_y[src(edge)])
+        push!(edge_y, pos_y[dst(edge)])
+        push!(edge_y, nothing)
+    end
 
-    # pass
+    #  Color nodes
+    color_map = []
+    node_descriptions = []
+
+    for source in parameters["source"]
+        push!(node_descriptions, "Source: " * source["fltr"])
+
+        if source["fltr"] == "LCL"
+        push!(color_map, "#FF8800")
+        elseif source["fltr"] == "LC"
+        push!(color_map, "#FF6600")
+        elseif source["fltr"] == "L"
+        push!(color_map, "#FF3300")
+        end
+    end
+
+    for load in parameters["load"]
+        push!(node_descriptions, "Load: " * load["impedance"])
+
+        if load["impedance"] == "RLC"
+        push!(color_map, "#8F00D1")
+        elseif load["impedance"] == "LC"
+        push!(color_map, "#4900A8")
+        elseif load["impedance"] == "RL"
+        push!(color_map, "#3A09C0")
+        elseif load["impedance"] == "RC"
+        push!(color_map, "#0026FF")
+        elseif load["impedance"] == "L"
+        push!(color_map, "#0066FF")
+        elseif load["impedance"] == "C"
+        push!(color_map, "#00CCFF")
+        elseif load["impedance"] == "R"
+        push!(color_map, "#00F3E7")
+        end
+    end
+    
+
+    # Create edges
+    edges_trace = scatter(
+        mode="lines",
+        x=edge_x,
+        y=edge_y,
+        line=attr(
+            width=0.8,
+            color="#113"
+        ),
+    )
+
+    # Create nodes
+    nodes_trace = scatter(
+        x=pos_x,
+        y=pos_y,
+        mode="markers",
+        text = node_descriptions,
+        marker=attr(
+            color=color_map,
+            size=13,
+            line=attr(
+                color="Black",
+                width=1
+                )
+        )
+    )
+
+    # Create Plot
+    pl = PlotlyBase.Plot(
+        [edges_trace, nodes_trace],
+        PlotlyBase.Layout(
+            plot_bgcolor="#f1f3f7",
+            hovermode="closest",
+            showlegend=false,
+            showarrow=false,
+            dragmode="select",
+            xaxis=attr(showgrid=false, zeroline=false, showticklabels=false),
+            yaxis=attr(showgrid=false, zeroline=false, showticklabels=false)
+        )
+    )
+
+    display(pl)
 end
 
 function get_Y_bus(self::NodeConstructor)

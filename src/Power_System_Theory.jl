@@ -431,6 +431,52 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
     return Lf, Cf, fc
 end
 
+#############################
+# Helper functions for cable_layout
+
+function set_bounds(variable, start_value, low_bound, up_bound)
+    if !is_fixed(variable)
+        set_lower_bound(variable, low_bound)
+        set_upper_bound(variable, up_bound)
+        set_start_value(variable, start_value)
+    end
+end
+
+
+function get_degree(CM = CM) # how many cables are connected to a node? maybe remove function if not used
+    result = zeros(Int, size(CM)[1])
+
+    for i=1:size(CM)[1]
+        result[i] = count(x -> x != 0, CM[i,:])
+    end
+
+    result
+end
+
+function get_cable_connections(CM = CM) # which cables are connected to which nodes
+
+    result = Vector{Vector{Int64}}(undef, size(CM)[1])
+
+    for i=1:size(CM)[1]
+        result[i] = filter(x -> x != 0, abs.(CM[i,:]))
+    end
+
+    return result
+end
+
+function get_node_connections(CM = CM) # which nodes are connected to each other, including the self-connections
+
+    result = Vector{Vector{Int64}}(undef, size(CM)[1])
+
+    for i=1:size(CM)[1]
+        result[i] = findall(x -> x != 0, CM[i,:])
+        push!(result[i], i)
+    end
+
+    return result
+end
+
+
 function layout_cabels(CM, num_source, num_load, parameters)
 
     model = Model(Ipopt.Optimizer)

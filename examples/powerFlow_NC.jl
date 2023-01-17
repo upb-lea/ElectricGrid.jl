@@ -25,8 +25,8 @@ num_source = 3 # user
 num_load = 1 # user
 
 # example to calculate RC load for 1000 VA per phase
-#R_load, C_load, _, Z = Load_Impedance_Parallel(3000, -0.9, 230)
-R_load, L_load, _, Z = Load_Impedance_Parallel(3000, 0.9, 230)
+#R_load, C_load, _, Z = Parallel_Load_Impedance(3000, -0.9, 230)
+R_load, L_load, _, Z = Parallel_Load_Impedance(3000, 0.9, 230)
 
 #===
 #TODO: shift this for every load to the nodeconstructor
