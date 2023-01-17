@@ -362,7 +362,7 @@ mutable struct Classical_Controls
         "Droop Control" => 5, 
         "Full-Synchronverter" => 6, 
         "Semi-Synchronverter" => 7,
-        "Not Used 1" => 8,
+        "Step" => 8,
         "Not Used 2" => 9,
         "Not Used 3" => 10)
 
@@ -821,9 +821,9 @@ function Classical_Control(Animo, env, name = nothing)
         elseif Source.Source_Modes[s] == "Semi-Synchronverter"
 
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Not Used 1"
+        elseif Source.Source_Modes[s] == "Step"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
+            Step_Mode(Source, s, t_end = ramp_end)
         elseif Source.Source_Modes[s] == "Not Used 2"
 
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
@@ -939,6 +939,21 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
     #Phase_Locked_Loop_3ph(Source, num_source)
 
     Source.fpll[num_source, :, end] = Source.fsys*[1 1 1]
+    Source.θpll[num_source, :, end] = θph
+  
+    return nothing
+end
+
+function Step_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
+    
+    θph = [0; 0; 0]
+    
+    Vrms = Ramp(Source.V_pu_set[num_source, 1]*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
+    Source.V_ref[num_source, :] = (Vrms)*cos.(θph)
+    
+    Source.Vd_abc_new[num_source, :, end] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
+
+    Source.fpll[num_source, :, end] = Source.fsys*[0 0 0]
     Source.θpll[num_source, :, end] = θph
   
     return nothing
