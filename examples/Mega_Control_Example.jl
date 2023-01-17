@@ -83,7 +83,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 1.0 #time in seconds, total simulation run time
+t_final = 0.4 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -183,7 +183,7 @@ source["p_set"] = 50e3
 source["q_set"] = 10e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 7
+source["mode"] = 3
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -234,7 +234,7 @@ parameters = Dict()
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end" => 0.0)
+parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 
 #setup = create_setup(parameters)
 
