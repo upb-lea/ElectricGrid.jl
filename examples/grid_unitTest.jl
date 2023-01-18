@@ -85,10 +85,8 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 
 #_______________________________________________________________________________
 # Parameters - Time simulation
-Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 1.0 #time in seconds, total simulation run time
-
-ts = Timestep*1e-6
+t_final = 0.1 #time in seconds, total simulation run time
+ts = 1e-4
 t = 0:ts:t_final # time
 
 fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
@@ -114,170 +112,21 @@ fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
 #-------------------------------------------------------------------------------
 
 
-R_load, L_load, _, Z = Parallel_Load_Impedance(1e3, 0.6, 230)
-#===
+#R_load, L_load, _, Z = Parallel_Load_Impedance(1e3, 0.6, 230)
+
 parameters = Dict{Any, Any}(
     "source" => Any[
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>10000e3, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic", "v_rip"=>0.01537, "i_rip"=>0.15),
-                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>10000e3, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic", "v_rip"=>0.01537, "i_rip"=>0.15),
-                    #Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000000, "v_pu_set" => 1.0, "mode" => 1, "control_type" => "classic"),
-                    #Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => "PQ Control”"),
-                    #Dict{Any, Any}("fltr"=>"LC", "pwr"=>1000, "v_pu_set" => 1.0, "mode" => "Voltage Control”"),
+                    Dict{Any, Any}("fltr"=>"LC", "pwr"=>10000e3, "control_type" =>"classic", "source_type"=>"ideal", "mode" => 8,  "R1"=>1.1e-3, "L1"=>1e-3, "C"=>1e-3, "R_C"=>7e-3, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10000)
                     ],
     "load"   => Any[
-                    #Dict{Any, Any}("R"=>10, "L" => 0.16, "impedance"=>"RL")#, "pwr"=>1000)
-                    Dict{Any, Any}("R"=>R_load, "impedance"=>"R") # ->1kVA
-                    #Dict{Any, Any}("R"=>3526.058777777777777776, "L"=>23.0003863038165653084, "impedance"=>"RL") # ->1000kVA
-                    #Dict{Any, Any}("R"=>R_load, "C"=>C_load, "impedance"=>"RC")
+                    Dict{Any, Any}("impedance"=>"RLC", "R"=>100, "L"=>1e-2, "C"=>1e-2, "pf"=>0.8, "v_limit"=>10000, "i_limit"=>10000) 
                     ],
-    "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50),
     "cable" => Any[
-                    Dict{Any, Any}("len"=>1, "R"=>0.208, "L"=>0.00025, "C"=>0.4e-3),
-                    Dict{Any, Any}("len"=>1, "R"=>0.208, "L"=>0.00025, "C"=>0.4e-3),
-                    #Dict{Any, Any}("len"=>3)
-                    ]
+                    Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
+                    ],
+    "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
                 
 )
-
-===#
-#-------------------------------------------------------------------------------
-# Cables
-
-cable_list = []
-
-# Network Cable Impedances
-l = 1# length in km
-cable = Dict()
-cable["len"] = 1
-#cable["R"] = 1e-3#0.208*l # Ω, line resistance 0.722#
-#cable["L"] = 1e-4#0.00025*l # H, line inductance 0.264e-3#
-#cable["C"] = 1e-4#0.4e-3*l # 0.4e-6#
-
-#push!(cable_list, cable, cable, cable)
-
-push!(cable_list, cable)#, cable)
-
-#push!(cable_list, cable)
-
-#-------------------------------------------------------------------------------
-# Sources
-
-#= Modes:
-    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
-    2 -> "Voltage Control" - voltage source with controller dynamics
-
-    3 -> "PQ Control" - grid following controllable source/load (active and reactive Power)
-    4 -> "PV Control" - grid following controllable source (active power and voltage magnitude)
-
-    5 -> "Droop Control" - simple grid forming with power balancing (i.e. load partitioning)
-    6 -> "Full-Synchronverter" - droop control on real and imaginary powers
-    7 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
-=#
-
-source = Dict()
-
-source_list = []
-
-source["pwr"] = 10000e3 #VA
-source["vdc"] = 800 #V
-source["fltr"] = "LC"
-source["p_set"] = 150e3 #Watt
-source["q_set"] = 10e3 #VAr
-source["v_pu_set"] = 1.0 #p.u.
-source["v_δ_set"] = 0 # degrees
-source["mode"] = 1
-source["control_type"] = "classic"
-source["v_rip"] = 0.01537
-source["i_rip"] = 0.15
-source["τv"] = 0.002
-source["τf"] = 0.002
-source["std_asy"] = 50 # asymptotic standard deviation
-#source["κ"] = 3 # mean reversion parameter
-source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
-source["γ"] = 0 # asymptotoic mean
-source["X₀"] = 0 # initial value
-source["Δt"] = ts
-#source["L"] = 70e-6
-#source["C"] = 250e-6
-#source["R_1"] = 1.1e-3
-
-
-#= source["L1"] = 0.002
-source["R1"] = 0.04
-source["L2"] = 0.002
-source["R2"] = 0.05
-source["R_C"] = 0.09
-source["C"] = 0.003 =#
-
-push!(source_list, source)
-
-source = Dict()
-
-source["pwr"] = 10000e3
-source["vdc"] = 800
-source["fltr"] = "LC"
-source["p_set"] = 50e3
-source["q_set"] = 10e3
-source["v_pu_set"] = 1
-source["v_δ_set"] = 0 # degrees
-source["mode"] = 8
-source["control_type"] = "classic"
-source["v_rip"] = 0.01537
-source["i_rip"] = 0.15
-source["τv"] = 0.002
-source["τf"] = 0.002
-source["std_asy"] = 50 # asymptotic standard deviation
-source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion parameter
-source["γ"] = 0 # asymptotoic mean
-source["X₀"] = 0 # initial values
-source["Δt"] = 4
-#source["L"] = 70e-6
-#source["C"] = 250e-6
-#source["R_1"] = 1.1e-3
-
-#= source["L1"] = 1e-3
-source["R1"] = 0.05 =#
-
-#push!(source_list, source)
-
-#= source = Dict()
-
-source["pwr"] = 200e3
-source["vdc"] = 800
-source["fltr"] = "LC"
-source["i_rip"] = 0.15
-source["v_rip"] = 0.01537
-
-push!(source_list, source) =#
-
-#-------------------------------------------------------------------------------
-# Loads
-
-load_list = []
-load = Dict()
-
-R1_load, L_load, _, _ = Parallel_Load_Impedance(1e3, 0.6, 230)
-#R2_load, C_load, _, _ = Parallel_Load_Impedance(150e3, -0.8, 230)
-
-load["impedance"] = "RL"
-load["R"] = R1_load# + R2_load # 
-load["L"] = L_load
-#load["C"] = 1e-2#C_load"
-#load["pf"] = 0.8  # TODO: define in NC based on load
-load["v_limit"] = 1000
-
-push!(load_list, load)
-
-#-------------------------------------------------------------------------------
-# Amalgamation
-
-parameters = Dict()
-
-parameters["source"] = source_list
-parameters["cable"] = cable_list
-parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end"=>0.0)
-
 
 
 env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
@@ -315,9 +164,9 @@ agentname = "agent"
                 "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
                 "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
                 "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
-plt_state_ids = []               
+plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a"]               
 plt_action_ids = ["source1_u_a"]#"source1_u_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1],
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [],
 collect_cables = [], collect_vrms_ids = [1], collect_irms_ids = [], collect_pq_ids = [], collect_vdq_ids = [], collect_idq_ids = [],
 save_best_NNA = false, collect_reference = false, plot_rewards = false)
 
@@ -339,8 +188,8 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 
 for eps in 1:num_eps
 
-    plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = plt_action_ids, episode = eps, 
-    pq_to_plot = [], vrms_to_plot = [1], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+    plot_hook_results(; hook = hook, states_to_plot = plt_state_ids, actions_to_plot = plt_action_ids, episode = eps, 
+    pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
 end
 
 #===

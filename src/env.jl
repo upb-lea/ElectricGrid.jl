@@ -400,10 +400,9 @@ function (env::SimEnv)(action)
     if env.done
         if any(abs.(env.x./env.norm_array) .> 1)
             states_exceeded = findall(env.x./env.norm_array.>1)
-            println("debug")
             #println("The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort")
             @warn "The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort"
-            @warn "Corresponding limit(s): $(env.norm_array[states_exceeded])"
+            @warn "Corresponding limit(s): $(env.norm_array[states_exceeded]), corresponding index: $(states_exceeded)"
         end
     end
 
