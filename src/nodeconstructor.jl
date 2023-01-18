@@ -82,7 +82,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     if parameters === nothing || isa(parameters, Dict) 
 
-        parameters = check_parameters(parameters, num_sources, num_loads, num_connections)  # Checks if all entries are given, if not, fills up with random values
+        parameters = check_parameters(parameters, num_sources, num_loads, num_connections, CM)  # Checks if all entries are given, if not, fills up with random values
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
@@ -150,7 +150,7 @@ function get_loads_distr(num)
     return num_loads_R, num_loads_C, num_loads_L, num_loads_RL, num_loads_RC, num_loads_LC, num_loads_RLC
 end
 
-function check_parameters(parameters, num_sources, num_loads, num_connections)
+function check_parameters(parameters, num_sources, num_loads, num_connections, CM)
 
     # Variable generation of the parameter dicts
 
