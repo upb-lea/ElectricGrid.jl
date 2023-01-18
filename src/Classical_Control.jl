@@ -59,6 +59,7 @@ mutable struct Classical_Controls
     N::Int64
     steps::Int64
     action_delay::Int64
+    ramp_end::Float64
 
     V_cable_loc::Matrix{Int64} # the position in the state vector where the POC Voltage is measured
     V_cap_loc::Matrix{Int64}
@@ -200,7 +201,7 @@ mutable struct Classical_Controls
         debug::Vector{Float64}, Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64, phases::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
-        ts::Float64, N::Int64, steps::Int64, action_delay::Int64,
+        ts::Float64, N::Int64, steps::Int64, action_delay::Int64, ramp_end::Float64,
         V_cable_loc::Matrix{Int64}, V_cap_loc::Matrix{Int64}, 
         I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
         Action_loc::Vector{Vector{Int64}},
@@ -244,7 +245,7 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay,
+        ts, N, steps, action_delay, ramp_end,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
         Action_loc,
@@ -325,6 +326,7 @@ mutable struct Classical_Controls
         steps = 0
         fsys = 50.0
         θsys = 0.0
+        ramp_end = 2/fsys
 
         T_eval = 1 #number of periods to average over (for rms calcs)
         N = convert(Int64, round(T_eval/(fsys*ts))) + 1
@@ -587,7 +589,7 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay,
+        ts, N, steps, action_delay, ramp_end,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
         Action_loc,
@@ -796,7 +798,7 @@ function Classical_Control(Animo, env, name = nothing)
     Source = Animo.Source
     Source_Interface(env, Source, name)
 
-    ramp_end = 0#2/Source.fsys
+    ramp_end = Source.ramp_end
 
     Threads.@threads for s in 1:Source.num_sources
 
@@ -2077,6 +2079,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
     e = 1
 
     Source.fsys = env.nc.parameters["grid"]["f_grid"]
+    Source.ramp_end = env.nc.parameters["grid"]["ramp_end"]
     Source.Δfmax = env.nc.parameters["grid"]["Δfmax"]
     Source.ΔEmax = env.nc.parameters["grid"]["ΔEmax"]
 
