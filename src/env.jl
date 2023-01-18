@@ -396,6 +396,17 @@ function (env::SimEnv)(action)
 
     env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
 
+    # TODO define info on verbose
+    if env.done
+        if any(abs.(env.x./env.norm_array) .> 1)
+            states_exceeded = findall(env.x./env.norm_array.>1)
+            println("debug")
+            #println("The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort")
+            @warn "The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort"
+            @warn "Corresponding limit(s): $(env.norm_array[states_exceeded])"
+        end
+    end
+
     # calcultaing the inductor voltages and capacitor currents
 
     env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action)) ) .* (env.state_parameters)

@@ -1,6 +1,22 @@
-using Dare
-using ReinforcementLearning
+#using Dare
+#using ReinforcementLearning
 #using PlotlyJS
+
+using DrWatson
+@quickactivate "dare"
+
+using PlotlyJS
+using ReinforcementLearning
+
+include(srcdir("nodeconstructor.jl"))
+include(srcdir("env.jl"))
+include(srcdir("agent_ddpg.jl"))
+include(srcdir("data_hook.jl"))
+include(srcdir("Classical_Control.jl"))
+include(srcdir("Power_System_Theory.jl"))
+include(srcdir("MultiAgentGridController.jl"))
+
+
 function reference(t)
     
     u = [sqrt(2)*30 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
@@ -78,10 +94,11 @@ t = 0:ts:t_final # time
 fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
 
 
-CM = [ 0. 0. 1.
+#=CM = [ 0. 0. 1.
         0. 0. 2.
-        -1. -2. 0.]
-
+        -1. -2. 0.] =#
+ CM = [0. 1.
+   -1. 0.] 
 #-------------------------------------------------------------------------------
 #= Modes:
     1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
@@ -132,13 +149,13 @@ cable_list = []
 l = 1# length in km
 cable = Dict()
 cable["len"] = 1
-#cable["R"] = 0.208*l # Ω, line resistance 0.722#
-#cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
-#cable["C"] = 0.4e-3*l # 0.4e-6#
+#cable["R"] = 1e-3#0.208*l # Ω, line resistance 0.722#
+#cable["L"] = 1e-4#0.00025*l # H, line inductance 0.264e-3#
+#cable["C"] = 1e-4#0.4e-3*l # 0.4e-6#
 
 #push!(cable_list, cable, cable, cable)
 
-push!(cable_list, cable, cable)
+push!(cable_list, cable)#, cable)
 
 #push!(cable_list, cable)
 
@@ -180,6 +197,10 @@ source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion, volatility par
 source["γ"] = 0 # asymptotoic mean
 source["X₀"] = 0 # initial value
 source["Δt"] = ts
+#source["L"] = 70e-6
+#source["C"] = 250e-6
+#source["R_1"] = 1.1e-3
+
 
 #= source["L1"] = 0.002
 source["R1"] = 0.04
@@ -197,9 +218,9 @@ source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
 source["q_set"] = 10e3
-source["v_pu_set"] = 1.0
+source["v_pu_set"] = 1
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 1
+source["mode"] = 8
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
@@ -210,11 +231,14 @@ source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion parameter
 source["γ"] = 0 # asymptotoic mean
 source["X₀"] = 0 # initial values
 source["Δt"] = 4
+#source["L"] = 70e-6
+#source["C"] = 250e-6
+#source["R_1"] = 1.1e-3
 
 #= source["L1"] = 1e-3
 source["R1"] = 0.05 =#
 
-push!(source_list, source)
+#push!(source_list, source)
 
 #= source = Dict()
 
@@ -235,10 +259,12 @@ load = Dict()
 R1_load, L_load, _, _ = Parallel_Load_Impedance(1e3, 0.6, 230)
 #R2_load, C_load, _, _ = Parallel_Load_Impedance(150e3, -0.8, 230)
 
-load["impedance"] = "R"
+load["impedance"] = "RL"
 load["R"] = R1_load# + R2_load # 
 load["L"] = L_load
-#load["C"] = C_load
+#load["C"] = 1e-2#C_load"
+#load["pf"] = 0.8  # TODO: define in NC based on load
+load["v_limit"] = 1000
 
 push!(load_list, load)
 
@@ -250,11 +276,11 @@ parameters = Dict()
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
+parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end"=>0.0)
 
 
 
-env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
+env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
 
 state_ids = get_state_ids(env.nc)
 action_ids = get_action_ids(env.nc)
@@ -290,9 +316,9 @@ agentname = "agent"
                 "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
                 "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
 plt_state_ids = []               
-plt_action_ids = ["source1_u_a", "source2_u_a"]#"source1_u_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
-collect_cables = [], collect_vrms_ids = [1 2], collect_irms_ids = [], collect_pq_ids = [], collect_vdq_ids = [], collect_idq_ids = [],
+plt_action_ids = ["source1_u_a"]#"source1_u_a", "u_v1_b", "u_v1_c"]
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1],
+collect_cables = [], collect_vrms_ids = [1], collect_irms_ids = [], collect_pq_ids = [], collect_vdq_ids = [], collect_idq_ids = [],
 save_best_NNA = false, collect_reference = false, plot_rewards = false)
 
 #_______________________________________________________________________________
@@ -314,7 +340,7 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 for eps in 1:num_eps
 
     plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = plt_action_ids, episode = eps, 
-    pq_to_plot = [], vrms_to_plot = [1 2], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+    pq_to_plot = [], vrms_to_plot = [1], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
 end
 
 #===
