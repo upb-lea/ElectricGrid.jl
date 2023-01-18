@@ -243,15 +243,15 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
             
             if !haskey(source, "vdc")
-                source["vdc"] = rand(range(start=690,step=10,stop=800))
+                source["vdc"] = 800#rand(range(start=690,step=10,stop=800)) # if randomized then the classic controllers go unstable - maybe range is too wide
             end
 
             if !haskey(source, "i_rip")
-                source["i_rip"] = rand(Uniform(0.1, 0.15))
+                source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15)) # no reason to randomize
             end
                 
             if !haskey(source, "v_rip")                    
-                source["v_rip"] = rand(Uniform(0.014, 0.016))
+                source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016)) # no reason to randomize
             end
         
             #Inductor design
@@ -457,9 +457,11 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             if !haskey(source, "pf") # power factor
 
+                default_pf = 0.8
+
                 if !haskey(source, "p_set") && !haskey(source, "q_set")
 
-                    source["pf"] = 0.8 # power factor
+                    source["pf"] = default_pf # power factor
 
                 elseif haskey(source, "q_set") && !haskey(source, "p_set")
 
@@ -473,7 +475,12 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
 
                     s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)
-                    source["pf"] = source["p_set"]/s_set
+
+                    if s_set == 0
+                        source["pf"] = default_pf
+                    else
+                        source["pf"] = source["p_set"]/s_set
+                    end
                 end
             end
 
@@ -513,7 +520,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                     source["std_asy"] = 0.0
                 elseif !haskey(source, "κ")
 
-                    source["std_asy"] = source["γ"]/10
+                    source["std_asy"] = source["pwr"]/2
                 else
 
                     source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
@@ -1052,7 +1059,7 @@ function _sample_fltr_LCL(grid_properties)
     source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = "LCL"
-    
+    #TODO: why are these things randomized again?? - maybe I'm not following the code, but surely these have been randomized if the user did not define them
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
     source["vdc"] = rand(range(start=690,step=10,stop=800))
     source["i_rip"] = rand(Uniform(0.1, 0.15))

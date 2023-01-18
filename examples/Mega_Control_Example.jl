@@ -83,7 +83,7 @@ print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 0.4 #time in seconds, total simulation run time
+t_final = 1.0 #time in seconds, total simulation run time
 
 ts = Timestep*1e-6
 t = 0:ts:t_final # time
@@ -146,59 +146,53 @@ source = Dict()
 source_list = []
 
 source["pwr"] = 200e3 #VA
-source["vdc"] = 800 #V
 source["fltr"] = "LCL"
-source["p_set"] = 150e3 #Watt
+source["p_set"] = 50e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
 source["mode"] = 7
 source["control_type"] = "classic"
-source["v_rip"] = 0.01537
-source["i_rip"] = 0.15
-source["τv"] = 0.002
-source["τf"] = 0.002
-source["std_asy"] = 50 # asymptotic standard deviation
-#source["κ"] = 3 # mean reversion parameter
-source["σ"] = 500.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
-source["γ"] = 100 # asymptotoic mean
-source["X₀"] = 50 # initial value
-source["Δt"] = 2 # time step
+source["std_asy"] = 50e3 # asymptotic standard deviation
+source["σ"] = 0.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+source["Δt"] = 1 # time step
 source["k"] = 2 # interpolation degree
-
-#= source["L1"] = 0.002
-source["R1"] = 0.04
-source["L2"] = 0.002
-source["R2"] = 0.05
-source["R_C"] = 0.09
-source["C"] = 0.003 =#
 
 push!(source_list, source)
 
 source = Dict()
 
 source["pwr"] = 100e3
-source["vdc"] = 800
 source["fltr"] = "LC"
-source["p_set"] = 50e3
-source["q_set"] = 25e3
+source["p_set"] = 0.#50e3
+source["q_set"] = 0.#25e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
 source["mode"] = 3
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
+source["σ"] = 25e3 # Brownian motion scale i.e. ∝ diffusion parameter
+source["std_asy"] = 50e3 # asymptotic standard deviation
+source["Δt"] = 1 # time step
+source["k"] = 0 # interpolation degree
+
+#= 
+source["v_rip"] = 0.01537
+source["i_rip"] = 0.15
+source["vdc"] = 800 #V
 source["τv"] = 0.002
 source["τf"] = 0.002
-source["std_asy"] = 50e3 # asymptotic standard deviation
-source["σ"] = 25e3 # Brownian motion scale i.e. ∝ diffusion parameter
-#source["γ"] = 0 # asymptotoic mean
-#source["X₀"] = 25 # initial values
-source["Δt"] = 1
-source["k"] = 2 # interpolation degree
-
-#= source["L1"] = 1e-3
-source["R1"] = 0.05 =#
+source["pf"] = 0.8 # power factor
+source["κ"] = 3 # mean reversion parameter
+source["γ"] = 0 # asymptotoic mean
+source["X₀"] = 25 # initial values
+source["L1"] = 0.002
+source["R1"] = 0.04
+source["L2"] = 0.002
+source["R2"] = 0.05
+source["R_C"] = 0.09
+source["C"] = 0.003 =#
 
 push!(source_list, source)
 
@@ -218,7 +212,7 @@ push!(source_list, source) =#
 load_list = []
 load = Dict()
 
-R1_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.6, 230)
+R1_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.6, 230)
 #R2_load, C_load, _, _ = Parallel_Load_Impedance(150e3, -0.8, 230)
 
 load["impedance"] = "RL"
@@ -290,7 +284,7 @@ save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_
 
 #_______________________________________________________________________________
 # Starting time simulation
-num_eps = 1
+num_eps = 4
 RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 
 #_______________________________________________________________________________
@@ -307,7 +301,7 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 for eps in 1:num_eps
 
     plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = eps, 
-    pq_to_plot = [1 2], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+    pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
 end
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

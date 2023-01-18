@@ -819,7 +819,7 @@ function Classical_Control(Animo, env, name = nothing)
 
     Ornstein_Uhlenbeck(Source, t_start = ramp_end + 2/Source.fsys)
 
-    Threads.@threads for s in 1:Source.num_sources
+    for s in 1:Source.num_sources
 
         if Source.Source_Modes[s] == "Swing"
 
@@ -872,7 +872,7 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
         state = RLBase.state(env, name)
     end
 
-    Threads.@threads for ns in 1:Source.num_sources
+    for ns in 1:Source.num_sources
 
         Source.Vd_abc_new[ns, :, 1:end-1] = Source.Vd_abc_new[ns, :, 2:end] 
 
