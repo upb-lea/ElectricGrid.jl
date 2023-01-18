@@ -160,10 +160,11 @@ source["τv"] = 0.002
 source["τf"] = 0.002
 source["std_asy"] = 50 # asymptotic standard deviation
 #source["κ"] = 3 # mean reversion parameter
-source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
-source["γ"] = 0 # asymptotoic mean
-source["X₀"] = 0 # initial value
-source["Δt"] = ts # time step
+source["σ"] = 500.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+source["γ"] = 100 # asymptotoic mean
+source["X₀"] = 50 # initial value
+source["Δt"] = 2 # time step
+source["k"] = 2 # interpolation degree
 
 #= source["L1"] = 0.002
 source["R1"] = 0.04
@@ -180,7 +181,7 @@ source["pwr"] = 100e3
 source["vdc"] = 800
 source["fltr"] = "LC"
 source["p_set"] = 50e3
-source["q_set"] = 10e3
+source["q_set"] = 25e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
 source["mode"] = 3
@@ -189,11 +190,12 @@ source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
 source["τv"] = 0.002
 source["τf"] = 0.002
-source["std_asy"] = 50 # asymptotic standard deviation
-source["σ"] = 1000.0 # Brownian motion scale i.e. ∝ diffusion parameter
-source["γ"] = 0 # asymptotoic mean
-source["X₀"] = 0 # initial values
-source["Δt"] = 4
+source["std_asy"] = 50e3 # asymptotic standard deviation
+source["σ"] = 25e3 # Brownian motion scale i.e. ∝ diffusion parameter
+#source["γ"] = 0 # asymptotoic mean
+#source["X₀"] = 25 # initial values
+source["Δt"] = 1
+source["k"] = 2 # interpolation degree
 
 #= source["L1"] = 1e-3
 source["R1"] = 0.05 =#
@@ -284,7 +286,7 @@ plt_state_ids = []
 plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
 collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2],
-save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [3 4])
+save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [])
 
 #_______________________________________________________________________________
 # Starting time simulation
@@ -305,7 +307,7 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 for eps in 1:num_eps
 
     plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = eps, 
-    pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+    pq_to_plot = [1 2], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
 end
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

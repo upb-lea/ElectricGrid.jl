@@ -166,7 +166,7 @@ plot_θ_ω = plot(df_θ_ω, x = :θ, y = :ω,
                     yaxis_title = "ω [rad/s]",)
                 )
 
-#display(plot_θ_ω)    
+display(plot_θ_ω)    
 
 # (x, y) positions from machine perspective
 nans = Array{Float64, 1}(undef, N - 2*nfuture - 1)
@@ -191,7 +191,7 @@ plot_x_y = plot(df_x_y_t,
                     size = 7),
                 mode = "markers")
 
-#display(plot_x_y)
+display(plot_x_y)
 
 trace_x = scatter(df_x_y_t, x = :t, y = :y, name = "y")
 trace_y = scatter(df_x_y_t, x = :t, y = :x, name = "x")
@@ -209,7 +209,7 @@ plot_x_t = plot([trace_x, trace_y, trace_x̂, trace_ŷ],
                     yaxis_title = "y,x [m]",
                     ),  
                 )
-#display(plot_x_t)
+display(plot_x_t)
 
 df_Ψ₁_Ψ₂ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3])
 plot_Ψ₁_Ψ₂ = plot(df_Ψ₁_Ψ₂, x = :Ψ₁, y = :Ψ₂,

@@ -501,7 +501,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 source["control_type"] = "classic"
             end
 
-            if !haskey(source, "γ") # asymptotoic mean
+            if !haskey(source, "γ") # asymptotic mean
                 source["γ"] = source["p_set"]
             end
 
@@ -541,18 +541,29 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             if !haskey(source, "Δt") # time step
 
-                steps = 4 # ... steps in a cycle
-                source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+                steps = 2 # ... cycles for 1 step
+                source["Δt"] = round(steps*parameters["grid"]["fs"]/(parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
 
             elseif haskey(source, "Δt")
 
                 if typeof(source["Δt"]) == Int
 
-                    steps = source["Δt"] # ... steps in a cycle
-                    source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+                    steps = source["Δt"] # ... cycles for 1 step
+                    source["Δt"] = round(steps*parameters["grid"]["fs"]/(parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
                 else
                     source["Δt"] = round(source["Δt"]*(parameters["grid"]["fs"]))/parameters["grid"]["fs"]
                 end
+            end
+
+            if !haskey(source, "k") # degree of polynomial
+
+                if source["σ"] == 0
+                    source["k"] = 0
+                else
+                    source["k"] = 2
+                end
+            else
+                source["k"] = round(source["k"])
             end
         end
 
