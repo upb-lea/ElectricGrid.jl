@@ -59,6 +59,7 @@ mutable struct Classical_Controls
     N::Int64
     steps::Int64
     action_delay::Int64
+    ramp_end::Float64
 
     V_cable_loc::Matrix{Int64} # the position in the state vector where the POC Voltage is measured
     V_cap_loc::Matrix{Int64}
@@ -184,8 +185,10 @@ mutable struct Classical_Controls
     κ::Vector{Float64} # mean reversion parameter
     σ::Vector{Float64} # Brownian motion scale (standard deviation) - sqrt(diffusion) 
     γ::Vector{Float64} # asymptotoic mean
+    k::Vector{Float64} # interpolation degree
+    c_diff::Vector{Vector{Float64}} # interpolation degree
 
-    X::Vector{Float64}
+    X::Vector{Vector{Float64}}
     X₀::Vector{Float64}
     rol::Vector{Int64}
     cnt::Vector{Int64}
@@ -200,7 +203,7 @@ mutable struct Classical_Controls
         debug::Vector{Float64}, Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64, phases::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
-        ts::Float64, N::Int64, steps::Int64, action_delay::Int64,
+        ts::Float64, N::Int64, steps::Int64, action_delay::Int64, ramp_end::Float64,
         V_cable_loc::Matrix{Int64}, V_cap_loc::Matrix{Int64}, 
         I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
         Action_loc::Vector{Vector{Int64}},
@@ -231,8 +234,8 @@ mutable struct Classical_Controls
         Ko_DQ::Array{Float64}, xp_DQ::Matrix{Float64},
         Ad_0::Array{Float64}, Bd_0::Array{Float64}, Cd_0::Matrix{Float64}, Dd_0::Matrix{Float64}, 
         Ko_0::Matrix{Float64}, xp_0::Matrix{Float64},
-        κ::Vector{Float64}, σ::Vector{Float64}, γ::Vector{Float64}, 
-        X::Vector{Float64}, X₀::Vector{Float64}, rol::Vector{Int64}, cnt::Vector{Int64})
+        κ::Vector{Float64}, σ::Vector{Float64}, γ::Vector{Float64}, k::Vector{Float64}, c_diff::Vector{Vector{Float64}},
+        X::Vector{Vector{Float64}}, X₀::Vector{Float64}, rol::Vector{Int64}, cnt::Vector{Int64})
 
         new(Vdc, Vrms,
         S, P, Q, pf,
@@ -244,7 +247,7 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay,
+        ts, N, steps, action_delay, ramp_end,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
         Action_loc,
@@ -275,7 +278,8 @@ mutable struct Classical_Controls
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
         Ko_0, xp_0,
-        κ, σ, γ, X, X₀, rol, cnt)
+        κ, σ, γ, k, c_diff,
+        X, X₀, rol, cnt)
     end
 
     function Classical_Controls(f_cntr, num_sources; phases = 3, action_delay = 1)
@@ -325,6 +329,7 @@ mutable struct Classical_Controls
         steps = 0
         fsys = 50.0
         θsys = 0.0
+        ramp_end = 2/fsys
 
         T_eval = 1 #number of periods to average over (for rms calcs)
         N = convert(Int64, round(T_eval/(fsys*ts))) + 1
@@ -362,7 +367,7 @@ mutable struct Classical_Controls
         "Droop Control" => 5, 
         "Full-Synchronverter" => 6, 
         "Semi-Synchronverter" => 7,
-        "Not Used 1" => 8,
+        "Step" => 8,
         "Not Used 2" => 9,
         "Not Used 3" => 10)
 
@@ -570,8 +575,10 @@ mutable struct Classical_Controls
         κ = Array{Float64, 1}(undef, num_sources) # mean reversion parameter
         σ = Array{Float64, 1}(undef, num_sources) # Brownian motion scale (standard deviation) - sqrt(diffusion) 
         γ = Array{Float64, 1}(undef, num_sources) # asymptotoic mean
+        k = Array{Float64, 1}(undef, num_sources) # interpolation degree
+        c_diff = Vector{Vector{Float64}}(undef, num_sources) # polynomial coefficients
 
-        X = Array{Float64, 1}(undef, num_sources)
+        X = Vector{Vector{Float64}}(undef, num_sources)
         X₀ = Array{Float64, 1}(undef, num_sources)
         rol = Array{Int64, 1}(undef, num_sources)
         cnt = Array{Int64, 1}(undef, num_sources)
@@ -587,7 +594,7 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay,
+        ts, N, steps, action_delay, ramp_end,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
         Action_loc,
@@ -618,7 +625,8 @@ mutable struct Classical_Controls
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
         Ko_0, xp_0,
-        κ, σ, γ, X, X₀, rol, cnt)
+        κ, σ, γ, k, c_diff,
+        X, X₀, rol, cnt)
     end
 end
 
@@ -777,14 +785,25 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source.xp_DQ = fill!(Source.xp_DQ, 0)
     Source.xp_0= fill!(Source.xp_0, 0)
 
-    # fill these with initial conditions
     Source.V_filt_poc = fill!(Source.V_filt_poc, 0)
     Source.V_filt_cap = fill!(Source.V_filt_cap, 0)
 
     Source.I_filt_poc = fill!(Source.I_filt_poc, 0)
     Source.I_filt_inv = fill!(Source.I_filt_inv, 0)
 
-    Source.X = Source.X₀ # initial conditions for stochastic process
+    for ns in 1:num_sources # initial conditions for stochastic process
+
+        Source.X[ns] = fill!(Source.X[ns], Source.X₀[ns])
+
+        n = convert(Int, round(Source.k[ns] + 1))
+        if n > 0
+
+            Δt = Source.rol[ns]*Source.ts
+            t_data = Δt*collect(0:1:n)
+            coef = Divided_Diff(t_data, Source.X[ns])
+            Source.c_diff[ns] = cat(coef, dims = 1)
+        end
+    end
 
     Source.debug = fill!(Source.debug, 0)
 
@@ -796,9 +815,11 @@ function Classical_Control(Animo, env, name = nothing)
     Source = Animo.Source
     Source_Interface(env, Source, name)
 
-    ramp_end = 0#2/Source.fsys
+    ramp_end = Source.ramp_end
 
-    Threads.@threads for s in 1:Source.num_sources
+    Ornstein_Uhlenbeck(Source, t_start = ramp_end + 2/Source.fsys)
+
+    for s in 1:Source.num_sources
 
         if Source.Source_Modes[s] == "Swing"
 
@@ -821,9 +842,9 @@ function Classical_Control(Animo, env, name = nothing)
         elseif Source.Source_Modes[s] == "Semi-Synchronverter"
 
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Not Used 1"
+        elseif Source.Source_Modes[s] == "Step"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
+            Step_Mode(Source, s, t_end = ramp_end)
         elseif Source.Source_Modes[s] == "Not Used 2"
 
             Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
@@ -835,8 +856,6 @@ function Classical_Control(Animo, env, name = nothing)
 
     Action = Env_Interface(Source)
     Measurements(Source)
-
-    Ornstein_Uhlenbeck(Source, t_start = ramp_end)
 
     return Action
 end
@@ -853,7 +872,7 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
         state = RLBase.state(env, name)
     end
 
-    Threads.@threads for ns in 1:Source.num_sources
+    for ns in 1:Source.num_sources
 
         Source.Vd_abc_new[ns, :, 1:end-1] = Source.Vd_abc_new[ns, :, 2:end] 
 
@@ -939,6 +958,21 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
     #Phase_Locked_Loop_3ph(Source, num_source)
 
     Source.fpll[num_source, :, end] = Source.fsys*[1 1 1]
+    Source.θpll[num_source, :, end] = θph
+  
+    return nothing
+end
+
+function Step_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
+    
+    θph = [0; 0; 0]
+    
+    Vrms = Ramp(Source.V_pu_set[num_source, 1]*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
+    Source.V_ref[num_source, :] = (Vrms)*cos.(θph)
+    
+    Source.Vd_abc_new[num_source, :, end] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
+
+    Source.fpll[num_source, :, end] = Source.fsys*[0 0 0]
     Source.θpll[num_source, :, end] = θph
   
     return nothing
@@ -1043,6 +1077,10 @@ end
 function Synchronverter_Mode(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]], t_end = 0.04, mode = 2)
 
     pu = Source.V_pu_set[num_source, 1]
+
+    if norm(pq0_ref) > Source.S[num_source]
+        pq0_ref = pq0_ref.*(Source.S[num_source]/norm(pq0_ref))
+    end
 
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
 
@@ -1767,13 +1805,52 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         
         Source.I_filt_poc[ns, :, end] = Inv_DQ0_transform(I_poc_DQ0, θ + 0.5*Source.ts*ω)
         Source.V_filt_cap[ns, :, end] = Inv_DQ0_transform(V_cap_DQ0, θ + 0.5*Source.ts*ω)
-
-        Source.debug[1] = Source.I_filt_poc[ns, 1, end]
-        Source.debug[2] = Source.V_filt_cap[ns, 1, end]
        
     end
 
     return nothing
+end
+
+function Newton_Interpolation(coef, x_data, x)
+
+    #= Theory:
+        When constructing interpolating polynomials, there is a tradeoff between 
+        having a better fit and having a smooth well-behaved fitting function. The 
+        more data points that are used in the interpolation, the higher the degree 
+        of the resulting polynomial, and therefore the greater oscillation it will 
+        exhibit between the data points. Therefore, a high-degree interpolation may be 
+        a poor predictor of the function between points, although the accuracy at the 
+        data points will be "perfect". 
+    =#
+
+    n = length(x_data)
+    p = coef[n]
+
+    for k in 1:n
+        p = coef[n - k + 1] + (x - x_data[n - k + 1])*p
+    end
+
+    return p
+end
+
+function Divided_Diff(x, y)
+
+    n = length(y)
+
+    coef = zeros(n, n)
+
+    coef[:, 1] .= y
+
+    for j in 2:n
+        for i in 1:(n - j + 1)           
+            coef[i, j] = (coef[i + 1, j - 1] - coef[i, j - 1]) / (x[i + j - 1] - x[i])
+        end
+    end
+
+    #= ind = findall(x->x==0, vec(coef))
+    coef = deleteat!(vec(coef), ind) =#
+
+    return vec(coef[1,:])
 end
 
 #-------------------------------------------------------------------------------
@@ -1782,7 +1859,7 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls; t_start = 0.04)
 
     if Source.steps*Source.ts >= t_start
 
-        Threads.@threads for ns in 1:Source.num_sources
+        for ns in 1:Source.num_sources
 
             κ = Source.κ[ns] # mean reversion parameter
             γ = Source.γ[ns] # asymptotoic mean
@@ -1791,25 +1868,55 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls; t_start = 0.04)
             if σ != 0
 
                 Source.cnt[ns] += 1
+                Δt = Source.rol[ns]*Source.ts
                 
                 if Source.cnt[ns] == Source.rol[ns]
 
                     Source.cnt[ns] = 0
 
-                    Δt = Source.rol[ns]*Source.ts
+                    if Source.k[ns] > 0
+                        Source.X[ns][1:end-1] = Source.X[ns][2:end] 
+                    end
 
                     # Euler Maruyama
-                    #Source.X[ns] = Source.X[ns] + κ*(γ .- Source.X[ns])*Δt + σ*sqrt(Δt)*randn()
+                    #Source.X[ns][end] = Source.X[ns][end] + κ*(γ .- Source.X[ns][end])*Δt + σ*sqrt(Δt)*randn()
                     #std_asy = sqrt(σ^2/(2*κ)) # asymptotic standard deviation
 
                     std_dt = sqrt(σ^2/(2*κ) * (1 - exp(-2*κ*Δt)))
-                    Source.X[ns] = γ .+ exp(-κ*Δt)*(Source.X[ns] .- γ) + std_dt*randn()
+                    Source.X[ns][end] = γ .+ exp(-κ*Δt)*(Source.X[ns][end] .- γ) + std_dt*randn()
 
-                    if ns == 1
-                        Source.debug[3] = Source.X[ns]
-                    else
-                        Source.debug[4] = Source.X[ns]
+                    if Source.k[ns] > 0
+                        t_data = Δt*collect(0:1:Source.k[ns])
+                        Source.c_diff[ns] = Divided_Diff(t_data, Source.X[ns])
+                    end 
+                end
+                
+                if Source.k[ns] > 0
+                    t_data = Δt*collect(0:1:Source.k[ns])
+                    Pset = Newton_Interpolation(Source.c_diff[ns], t_data, (Source.k[ns] - 1)*Δt + Source.ts*Source.cnt[ns])
+                else
+                    Pset = Source.X[ns][end]
+                end
+               
+                Sset = Pset/Source.pf[ns]
+                Source.pq0_set[ns, 1] = Pset
+                Source.pq0_set[ns, 2] = sqrt(Sset^2 - Pset^2)
+
+                if Sset > Source.S[ns]
+
+                    pq0_ref = Source.pq0_set[ns, :]
+                    pq0_ref = pq0_ref.*(Source.S[ns]/norm(pq0_ref))
+
+                    if Source.X[ns][end] > abs(Source.pq0_set[ns, 1])
+                        Source.X[ns][end] = Source.pq0_set[ns, 1]
                     end
+                end
+
+                if ns == 1   
+                    
+                    Source.debug[1] = Pset
+                else
+                    Source.debug[2] = Pset
                 end
 
             end
@@ -2062,6 +2169,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
     e = 1
 
     Source.fsys = env.nc.parameters["grid"]["f_grid"]
+    Source.ramp_end = env.nc.parameters["grid"]["ramp_end"]
     Source.Δfmax = env.nc.parameters["grid"]["Δfmax"]
     Source.ΔEmax = env.nc.parameters["grid"]["ΔEmax"]
 
@@ -2127,10 +2235,27 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         Source.κ[e] = abs(env.nc.parameters["source"][ns]["κ"]) # mean reversion parameter
         Source.σ[e] = abs(env.nc.parameters["source"][ns]["σ"]) # Brownian motion scale (standard deviation) - sqrt(diffusion) 
         Source.γ[e] = env.nc.parameters["source"][ns]["γ"] # asymptotic mean
+        Source.k[e] = env.nc.parameters["source"][ns]["k"] # interpolation degree
 
-        Source.X[e] = env.nc.parameters["source"][ns]["X₀"] # initial values
-        Source.X₀[e] = Source.X[e]
+        if Source.k[e] - 1 > env.nc.parameters["source"][ns]["Δt"]/ts
+            Source.k[e] = floor(env.nc.parameters["source"][ns]["Δt"]/ts) - 1
+        end
+
+        n = convert(Int, round(Source.k[e] + 1))
+        X₀ = env.nc.parameters["source"][ns]["X₀"]*ones(n)
+
+        Source.X[e] = cat(X₀, dims = 1)
+        Source.X₀[e] = Source.X[e][end]
+
         Source.rol[e] = convert(Int64, round(env.nc.parameters["source"][ns]["Δt"]*env.nc.parameters["grid"]["fs"]))
+
+        if n > 0
+
+            Δt = Source.rol[e]*Source.ts
+            t_data = Δt*collect(0:1:n)
+            coef = Divided_Diff(t_data, Source.X[e])
+            Source.c_diff[e] = cat(coef, dims = 1)
+        end
 
         Current_PI_LoopShaping(Source, e)
         Voltage_PI_LoopShaping(Source, e)

@@ -82,11 +82,11 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     if parameters === nothing || isa(parameters, Dict) 
 
-        parameters = check_parameters(parameters, num_sources, num_loads, num_connections)  # Checks if all entries are given, if not, fills up with random values
+        parameters = check_parameters(parameters, num_sources, num_loads, num_connections, CM)  # Checks if all entries are given, if not, fills up with random values
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 6 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
+        @assert length(keys(parameters["grid"])) == 7 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -150,7 +150,7 @@ function get_loads_distr(num)
     return num_loads_R, num_loads_C, num_loads_L, num_loads_RL, num_loads_RC, num_loads_LC, num_loads_RLC
 end
 
-function check_parameters(parameters, num_sources, num_loads, num_connections)
+function check_parameters(parameters, num_sources, num_loads, num_connections, CM)
 
     # Variable generation of the parameter dicts
 
@@ -171,6 +171,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         grid_properties["f_grid"] = 50
         grid_properties["Δfmax"] = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
         grid_properties["ΔEmax"] = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
+        grid_properties["ramp_end"] = 2/50
         parameters["grid"] = grid_properties
 
     else
@@ -191,6 +192,9 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
         end
         if !haskey(parameters["grid"], "ΔEmax")
             parameters["grid"]["ΔEmax"] = 5/100
+        end
+        if !haskey(parameters["grid"], "ramp_end")
+            parameters["grid"]["ramp_end"] = 2/parameters["grid"]["f_grid"]
         end
     end
 
@@ -239,15 +243,15 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
             end
             
             if !haskey(source, "vdc")
-                source["vdc"] = rand(range(start=690,step=10,stop=800))
+                source["vdc"] = 800#rand(range(start=690,step=10,stop=800)) # if randomized then the classic controllers go unstable - maybe range is too wide
             end
 
             if !haskey(source, "i_rip")
-                source["i_rip"] = rand(Uniform(0.1, 0.15))
+                source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15)) # no reason to randomize
             end
                 
             if !haskey(source, "v_rip")                    
-                source["v_rip"] = rand(Uniform(0.014, 0.016))
+                source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016)) # no reason to randomize
             end
         
             #Inductor design
@@ -453,9 +457,11 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             if !haskey(source, "pf") # power factor
 
+                default_pf = 0.8
+
                 if !haskey(source, "p_set") && !haskey(source, "q_set")
 
-                    source["pf"] = 0.8 # power factor
+                    source["pf"] = default_pf # power factor
 
                 elseif haskey(source, "q_set") && !haskey(source, "p_set")
 
@@ -469,7 +475,12 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
 
                     s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)
-                    source["pf"] = source["p_set"]/s_set
+
+                    if s_set == 0
+                        source["pf"] = default_pf
+                    else
+                        source["pf"] = source["p_set"]/s_set
+                    end
                 end
             end
 
@@ -497,7 +508,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                 source["control_type"] = "classic"
             end
 
-            if !haskey(source, "γ") # asymptotoic mean
+            if !haskey(source, "γ") # asymptotic mean
                 source["γ"] = source["p_set"]
             end
 
@@ -509,7 +520,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
                     source["std_asy"] = 0.0
                 elseif !haskey(source, "κ")
 
-                    source["std_asy"] = source["γ"]/10
+                    source["std_asy"] = source["pwr"]/2
                 else
 
                     source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
@@ -537,18 +548,29 @@ function check_parameters(parameters, num_sources, num_loads, num_connections)
 
             if !haskey(source, "Δt") # time step
 
-                steps = 4 # ... steps in a cycle
-                source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+                steps = 2 # ... cycles for 1 step
+                source["Δt"] = round(steps*parameters["grid"]["fs"]/(parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
 
             elseif haskey(source, "Δt")
 
                 if typeof(source["Δt"]) == Int
 
-                    steps = source["Δt"] # ... steps in a cycle
-                    source["Δt"] = round(parameters["grid"]["fs"]/(steps*parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
+                    steps = source["Δt"] # ... cycles for 1 step
+                    source["Δt"] = round(steps*parameters["grid"]["fs"]/(parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
                 else
                     source["Δt"] = round(source["Δt"]*(parameters["grid"]["fs"]))/parameters["grid"]["fs"]
                 end
+            end
+
+            if !haskey(source, "k") # degree of polynomial
+
+                if source["σ"] == 0
+                    source["k"] = 0
+                else
+                    source["k"] = 2
+                end
+            else
+                source["k"] = round(source["k"])
             end
         end
 
@@ -1037,7 +1059,7 @@ function _sample_fltr_LCL(grid_properties)
     source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = "LCL"
-    
+    #TODO: why are these things randomized again?? - maybe I'm not following the code, but surely these have been randomized if the user did not define them
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
     source["vdc"] = rand(range(start=690,step=10,stop=800))
     source["i_rip"] = rand(Uniform(0.1, 0.15))

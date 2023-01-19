@@ -74,7 +74,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
     Bd = (Ad - I) * B
-    ldiv!(qr(A), Bd)
+    ldiv!(factorize(A), Bd)
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     state_parameters = get_state_paras(nc)
 
@@ -395,6 +395,16 @@ function (env::SimEnv)(action)
     env.reward = env.reward_function(env)
 
     env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
+
+    # TODO define info on verbose
+    if env.done
+        if any(abs.(env.x./env.norm_array) .> 1)
+            states_exceeded = findall(env.x./env.norm_array.>1)
+            #println("The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort")
+            @warn "The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort"
+            @warn "Corresponding limit(s): $(env.norm_array[states_exceeded]), corresponding index: $(states_exceeded)"
+        end
+    end
 
     # calcultaing the inductor voltages and capacitor currents
 

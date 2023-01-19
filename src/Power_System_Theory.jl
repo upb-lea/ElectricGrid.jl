@@ -491,7 +491,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
     # for one Source: theta is fixed 0
 
     num_nodes = num_source + num_load
-    num_cables = maximum(CM)
+    num_cables = Int(maximum(CM))
 
     @variable(model, nodes[1 : num_nodes, ["v", "theta", "P", "Q"]])
    
@@ -655,7 +655,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
 
             if CM[i, k] != 0
 
-                cable_num = abs(CM[i, k])
+                cable_num = Int(abs(CM[i, k]))
 
                 G[i, k] = @NLexpression(model, -1*cable_conductance[cable_num])
                 B[i, k] = @NLexpression(model, -1*cable_susceptance_1[cable_num])

@@ -43,7 +43,7 @@ for i in 1:series_length
 end
 
 println("\n1. Generating gram matrices")
-Gx, Gy, index_map = series_Gxy(series, scale, npast, nfuture)
+Gx, Gy, index_map = series_Gxy([series], scale, npast, nfuture)
 
 #= println("Gx = ")
 display(Gx)
@@ -69,7 +69,7 @@ println("coords = ")
 display(coords) =#
 
 df = DataFrame(Ψ₁ = coords[:,2])
-p = plot(df, x = :Ψ₁, kind = "histogram", nbinsx = 100)
+p = plot(df, x = :Ψ₁, kind = "histogram", nbinsx = 100, histnorm = "probability density")
 
 display(p)
 
