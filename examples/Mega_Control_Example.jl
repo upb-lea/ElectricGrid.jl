@@ -147,7 +147,7 @@ source = Dict()
 source_list = []
 
 source["pwr"] = 200e3 #VA
-source["fltr"] = "LC"
+source["fltr"] = "LCL"
 source["p_set"] = 50e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
@@ -158,8 +158,6 @@ source["std_asy"] = 50e3 # asymptotic standard deviation
 source["σ"] = 0.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"] = 1 # time step
 source["k"] = 2 # interpolation degree
-source["v_rip"] = 0.01537
-source["i_rip"] = 0.15
 
 push!(source_list, source)
 
@@ -168,19 +166,17 @@ source = Dict()
 source["pwr"] = 100e3
 source["fltr"] = "LC"
 source["p_set"] = 50e3
-source["q_set"] = 0.#25e3
+source["q_set"] = 25e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
 source["mode"] = 3
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
-source["σ"] = 0#25e3 # Brownian motion scale i.e. ∝ diffusion parameter
+source["σ"] = 25e3 # Brownian motion scale i.e. ∝ diffusion parameter
 source["std_asy"] = 50e3 # asymptotic standard deviation
 source["Δt"] = 1 # time step
-source["k"] = 0 # interpolation degree
-source["v_rip"] = 0.01537
-source["i_rip"] = 0.15
+source["k"] = 1 # interpolation degree
 
 #= 
 source["v_rip"] = 0.01537
@@ -237,7 +233,7 @@ parameters = Dict()
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end" => 0.0)
+parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end" => 0.04)
 
 #setup = create_setup(parameters)
 
@@ -291,7 +287,7 @@ save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_
 
 #_______________________________________________________________________________
 # Starting time simulation
-num_eps = 4
+num_eps = 1
 RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 
 #_______________________________________________________________________________
