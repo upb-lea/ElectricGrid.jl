@@ -119,6 +119,7 @@ cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
 cable["C"] = 0.4e-3*l # 0.4e-6#
+cable["i_limit"] = 10e12
 
 #push!(cable_list, cable, cable, cable)
 
@@ -146,7 +147,7 @@ source = Dict()
 source_list = []
 
 source["pwr"] = 200e3 #VA
-source["fltr"] = "LCL"
+source["fltr"] = "LC"
 source["p_set"] = 50e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
@@ -157,6 +158,8 @@ source["std_asy"] = 50e3 # asymptotic standard deviation
 source["σ"] = 0.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"] = 1 # time step
 source["k"] = 2 # interpolation degree
+source["v_rip"] = 0.01537
+source["i_rip"] = 0.15
 
 push!(source_list, source)
 
@@ -164,7 +167,7 @@ source = Dict()
 
 source["pwr"] = 100e3
 source["fltr"] = "LC"
-source["p_set"] = 0.#50e3
+source["p_set"] = 50e3
 source["q_set"] = 0.#25e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
@@ -172,10 +175,12 @@ source["mode"] = 3
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
-source["σ"] = 25e3 # Brownian motion scale i.e. ∝ diffusion parameter
+source["σ"] = 0#25e3 # Brownian motion scale i.e. ∝ diffusion parameter
 source["std_asy"] = 50e3 # asymptotic standard deviation
 source["Δt"] = 1 # time step
 source["k"] = 0 # interpolation degree
+source["v_rip"] = 0.01537
+source["i_rip"] = 0.15
 
 #= 
 source["v_rip"] = 0.01537
@@ -218,6 +223,8 @@ R1_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.6, 230)
 load["impedance"] = "RL"
 load["R"] = R1_load# + R2_load # 
 load["L"] = L_load
+load["i_limit"] = 10e12
+load["v_limit"] = 10e12
 #load["C"] = C_load
 
 push!(load_list, load)
@@ -301,7 +308,7 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 for eps in 1:num_eps
 
     plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = eps, 
-    pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+    pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [], idq_to_plot = [])
 end
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
