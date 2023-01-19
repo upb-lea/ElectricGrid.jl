@@ -760,7 +760,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             
             load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
-            println(load["pf"])
+            #println(load["pf"])
         end
     end
 
