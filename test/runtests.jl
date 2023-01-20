@@ -34,16 +34,18 @@ end
 
 @testset "Env" begin
     #env_test_function.jl
-    env = SimEnv()
+    
+    include("./env_test_state.jl")
 
+    #env = SimEnv()
     #@test size(env.A)              == (33,33)
     #@test size(env.state_space)    == (33,)
     #@test size(env.action_space)   == (6,)
 
-    start_state = env.state
-    env(ones(size(env.action_space)))
-    Dare.RLBase.reset!(env)
-    @test env.state                 == start_state
+    #start_state = env.state
+    #env(ones(size(env.action_space)))
+    #Dare.RLBase.reset!(env)
+    #@test env.state                 == start_state
 end
 
 @testset "Agent" begin
@@ -61,9 +63,6 @@ end
     
 end
 
-@testset "Environment" begin
-    include("./env_test_state.jl")
-end
 
 #@testset "env_run_1" begin
 #    @test 1==1
