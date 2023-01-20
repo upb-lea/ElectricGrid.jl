@@ -221,7 +221,7 @@ save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_
 
 #_______________________________________________________________________________
 # Starting time simulation
-num_eps = 1
+num_eps = 4
 RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 
 #_______________________________________________________________________________
