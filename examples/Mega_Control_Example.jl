@@ -156,7 +156,7 @@ parameters = Dict()
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("phase" => 3, "v_rms" => 230, "ramp_end" => 0.04, "process_start" => 0.05)
+parameters["grid"] = Dict("phase" => 3, "v_rms" => 230, "ramp_end" => 0.04)
 
 # Define the environment
 
