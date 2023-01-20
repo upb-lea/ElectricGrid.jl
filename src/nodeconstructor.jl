@@ -474,10 +474,10 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
 
-                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)
+                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)*sign(source["p_set"]*source["q_set"])
 
                     if s_set == 0
-                        source["pf"] = default_pf
+                        source["pf"] = 1/sqrt(2)
                     else
                         source["pf"] = source["p_set"]/s_set
                     end
@@ -934,7 +934,6 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
 
     parameters
 end
-
 
 # """
 #     valid_realistic_para(para)

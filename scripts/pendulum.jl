@@ -36,8 +36,8 @@ b = 0.1 # damping value (kg/m^2-s)
 
 sampling = 5 # machine retain 1 in every so many samples
 
-history = 1 # backward trajectory [seconds]
-future = 1 # forward trajectory [seconds]
+history = 5 # backward trajectory [seconds]
+future = 5 # forward trajectory [seconds]
 
 scale = 1 #bandwidth, i.e. Kernel Scale
 
@@ -195,13 +195,13 @@ display(plot_x_y)
 
 trace_x = scatter(df_x_y_t, x = :t, y = :y, name = "y")
 trace_y = scatter(df_x_y_t, x = :t, y = :x, name = "x")
-trace_x̂ = scatter(df_x_y_t, x = :t, y = :x̂, name = "x'")
 trace_ŷ = scatter(df_x_y_t, x = :t, y = :ŷ, name = "y'")
+trace_x̂ = scatter(df_x_y_t, x = :t, y = :x̂, name = "x'")
 
 plot_x_t = plot([trace_x, trace_y, trace_x̂, trace_ŷ],
                 Layout(
                     title = attr(
-                        text = "Damped Pendulum: Cartesian Coordinates",  
+                        text = "Damped Pendulum: Evolution in Time",  
                         
                         ),
                     title_x = 0.5,
@@ -218,8 +218,8 @@ plot_Ψ₁_Ψ₂ = plot(df_Ψ₁_Ψ₂, x = :Ψ₁, y = :Ψ₂,
                         text = "Damped Pendulum: Reconstructed State Space",  
                     ),
                     title_x = 0.5,
-                    xaxis_title = "Ψ₁ [k₁*rad]",
-                    yaxis_title = "Ψ₂ [k₂*rad/s]",),
+                    xaxis_title = "Ψ₁",
+                    yaxis_title = "Ψ₂",),
                     line = attr(
                         width = 2,
                         color = "firebrick"),

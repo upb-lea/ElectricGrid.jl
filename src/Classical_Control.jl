@@ -723,7 +723,7 @@ function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing})
         Action = Classical_Control(Animo, env, name)
     end =#
 
-    Action = Classical_Control(Animo, env, name)
+    Action = Classical_Control(Animo, env)
 
     return Action    
 end
@@ -791,7 +791,7 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source.I_filt_poc = fill!(Source.I_filt_poc, 0)
     Source.I_filt_inv = fill!(Source.I_filt_inv, 0)
 
-    for ns in 1:num_sources # initial conditions for stochastic process
+    for ns in 1:Source.num_sources # initial conditions for stochastic process
 
         Source.X[ns] = fill!(Source.X[ns], Source.X₀[ns])
 
@@ -810,10 +810,10 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     return nothing
 end
 
-function Classical_Control(Animo, env, name = nothing)
+function Classical_Control(Animo, env)
     
     Source = Animo.Source
-    Source_Interface(env, Source, name)
+    Source_Interface(Animo, env, Source)
 
     ramp_end = Source.ramp_end
 
@@ -860,7 +860,7 @@ function Classical_Control(Animo, env, name = nothing)
     return Action
 end
 
-function Source_Interface(env, Source::Classical_Controls, name = nothing)
+function Source_Interface(Animo, env, Source::Classical_Controls)
 
     Source.steps = env.steps + 1
     ω = 2π*Source.fsys
@@ -868,9 +868,9 @@ function Source_Interface(env, Source::Classical_Controls, name = nothing)
 
     observer = true
 
-    if !isnothing(name)
-        state = RLBase.state(env, name)
-    end
+    state_ids = get_state_ids(env.nc)
+    state_ids_classic = Animo.state_ids
+    state = env.x[findall(x -> x in state_ids_classic, state_ids)]
 
     for ns in 1:Source.num_sources
 
@@ -1900,7 +1900,7 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls; t_start = 0.04)
                
                 Sset = Pset/Source.pf[ns]
                 Source.pq0_set[ns, 1] = Pset
-                Source.pq0_set[ns, 2] = sqrt(Sset^2 - Pset^2)
+                Source.pq0_set[ns, 2] = sqrt(Sset^2 - Pset^2)*sign(Pset*Source.pf[ns])
 
                 if Sset > Source.S[ns]
 
