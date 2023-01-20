@@ -86,7 +86,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 7 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
+        @assert length(keys(parameters["grid"])) == 8 "Expect parameters['grid'] to have the 8 entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -172,6 +172,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         grid_properties["Δfmax"] = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
         grid_properties["ΔEmax"] = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
         grid_properties["ramp_end"] = 2/50
+        grid_properties["process_start"] = 4/50
         parameters["grid"] = grid_properties
 
     else
@@ -195,6 +196,9 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         end
         if !haskey(parameters["grid"], "ramp_end")
             parameters["grid"]["ramp_end"] = 2/parameters["grid"]["f_grid"]
+        end
+        if !haskey(parameters["grid"], "process_start")
+            parameters["grid"]["process_start"] = 4/parameters["grid"]["f_grid"]
         end
     end
 
@@ -520,7 +524,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                     source["std_asy"] = 0.0
                 elseif !haskey(source, "κ")
 
-                    source["std_asy"] = source["pwr"]/2
+                    source["std_asy"] = source["pwr"]/4
                 else
 
                     source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
