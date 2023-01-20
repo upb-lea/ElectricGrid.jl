@@ -64,7 +64,7 @@ agentname = "agent"
                 "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
                 "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
                 "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
-plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a"]               
+plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
 plt_action_ids = ["source1_u_a"]#"source1_u_a", "u_v1_b", "u_v1_c"]
 hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [],
 collect_cables = [], collect_vrms_ids = [1], collect_irms_ids = [], collect_pq_ids = [], collect_vdq_ids = [], collect_idq_ids = [],

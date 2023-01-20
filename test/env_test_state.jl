@@ -5,7 +5,7 @@ using ReinforcementLearning
 
 vars = matread("./test/env_test_state_1source_1load.mat")
 
-display(vars["X_matlab"][1:10,:])
+
 
 
 @testset "env_1source_1load" begin
@@ -65,11 +65,8 @@ display(vars["X_matlab"][1:10,:])
     #_______________________________________________________________________________
     #%% Setting up data hooks
 
-    #= plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c",
-                    "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
-                    "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
-                    "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
-    plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a"]               
+
+    plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
     plt_action_ids = ["source1_u_a"]#"source1_u_a", "u_v1_b", "u_v1_c"]
     hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [],
     collect_cables = [], collect_vrms_ids = [1], collect_irms_ids = [], collect_pq_ids = [], collect_vdq_ids = [], collect_idq_ids = [],
@@ -86,8 +83,21 @@ display(vars["X_matlab"][1:10,:])
         plot_hook_results(; hook = hook, states_to_plot = plt_state_ids, actions_to_plot = plt_action_ids, episode = eps, 
         pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
     end
+    display(hook.df)
+    println(env.state_ids)
+    X_dare = [hook.df[!,"source1_i_L1_a"][2:11,:] hook.df[!, "source1_v_C_filt_a"][2:11,:] hook.df[!,"source1_v_C_cables_a"][2:11,:] hook.df[!,"cable1_i_L_a"][2:11,:] -hook.df[!,"load1_v_C_total_a"][2:11,:] -hook.df[!,"load1_i_L_a"][2:11,:]]
 
-    a = 1+1
+    # TODO: why do we have 2 zero lines in X_dare?
+    # TODO: Why is load1_i_L_a in X_dare off?
 
-    @test a==2
+    println("MATLAB:")
+    display(vars["X_matlab"][1:10,:])
+    println()
+    println("DARE:")
+    display(X_dare)
+    println()
+
+    
+
+    @test X_dare≈vars["X_matlab"][1:10,:] atol=0.1
 end
