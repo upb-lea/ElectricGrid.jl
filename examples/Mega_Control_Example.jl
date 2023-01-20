@@ -113,7 +113,7 @@ source["i_rip"] = 0.15
 source["σ"] = 50e3 # Brownian motion scale i.e. ∝ diffusion parameter
 source["std_asy"] = 50e3 # asymptotic standard deviation
 source["Δt"] = 1 # time step
-source["k"] = 1 # interpolation degree
+source["k"] = 0 # interpolation degree
 
 #= 
 source["v_rip"] = 0.01537
