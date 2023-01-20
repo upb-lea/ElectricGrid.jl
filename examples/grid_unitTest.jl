@@ -1,118 +1,18 @@
-#using Dare
-#using ReinforcementLearning
-#using PlotlyJS
+using Dare;
 
-using DrWatson
-@quickactivate "dare"
-
-using PlotlyJS
-using ReinforcementLearning
-
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
-include(srcdir("agent_ddpg.jl"))
-include(srcdir("data_hook.jl"))
-include(srcdir("Classical_Control.jl"))
-include(srcdir("Power_System_Theory.jl"))
-include(srcdir("MultiAgentGridController.jl"))
-
-
-function reference(t)
-    
-    u = [sqrt(2)*30 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
-    #u = [230, 230, 230]
-    #return vcat(u,u)  # to control 2 sources
-    return u
-end
-
-function reward(env, name = nothing)
-    r = 0.0
-    
-    if !isnothing(name)
-        if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)
-        else
-            u_l1_index = findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)
-        end
-
-        u_l1 = env.state[u_l1_index]
-        u_l2 = env.state[u_l2_index]
-        u_l3 = env.state[u_l3_index]
-
-        u = [u_l1, u_l2, u_l3]
-        refs = reference(env.t)
-
-        r = -(sum(abs.(refs/600 - u)/3))
-    end
-
-    return r
-end
-
-function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
-    if !isnothing(name)
-        state = env.state
-        if name == agentname
-            global state_ids_agent
-            global state_ids
-            state = state[findall(x -> x in state_ids_agent, state_ids)]
-            state = vcat(state, reference(env.t)/600)
-        else
-            global state_ids_classic
-            global state_ids
-            state = env.x[findall(x -> x in state_ids_classic, state_ids)]
-        end
-    elseif isnothing(env)
-        return x0
-    else
-        return env.state
-    end
-    return state
-end
-
-function RLBase.action_space(env::SimEnv, name::String)
-    if name == "agent"
-        return Space(fill(-1.0..1.0, size(action_ids_agent)))
-    else
-        return Space(fill(-1.0..1.0, size(action_ids_classic)))
-    end
-end
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
 # Parameters - Time simulation
-t_final = 0.1 #time in seconds, total simulation run time
+t_final = 0.03 #time in seconds, total simulation run time
 ts = 1e-4
 t = 0:ts:t_final # time
 
 fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
 
-
-#=CM = [ 0. 0. 1.
-        0. 0. 2.
-        -1. -2. 0.] =#
  CM = [0. 1.
    -1. 0.] 
-#-------------------------------------------------------------------------------
-#= Modes:
-    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
-    2 -> "Voltage Control" - voltage source with controller dynamics
-
-    3 -> "PQ Control" - grid following controllable source/load (active and reactive Power)
-    4 -> "PV Control" - grid following controllable source (active power and voltage magnitude)
-
-    5 -> "Droop Control" - simple grid forming with power balancing (i.e. load partitioning)
-    6 -> "Full-Synchronverter" - droop control on real and imaginary powers
-    7 -> "Semi-Synchronverter" - droop characteristic on real power, and active control on voltage
-=#
-#-------------------------------------------------------------------------------
-
-
-#R_load, L_load, _, Z = Parallel_Load_Impedance(1e3, 0.6, 230)
 
 parameters = Dict{Any, Any}(
     "source" => Any[
