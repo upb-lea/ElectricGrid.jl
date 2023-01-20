@@ -298,7 +298,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             
             if !haskey(source, "fltr")
-                source["fltr"] = rand(["L", "LC", "LCL"])
+                source["fltr"] = "LCL"#rand(["LC", "LCL"]) 
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "L"
@@ -591,7 +591,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             # Validierung ob LC vorhanden ist?
             if num_LC_defined == 0 && num_fltr_LC_undef == 0 # What is this? What if the user defined an L or LCL filter
-                @warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
+                #@warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         else
 
@@ -600,7 +600,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
         end
 
-        source_type_fixed > 0 && @warn "Wagga Wagga. Poopy-di scoop. Scoop-diddy-whoop. Whoop-di-scoop-di-poop. $source_type_fixed sourceType not defined! set to ideal! Why do I care??"
+        #source_type_fixed > 0 && @warn "Wagga Wagga. Poopy-di scoop. Scoop-diddy-whoop. Whoop-di-scoop-di-poop. $source_type_fixed sourceType not defined! set to ideal! Why do I care??"
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     
@@ -1060,9 +1060,9 @@ function _sample_fltr_LCL(grid_properties)
     source["fltr"] = "LCL"
     #TODO: why are these things randomized again?? - maybe I'm not following the code, but surely these have been randomized if the user did not define them
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = rand(Uniform(0.1, 0.15))
-    source["v_rip"] = rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
 
    #Inductor design
 
@@ -1118,9 +1118,9 @@ function _sample_fltr_LC(grid_properties)
     source["fltr"] = "LC"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = rand(Uniform(0.1, 0.15))
-    source["v_rip"] = rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
 
     #Inductor design
 
@@ -1172,9 +1172,9 @@ function _sample_fltr_L(grid_properties)
     source["fltr"] = "L"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = rand(Uniform(0.1, 0.15))
-    source["v_rip"] = rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
 
     #Inductor design
 

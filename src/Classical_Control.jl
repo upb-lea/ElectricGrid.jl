@@ -717,12 +717,6 @@ end
 
 function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing})
 
-    #= if isnothing(name)
-        Action = Classical_Control(Animo, env)
-    else
-        Action = Classical_Control(Animo, env, name)
-    end =#
-
     Action = Classical_Control(Animo, env)
 
     return Action    
@@ -819,38 +813,38 @@ function Classical_Control(Animo, env)
 
     Ornstein_Uhlenbeck(Source, t_start = ramp_end + 2/Source.fsys)
 
-    for s in 1:Source.num_sources
+    for ns in 1:Source.num_sources
 
-        if Source.Source_Modes[s] == "Swing"
+        if Source.Source_Modes[ns] == "Swing"
 
-            Swing_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Voltage Control"
+            Swing_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Voltage Control"
 
-            Voltage_Control_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "PQ Control"
+            Voltage_Control_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "PQ Control"
 
-            PQ_Control_Mode(Source, s, Source.pq0_set[s, :])
-        elseif Source.Source_Modes[s] == "PV Control"
+            PQ_Control_Mode(Source, ns, Source.pq0_set[ns, :])
+        elseif Source.Source_Modes[ns] == "PV Control"
 
-            PV_Control_Mode(Source, s, Source.pq0_set[s, :])
-        elseif Source.Source_Modes[s] == "Droop Control"
+            PV_Control_Mode(Source, ns, Source.pq0_set[ns, :])
+        elseif Source.Source_Modes[ns] == "Droop Control"
 
-            Droop_Control_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Full-Synchronverter"
+            Droop_Control_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Full-Synchronverter"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 1, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Semi-Synchronverter"
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 1, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Semi-Synchronverter"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Step"
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Step"
 
-            Step_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Not Used 2"
+            Step_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Not Used 2"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Not Used 3"
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Not Used 3"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
         end
     end
 
