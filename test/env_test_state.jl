@@ -1,10 +1,11 @@
 using Test
-
+using Dare
 using MAT
+using ReinforcementLearning
 
 vars = matread("./test/env_test_state_1source_1load.mat")
 
-display(vars["XX"])
+display(vars["X_matlab"][1:10,:])
 
 
 @testset "env_1source_1load" begin
