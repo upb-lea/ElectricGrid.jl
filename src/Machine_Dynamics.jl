@@ -141,7 +141,7 @@ function immediate_future(data, indices)
     return data[indices .+ 1, :]
 end
 
-function expectation_operator(coords, index_map, targets; func::Function = immediate_future)
+function expectation_operator(coords, index_map, targets; func::Function = immediate_future, bounds = nothing, knn_convexity = nothing)
     """
     Builds the expectation operator, mapping a state distribution expressed in the eigenbasis, into numerical values, expressed in the original series units.
 
@@ -304,6 +304,11 @@ function predict(npred, state_dist, shift_op, expect_op; return_dist = 0)
     distribution that need not correspond to any single state, so the non-convexity is not an issue for that limit 
     distribution. Making predictions with the expectation operator is still feasible, and we get the expected value 
     from the limit distribution as a result. 
+
+    If, instead, one wants a trajectory, and not the limit average, then a method is required to ensure that each 
+    predicted state remain valid as a result of applying a linear shift operator. The knn_convexity argument is an 
+    attempt to solve this issue. The API is not definitive and may change in the future. The preimage issue is a 
+    recurrent problem in machine learning and no single answer can currently solve all cases.
     
     """
     
