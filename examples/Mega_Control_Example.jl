@@ -1,5 +1,4 @@
-#= using Dare
-using ReinforcementLearning =#
+#= using Dare =#
 
 using DrWatson
 @quickactivate "dare"

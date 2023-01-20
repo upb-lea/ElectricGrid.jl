@@ -2237,7 +2237,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         Source.γ[e] = env.nc.parameters["source"][ns]["γ"] # asymptotic mean
         Source.k[e] = env.nc.parameters["source"][ns]["k"] # interpolation degree
 
-        if Source.k[e] - 1 > env.nc.parameters["source"][ns]["Δt"]/ts
+        if Source.k[e] - 1 > env.nc.parameters["source"][ns]["Δt"]/Source.ts
             Source.k[e] = floor(env.nc.parameters["source"][ns]["Δt"]/ts) - 1
         end
 
