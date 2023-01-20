@@ -868,9 +868,7 @@ function Source_Interface(Animo, env, Source::Classical_Controls)
 
     observer = true
 
-    state_ids = get_state_ids(env.nc)
-    state_ids_classic = Animo.state_ids
-    state = env.x[findall(x -> x in state_ids_classic, state_ids)]
+    state = env.x[findall(x -> x in Animo.state_ids, env.state_ids)]
 
     for ns in 1:Source.num_sources
 
@@ -1805,6 +1803,17 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         
         Source.I_filt_poc[ns, :, end] = Inv_DQ0_transform(I_poc_DQ0, θ + 0.5*Source.ts*ω)
         Source.V_filt_cap[ns, :, end] = Inv_DQ0_transform(V_cap_DQ0, θ + 0.5*Source.ts*ω)
+
+        if any(isnan.(Source.I_filt_poc[ns, :, end]))
+            Source.I_filt_poc[ns, :, end] = fill!(Source.I_filt_poc[ns, :, end], 0.0)
+            Source.xp_0[ns, 1] = 0.0
+            Source.xp_DQ[ns, 1:2] = fill!(Source.xp_DQ[ns, 1:2], 0.0)
+        end
+        if any(isnan.(Source.V_filt_cap[ns, :, end]))
+            Source.V_filt_cap[ns, :, end] = fill!(Source.V_filt_cap[ns, :, end], 0.0)
+            Source.xp_0[ns, 2] = 0.0
+            Source.xp_DQ[ns, 3:4] = fill!(Source.xp_DQ[ns, 3:4], 0.0)
+        end
        
     end
 

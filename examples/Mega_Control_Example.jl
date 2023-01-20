@@ -168,14 +168,10 @@ env = SimEnv(ts = Timestep*1e-6, CM = CM, parameters = parameters, t_end = t_end
 #_______________________________________________________________________________
 #%% Setting up data hooks
 
-#= plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c",
-                "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
-                "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
-                "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
-                plt_state_ids = []               
-                plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
-                hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
-                collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2])
+plt_state_ids = []               
+plt_action_ids = []
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
+collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2])
                 
 #_______________________________________________________________________________
 # Setting up the Agents
@@ -196,7 +192,7 @@ polc["action_ids"] = action_ids_classic
 
 Multi_Agents[nameof(Animo)] = polc
 
-ma = MultiAgentGridController(Multi_Agents, action_ids)
+ma = MultiAgentGridController(Multi_Agents, get_action_ids(env.nc))
 
 #_______________________________________________________________________________
 # Running the time simulation
@@ -221,4 +217,4 @@ for eps in 1:num_eps
     pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [], idq_to_plot = [])
 end
 
-print("\n...........o0o----ooo0§0ooo~~~  END  ~~~ooo0§0ooo----o0o...........\n")
+print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

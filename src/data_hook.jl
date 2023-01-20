@@ -15,8 +15,6 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     extra_state_paras= []
     extra_state_ids= []
     extra_state_names = []
-
-    
     
     collect_sources = []
     collect_cables = []
