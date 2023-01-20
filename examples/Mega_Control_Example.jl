@@ -20,15 +20,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 #_______________________________________________________________________________
 # Parameters - Time simulation
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_final = 1.0 #time in seconds, total simulation run time
-
-ts = Timestep*1e-6
-t = 0:ts:t_final # time
-
-fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
-
-#_______________________________________________________________________________
-# State space representation
+t_end = 0.2 #time in seconds, total simulation run time
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -85,11 +77,11 @@ source_list = []
 
 source["pwr"] = 200e3 #VA
 source["fltr"] = "LCL"
-source["p_set"] = 50e3 #Watt
-source["q_set"] = 10e3 #VAr
+source["p_set"] = 0#50e3 #Watt
+source["q_set"] = 0#10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 5
+source["mode"] = 7
 source["control_type"] = "classic"
 source["std_asy"] = 50e3 # asymptotic standard deviation
 source["σ"] = 0.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
@@ -101,16 +93,14 @@ push!(source_list, source)
 source = Dict()
 
 source["pwr"] = 100e3
-source["fltr"] = "LC"
-source["p_set"] = 5e3
-source["q_set"] = -2e3
+source["fltr"] = "LCL"
+source["p_set"] = 50e3
+source["q_set"] = -25e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
 source["mode"] = 3
 source["control_type"] = "classic"
-source["v_rip"] = 0.01537
-source["i_rip"] = 0.15
-source["σ"] = 50e3 # Brownian motion scale i.e. ∝ diffusion parameter
+source["σ"] = 0#50e3 # Brownian motion scale i.e. ∝ diffusion parameter
 source["std_asy"] = 50e3 # asymptotic standard deviation
 source["Δt"] = 1 # time step
 source["k"] = 1 # interpolation degree
@@ -170,21 +160,26 @@ parameters = Dict()
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end" => 0.04)
+parameters["grid"] = Dict("phase" => 3, "v_rms" => 230, "ramp_end" => 0.04)
 
 # Define the environment
 
-num_sources = length(source_list)
-num_loads = length(load_list)
-
-env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
-parameters = parameters, maxsteps = length(t), action_delay = 1)
-
-state_ids = get_state_ids(env.nc)
-action_ids = get_action_ids(env.nc)
+env = SimEnv(ts = Timestep*1e-6, CM = CM, parameters = parameters, t_end = t_end)
 
 #_______________________________________________________________________________
-# Setting up the Classical Sources
+#%% Setting up data hooks
+
+#= plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c",
+                "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
+                "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
+                "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
+                plt_state_ids = []               
+                plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
+                hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
+                collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2])
+                
+#_______________________________________________________________________________
+# Setting up the Agents
 
 Animo = NamedPolicy("classic", Classical_Policy(env))
 
@@ -204,23 +199,9 @@ Multi_Agents[nameof(Animo)] = polc
 
 ma = MultiAgentGridController(Multi_Agents, action_ids)
 
-agentname = "agent"
-
 #_______________________________________________________________________________
-#%% Setting up data hooks
+# Running the time simulation
 
-#= plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c",
-                "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", 
-                "source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c", 
-                "source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"] =#
-plt_state_ids = []               
-plt_action_ids = []#"source1_u_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1 2],
-collect_cables = [1], collect_vrms_ids = [1 2], collect_irms_ids = [1 2], collect_pq_ids = [1 2], collect_vdq_ids = [1 2], collect_idq_ids = [1 2],
-save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_debug = [])
-
-#_______________________________________________________________________________
-# Starting time simulation
 num_eps = 1
 RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 

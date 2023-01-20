@@ -590,17 +590,17 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             push!(parameters["source"], _sample_fltr_L(parameters["grid"]))
             end
             # Validierung ob LC vorhanden ist?
-            if num_LC_defined == 0 &&  num_fltr_LC_undef == 0
-                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
+            if num_LC_defined == 0 && num_fltr_LC_undef == 0 # What is this? What if the user defined an L or LCL filter
+                @warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         else
 
             if num_LC_defined == 0 
-                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
+                @warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         end
 
-        source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined! set to ideal!"
+        source_type_fixed > 0 && @warn "Wagga Wagga. Poopy-di scoop. Scoop-diddy-whoop. Whoop-di-scoop-di-poop. $source_type_fixed sourceType not defined! set to ideal! Why do I care??"
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     
