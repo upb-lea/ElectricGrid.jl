@@ -15,70 +15,7 @@ include(srcdir("Classical_Control.jl"))
 include(srcdir("Power_System_Theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
-function reference(t)
-    
-    u = [sqrt(2)*230 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
-    #return vcat(u,u)  # to control 2 sources
-    return u
-end
-
-function reward(env, name = nothing)
-    r = 0.0
-    
-    if !isnothing(name)
-        if name == "agent"
-            u_l1_index = findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)
-        else
-            u_l1_index = findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)
-            u_l2_index = findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)
-            u_l3_index = findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)
-        end
-
-        u_l1 = env.state[u_l1_index]
-        u_l2 = env.state[u_l2_index]
-        u_l3 = env.state[u_l3_index]
-
-        u = [u_l1, u_l2, u_l3]
-        refs = reference(env.t)
-
-        r = -(sum(abs.(refs/600 - u)/3))
-    end
-
-    return r
-end
-
-function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
-    if !isnothing(name)
-        state = env.state
-        if name == agentname
-            global state_ids_agent
-            global state_ids
-            state = state[findall(x -> x in state_ids_agent, state_ids)]
-            state = vcat(state, reference(env.t)/600)
-        else
-            global state_ids_classic
-            global state_ids
-            state = env.x[findall(x -> x in state_ids_classic, state_ids)]
-        end
-    elseif isnothing(env)
-        return x0
-    else
-        return env.state
-    end
-    return state
-end
-
-function RLBase.action_space(env::SimEnv, name::String)
-    if name == "agent"
-        return Space(fill(-1.0..1.0, size(action_ids_agent)))
-    else
-        return Space(fill(-1.0..1.0, size(action_ids_classic)))
-    end
-end
-
-print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
+print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
 # Parameters - Time simulation
@@ -119,6 +56,7 @@ cable = Dict()
 cable["R"] = 0.208*l # Ω, line resistance 0.722#
 cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
 cable["C"] = 0.4e-3*l # 0.4e-6#
+cable["i_limit"] = 10e12
 
 #push!(cable_list, cable, cable, cable)
 
@@ -151,12 +89,12 @@ source["p_set"] = 50e3 #Watt
 source["q_set"] = 10e3 #VAr
 source["v_pu_set"] = 1.0 #p.u.
 source["v_δ_set"] = 0 # degrees
-source["mode"] = 7
+source["mode"] = 5
 source["control_type"] = "classic"
 source["std_asy"] = 50e3 # asymptotic standard deviation
 source["σ"] = 0.0 # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"] = 1 # time step
-source["k"] = 2 # interpolation degree
+source["k"] = 0 # interpolation degree
 
 push!(source_list, source)
 
@@ -164,18 +102,18 @@ source = Dict()
 
 source["pwr"] = 100e3
 source["fltr"] = "LC"
-source["p_set"] = 0.#50e3
-source["q_set"] = 0.#25e3
+source["p_set"] = 5e3
+source["q_set"] = -2e3
 source["v_pu_set"] = 1.0
 source["v_δ_set"] = 0 # degrees
 source["mode"] = 3
 source["control_type"] = "classic"
 source["v_rip"] = 0.01537
 source["i_rip"] = 0.15
-source["σ"] = 25e3 # Brownian motion scale i.e. ∝ diffusion parameter
+source["σ"] = 50e3 # Brownian motion scale i.e. ∝ diffusion parameter
 source["std_asy"] = 50e3 # asymptotic standard deviation
 source["Δt"] = 1 # time step
-source["k"] = 0 # interpolation degree
+source["k"] = 1 # interpolation degree
 
 #= 
 source["v_rip"] = 0.01537
@@ -218,6 +156,8 @@ R1_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.6, 230)
 load["impedance"] = "RL"
 load["R"] = R1_load# + R2_load # 
 load["L"] = L_load
+load["i_limit"] = 10e12
+load["v_limit"] = 10e12
 #load["C"] = C_load
 
 push!(load_list, load)
@@ -230,17 +170,14 @@ parameters = Dict()
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end" => 0.0)
-
-#setup = create_setup(parameters)
+parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230, "ramp_end" => 0.04)
 
 # Define the environment
 
 num_sources = length(source_list)
 num_loads = length(load_list)
 
-env = SimEnv(reward_function = reward, featurize = featurize, 
-ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
+env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
 parameters = parameters, maxsteps = length(t), action_delay = 1)
 
 state_ids = get_state_ids(env.nc)
@@ -284,7 +221,7 @@ save_best_NNA = false, collect_reference = false, plot_rewards = false, collect_
 
 #_______________________________________________________________________________
 # Starting time simulation
-num_eps = 4
+num_eps = 1
 RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 
 #_______________________________________________________________________________
@@ -301,7 +238,7 @@ pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = []) =#
 for eps in 1:num_eps
 
     plot_hook_results(; hook = hook, states_to_plot = [], actions_to_plot = [], episode = eps, 
-    pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+    pq_to_plot = [1 2], vrms_to_plot = [1 2], irms_to_plot = [1 2], vdq_to_plot = [], idq_to_plot = [])
 end
 
-print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
+print("\n...........o0o----ooo0§0ooo~~~  END  ~~~ooo0§0ooo----o0o...........\n")
