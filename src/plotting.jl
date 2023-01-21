@@ -132,7 +132,8 @@ end
 
 function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
     plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [],
-    vdq_to_plot = [], idq_to_plot = [], pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [])
+    vdq_to_plot = [], idq_to_plot = [], p_to_plot = [], q_to_plot = [], vrms_to_plot = [], 
+    irms_to_plot = [], freq_to_plot = [], θ_to_plot = [])
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -204,8 +205,11 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_iq"), mode="lines", name = "source$(idx)_iq"))
         end
 
-        for idx in pq_to_plot #hook.collect_pq_ids #
+        for idx in p_to_plot #hook.collect_pq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p"), mode="lines", name = "source$(idx)_p"))
+        end
+
+        for idx in q_to_plot #hook.collect_pq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q"), mode="lines", name = "source$(idx)_q"))
         end
 
@@ -215,6 +219,14 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
 
         for idx in irms_to_plot #hook.collect_irms_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms"), mode="lines", name = "source$(idx)_irms"))
+        end
+
+        for idx in freq_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_freq"), mode="lines", name = "source$(idx)_freq"))
+        end
+
+        for idx in θ_to_plot
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_θ"), mode="lines", name = "source$(idx)_θ"))
         end
     end
 

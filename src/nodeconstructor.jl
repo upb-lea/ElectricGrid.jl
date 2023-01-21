@@ -172,7 +172,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         grid_properties["Δfmax"] = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
         grid_properties["ΔEmax"] = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
         grid_properties["ramp_end"] = 2/50
-        grid_properties["process_start"] = 4/50
+        grid_properties["process_start"] = 2/50
         parameters["grid"] = grid_properties
 
     else
@@ -198,7 +198,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             parameters["grid"]["ramp_end"] = 2/parameters["grid"]["f_grid"]
         end
         if !haskey(parameters["grid"], "process_start")
-            parameters["grid"]["process_start"] = 4/parameters["grid"]["f_grid"]
+            parameters["grid"]["process_start"] = 2/parameters["grid"]["f_grid"]
         end
     end
 
@@ -505,7 +505,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "mode")
-                source["mode"] = "Semi-Synchronverter"
+                source["mode"] = "Droop"
             end
 
             if !haskey(source, "control_type")
@@ -552,7 +552,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
             if !haskey(source, "Δt") # time step
 
-                steps = 2 # ... cycles for 1 step
+                steps = 1 # ... cycles for 1 step
                 source["Δt"] = round(steps*parameters["grid"]["fs"]/(parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
 
             elseif haskey(source, "Δt")
@@ -600,7 +600,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         else
 
             if num_LC_defined == 0 
-                @warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
+                #@warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         end
 

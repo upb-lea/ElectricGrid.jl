@@ -1,6 +1,6 @@
 using ReinforcementLearning
 
-function Power_System_Dynamics(env, hook; num_episodes = 1)
+function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
 
     #_______________________________________________________________________________
     # Setting up the Agents
@@ -56,7 +56,13 @@ function Power_System_Dynamics(env, hook; num_episodes = 1)
     
     RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook);
 
-    return nothing
+    if return_Agents
+
+        return Multi_Agent
+    else
+        
+        return nothing
+    end
 end
 
 #= 

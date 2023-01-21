@@ -166,6 +166,8 @@ mutable struct Classical_Controls
     #---------------------------------------------------------------------------
     # Observer 
 
+    Observer::Vector{Bool}
+
     Ad_DQ::Array{Float64}
     Bd_DQ::Array{Float64}
     Cd_DQ::Array{Float64}
@@ -231,6 +233,7 @@ mutable struct Classical_Controls
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Vector{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Vector{Float64},
         ΔT_err::Matrix{Float64}, ΔT_err_t::Vector{Float64}, ω_set::Vector{Float64},
+        Observer::Vector{Bool},
         Ad_DQ::Array{Float64}, Bd_DQ::Array{Float64}, Cd_DQ::Array{Float64}, Dd_DQ::Array{Float64}, 
         Ko_DQ::Array{Float64}, xp_DQ::Matrix{Float64},
         Ad_0::Array{Float64}, Bd_0::Array{Float64}, Cd_0::Matrix{Float64}, Dd_0::Matrix{Float64}, 
@@ -275,6 +278,7 @@ mutable struct Classical_Controls
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
+        Observer,
         Ad_DQ, Bd_DQ, Cd_DQ, Dd_DQ,
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
@@ -362,19 +366,20 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # General System & Control
 
-        Modes = Dict("Swing" => 1, 
-        "Voltage Control" => 2, 
-        "PQ Control" => 3,
-        "PV Control" => 4,
-        "Droop Control" => 5, 
-        "Full-Synchronverter" => 6, 
-        "Semi-Synchronverter" => 7,
-        "Step" => 8,
-        "Not Used 2" => 9,
-        "Not Used 3" => 10)
+        Modes = Dict(
+                    "Swing" => 1,  
+                    "PQ" => 2,
+                    "Droop" => 3,
+                    "Synchronverter" => 4,
+                    "Semi-Droop" => 5, 
+                    "Semi-Synchronverter" => 6,
+                    "Voltage" => 7,
+                    "Step" => 8,
+                    "PV" => 9,
+                    "Not Used 3" => 10)
 
         Source_Modes = Array{String, 1}(undef, num_sources)
-        Source_Modes = fill!(Source_Modes, "Voltage Control")
+        Source_Modes = fill!(Source_Modes, "Voltage Synchronverter")
 
         V_cable_loc = Array{Int64, 2}(undef, phases, num_sources)
         V_cable_loc = fill!(V_cable_loc, 1)
@@ -557,6 +562,9 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # Observers
 
+        Observer = Array{Bool, 1}(undef, num_sources)
+        Observer = fill!(Observer, false)
+
         Ad_0 = Array{Float64, 3}(undef, num_sources, 2, 2)
         Bd_0 = Array{Float64, 3}(undef, num_sources, 2, 3)
         Cd_0 = Array{Float64, 2}(undef, num_sources, 2)
@@ -623,6 +631,7 @@ mutable struct Classical_Controls
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
+        Observer,
         Ad_DQ, Bd_DQ, Cd_DQ, Dd_DQ,
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
@@ -820,19 +829,19 @@ function Classical_Control(Animo, env)
         if Source.Source_Modes[ns] == "Swing"
 
             Swing_Mode(Source, ns, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Voltage Control"
+        elseif Source.Source_Modes[ns] == "Voltage"
 
             Voltage_Control_Mode(Source, ns, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "PQ Control"
+        elseif Source.Source_Modes[ns] == "PQ"
 
             PQ_Control_Mode(Source, ns, Source.pq0_set[ns, :])
-        elseif Source.Source_Modes[ns] == "PV Control"
+        elseif Source.Source_Modes[ns] == "PV"
 
             PV_Control_Mode(Source, ns, Source.pq0_set[ns, :])
-        elseif Source.Source_Modes[ns] == "Droop Control"
+        elseif Source.Source_Modes[ns] == "Droop" || Source.Source_Modes[ns] == "Semi-Droop"
 
             Droop_Control_Mode(Source, ns, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Full-Synchronverter"
+        elseif Source.Source_Modes[ns] == "Synchronverter"
 
             Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 1, t_end = ramp_end)
         elseif Source.Source_Modes[ns] == "Semi-Synchronverter"
@@ -880,7 +889,7 @@ function Source_Interface(Animo, env, Source::Classical_Controls)
 
         if Source.filter_type[ns] == "LCL"
 
-            if observer == true
+            if Source.Observer[ns]
 
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
                 Luenberger_Observer(Source, ns)
@@ -1858,8 +1867,6 @@ function Divided_Diff(x, y)
     return vec(coef[1,:])
 end
 
-#-------------------------------------------------------------------------------
-
 function Ornstein_Uhlenbeck(Source::Classical_Controls)
 
     if Source.steps*Source.ts >= Source.process_start
@@ -2188,12 +2195,18 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
         Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
 
+        if haskey(env.nc.parameters["source"][ns], "Observer")
+            Source.Observer[e] = env.nc.parameters["source"][ns]["Observer"]
+        else
+            Source.Observer[e] = true
+        end
+
         if haskey(env.nc.parameters["source"][ns], "R_C")
             Source.Rf_C[e] = env.nc.parameters["source"][ns]["R_C"]
             Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
         else
-            Source.Cf[e] = 0.00001e-6
-            Source.Rf_C[e] = 1*Source.Cf[e]
+            Source.Cf[e] = Srated/(3*Source.fsys*2π*Source.Vrms[e]*Source.Vrms[e])
+            Source.Rf_C[e] = Source.Cf[e]
         end
 
         if Source.filter_type[e] == "LCL"
@@ -2216,14 +2229,37 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         Source.τv[e] = env.nc.parameters["source"][ns]["τv"] # time constant of the voltage loop
         Source.τf[e] = env.nc.parameters["source"][ns]["τf"] # time constant of the frequency loop
 
-        if Source.Source_Modes[e] == "Semi-Synchronverter" || Source.Source_Modes[e] == "Full-Synchronverter"
+        if Source.Source_Modes[e] == "Semi-Synchronverter" || Source.Source_Modes[e] == "Synchronverter"
 
-            Source.D[e, 1] = Source.S[e]/((2π)*(Source.fsys)*Source.fsys*2π*Source.Δfmax)
-            Source.D[e, 2] = Source.S[e]/(Source.Vrms[e]*sqrt(2)*Source.ΔEmax)
+            if !haskey(env.nc.parameters["source"][ns], "Dp")
+                Source.D[e, 1] = Source.S[e]/((2π)*(Source.fsys)*Source.fsys*2π*Source.Δfmax)
+            else
+                Source.D[e, 1] = env.nc.parameters["source"][ns]["Dp"]
+            end
+
+            if !haskey(env.nc.parameters["source"][ns], "Dq")
+                Source.D[e, 2] = Source.S[e]/(Source.Vrms[e]*sqrt(2)*Source.ΔEmax)
+            else
+                Source.D[e, 2] = env.nc.parameters["source"][ns]["Dq"]
+            end
+
         else
+            
+            if !haskey(env.nc.parameters["source"][ns], "Dp")
+                Source.D[e, 1] = 2π*Source.fsys*2π*Source.Δfmax/Source.P[e]
+            else
+                Source.D[e, 1] = env.nc.parameters["source"][ns]["Dp"]
+            end
 
-            Source.D[e, 1] = 2π*Source.fsys*2π*Source.Δfmax/Source.P[e]
-            Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.Q[e]
+            if !haskey(env.nc.parameters["source"][ns], "Dq")
+                if Source.Source_Modes[e] == "Semi-Droop"
+                    Source.D[e, 2] = 0.0
+                else
+                    Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.Q[e]
+                end
+            else
+                Source.D[e, 2] = env.nc.parameters["source"][ns]["Dq"]
+            end
         end
 
         Source.J_sync[e] = Source.τf[e]*Source.D[e, 1] #total mass moment of inertia of the rotating masses, kg*m^2
@@ -2263,8 +2299,21 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             Source.c_diff[e] = cat(coef, dims = 1)
         end
 
-        Current_PI_LoopShaping(Source, e)
-        Voltage_PI_LoopShaping(Source, e)
+        if !haskey(env.nc.parameters["source"][ns], "I_kp") && !haskey(env.nc.parameters["source"][ns], "I_ki")
+
+            Current_PI_LoopShaping(Source, e)
+        else
+            Source.I_kp[e] = env.nc.parameters["source"][ns]["V_kp"]
+            Source.I_ki[e] = env.nc.parameters["source"][ns]["V_ki"]
+        end
+
+        if !haskey(env.nc.parameters["source"][ns], "V_kp") && !haskey(env.nc.parameters["source"][ns], "V_ki")
+
+            Voltage_PI_LoopShaping(Source, e)
+        else
+            Source.V_kp[e] = env.nc.parameters["source"][ns]["V_kp"]
+            Source.V_ki[e] = env.nc.parameters["source"][ns]["V_ki"]
+        end
 
         Observer_Initialiser(Source, e)
 

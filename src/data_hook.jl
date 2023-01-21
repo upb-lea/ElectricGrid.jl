@@ -48,6 +48,8 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     collect_idq_ids = []
     collect_irms_ids = []
     collect_pq_ids = []
+    collect_freq = []
+    collect_θ = []
     collect_debug = []
 
 end
@@ -219,6 +221,22 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
                 irms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.I_filt_poc[s_idx, :, end], 0))
                 insertcols!(hook.tmp, "source$(idx)_irms" => irms)
                 #insertcols!(hook.tmp, "source$(idx)_irms_a" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 1, 2])
+            end
+        end
+
+        for idx in hook.collect_freq
+            s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
+            if s_idx !== nothing
+                freq = agent.agents["classic"]["policy"].policy.Source.fpll[s_idx, 1, end]
+                insertcols!(hook.tmp, "source$(idx)_freq" => freq)
+            end
+        end
+
+        for idx in hook.collect_θ
+            s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
+            if s_idx !== nothing
+                θpll = agent.agents["classic"]["policy"].policy.Source.θpll[s_idx, 1, end]
+                insertcols!(hook.tmp, "source$(idx)_θ" => θpll)
             end
         end
 
