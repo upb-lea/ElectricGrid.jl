@@ -169,7 +169,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
-        grid_properties["Δfmax"] = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
+        grid_properties["Δfmax"] = 0.005 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
         grid_properties["ΔEmax"] = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
         grid_properties["ramp_end"] = 2/50
         grid_properties["process_start"] = 2/50
@@ -186,10 +186,10 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             parameters["grid"]["phase"] = 3
         end
         if !haskey(parameters["grid"], "f_grid")
-            parameters["grid"]["f_grid"] = 50
+            parameters["grid"]["f_grid"] = 50.0
         end
         if !haskey(parameters["grid"], "Δfmax")
-            parameters["grid"]["Δfmax"] = 0.5/100
+            parameters["grid"]["Δfmax"] = 0.005
         end
         if !haskey(parameters["grid"], "ΔEmax")
             parameters["grid"]["ΔEmax"] = 5/100

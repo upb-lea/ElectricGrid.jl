@@ -186,14 +186,17 @@ push!(load_list, load)
 #-------------------------------------------------------------------------------
 # Amalgamation
 
-# The drop (increase) in frequency that causes a 100% increase (decrease) in power
-# The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 parameters = Dict()
 
 parameters["source"] = source_list
 parameters["cable"] = cable_list
 parameters["load"] = load_list
-parameters["grid"] = Dict("v_rms" => 230, "ramp_end" => 0.04, "process_start" => 0.04)
+parameters["grid"] = Dict("v_rms" => 230, 
+                        "ramp_end" => 0.04, 
+                        "process_start" => 0.04,
+                        "f_grid" => 50, 
+                        "Δfmax" => 0.005, # The drop (increase) in frequency that causes a 100% increase (decrease) in power
+                        "ΔEmax" => 0.05) # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
 # Define the environment
 

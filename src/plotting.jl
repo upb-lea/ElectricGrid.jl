@@ -131,7 +131,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
 end
 
 function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
-    plot_reward = false, plot_reference = false, episode = nothing, vdc_to_plot = [],
+    plot_reward = false, plot_reference = false, episode = 1, vdc_to_plot = [],
     vdq_to_plot = [], idq_to_plot = [], p_to_plot = [], q_to_plot = [], vrms_to_plot = [], 
     irms_to_plot = [], freq_to_plot = [], θ_to_plot = [])
 

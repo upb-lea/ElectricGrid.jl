@@ -2193,6 +2193,9 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
     Source.Δfmax = env.nc.parameters["grid"]["Δfmax"]
     Source.ΔEmax = env.nc.parameters["grid"]["ΔEmax"]
 
+    Source.ω_sync = fill!(Source.ω_sync, Source.fsys*2π)
+    Source.ω_droop = fill!(Source.ω_droop, Source.fsys*2π)
+
     for ns in source_indices
 
         Source.S[e] = env.nc.parameters["source"][ns]["pwr"]
@@ -2343,6 +2346,10 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         if Source.Observer[e]
 
             Observer_Initialiser(Source, e)
+
+            if isnan(Source.Ko_DQ[e, 1, 1])
+                Source.Observer[e] = false
+            end
         end
 
         e += 1
@@ -2376,28 +2383,37 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
     end
 
-    if count_V_K == 1
-        @info "$(count_V_K) source has automatically calculated proportional and integral gains for its voltage control loop."
-    elseif count_V_K > 1
-        @info "$(count_V_K) sources have automatically calculated proportional and integral gains for their voltage control loops."
-    end
+    if (count_V_K == Source.num_sources && count_I_K == Source.num_sources 
+        && count_Dp == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6] 
+        && count_Dq == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6])
 
-    if count_I_K == 1
-        @info "$(count_I_K) source has automatically calculated proportional and integral gains for its current control loop."
-    elseif count_I_K > 1
-        @info "$(count_I_K) sources have automatically calculated proportional and integral gains for their current control loops."
-    end
+        @info "All 'classically' controlled sources have been automatically set up with droop coeficients and proportional and integral gains."
 
-    if count_Dp == 1
-        @info "$(count_Dp) source has an automatically calculated frequency droop coefficient."
-    elseif count_Dp > 1
-        @info "$(count_Dp) sources have automatically calculated frequency droop coefficients."
-    end
+    else
 
-    if count_Dq == 1
-        @info "$(count_Dq) source has an automatically calculated voltage droop coefficient."
-    elseif count_Dq > 1
-        @info "$(count_Dq) sources have automatically calculated voltage droop coefficients."
+        if count_V_K == 1
+            @info "$(count_V_K) source has automatically calculated proportional and integral gains for its voltage control loop."
+        elseif count_V_K > 1
+            @info "$(count_V_K) sources have automatically calculated proportional and integral gains for their voltage control loops."
+        end
+
+        if count_I_K == 1
+            @info "$(count_I_K) source has automatically calculated proportional and integral gains for its current control loop."
+        elseif count_I_K > 1
+            @info "$(count_I_K) sources have automatically calculated proportional and integral gains for their current control loops."
+        end
+
+        if count_Dp == 1
+            @info "$(count_Dp) source has an automatically calculated frequency droop coefficient."
+        elseif count_Dp > 1
+            @info "$(count_Dp) sources have automatically calculated frequency droop coefficients."
+        end
+
+        if count_Dq == 1
+            @info "$(count_Dq) source has an automatically calculated voltage droop coefficient."
+        elseif count_Dq > 1
+            @info "$(count_Dq) sources have automatically calculated voltage droop coefficients."
+        end
     end
 
     if length(findall(Source.Observer)) == 1
@@ -2510,10 +2526,13 @@ function Observer_Initialiser(Source::Classical_Controls, ns)
              0.0 2.0 0.5 1.0]
 
         Source.Ko_DQ[ns, :, :],   = Multi_Gain_Matrix_par(Source.Ad_DQ[ns, :, :], Source.Cd_DQ[ns, :, :], λ, p)
-        λₒ = round.(eigvals(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :]), digits = 3)
-        
-        if maximum(abs.(sort(λ) .- λₒ)) != 0 
-            Source.Ko_DQ[ns, :, :] = fill!(Source.Ko_DQ[ns, :, :], 0.)
+
+        if !isnan(Source.Ko_DQ[ns, 1, 1])
+            λₒ = round.(eigvals(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :]), digits = 3)
+            
+            if maximum(abs.(sort(λ) .- λₒ)) != 0 
+                Source.Ko_DQ[ns, :, :] = fill!(Source.Ko_DQ[ns, :, :], NaN)
+            end
         end
 
         #(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :])^4
@@ -2667,10 +2686,10 @@ function Multi_Gain_Matrix_par(A, C, λ, p)
         v[:, i] = -transpose(p[:, i])*C*inv(I*λ[i] - A)
     end
     
-    if round(det(v), digits = 9) != 0 || 1 == 1
+    if round(det(v), digits = 9) != 0
         K = inv(transpose(v))*transpose(p)
     else
-        K = fill!(K, 0.)
+        K = fill!(K, NaN)
     end
 
     return K, v
