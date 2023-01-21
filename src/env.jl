@@ -214,10 +214,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             vdc_fixed += 1
         end
     end
-    vdc_fixed > 0 && @warn "$vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc"
+    vdc_fixed > 0 && @warn "$vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc."
 
 
-    @info "Normalization is done based on the defined parameter limits"
+    @info "Normalization is done based on the defined parameter limits."
     states = get_state_ids(nc)
 
     i_limit_fixed = 0

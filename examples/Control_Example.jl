@@ -72,6 +72,8 @@ source = Dict()
 
 source["mode"]     = 4
 
+source["fltr"]     = "LCL"  # Filter type
+
 source["pwr"]      = 200e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
 source["q_set"]    = 10e3   # Imaginary Power Set Point, VAi
@@ -88,11 +90,15 @@ source["k"]        = 0      # Interpolation degree
 source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
 source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
 
+source["Observer"] = true   # Discrete Luenberger Observer
+
 push!(source_list, source)
 
 source = Dict()
 
 source["mode"]     = 2
+
+source["fltr"]     = "LC"   # Filter type
 
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
@@ -110,27 +116,46 @@ source["k"]        = 0      # Interpolation degree
 source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
 source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
 
+source["Observer"] = true   # Discrete Luenberger Observer
+
+#= 
+source["Dp"]       = 202 # frequency droop coefficient
+source["Dq"]       = 6148 # voltage droop coefficient =#
+
+#= 
+source["I_kp"]     = 0.0032 # A/V
+source["I_ki"]     = 0.3497 # A/Vs
+
+source["V_kp"]     = 0.2964# A/V
+source["V_ki"]     = 5.856 # A/Vs =#
+
 push!(source_list, source)
 
 #= 
-source["fltr"] = "LCL"
+source["Dp"]           = 202 # frequency droop coefficient
+source["Dq"]           = 6148 # voltage droop coefficient
+source["I_kp"]         = 0.0032 # A/V
+source["I_ki"]         = 0.3497 # A/Vs
+source["V_kp"]         = 0.2964# A/V
+source["V_ki"]         = 5.856 # A/Vs
+source["fltr"]         = "LCL"
 source["control_type"] = "classic"
-source["v_δ_set"] = 0 # degrees
-source["v_rip"] = 0.01537
-source["i_rip"] = 0.15
-source["vdc"] = 800 #V
-source["τv"] = 0.002
-source["τf"] = 0.002
-source["pf"]       = 0.8    # Power Factor
-source["κ"] = 3 # mean reversion parameter
-source["γ"]        = 50e3   # Asymptotoic Mean
-source["X₀"] = 25 # initial values
-source["L1"] = 0.002
-source["R1"] = 0.04
-source["L2"] = 0.002
-source["R2"] = 0.05
-source["R_C"] = 0.09
-source["C"] = 0.003 =#
+source["v_δ_set"]      = 0 # degrees
+source["v_rip"]        = 0.01537
+source["i_rip"]        = 0.15
+source["vdc"]          = 800 #V
+source["τv"]           = 0.002
+source["τf"]           = 0.002
+source["pf"]           = 0.8    # Power Factor
+source["κ"]            = 3 # mean reversion parameter
+source["γ"]            = 50e3   # Asymptotoic Mean
+source["X₀"]           = 25 # initial values
+source["L1"]           = 0.002
+source["R1"]           = 0.04
+source["L2"]           = 0.002
+source["R2"]           = 0.05
+source["R_C"]          = 0.09
+source["C"]            = 0.003 =#
 
 #= source = Dict()
 
@@ -161,6 +186,8 @@ push!(load_list, load)
 #-------------------------------------------------------------------------------
 # Amalgamation
 
+# The drop (increase) in frequency that causes a 100% increase (decrease) in power
+# The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 parameters = Dict()
 
 parameters["source"] = source_list
@@ -196,7 +223,7 @@ for eps in 1:num_eps
                       states_to_plot  = [], 
                       actions_to_plot = [],  
                       p_to_plot       = [1 2], 
-                      q_to_plot       = [1 2], 
+                      q_to_plot       = [], 
                       vrms_to_plot    = [1 2], 
                       irms_to_plot    = [1 2],
                       freq_to_plot    = [1 2])
