@@ -218,7 +218,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         for idx in hook.collect_irms_ids
             s_idx = findfirst(x -> x == idx, agent.agents["classic"]["policy"].policy.Source_Indices)
             if s_idx !== nothing
-                irms = sqrt(1/3)*norm(DQ0_transform(agent.agents["classic"]["policy"].policy.Source.I_filt_poc[s_idx, :, end], 0))
+                irms = DQ_RMS(agent.agents["classic"]["policy"].policy.Source.I_filt_poc[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_irms" => irms)
                 #insertcols!(hook.tmp, "source$(idx)_irms_a" => agent.agents["classic"]["policy"].policy.Source.I_ph[s_idx, 1, 2])
             end

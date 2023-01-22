@@ -1,5 +1,23 @@
 using ReinforcementLearning
 
+"""
+    Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
+
+# Description
+Runs the simulation with the specified parameters.
+
+# Arguments
+- `env::SimEnv`: mutable struct containing the environment.
+- `hook::DataHook`: mutable struct definining the signals to be saved.
+
+# Keyword Arguments
+- `num_episodes::Int`: the number of times that the simulation is run.
+- `return_Agents::Float`: returns the mutable struct containing the agents.
+
+# Return Values
+- `Multi_Agent::MultiAgentGridController`: (optional)
+
+"""
 function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
 
     #_______________________________________________________________________________
@@ -14,9 +32,6 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
     num_clas_sources = Animo.policy.Source.num_sources # number of classically controlled sources
 
-    state_ids_classic = Animo.policy.state_ids
-    action_ids_classic = Animo.policy.action_ids
-
     #-------------------------------------------------------------------------------
     # Setting up the controls for the Reinforcement Learning Sources
 
@@ -30,8 +45,6 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
         agent = create_agent_ddpg(na = na, ns = ns, use_gpu = env_cuda)
         agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
     end
-
-    #-------------------------------------------------------------------------------
     
     #-------------------------------------------------------------------------------
     # Finalising the Control
@@ -43,18 +56,24 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
         polc = Dict()
 
         polc["policy"] = Animo
-        polc["state_ids"] = state_ids_classic
-        polc["action_ids"] = action_ids_classic
+        polc["state_ids"] = Animo.policy.state_ids
+        polc["action_ids"] = Animo.policy.action_ids
 
         Multi_Agents[nameof(Animo)] = polc
     end
     
     Multi_Agent = MultiAgentGridController(Multi_Agents, env.action_ids)
+
+    #_______________________________________________________________________________
+    # Logging
+
+    @info "Time simulation run time: $((env.maxsteps - 1)*env.ts) [s] ~ $(Int(env.maxsteps)) steps"
+    @info "Number of episodes: $(num_episodes)"
     
     #_______________________________________________________________________________
     # Running the time simulation
     
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook);
+    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook);    
 
     if return_Agents
 

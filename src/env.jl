@@ -61,9 +61,13 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         num_loads = length(parameters["load"])
     end
 
-    if !haskey(parameters["grid"], "fs")
-        parameters["grid"]["fs"] = 1/ts
+    if haskey(parameters, "grid") 
+
+        if !haskey(parameters["grid"], "fs")
+            parameters["grid"]["fs"] = 1/ts
+        end
     end
+
     
     if !(isnothing(num_sources) || isnothing(num_loads)) 
 

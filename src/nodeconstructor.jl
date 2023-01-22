@@ -165,7 +165,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     ##############
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
-        grid_properties["fs"] =  10e3
+        grid_properties["fs"] =  10e3 # TODO: this should be 1/env.ts
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
@@ -1324,7 +1324,7 @@ Sample parameters for the cable.
 function _sample_cable()
     
     cable = Dict()
-    cable["len"] = rand(Uniform(1e-3, 1e1))
+    cable["len"] = 1.0#rand(Uniform(1e-3, 1e1))
 
     cable["Rb"] =  0.722
     cable["Cb"] = 0.4e-6

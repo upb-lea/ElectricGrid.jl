@@ -422,9 +422,9 @@ mutable struct Classical_Controls
         V_filt_cap = fill!(V_filt_cap, 0)
 
         I_filt_poc = Array{Float64, 3}(undef, num_sources, phases, N)
-        I_filt_poc = fill!(I_filt_poc, 0)
+        I_filt_poc = fill!(I_filt_poc, 0.0)
         I_filt_inv = Array{Float64, 3}(undef, num_sources, phases, N)
-        I_filt_inv = fill!(I_filt_inv, 0)
+        I_filt_inv = fill!(I_filt_inv, 0.0)
 
         p_q_filt = Array{Float64, 2}(undef, num_sources, phases)
         p_q_filt  = fill!(p_q_filt, 0)
@@ -571,6 +571,7 @@ mutable struct Classical_Controls
         Dd_0 = Array{Float64, 2}(undef, num_sources, 3)
         Ko_0 = Array{Float64, 2}(undef, num_sources, 2)
         xp_0 = Array{Float64, 2}(undef, num_sources, 2)
+        xp_0 = fill!(xp_0, 0)
 
         Ad_DQ = Array{Float64, 3}(undef, num_sources, 4, 4) #4, 4 #6, 6
         Bd_DQ = Array{Float64, 3}(undef, num_sources, 4, 6) #4, 6 #6, 2
@@ -578,6 +579,7 @@ mutable struct Classical_Controls
         Dd_DQ = Array{Float64, 3}(undef, num_sources, 2, 6) #2, 6 #6, 2
         Ko_DQ = Array{Float64, 3}(undef, num_sources, 4, 2) #4, 2 #6, 2
         xp_DQ = Array{Float64, 2}(undef, num_sources, 4) #4 #6
+        xp_DQ = fill!(xp_DQ, 0)
 
         #---------------------------------------------------------------------------
         # Stochastic processes - Ornstein-Uhlenbeck
@@ -790,11 +792,11 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source.xp_DQ = fill!(Source.xp_DQ, 0)
     Source.xp_0= fill!(Source.xp_0, 0)
 
-    Source.V_filt_poc = fill!(Source.V_filt_poc, 0)
-    Source.V_filt_cap = fill!(Source.V_filt_cap, 0)
+    Source.V_filt_poc = fill!(Source.V_filt_poc, 0.0)
+    Source.V_filt_cap = fill!(Source.V_filt_cap, 0.0)
 
-    Source.I_filt_poc = fill!(Source.I_filt_poc, 0)
-    Source.I_filt_inv = fill!(Source.I_filt_inv, 0)
+    Source.I_filt_poc = fill!(Source.I_filt_poc, 0.0)
+    Source.I_filt_inv = fill!(Source.I_filt_inv, 0.0)
 
     for ns in 1:Source.num_sources # initial conditions for stochastic process
 
@@ -1379,18 +1381,17 @@ function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrm
     θ = Source.θ_droop[num_source, 1]
     p_q = Source.p_q_filt[num_source, :]
 
-    ω_new = Source.fsys*2*π - p_q[1]*Source.D[num_source, 1]
+    ω_new = Source.fsys*2π - p_q[1]*Source.D[num_source, 1]
+    Source.ω_droop[num_source, 1, 1:2] = ω[2:end]
     Source.ω_droop[num_source, :, end] = [ω_new; ω_new; ω_new]
 
-    Source.θ_droop[num_source, 1] = Third_Order_Integrator(θ, Source.ts, [ω[2:end]; ω_new])%(2*π)
-    Source.θ_droop[num_source, 2] = (Source.θ_droop[num_source, 1] - 120*π/180)%(2*π)
-    Source.θ_droop[num_source, 3] = (Source.θ_droop[num_source, 1] + 120*π/180)%(2*π)
+    θ_new = Third_Order_Integrator(θ, Source.ts, [ω[2:end]; ω_new])%(2π)
+
+    Source.θ_droop[num_source, :] = [θ_new; θ_new - 120*π/180; θ_new + 120*π/180].%(2π)
 
     E_new = Vrms - p_q[2]*Source.D[num_source, 2]
 
-    Source.V_ref[num_source, 1] = sqrt(2)*E_new*cos(Source.θ_droop[num_source, 1])
-    Source.V_ref[num_source, 2] = sqrt(2)*E_new*cos(Source.θ_droop[num_source, 2])
-    Source.V_ref[num_source, 3] = sqrt(2)*E_new*cos(Source.θ_droop[num_source, 3])
+    Source.V_ref[num_source, :] = sqrt(2)*E_new*cos.(Source.θ_droop[num_source, :])
 
     return nothing
 end
@@ -1622,16 +1623,16 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
     Te_new = Source.p_q_filt[num_source, 1]/ω[end] # New Electrical Torque
 
     α_new = (1/Source.J_sync[num_source])*(Tm - Te_new - ΔT) # New Angular Acceleration
+    Source.α_sync[num_source, :] = [α[2:end]; α_new]
 
-    ω_new = Third_Order_Integrator(ω[end], Source.ts, [α[2:end]; α_new])
+    ω_new = Third_Order_Integrator(ω[end], Source.ts, Source.α_sync[num_source, :])
 
     Source.ω_sync[num_source, :] = [ω[2:end]; ω_new]
-    Source.α_sync[num_source, :] = [α[2:end]; α_new]
 
     #----
 
     #---- Integrate ω_new to find θ_new
-    θ_new = Third_Order_Integrator(θ, Source.ts, [ω[2:end]; ω_new])%(2π)
+    θ_new = Third_Order_Integrator(θ, Source.ts, Source.ω_sync[num_source, :])%(2π)
 
     Source.θ_sync[num_source] = θ_new
     #----
@@ -2274,6 +2275,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             if !haskey(env.nc.parameters["source"][ns], "Dp")
                 Source.D[e, 1] = 2π*Source.fsys*2π*Source.Δfmax/Source.P[e]
                 count_Dp += 1
+                
             else
                 Source.D[e, 1] = env.nc.parameters["source"][ns]["Dp"]
             end
@@ -2387,7 +2389,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
         && count_Dp == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6] 
         && count_Dq == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6])
 
-        @info "All 'classically' controlled sources have been automatically set up with droop coeficients and proportional and integral gains."
+        @info "All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains."
 
     else
 
@@ -2424,9 +2426,9 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
     processes = length(findall(x->x > 0.0, convert.(Float64, Source.σ)))
     if processes == 1
-        @info "$(processes) stochastic process will start at $(Source.process_start)."
+        @info "$(processes) stochastic process will start at $(Source.process_start) [s]."
     elseif processes > 1
-        @info "$(processes) stochastic processes will start at $(Source.process_start)."
+        @info "$(processes) stochastic processes will start at $(Source.process_start) [s]."
     end
 
     return nothing
