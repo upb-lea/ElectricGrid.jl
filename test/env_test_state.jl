@@ -28,8 +28,6 @@ vars = matread("./test/env_test_state_1source_1load.mat")
                         Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
                         ],
         "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
-                    # this is wrong fs == 50???
-                    #bugs ensue when grid has only "v_rms" or "Δfmax"
     )
 
 
