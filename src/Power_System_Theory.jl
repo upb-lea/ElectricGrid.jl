@@ -530,7 +530,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
         if i <= num_source
             if parameters["source"][i]["control_type"] == "classic" 
                 
-                if parameters["source"][i]["mode"] in ["Swing", "Voltage Control", 1, 2] 
+                if parameters["source"][i]["mode"] in ["Swing", "Voltage", 1, 7] 
 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
                     #fix(nodes[1, "theta"], 0.0) 
@@ -541,14 +541,14 @@ function layout_cabels(CM, num_source, num_load, parameters)
                     push!(idx_p_mean_cal, i)
                     push!(idx_q_mean_cal, i)
 
-                elseif parameters["source"][i]["mode"] in ["PQ Control", 3] 
+                elseif parameters["source"][i]["mode"] in ["PQ", 2] 
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "Q"], parameters["source"][i]["q_set"]/parameters["grid"]["phase"])
             
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
                     set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
 
-                elseif parameters["source"][i]["mode"] in ["PV Control", 4] 
+                elseif parameters["source"][i]["mode"] in ["PV", 9] 
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
@@ -556,7 +556,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
                     push!(idx_q_mean_cal, i)
 
 
-                elseif parameters["source"][i]["mode"] in ["Semi-Synchronverter", 7] 
+                elseif parameters["source"][i]["mode"] in ["Semi-Synchronverter", 6] 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
                     set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
