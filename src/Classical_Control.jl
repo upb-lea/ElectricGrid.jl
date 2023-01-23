@@ -60,6 +60,7 @@ mutable struct Classical_Controls
     steps::Int64
     action_delay::Int64
     ramp_end::Float64
+    process_start::Float64
 
     V_cable_loc::Matrix{Int64} # the position in the state vector where the POC Voltage is measured
     V_cap_loc::Matrix{Int64}
@@ -165,6 +166,8 @@ mutable struct Classical_Controls
     #---------------------------------------------------------------------------
     # Observer 
 
+    Observer::Vector{Bool}
+
     Ad_DQ::Array{Float64}
     Bd_DQ::Array{Float64}
     Cd_DQ::Array{Float64}
@@ -203,7 +206,7 @@ mutable struct Classical_Controls
         debug::Vector{Float64}, Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64, phases::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
-        ts::Float64, N::Int64, steps::Int64, action_delay::Int64, ramp_end::Float64,
+        ts::Float64, N::Int64, steps::Int64, action_delay::Int64, ramp_end::Float64, process_start::Float64,
         V_cable_loc::Matrix{Int64}, V_cap_loc::Matrix{Int64}, 
         I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
         Action_loc::Vector{Vector{Int64}},
@@ -230,6 +233,7 @@ mutable struct Classical_Controls
         α_sync::Matrix{Float64}, ω_sync::Matrix{Float64}, θ_sync::Vector{Float64},
         Δω_sync::Matrix{Float64}, eq::Matrix{Float64}, Mfif::Vector{Float64},
         ΔT_err::Matrix{Float64}, ΔT_err_t::Vector{Float64}, ω_set::Vector{Float64},
+        Observer::Vector{Bool},
         Ad_DQ::Array{Float64}, Bd_DQ::Array{Float64}, Cd_DQ::Array{Float64}, Dd_DQ::Array{Float64}, 
         Ko_DQ::Array{Float64}, xp_DQ::Matrix{Float64},
         Ad_0::Array{Float64}, Bd_0::Array{Float64}, Cd_0::Matrix{Float64}, Dd_0::Matrix{Float64}, 
@@ -247,7 +251,7 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay, ramp_end,
+        ts, N, steps, action_delay, ramp_end, process_start,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
         Action_loc,
@@ -274,6 +278,7 @@ mutable struct Classical_Controls
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
+        Observer,
         Ad_DQ, Bd_DQ, Cd_DQ, Dd_DQ,
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
@@ -330,6 +335,7 @@ mutable struct Classical_Controls
         fsys = 50.0
         θsys = 0.0
         ramp_end = 2/fsys
+        process_start = 4/fsys
 
         T_eval = 1 #number of periods to average over (for rms calcs)
         N = convert(Int64, round(T_eval/(fsys*ts))) + 1
@@ -360,19 +366,20 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # General System & Control
 
-        Modes = Dict("Swing" => 1, 
-        "Voltage Control" => 2, 
-        "PQ Control" => 3,
-        "PV Control" => 4,
-        "Droop Control" => 5, 
-        "Full-Synchronverter" => 6, 
-        "Semi-Synchronverter" => 7,
-        "Step" => 8,
-        "Not Used 2" => 9,
-        "Not Used 3" => 10)
+        Modes = Dict(
+                    "Swing" => 1,  
+                    "PQ" => 2,
+                    "Droop" => 3,
+                    "Synchronverter" => 4,
+                    "Semi-Droop" => 5, 
+                    "Semi-Synchronverter" => 6,
+                    "Voltage" => 7,
+                    "Step" => 8,
+                    "PV" => 9,
+                    "Not Used 3" => 10)
 
         Source_Modes = Array{String, 1}(undef, num_sources)
-        Source_Modes = fill!(Source_Modes, "Voltage Control")
+        Source_Modes = fill!(Source_Modes, "Voltage Synchronverter")
 
         V_cable_loc = Array{Int64, 2}(undef, phases, num_sources)
         V_cable_loc = fill!(V_cable_loc, 1)
@@ -415,9 +422,9 @@ mutable struct Classical_Controls
         V_filt_cap = fill!(V_filt_cap, 0)
 
         I_filt_poc = Array{Float64, 3}(undef, num_sources, phases, N)
-        I_filt_poc = fill!(I_filt_poc, 0)
+        I_filt_poc = fill!(I_filt_poc, 0.0)
         I_filt_inv = Array{Float64, 3}(undef, num_sources, phases, N)
-        I_filt_inv = fill!(I_filt_inv, 0)
+        I_filt_inv = fill!(I_filt_inv, 0.0)
 
         p_q_filt = Array{Float64, 2}(undef, num_sources, phases)
         p_q_filt  = fill!(p_q_filt, 0)
@@ -555,12 +562,16 @@ mutable struct Classical_Controls
         #---------------------------------------------------------------------------
         # Observers
 
+        Observer = Array{Bool, 1}(undef, num_sources)
+        Observer = fill!(Observer, false)
+
         Ad_0 = Array{Float64, 3}(undef, num_sources, 2, 2)
         Bd_0 = Array{Float64, 3}(undef, num_sources, 2, 3)
         Cd_0 = Array{Float64, 2}(undef, num_sources, 2)
         Dd_0 = Array{Float64, 2}(undef, num_sources, 3)
         Ko_0 = Array{Float64, 2}(undef, num_sources, 2)
         xp_0 = Array{Float64, 2}(undef, num_sources, 2)
+        xp_0 = fill!(xp_0, 0)
 
         Ad_DQ = Array{Float64, 3}(undef, num_sources, 4, 4) #4, 4 #6, 6
         Bd_DQ = Array{Float64, 3}(undef, num_sources, 4, 6) #4, 6 #6, 2
@@ -568,6 +579,7 @@ mutable struct Classical_Controls
         Dd_DQ = Array{Float64, 3}(undef, num_sources, 2, 6) #2, 6 #6, 2
         Ko_DQ = Array{Float64, 3}(undef, num_sources, 4, 2) #4, 2 #6, 2
         xp_DQ = Array{Float64, 2}(undef, num_sources, 4) #4 #6
+        xp_DQ = fill!(xp_DQ, 0)
 
         #---------------------------------------------------------------------------
         # Stochastic processes - Ornstein-Uhlenbeck
@@ -594,7 +606,7 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay, ramp_end,
+        ts, N, steps, action_delay, ramp_end, process_start,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
         Action_loc,
@@ -621,6 +633,7 @@ mutable struct Classical_Controls
         α_sync, ω_sync, θ_sync,
         Δω_sync, eq, Mfif,
         ΔT_err, ΔT_err_t, ω_set,
+        Observer,
         Ad_DQ, Bd_DQ, Cd_DQ, Dd_DQ,
         Ko_DQ, xp_DQ,
         Ad_0, Bd_0, Cd_0, Dd_0,
@@ -717,12 +730,6 @@ end
 
 function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing})
 
-    #= if isnothing(name)
-        Action = Classical_Control(Animo, env)
-    else
-        Action = Classical_Control(Animo, env, name)
-    end =#
-
     Action = Classical_Control(Animo, env)
 
     return Action    
@@ -785,11 +792,11 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source.xp_DQ = fill!(Source.xp_DQ, 0)
     Source.xp_0= fill!(Source.xp_0, 0)
 
-    Source.V_filt_poc = fill!(Source.V_filt_poc, 0)
-    Source.V_filt_cap = fill!(Source.V_filt_cap, 0)
+    Source.V_filt_poc = fill!(Source.V_filt_poc, 0.0)
+    Source.V_filt_cap = fill!(Source.V_filt_cap, 0.0)
 
-    Source.I_filt_poc = fill!(Source.I_filt_poc, 0)
-    Source.I_filt_inv = fill!(Source.I_filt_inv, 0)
+    Source.I_filt_poc = fill!(Source.I_filt_poc, 0.0)
+    Source.I_filt_inv = fill!(Source.I_filt_inv, 0.0)
 
     for ns in 1:Source.num_sources # initial conditions for stochastic process
 
@@ -817,40 +824,40 @@ function Classical_Control(Animo, env)
 
     ramp_end = Source.ramp_end
 
-    Ornstein_Uhlenbeck(Source, t_start = ramp_end + 2/Source.fsys)
+    Ornstein_Uhlenbeck(Source)
 
-    for s in 1:Source.num_sources
+    for ns in 1:Source.num_sources
 
-        if Source.Source_Modes[s] == "Swing"
+        if Source.Source_Modes[ns] == "Swing"
 
-            Swing_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Voltage Control"
+            Swing_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Voltage"
 
-            Voltage_Control_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "PQ Control"
+            Voltage_Control_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "PQ"
 
-            PQ_Control_Mode(Source, s, Source.pq0_set[s, :])
-        elseif Source.Source_Modes[s] == "PV Control"
+            PQ_Control_Mode(Source, ns, Source.pq0_set[ns, :])
+        elseif Source.Source_Modes[ns] == "PV"
 
-            PV_Control_Mode(Source, s, Source.pq0_set[s, :])
-        elseif Source.Source_Modes[s] == "Droop Control"
+            PV_Control_Mode(Source, ns, Source.pq0_set[ns, :])
+        elseif Source.Source_Modes[ns] == "Droop" || Source.Source_Modes[ns] == "Semi-Droop"
 
-            Droop_Control_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Full-Synchronverter"
+            Droop_Control_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Synchronverter"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 1, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Semi-Synchronverter"
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 1, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Semi-Synchronverter"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Step"
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Step"
 
-            Step_Mode(Source, s, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Not Used 2"
+            Step_Mode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Not Used 2"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[s] == "Not Used 3"
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Not Used 3"
 
-            Synchronverter_Mode(Source, s, pq0_ref = Source.pq0_set[s, :], mode = 2, t_end = ramp_end)
+            Synchronverter_Mode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
         end
     end
 
@@ -868,9 +875,7 @@ function Source_Interface(Animo, env, Source::Classical_Controls)
 
     observer = true
 
-    state_ids = get_state_ids(env.nc)
-    state_ids_classic = Animo.state_ids
-    state = env.x[findall(x -> x in state_ids_classic, state_ids)]
+    state = env.x[findall(x -> x in Animo.state_ids, env.state_ids)]
 
     for ns in 1:Source.num_sources
 
@@ -886,7 +891,7 @@ function Source_Interface(Animo, env, Source::Classical_Controls)
 
         if Source.filter_type[ns] == "LCL"
 
-            if observer == true
+            if Source.Observer[ns]
 
                 Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
                 Luenberger_Observer(Source, ns)
@@ -1034,7 +1039,7 @@ function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
 
     Filtering(Source, num_source, θ)
 
-    if Source.steps*Source.ts > 4/Source.fsys
+    if Source.steps*Source.ts > Source.process_start
 
         PQ_Control(pq0_ref = pq0, Source, num_source, θ)
         Current_Controller(Source, num_source, θ, ω)
@@ -1376,18 +1381,17 @@ function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrm
     θ = Source.θ_droop[num_source, 1]
     p_q = Source.p_q_filt[num_source, :]
 
-    ω_new = Source.fsys*2*π - p_q[1]*Source.D[num_source, 1]
+    ω_new = Source.fsys*2π - p_q[1]*Source.D[num_source, 1]
+    Source.ω_droop[num_source, 1, 1:2] = ω[2:end]
     Source.ω_droop[num_source, :, end] = [ω_new; ω_new; ω_new]
 
-    Source.θ_droop[num_source, 1] = Third_Order_Integrator(θ, Source.ts, [ω[2:end]; ω_new])%(2*π)
-    Source.θ_droop[num_source, 2] = (Source.θ_droop[num_source, 1] - 120*π/180)%(2*π)
-    Source.θ_droop[num_source, 3] = (Source.θ_droop[num_source, 1] + 120*π/180)%(2*π)
+    θ_new = Third_Order_Integrator(θ, Source.ts, [ω[2:end]; ω_new])%(2π)
+
+    Source.θ_droop[num_source, :] = [θ_new; θ_new - 120*π/180; θ_new + 120*π/180].%(2π)
 
     E_new = Vrms - p_q[2]*Source.D[num_source, 2]
 
-    Source.V_ref[num_source, 1] = sqrt(2)*E_new*cos(Source.θ_droop[num_source, 1])
-    Source.V_ref[num_source, 2] = sqrt(2)*E_new*cos(Source.θ_droop[num_source, 2])
-    Source.V_ref[num_source, 3] = sqrt(2)*E_new*cos(Source.θ_droop[num_source, 3])
+    Source.V_ref[num_source, :] = sqrt(2)*E_new*cos.(Source.θ_droop[num_source, :])
 
     return nothing
 end
@@ -1619,16 +1623,16 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
     Te_new = Source.p_q_filt[num_source, 1]/ω[end] # New Electrical Torque
 
     α_new = (1/Source.J_sync[num_source])*(Tm - Te_new - ΔT) # New Angular Acceleration
+    Source.α_sync[num_source, :] = [α[2:end]; α_new]
 
-    ω_new = Third_Order_Integrator(ω[end], Source.ts, [α[2:end]; α_new])
+    ω_new = Third_Order_Integrator(ω[end], Source.ts, Source.α_sync[num_source, :])
 
     Source.ω_sync[num_source, :] = [ω[2:end]; ω_new]
-    Source.α_sync[num_source, :] = [α[2:end]; α_new]
 
     #----
 
     #---- Integrate ω_new to find θ_new
-    θ_new = Third_Order_Integrator(θ, Source.ts, [ω[2:end]; ω_new])%(2π)
+    θ_new = Third_Order_Integrator(θ, Source.ts, Source.ω_sync[num_source, :])%(2π)
 
     Source.θ_sync[num_source] = θ_new
     #----
@@ -1805,6 +1809,17 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         
         Source.I_filt_poc[ns, :, end] = Inv_DQ0_transform(I_poc_DQ0, θ + 0.5*Source.ts*ω)
         Source.V_filt_cap[ns, :, end] = Inv_DQ0_transform(V_cap_DQ0, θ + 0.5*Source.ts*ω)
+
+        if any(isnan.(Source.I_filt_poc[ns, :, end]))
+            Source.I_filt_poc[ns, :, end] = fill!(Source.I_filt_poc[ns, :, end], 0.0)
+            Source.xp_0[ns, 1] = 0.0
+            Source.xp_DQ[ns, 1:2] = fill!(Source.xp_DQ[ns, 1:2], 0.0)
+        end
+        if any(isnan.(Source.V_filt_cap[ns, :, end]))
+            Source.V_filt_cap[ns, :, end] = fill!(Source.V_filt_cap[ns, :, end], 0.0)
+            Source.xp_0[ns, 2] = 0.0
+            Source.xp_DQ[ns, 3:4] = fill!(Source.xp_DQ[ns, 3:4], 0.0)
+        end
        
     end
 
@@ -1853,11 +1868,9 @@ function Divided_Diff(x, y)
     return vec(coef[1,:])
 end
 
-#-------------------------------------------------------------------------------
+function Ornstein_Uhlenbeck(Source::Classical_Controls)
 
-function Ornstein_Uhlenbeck(Source::Classical_Controls; t_start = 0.04)
-
-    if Source.steps*Source.ts >= t_start
+    if Source.steps*Source.ts >= Source.process_start
 
         for ns in 1:Source.num_sources
 
@@ -2164,41 +2177,62 @@ end
 
 function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
+    # logging
+    count_V_K = 0
+    count_I_K = 0
+    count_Dp = 0
+    count_Dq = 0
+    count_L_fltr = 0
+
     Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
 
     e = 1
 
     Source.fsys = env.nc.parameters["grid"]["f_grid"]
     Source.ramp_end = env.nc.parameters["grid"]["ramp_end"]
+    Source.process_start = env.nc.parameters["grid"]["process_start"]
     Source.Δfmax = env.nc.parameters["grid"]["Δfmax"]
     Source.ΔEmax = env.nc.parameters["grid"]["ΔEmax"]
 
+    Source.ω_sync = fill!(Source.ω_sync, Source.fsys*2π)
+    Source.ω_droop = fill!(Source.ω_droop, Source.fsys*2π)
+
     for ns in source_indices
 
-        Srated = env.nc.parameters["source"][ns]["pwr"]
+        Source.S[e] = env.nc.parameters["source"][ns]["pwr"]
+        Source.pf[e] = env.nc.parameters["source"][ns]["pf"]
+
         Source.filter_type[e] = env.nc.parameters["source"][ns]["fltr"]
         Source.Rf_L1[e] = env.nc.parameters["source"][ns]["R1"]
         Source.Lf_1[e] = env.nc.parameters["source"][ns]["L1"]
-        Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
-        Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
 
-        if haskey(env.nc.parameters["source"][ns], "R_C")
-            Source.Rf_C[e] = env.nc.parameters["source"][ns]["R_C"]
-            Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
-        else
-            Source.Cf[e] = 0.00001e-6
-            Source.Rf_C[e] = 1*Source.Cf[e]
-        end
+        Source.Vdc[e] = env.nc.parameters["source"][ns]["vdc"]
+        Source.i_max[e] = env.nc.parameters["source"][ns]["i_limit"]
+        Source.v_max[e] = env.nc.parameters["source"][ns]["v_limit"]/2
+
+        Source.Vrms[e] = env.nc.parameters["grid"]["v_rms"]
+        Source.V_pu_set[e, 1] = env.nc.parameters["source"][ns]["v_pu_set"]
+        Source.V_δ_set[e, 1] = env.nc.parameters["source"][ns]["v_δ_set"]*π/180
+
+        Source.τv[e] = env.nc.parameters["source"][ns]["τv"] # time constant of the voltage loop
+        Source.τf[e] = env.nc.parameters["source"][ns]["τf"] # time constant of the frequency loop
+
+        Source.pq0_set[e, 1] = env.nc.parameters["source"][ns]["p_set"] # W, Real Power
+        Source.pq0_set[e, 2] = env.nc.parameters["source"][ns]["q_set"] # VAi, Imaginary Power
 
         if Source.filter_type[e] == "LCL"
             Source.Rf_L2[e] = env.nc.parameters["source"][ns]["R2"]
             Source.Lf_2[e] = env.nc.parameters["source"][ns]["L2"]
         end
 
-        Source.pf[e] = env.nc.parameters["source"][ns]["pf"]
-        Source.S[e] = Srated
-        Source.P[e] = pf*Srated
-        Source.Q[e] = sqrt(Srated^2 - Source.P[e]^2)
+        if haskey(env.nc.parameters["source"][ns], "Observer") && Source.filter_type[e] == "LCL"
+            Source.Observer[e] = env.nc.parameters["source"][ns]["Observer"]
+        else
+            Source.Observer[e] = false
+        end
+
+        Source.P[e] = Source.pf[e]*Source.S[e]
+        Source.Q[e] = sqrt(Source.S[e]^2 - Source.P[e]^2)
 
         if typeof(modes[e]) == Int64
             Source.Source_Modes[e] = Mode_Keys[modes[e]]
@@ -2206,38 +2240,72 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             Source.Source_Modes[e] = modes[e]
         end
 
-        #Droop (and synchronverter) parameters
-        Source.τv[e] = env.nc.parameters["source"][ns]["τv"] # time constant of the voltage loop
-        Source.τf[e] = env.nc.parameters["source"][ns]["τf"] # time constant of the frequency loop
+        if haskey(env.nc.parameters["source"][ns], "R_C")
 
-        if Source.Source_Modes[e] == "Semi-Synchronverter" || Source.Source_Modes[e] == "Full-Synchronverter"
-
-            Source.D[e, 1] = Source.S[e]/((2π)*(Source.fsys)*Source.fsys*2π*Source.Δfmax)
-            Source.D[e, 2] = Source.S[e]/(Source.Vrms[e]*sqrt(2)*Source.ΔEmax)
+            Source.Rf_C[e] = env.nc.parameters["source"][ns]["R_C"]
+            Source.Cf[e] = env.nc.parameters["source"][ns]["C"]
         else
 
-            Source.D[e, 1] = 2π*Source.fsys*2π*Source.Δfmax/Source.P[e]
-            Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.Q[e]
+            Source.Cf[e] = Source.S[e]/(3*Source.fsys*2π*Source.Vrms[e]*Source.Vrms[e])
+            Source.Rf_C[e] = Source.Cf[e]
+
+            if Source.Source_Modes[e] != "Swing"
+                count_L_fltr += 1
+            end
+        end
+
+        if Source.Source_Modes[e] == "Semi-Synchronverter" || Source.Source_Modes[e] == "Synchronverter"
+
+            if !haskey(env.nc.parameters["source"][ns], "Dp")
+                Source.D[e, 1] = Source.S[e]/((2π)*(Source.fsys)*Source.fsys*2π*Source.Δfmax)
+                count_Dp += 1
+            else
+                Source.D[e, 1] = env.nc.parameters["source"][ns]["Dp"]
+            end
+
+            if !haskey(env.nc.parameters["source"][ns], "Dq")
+                Source.D[e, 2] = Source.S[e]/(Source.Vrms[e]*sqrt(2)*Source.ΔEmax)
+                count_Dq += 1
+            else
+                Source.D[e, 2] = env.nc.parameters["source"][ns]["Dq"]
+            end
+
+        elseif Source.Source_Modes[e] == "Semi-Droop" || Source.Source_Modes[e] == "Droop"
+            
+            if !haskey(env.nc.parameters["source"][ns], "Dp")
+                Source.D[e, 1] = 2π*Source.fsys*2π*Source.Δfmax/Source.P[e]
+                count_Dp += 1
+                
+            else
+                Source.D[e, 1] = env.nc.parameters["source"][ns]["Dp"]
+            end
+
+            if !haskey(env.nc.parameters["source"][ns], "Dq")
+                if Source.Source_Modes[e] == "Semi-Droop"
+                    Source.D[e, 2] = 0.0
+                else
+                    Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.Q[e]
+                end
+                count_Dq += 1
+            else
+                Source.D[e, 2] = env.nc.parameters["source"][ns]["Dq"]
+            end
         end
 
         Source.J_sync[e] = Source.τf[e]*Source.D[e, 1] #total mass moment of inertia of the rotating masses, kg*m^2
         Source.K_sync[e] = Source.τv[e]*Source.fsys*2π*Source.D[e, 2]
 
-        Source.pq0_set[e, 1] = env.nc.parameters["source"][ns]["p_set"] # W, Real Power
-        Source.pq0_set[e, 2] = env.nc.parameters["source"][ns]["q_set"] # VAi, Imaginary Power
-
-        Source.V_pu_set[e, 1] = env.nc.parameters["source"][ns]["v_pu_set"]
-        Source.V_δ_set[e, 1] = env.nc.parameters["source"][ns]["v_δ_set"]*π/180
-
-        Source.i_max[e] = env.nc.parameters["source"][ns]["i_limit"] # should there be a 3? TODO
-        Source.v_max[e] = env.nc.parameters["source"][ns]["v_limit"]/2
+        if Source.Source_Modes[e] == "Synchronverter" || Source.Source_Modes[e] == "PQ"
+            Source.σ[e] = abs(env.nc.parameters["source"][ns]["σ"]) # Brownian motion scale (standard deviation) - sqrt(diffusion) 
+        else
+            Source.σ[e] = 0.0
+        end
 
         Source.κ[e] = abs(env.nc.parameters["source"][ns]["κ"]) # mean reversion parameter
-        Source.σ[e] = abs(env.nc.parameters["source"][ns]["σ"]) # Brownian motion scale (standard deviation) - sqrt(diffusion) 
         Source.γ[e] = env.nc.parameters["source"][ns]["γ"] # asymptotic mean
         Source.k[e] = env.nc.parameters["source"][ns]["k"] # interpolation degree
 
-        if Source.k[e] - 1 > env.nc.parameters["source"][ns]["Δt"]/ts
+        if Source.k[e] - 1 > env.nc.parameters["source"][ns]["Δt"]/Source.ts
             Source.k[e] = floor(env.nc.parameters["source"][ns]["Δt"]/ts) - 1
         end
 
@@ -2257,12 +2325,110 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             Source.c_diff[e] = cat(coef, dims = 1)
         end
 
-        Current_PI_LoopShaping(Source, e)
-        Voltage_PI_LoopShaping(Source, e)
+        if !haskey(env.nc.parameters["source"][ns], "I_kp") && !haskey(env.nc.parameters["source"][ns], "I_ki")
 
-        Observer_Initialiser(Source, e)
+            Current_PI_LoopShaping(Source, e)
+            count_I_K += 1
+        else
+
+            Source.I_kp[e] = env.nc.parameters["source"][ns]["I_kp"]
+            Source.I_ki[e] = env.nc.parameters["source"][ns]["I_ki"]
+        end
+
+        if !haskey(env.nc.parameters["source"][ns], "V_kp") && !haskey(env.nc.parameters["source"][ns], "V_ki")
+
+            Voltage_PI_LoopShaping(Source, e)
+            count_V_K += 1
+        else
+
+            Source.V_kp[e] = env.nc.parameters["source"][ns]["V_kp"]
+            Source.V_ki[e] = env.nc.parameters["source"][ns]["V_ki"]
+        end
+
+        if Source.Observer[e]
+
+            Observer_Initialiser(Source, e)
+
+            if isnan(Source.Ko_DQ[e, 1, 1])
+                Source.Observer[e] = false
+            end
+        end
 
         e += 1
+    end
+
+    #-------------------------------------------------------------------------------
+    # Logging
+
+    if count_L_fltr == 1
+        @warn "$(count_L_fltr) source with an 'L' filter is being controlled. 'LCL' or 'LC' filters are preferred."
+    elseif count_L_fltr > 1
+        @warn "$(count_L_fltr) source 'L' filters are being controlled. 'LCL' or 'LC' filters are preferred."
+    end
+
+    mode_count = Array{Int64, 1}(undef, length(Mode_Keys))
+    mode_count = fill!(mode_count, 0)
+
+    @info "$(Source.num_sources) 'classically' controlled sources have been initialised."
+
+    for modes in eachindex(Mode_Keys)
+
+        mode_count[modes] = length(findall(x->x == Mode_Keys[modes], Source.Source_Modes))
+
+        if mode_count[modes] != 0
+            if mode_count[modes] == 1
+                @info "$(mode_count[modes]) source has been set up in $(Mode_Keys[modes]) mode."
+            else
+                @info "$(mode_count[modes]) sources have been set up in $(Mode_Keys[modes]) mode."
+            end
+        end
+
+    end
+
+    if (count_V_K == Source.num_sources && count_I_K == Source.num_sources 
+        && count_Dp == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6] 
+        && count_Dq == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6])
+
+        @info "All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains."
+
+    else
+
+        if count_V_K == 1
+            @info "$(count_V_K) source has automatically calculated proportional and integral gains for its voltage control loop."
+        elseif count_V_K > 1
+            @info "$(count_V_K) sources have automatically calculated proportional and integral gains for their voltage control loops."
+        end
+
+        if count_I_K == 1
+            @info "$(count_I_K) source has automatically calculated proportional and integral gains for its current control loop."
+        elseif count_I_K > 1
+            @info "$(count_I_K) sources have automatically calculated proportional and integral gains for their current control loops."
+        end
+
+        if count_Dp == 1
+            @info "$(count_Dp) source has an automatically calculated frequency droop coefficient."
+        elseif count_Dp > 1
+            @info "$(count_Dp) sources have automatically calculated frequency droop coefficients."
+        end
+
+        if count_Dq == 1
+            @info "$(count_Dq) source has an automatically calculated voltage droop coefficient."
+        elseif count_Dq > 1
+            @info "$(count_Dq) sources have automatically calculated voltage droop coefficients."
+        end
+    end
+
+    if length(findall(Source.Observer)) == 1
+        @info "$(length(findall(Source.Observer))) source has been set up with a deadbeat Luenberger discrete Observer."
+    elseif length(findall(Source.Observer)) > 1
+        @info "$(length(findall(Source.Observer))) sources have been set up with deadbeat Luenberger discrete Observers."
+    end
+
+    processes = length(findall(x->x > 0.0, convert.(Float64, Source.σ)))
+    if processes == 1
+        @info "$(processes) stochastic process will start at $(Source.process_start) [s]."
+    elseif processes > 1
+        @info "$(processes) stochastic processes will start at $(Source.process_start) [s]."
     end
 
     return nothing
@@ -2362,10 +2528,13 @@ function Observer_Initialiser(Source::Classical_Controls, ns)
              0.0 2.0 0.5 1.0]
 
         Source.Ko_DQ[ns, :, :],   = Multi_Gain_Matrix_par(Source.Ad_DQ[ns, :, :], Source.Cd_DQ[ns, :, :], λ, p)
-        λₒ = round.(eigvals(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :]), digits = 3)
-        
-        if maximum(abs.(sort(λ) .- λₒ)) != 0 
-            Source.Ko_DQ[ns, :, :] = fill!(Source.Ko_DQ[ns, :, :], 0.)
+
+        if !isnan(Source.Ko_DQ[ns, 1, 1])
+            λₒ = round.(eigvals(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :]), digits = 3)
+            
+            if maximum(abs.(sort(λ) .- λₒ)) != 0 
+                Source.Ko_DQ[ns, :, :] = fill!(Source.Ko_DQ[ns, :, :], NaN)
+            end
         end
 
         #(Source.Ad_DQ[ns, :, :] - Source.Ko_DQ[ns, :, :]*Source.Cd_DQ[ns, :, :])^4
@@ -2519,10 +2688,10 @@ function Multi_Gain_Matrix_par(A, C, λ, p)
         v[:, i] = -transpose(p[:, i])*C*inv(I*λ[i] - A)
     end
     
-    if round(det(v), digits = 9) != 0 || 1 == 1
+    if round(det(v), digits = 9) != 0
         K = inv(transpose(v))*transpose(p)
     else
-        K = fill!(K, 0.)
+        K = fill!(K, NaN)
     end
 
     return K, v

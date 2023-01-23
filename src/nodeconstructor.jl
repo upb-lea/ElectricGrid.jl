@@ -86,7 +86,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
-        @assert length(keys(parameters["grid"])) == 7 "Expect parameters['grid'] to have the three entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
+        @assert length(keys(parameters["grid"])) == 8 "Expect parameters['grid'] to have the 8 entries 'fs', 'v_rms', 'phase' and 'f_grid' but got $(keys(parameters["grid"]))"
 
         @assert length(parameters["source"]) == num_sources "Expect the number of sources to match the number of sources in the parameters, but got $num_sources and $(length(parameters["source"]))"
 
@@ -165,13 +165,14 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     ##############
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
-        grid_properties["fs"] =  10e3
+        grid_properties["fs"] =  10e3 # TODO: this should be 1/env.ts
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
-        grid_properties["Δfmax"] = 0.5/100 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
+        grid_properties["Δfmax"] = 0.005 # Hz # The drop in frequency, Hz, which will cause a 100% increase in active power
         grid_properties["ΔEmax"] = 5/100 # V # The drop in rms voltage, which will cause a 100% decrease in reactive power
         grid_properties["ramp_end"] = 2/50
+        grid_properties["process_start"] = 2/50
         parameters["grid"] = grid_properties
 
     else
@@ -185,16 +186,19 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             parameters["grid"]["phase"] = 3
         end
         if !haskey(parameters["grid"], "f_grid")
-            parameters["grid"]["f_grid"] = 50
+            parameters["grid"]["f_grid"] = 50.0
         end
         if !haskey(parameters["grid"], "Δfmax")
-            parameters["grid"]["Δfmax"] = 0.5/100
+            parameters["grid"]["Δfmax"] = 0.005
         end
         if !haskey(parameters["grid"], "ΔEmax")
             parameters["grid"]["ΔEmax"] = 5/100
         end
         if !haskey(parameters["grid"], "ramp_end")
             parameters["grid"]["ramp_end"] = 2/parameters["grid"]["f_grid"]
+        end
+        if !haskey(parameters["grid"], "process_start")
+            parameters["grid"]["process_start"] = 2/parameters["grid"]["f_grid"]
         end
     end
 
@@ -298,7 +302,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             
             if !haskey(source, "fltr")
-                source["fltr"] = rand(["L", "LC", "LCL"])
+                source["fltr"] = "LCL"#rand(["LC", "LCL"]) 
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "L"
@@ -501,7 +505,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "mode")
-                source["mode"] = "Semi-Synchronverter"
+                source["mode"] = "Droop"
             end
 
             if !haskey(source, "control_type")
@@ -520,7 +524,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                     source["std_asy"] = 0.0
                 elseif !haskey(source, "κ")
 
-                    source["std_asy"] = source["pwr"]/2
+                    source["std_asy"] = source["pwr"]/4
                 else
 
                     source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
@@ -548,7 +552,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
             if !haskey(source, "Δt") # time step
 
-                steps = 2 # ... cycles for 1 step
+                steps = 1 # ... cycles for 1 step
                 source["Δt"] = round(steps*parameters["grid"]["fs"]/(parameters["grid"]["f_grid"]))/parameters["grid"]["fs"]
 
             elseif haskey(source, "Δt")
@@ -590,17 +594,17 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             push!(parameters["source"], _sample_fltr_L(parameters["grid"]))
             end
             # Validierung ob LC vorhanden ist?
-            if num_LC_defined == 0 &&  num_fltr_LC_undef == 0
-                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
+            if num_LC_defined == 0 && num_fltr_LC_undef == 0 # What is this? What if the user defined an L or LCL filter
+                #@warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         else
 
             if num_LC_defined == 0 
-                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
+                #@warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         end
 
-        source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined! set to ideal!"
+        #source_type_fixed > 0 && @warn "Wagga Wagga. Poopy-di scoop. Scoop-diddy-whoop. Whoop-di-scoop-di-poop. $source_type_fixed sourceType not defined! set to ideal! Why do I care??"
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     
@@ -1060,9 +1064,9 @@ function _sample_fltr_LCL(grid_properties)
     source["fltr"] = "LCL"
     #TODO: why are these things randomized again?? - maybe I'm not following the code, but surely these have been randomized if the user did not define them
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = rand(Uniform(0.1, 0.15))
-    source["v_rip"] = rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
 
    #Inductor design
 
@@ -1118,9 +1122,9 @@ function _sample_fltr_LC(grid_properties)
     source["fltr"] = "LC"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = rand(Uniform(0.1, 0.15))
-    source["v_rip"] = rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
 
     #Inductor design
 
@@ -1172,9 +1176,9 @@ function _sample_fltr_L(grid_properties)
     source["fltr"] = "L"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = rand(Uniform(0.1, 0.15))
-    source["v_rip"] = rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
 
     #Inductor design
 
@@ -1320,7 +1324,7 @@ Sample parameters for the cable.
 function _sample_cable()
     
     cable = Dict()
-    cable["len"] = rand(Uniform(1e-3, 1e1))
+    cable["len"] = 1.0#rand(Uniform(1e-3, 1e1))
 
     cable["Rb"] =  0.722
     cable["Cb"] = 0.4e-6

@@ -49,7 +49,25 @@ mutable struct SimEnv <: AbstractEnv
     y #holds all of the inductor voltages and capacitor currents
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 0)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing)
+
+    if !(isnothing(t_end))
+        maxsteps = floor(t_end/ts) + 1
+    end
+
+    if haskey(parameters, "source") && haskey(parameters, "load")
+
+        num_sources = length(parameters["source"])
+        num_loads = length(parameters["load"])
+    end
+
+    if haskey(parameters, "grid") 
+
+        if !haskey(parameters["grid"], "fs")
+            parameters["grid"]["fs"] = 1/ts
+        end
+    end
+
     
     if !(isnothing(num_sources) || isnothing(num_loads)) 
 
@@ -200,10 +218,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             vdc_fixed += 1
         end
     end
-    vdc_fixed > 0 && @warn "$vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc"
+    vdc_fixed > 0 && @warn "$vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc."
 
 
-    @info "Normalization done based in defined parameterlimits"
+    @info "Normalization is done based on the defined parameter limits."
     states = get_state_ids(nc)
 
     i_limit_fixed = 0
