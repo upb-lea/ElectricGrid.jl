@@ -1,6 +1,6 @@
 using KrylovKit
 
-function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
+function Spectral_Basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
 
     """
     Spectral decomposition of the similarity matrix, *after normalization*.
