@@ -6,8 +6,6 @@ using ReinforcementLearning
 vars = matread("./test/env_test_state_1source_1load1e6.mat")
 
 
-
-
 @testset "env_1source_1load" begin
 
     t_final = 0.0003 #time in seconds, total simulation run time
@@ -30,7 +28,6 @@ vars = matread("./test/env_test_state_1source_1load1e6.mat")
                         Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
                         ],
         "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
-                    
     )
 
 
@@ -75,7 +72,7 @@ vars = matread("./test/env_test_state_1source_1load1e6.mat")
     #_______________________________________________________________________________
     # Starting time simulation
     num_eps = 1
-    RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
+    RLBase.run(ma, env, StopAfterEpisode(num_eps), hook); # this can be replaced by the method called: Power_System_Dynamics(env, hook)
 
 
     for eps in 1:num_eps
@@ -96,9 +93,7 @@ vars = matread("./test/env_test_state_1source_1load1e6.mat")
     println()
     println("DARE:")
     display(X_dare)
-    println()
-
-    
+    println()   
 
     #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=12  # 1e-4
     #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=0.1   # 1e-5

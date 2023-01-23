@@ -6,8 +6,8 @@ global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_ti
 
 
 @testset "NodeConstructor" begin
-    # TODO shift to separat file_name
-    #include("./nc_test_function.jl")
+    
+    include("./nc_test_function.jl")
     # TODO check A, B, C and D matrix with analytical calculation
 
     #sum of the output of get_fltr_distr should add up to the argument
@@ -56,6 +56,9 @@ end
 end
 
 @testset "ClassicalController" begin
+    
+
+
     
 end
 
