@@ -3,7 +3,7 @@ using Dare
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
-# Network Parameters 
+# Network Configuration 
 
 #-------------------------------------------------------------------------------
 # Time simulation
@@ -22,7 +22,14 @@ CM = [ 0. 1.
         -1. 0.]
 
 #-------------------------------------------------------------------------------
-# Sources
+# Parameters
+
+#= Modes:
+    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+    2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+    3 -> "Droop" - simple grid forming with power balancing
+    4 -> "Synchronverter" - enhanced droop control
+=#
 
 parameters = Dict{Any, Any}(
         "source" => Any[
