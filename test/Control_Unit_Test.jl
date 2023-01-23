@@ -169,9 +169,9 @@ using DataFrames
         grid["v_rms"] = 230
         load["ramp_end"] = 0.04
         load["process_start"] = 0.04
-        load["f_grid"] = 50 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
-        load["Δfmax"] = 0.005 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
-        load["ΔEmax"] = 0.05
+        load["f_grid"] = 50 
+        load["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
+        load["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
         #-------------------------------------------------------------------------------
         # Amalgamation

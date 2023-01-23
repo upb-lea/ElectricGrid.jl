@@ -24,10 +24,10 @@ CM = [ 0. 0. 1.
 parameters = Dict{Any, Any}(
         "source" => Any[
                         Dict{Any, Any}("pwr" => 200e3),
-                        Dict{Any, Any}("pwr" => 200e3)
+                        Dict{Any, Any}("pwr" => 200e3),
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006) 
+                        Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
                         ]
     )
 #_______________________________________________________________________________
