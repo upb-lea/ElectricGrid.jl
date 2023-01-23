@@ -53,7 +53,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
     num_connections = 0
 
     if CM === nothing
-        cntr, CM = CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
+        cntr, CM = CM_generate(num_sources, num_loads, S2L_p, S2S_p)
         num_connections = cntr
     else
         if size(CM)[1] != tot_ele
@@ -1356,14 +1356,17 @@ end
 
 
 """
-    CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
+    CM_generate(num_sources, num_loads, S2L_p, S2S_p)
 
 Returns the constructed CM and the total number of connections.
 """
-function CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
+function CM_generate(num_sources, num_loads,  S2L_p, S2S_p)
 
     # counting the connections 
     cntr = 0
+
+    # get total elements
+    tot_ele = num_sources + num_loads
     
     # get a upper triangular matrix
     mask = UpperTriangular(ones(tot_ele, tot_ele))
@@ -1384,6 +1387,8 @@ function CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
             end
         end
     end
+
+    # println("CM: $(CM)")
 
     # make sure that no objects disappear or subnets are formed
     for i in 1:tot_ele
@@ -1418,6 +1423,8 @@ function CM_generate(tot_ele, num_sources, S2L_p, S2S_p)
     end
 
     CM = CM - CM' # copy with negative sign to lower triangle
+
+    # println("CM: $(CM)")
 
     return cntr, CM
 end
