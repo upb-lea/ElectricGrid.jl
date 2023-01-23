@@ -75,25 +75,26 @@ vars = matread("./test/env_test_state_1source_1load1e6.mat")
     RLBase.run(ma, env, StopAfterEpisode(num_eps), hook); # this can be replaced by the method called: Power_System_Dynamics(env, hook)
 
 
+    #=
     for eps in 1:num_eps
 
         plot_hook_results(; hook = hook, states_to_plot = plt_state_ids, actions_to_plot = plt_action_ids, episode = eps, 
-        pq_to_plot = [], vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
+         vrms_to_plot = [], irms_to_plot = [], vdq_to_plot = [], idq_to_plot = [])
     end
     display(hook.df)
     println(env.state_ids)
+    =#
     idx_end = 300
     X_dare = [hook.df[!,"source1_i_L1_a"][2:idx_end,:] hook.df[!, "source1_v_C_filt_a"][2:idx_end,:] hook.df[!,"source1_v_C_cables_a"][2:idx_end,:] hook.df[!,"cable1_i_L_a"][2:idx_end,:] -hook.df[!,"load1_v_C_total_a"][2:idx_end,:] -hook.df[!,"load1_i_L_a"][2:idx_end,:]]
 
     # TODO: why do we have 2 zero lines in X_dare?
-    # TODO: Why is load1_i_L_a in X_dare off?
 
-    println("MATLAB:")
-    display(vars["X_matlab"][1:idx_end-1,:])
-    println()
-    println("DARE:")
-    display(X_dare)
-    println()   
+    #println("MATLAB:")
+    #display(vars["X_matlab"][1:idx_end-1,:])
+    #println()
+    #println("DARE:")
+    #display(X_dare)
+    #println()   
 
     #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=12  # 1e-4
     #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=0.1   # 1e-5
