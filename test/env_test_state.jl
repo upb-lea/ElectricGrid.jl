@@ -3,15 +3,15 @@ using Dare
 using MAT
 using ReinforcementLearning
 
-vars = matread("./test/env_test_state_1source_1load.mat")
+vars = matread("./test/env_test_state_1source_1load1e6.mat")
 
 
 
 
 @testset "env_1source_1load" begin
 
-    t_final = 0.03 #time in seconds, total simulation run time
-    ts = 1e-4
+    t_final = 0.0003 #time in seconds, total simulation run time
+    ts = 1e-6
     t = 0:ts:t_final # time
 
     fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
@@ -85,13 +85,14 @@ vars = matread("./test/env_test_state_1source_1load.mat")
     end
     display(hook.df)
     println(env.state_ids)
-    X_dare = [hook.df[!,"source1_i_L1_a"][2:11,:] hook.df[!, "source1_v_C_filt_a"][2:11,:] hook.df[!,"source1_v_C_cables_a"][2:11,:] hook.df[!,"cable1_i_L_a"][2:11,:] -hook.df[!,"load1_v_C_total_a"][2:11,:] -hook.df[!,"load1_i_L_a"][2:11,:]]
+    idx_end = 300
+    X_dare = [hook.df[!,"source1_i_L1_a"][2:idx_end,:] hook.df[!, "source1_v_C_filt_a"][2:idx_end,:] hook.df[!,"source1_v_C_cables_a"][2:idx_end,:] hook.df[!,"cable1_i_L_a"][2:idx_end,:] -hook.df[!,"load1_v_C_total_a"][2:idx_end,:] -hook.df[!,"load1_i_L_a"][2:idx_end,:]]
 
     # TODO: why do we have 2 zero lines in X_dare?
     # TODO: Why is load1_i_L_a in X_dare off?
 
     println("MATLAB:")
-    display(vars["X_matlab"][1:10,:])
+    display(vars["X_matlab"][1:idx_end-1,:])
     println()
     println("DARE:")
     display(X_dare)
@@ -99,5 +100,7 @@ vars = matread("./test/env_test_state_1source_1load.mat")
 
     
 
-    @test X_dare≈vars["X_matlab"][1:10,:] atol=0.1
+    #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=12  # 1e-4
+    #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=0.1   # 1e-5
+    @test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=0.001   # 1e-6
 end
