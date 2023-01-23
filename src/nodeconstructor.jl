@@ -111,6 +111,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
     end
 
     num_fltr = 4 * num_fltr_LCL + 3 * num_fltr_LC + 2 * num_fltr_L
+    # Equivalent to the number of load states
     num_impedance = (2 * (num_loads_RLC
                         + num_loads_LC
                         + num_loads_RL
@@ -2089,71 +2090,79 @@ function generate_A(self::NodeConstructor)
 
     A_trn = generate_A_trn(self)
 
-    A_tran_load_l_list = []
-    for i in 1:self.num_loads
-        push!(A_tran_load_l_list, get_A_tran_load_l(self, i))
-    end
-    A_tran_load_l = reduce(hcat, A_tran_load_l_list) # i-> idx // i+1 -> num of load
-
-    A_tran_load_c_list = []
-    for i in 1:self.num_loads
-        push!(A_tran_load_c_list, get_A_tran_load_c(self, i))
-    end
-    A_tran_load_c = reduce(vcat, A_tran_load_c_list)
-
-    # get A_load_diag
-    self.num_impedance = (2 * (self.num_loads_RLC
-                                + self.num_loads_LC
-                                + self.num_loads_RL
-                                + self.num_loads_L)
-                                + self.num_loads_RC + self.num_loads_C + self.num_loads_R)
-    
-    A_load_diag = zeros(self.num_impedance, self.num_impedance)
-    A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
-
-    cntr = 0
-    for (i, ele) in enumerate(A_load_list)
-        if (self.parameters["load"][i]["impedance"]  == "RLC" ||
-            self.parameters["load"][i]["impedance"]  == "LC" ||
-            self.parameters["load"][i]["impedance"]  == "RL" ||
-            self.parameters["load"][i]["impedance"]  == "L")
-
-            start = 1 + cntr
-            stop = 2 + cntr
-            cntr += 2
-            A_load_diag[start:stop, start:stop] = ele
-
-        elseif (self.parameters["load"][i]["impedance"]  == "RC" ||
-            self.parameters["load"][i]["impedance"]  == "C" ||
-            self.parameters["load"][i]["impedance"]  == "R")
-
-            start = 1 + cntr
-            stop = 1 + cntr
-            cntr += 1
-            start = i + self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
-            A_load_diag[start:start, start:start] = ele
-
+    if self.num_loads > 0
+        A_tran_load_l_list = []
+        for i in 1:self.num_loads
+            push!(A_tran_load_l_list, get_A_tran_load_l(self, i))
         end
+        A_tran_load_l = reduce(hcat, A_tran_load_l_list) # i-> idx // i+1 -> num of load
+
+        A_tran_load_c_list = []
+        for i in 1:self.num_loads
+            push!(A_tran_load_c_list, get_A_tran_load_c(self, i))
+        end
+        A_tran_load_c = reduce(vcat, A_tran_load_c_list)
+
+        # get A_load_diag
+        self.num_impedance = (2 * (self.num_loads_RLC # Equivalent to the number of load states
+                                    + self.num_loads_LC
+                                    + self.num_loads_RL
+                                    + self.num_loads_L)
+                                    + self.num_loads_RC + self.num_loads_C + self.num_loads_R)
+        
+
+        A_load_diag = zeros(self.num_impedance, self.num_impedance)
+        A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
+
+        cntr = 0
+        for (i, ele) in enumerate(A_load_list)
+            if (self.parameters["load"][i]["impedance"]  == "RLC" ||
+                self.parameters["load"][i]["impedance"]  == "LC" ||
+                self.parameters["load"][i]["impedance"]  == "RL" ||
+                self.parameters["load"][i]["impedance"]  == "L")
+
+                start = 1 + cntr
+                stop = 2 + cntr
+                cntr += 2
+                A_load_diag[start:stop, start:stop] = ele
+
+            elseif (self.parameters["load"][i]["impedance"]  == "RC" ||
+                self.parameters["load"][i]["impedance"]  == "C" ||
+                self.parameters["load"][i]["impedance"]  == "R")
+
+                start = 1 + cntr
+                stop = 1 + cntr
+                cntr += 1
+                start = i + self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL + self.num_loads_L
+                A_load_diag[start:start, start:start] = ele
+
+            end
+        end
+
+        A_load_zeros = zeros(self.num_fltr, self.num_impedance)
+        A_load_zeros_t = A_load_zeros'
     end
 
-    #         A_transition = np.block([A_trn, A_tran_load_c],
-    #                                 [A_tran_load_c, A_load_diag])
+    
 
-    A_load_zeros = zeros(self.num_fltr, self.num_impedance)
-
-    A_load_zeros_t = A_load_zeros'
-
-    A = [A_src       A_src_trn_c        A_load_zeros
+    if self.num_loads == 0
+        A = [A_src       A_src_trn_c        
+        A_src_trn_l           A_trn ]
+    else
+        A = [A_src       A_src_trn_c        A_load_zeros
         A_src_trn_l           A_trn  A_tran_load_l
         A_load_zeros_t  A_tran_load_c   A_load_diag]
+    end
+
+    
 
     if self.parameters["grid"]["phase"] === 1
-            return A
-        elseif self.parameters["grid"]["phase"] === 3
-            z = zeros(size(A))
-            A_ = [A z z; z A z; z z A]
-            return A_
-        end
+        return A
+    elseif self.parameters["grid"]["phase"] === 3
+        z = zeros(size(A))
+        A_ = [A z z; z A z; z z A]
+        return A_
+    end
 end
 
 
