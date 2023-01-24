@@ -62,7 +62,7 @@ using ReinforcementLearning
     #_______________________________________________________________________________
     #%% Setting up data hooks
 
-    plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
+    plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
     plt_action_ids = ["source1_u_a"]
     hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
@@ -72,24 +72,31 @@ using ReinforcementLearning
     RLBase.run(ma, env, StopAfterEpisode(num_eps), hook); 
 
     idx_end = 300
-    X_dare = [hook.df[!,"source1_i_L1_a"][2:idx_end,:] hook.df[!, "source1_v_C_filt_a"][2:idx_end,:] hook.df[!,"source1_v_C_cables_a"][2:idx_end,:] hook.df[!,"cable1_i_L_a"][2:idx_end,:] -hook.df[!,"load1_v_C_total_a"][2:idx_end,:] -hook.df[!,"load1_i_L_a"][2:idx_end,:]]
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]  
+    X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
 
     X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
-    # TODO: why do we have 2 zero lines in X_dare?
-
-    #println("MATLAB:")
-    #display(vars["X_matlab"][1:idx_end-1,:])
-    #println()
-    #println("DARE:")
-    #display(X_dare)
-    #println()   
+    
+    
+    #=println("MATLAB:")
+    display(X_malab["X_matlab"][1:idx_end,:])
+    println()
+    println("DARE:")
+    display(X_dare)
+    println() =#
 
     #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=12  # 1e-4
     #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=0.1   # 1e-5
-    @test X_dare≈X_malab["X_matlab"][1:idx_end-1,:] atol=0.001   # 1e-6
+    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
 end
 
+#=
 @testset "env_2source_1load" begin
+
+    CM = [ 0. 0. 1.
+        0. 0. 2.
+        -1. -2. 0.]
+
 
     parameters = Dict{Any, Any}(
     "source" => Any[
@@ -114,27 +121,17 @@ end
 
     Power_System_Dynamics(env, hook)
 
-    plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
+    #plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
 
     idx_end = 300
-
-    X_dare = [hook.df[!,"source1_i_L1_a"][2:idx_end,:] hook.df[!, "source1_v_C_filt_a"][2:idx_end,:] hook.df[!,"source1_v_C_cables_a"][2:idx_end,:] hook.df[!,"cable1_i_L_a"][2:idx_end,:] -hook.df[!,"load1_v_C_total_a"][2:idx_end,:] -hook.df[!,"load1_i_L_a"][2:idx_end,:]]
-
-    X_dare2 = []
-    for s_id in plt_state_ids
-        if s_id == plt_state_ids[1]
-            X_dare2 = [hook.df[!,s_id][2:idx_end,:]']
-        else
-            hcat(X_dare2, hook.df[!,s_id][2:idx_end,:]')
-        end
-    end
+    X_dare = Matrix(hook.df[!,plt_state_ids][2:idx_end,:])
 
     #println("MATLAB:")
     #display(vars["X_matlab"][1:idx_end-1,:])
     println()
     println("DARE:")
-    display(X_dare2)
+    display(X_dare)
     println()  
 
-
 end
+=#
