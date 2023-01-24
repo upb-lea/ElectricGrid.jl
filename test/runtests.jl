@@ -57,8 +57,7 @@ end
 
 @testset "ClassicalController" begin
     
-
-
+    include("./classic_control_test.jl")
     
 end
 

@@ -3,7 +3,7 @@ using Dare
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
-# Network Parameters 
+# Network Configuration 
 
 #-------------------------------------------------------------------------------
 # Time simulation
@@ -14,21 +14,32 @@ t_end    = 0.2     # total run time, seconds
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-CM = [ 0. 0. 1.
+#= CM = [ 0. 0. 1.
         0. 0. 2.
-        -1. -2. 0.]
+        -1. -2. 0.] =#
+
+CM = [ 0. 1.
+        -1. 0.]
 
 #-------------------------------------------------------------------------------
-# Sources
+# Parameters
+
+#= Modes:
+    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+    2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+    3 -> "Droop" - simple grid forming with power balancing
+    4 -> "Synchronverter" - enhanced droop control
+=#
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3),
-                        Dict{Any, Any}("pwr" => 200e3)
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L"),
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L"),
                         ],
-        "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006) 
-                        ]
+        #= "load"   => Any[
+                        Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
+                        ] =#
+        "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
 #_______________________________________________________________________________
 # Defining the environment
@@ -53,10 +64,10 @@ Power_System_Dynamics(env, hook)
 # Plotting
 
 plot_hook_results(hook = hook, 
-                    states_to_plot  = [], 
-                    actions_to_plot = [],  
+                    states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a"], 
+                    actions_to_plot = ["source1_u_a", "source2_u_a"],  
                     p_to_plot       = [1 2], 
-                    q_to_plot       = [], 
+                    q_to_plot       = [1 2], 
                     vrms_to_plot    = [1 2], 
                     irms_to_plot    = [1 2],
                     freq_to_plot    = [1 2])

@@ -40,7 +40,7 @@ env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, 
 
 plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
 plt_action_ids = ["source1_u_a", "source2_u_a",]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1,2])
+hook = DataHook(collect_sources = [1,2])
 
 #_______________________________________________________________________________
 # Starting time simulation
@@ -66,12 +66,12 @@ function collect_matrix(plt_state_ids, idx_end)
 end
 =#
 
-#=
-#global X_dare2 = []
+
+X_dare2 = []
 for s_id in plt_state_ids
     if s_id == plt_state_ids[1]
         println("Hallo")
-        X_dare2 = [hook.df[!,s_id][2:idx_end,:]']
+        push!(X_dare2, [hook.df[!,s_id][2:idx_end,:]'])
         println(X_dare2)
     else
         hcat(X_dare2, hook.df[!,s_id][2:idx_end,:]')
@@ -79,12 +79,12 @@ for s_id in plt_state_ids
 end
 
 
-X_d = collect_matrix(plt_state_ids, idx_end)
+#X_d = collect_matrix(plt_state_ids, idx_end)
 
 println()
 println("DARE:")
 display(X_dare2)
 println()  
-=#
+
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

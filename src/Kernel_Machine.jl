@@ -593,7 +593,7 @@ function parallel_exp_lowtri(mat, scale)
     return mat
 end
 
-function embed_states(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = false)
+function Embed_States(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = false)
 
     """
     Compute a similarity matrix for the embedded causal states, seen as distributions P(Y|X), 

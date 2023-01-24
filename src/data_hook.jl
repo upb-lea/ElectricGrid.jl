@@ -291,11 +291,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         end
     end 
 
-    for action_id in hook.collect_action_ids
-        action_index = findfirst(x -> x == action_id, env.action_ids)
-
-        insertcols!(hook.tmp, action_id => (env.action[action_index]))
-    end
+    
     
     insertcols!(hook.tmp, :action => Ref(action))
     
@@ -335,6 +331,12 @@ function (hook::DataHook)(::PostActStage, agent, env)
             end
         extra_state_cntr+=1
         end
+    end
+
+    for action_id in hook.collect_action_ids
+        action_index = findfirst(x -> x == action_id, env.action_ids)
+
+        insertcols!(hook.tmp, action_id => (env.action[action_index]))
     end
 
     insertcols!(hook.tmp, :reward => env.reward)

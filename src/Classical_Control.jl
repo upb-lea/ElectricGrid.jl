@@ -1989,7 +1989,7 @@ end
 
 function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
 
-    #=
+    #= Theory:
         The current controller is designed for a short circuit
         The voltage controller is designed for an open circuit
         - assuming that cable capacitances can be neglected
@@ -2175,7 +2175,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
     return nothing
 end
 
-function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
+function Source_Initialiser(env, Source, modes, source_indices)
 
     # logging
     count_V_K = 0
@@ -2249,7 +2249,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             Source.Cf[e] = Source.S[e]/(3*Source.fsys*2π*Source.Vrms[e]*Source.Vrms[e])
             Source.Rf_C[e] = Source.Cf[e]
 
-            if Source.Source_Modes[e] != "Swing"
+            if Source.Source_Modes[e] != "Swing" && Source.Source_Modes[e] != "PQ" && Source.Source_Modes[e] != "PV"
                 count_L_fltr += 1
             end
         end
@@ -2359,76 +2359,80 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
 
     #-------------------------------------------------------------------------------
     # Logging
-
-    if count_L_fltr == 1
-        @warn "$(count_L_fltr) source with an 'L' filter is being controlled. 'LCL' or 'LC' filters are preferred."
-    elseif count_L_fltr > 1
-        @warn "$(count_L_fltr) source 'L' filters are being controlled. 'LCL' or 'LC' filters are preferred."
+    
+    if env.verbosity > 0
+        if count_L_fltr == 1
+            @warn "$(count_L_fltr) source with an 'L' filter is being controlled. 'LCL' or 'LC' filters are preferred for grid forming sources."
+        elseif count_L_fltr > 1
+            @warn "$(count_L_fltr) source 'L' filters are being controlled. 'LCL' or 'LC' filters are preferred for grid forming sources."
+        end
     end
 
     mode_count = Array{Int64, 1}(undef, length(Mode_Keys))
     mode_count = fill!(mode_count, 0)
 
-    @info "$(Source.num_sources) 'classically' controlled sources have been initialised."
+    if env.verbosity > 1
+        @info "$(Source.num_sources) 'classically' controlled sources have been initialised."
 
-    for modes in eachindex(Mode_Keys)
+        for modes in eachindex(Mode_Keys)
 
-        mode_count[modes] = length(findall(x->x == Mode_Keys[modes], Source.Source_Modes))
+            mode_count[modes] = length(findall(x->x == Mode_Keys[modes], Source.Source_Modes))
 
-        if mode_count[modes] != 0
-            if mode_count[modes] == 1
-                @info "$(mode_count[modes]) source has been set up in $(Mode_Keys[modes]) mode."
-            else
-                @info "$(mode_count[modes]) sources have been set up in $(Mode_Keys[modes]) mode."
+            if mode_count[modes] != 0
+                if mode_count[modes] == 1
+                    @info "$(mode_count[modes]) source has been set up in $(Mode_Keys[modes]) mode."
+                else
+                    @info "$(mode_count[modes]) sources have been set up in $(Mode_Keys[modes]) mode."
+                end
+            end
+
+        end
+
+        if (count_V_K == Source.num_sources && count_I_K == Source.num_sources 
+            && count_Dp == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6] 
+            && count_Dq == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6])
+
+            @info "All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains."
+
+        else
+
+            if count_V_K == 1
+                @info "$(count_V_K) source has automatically calculated proportional and integral gains for its voltage control loop."
+            elseif count_V_K > 1
+                @info "$(count_V_K) sources have automatically calculated proportional and integral gains for their voltage control loops."
+            end
+
+            if count_I_K == 1
+                @info "$(count_I_K) source has automatically calculated proportional and integral gains for its current control loop."
+            elseif count_I_K > 1
+                @info "$(count_I_K) sources have automatically calculated proportional and integral gains for their current control loops."
+            end
+
+            if count_Dp == 1
+                @info "$(count_Dp) source has an automatically calculated frequency droop coefficient."
+            elseif count_Dp > 1
+                @info "$(count_Dp) sources have automatically calculated frequency droop coefficients."
+            end
+
+            if count_Dq == 1
+                @info "$(count_Dq) source has an automatically calculated voltage droop coefficient."
+            elseif count_Dq > 1
+                @info "$(count_Dq) sources have automatically calculated voltage droop coefficients."
             end
         end
 
-    end
-
-    if (count_V_K == Source.num_sources && count_I_K == Source.num_sources 
-        && count_Dp == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6] 
-        && count_Dq == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6])
-
-        @info "All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains."
-
-    else
-
-        if count_V_K == 1
-            @info "$(count_V_K) source has automatically calculated proportional and integral gains for its voltage control loop."
-        elseif count_V_K > 1
-            @info "$(count_V_K) sources have automatically calculated proportional and integral gains for their voltage control loops."
+        if length(findall(Source.Observer)) == 1
+            @info "$(length(findall(Source.Observer))) source has been set up with a deadbeat Luenberger discrete Observer."
+        elseif length(findall(Source.Observer)) > 1
+            @info "$(length(findall(Source.Observer))) sources have been set up with deadbeat Luenberger discrete Observers."
         end
 
-        if count_I_K == 1
-            @info "$(count_I_K) source has automatically calculated proportional and integral gains for its current control loop."
-        elseif count_I_K > 1
-            @info "$(count_I_K) sources have automatically calculated proportional and integral gains for their current control loops."
+        processes = length(findall(x->x > 0.0, convert.(Float64, Source.σ)))
+        if processes == 1
+            @info "$(processes) stochastic process will start at $(Source.process_start) [s]."
+        elseif processes > 1
+            @info "$(processes) stochastic processes will start at $(Source.process_start) [s]."
         end
-
-        if count_Dp == 1
-            @info "$(count_Dp) source has an automatically calculated frequency droop coefficient."
-        elseif count_Dp > 1
-            @info "$(count_Dp) sources have automatically calculated frequency droop coefficients."
-        end
-
-        if count_Dq == 1
-            @info "$(count_Dq) source has an automatically calculated voltage droop coefficient."
-        elseif count_Dq > 1
-            @info "$(count_Dq) sources have automatically calculated voltage droop coefficients."
-        end
-    end
-
-    if length(findall(Source.Observer)) == 1
-        @info "$(length(findall(Source.Observer))) source has been set up with a deadbeat Luenberger discrete Observer."
-    elseif length(findall(Source.Observer)) > 1
-        @info "$(length(findall(Source.Observer))) sources have been set up with deadbeat Luenberger discrete Observers."
-    end
-
-    processes = length(findall(x->x > 0.0, convert.(Float64, Source.σ)))
-    if processes == 1
-        @info "$(processes) stochastic process will start at $(Source.process_start) [s]."
-    elseif processes > 1
-        @info "$(processes) stochastic processes will start at $(Source.process_start) [s]."
     end
 
     return nothing
