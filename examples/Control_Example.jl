@@ -72,7 +72,7 @@ source = Dict()
 
 source["mode"]     = 4
 
-source["fltr"]     = "LCL"  # Filter type
+source["fltr"]     = "LC"  # Filter type
 
 source["pwr"]      = 200e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt

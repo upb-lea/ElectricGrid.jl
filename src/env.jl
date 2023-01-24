@@ -76,7 +76,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     
     if !(isnothing(num_sources) || isnothing(num_loads)) 
 
-        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
+        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, verbosity = verbosity)
 
     else
         # Construct standard env with 2 sources, 1 load
@@ -86,9 +86,9 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
               -1. -2. 0.]
 
         if isnothing(parameters)
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM)
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, verbosity = verbosity)
         else
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters)
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, verbosity = verbosity)
         end
 
     end
