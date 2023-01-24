@@ -1,6 +1,6 @@
-using Dare
+#using Dare
 
-#= using DrWatson
+using DrWatson
 @quickactivate "dare"
 
 using PlotlyJS
@@ -12,7 +12,7 @@ include(srcdir("Kernel_Machine.jl"))
 include(srcdir("Machine_Dynamics.jl"))
 include(srcdir("Dif_Map.jl"))
 include(srcdir("Dynamical_Systems.jl"))
- =#
+
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #-------------------------------------------------------------------------------
@@ -216,8 +216,19 @@ plot_x_t = plot([trace_x, trace_y, trace_x̂, trace_ŷ],
                 )
 display(plot_x_t)
 
-df_Ψ₁_Ψ₂ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3])
-plot_Ψ₁_Ψ₂ = plot(df_Ψ₁_Ψ₂, x = :Ψ₁, y = :Ψ₂,
+N₁ = length(coords[:,2])
+N₂ = length(dist[2,:])
+nans = Array{Float64, 1}(undef, N₁ - N₂)
+nans= fill!(nans, NaN)
+Φ₁ = vec([nans; dist[2, :]])
+Φ₂ = vec([nans; dist[3, :]])
+
+df_Ψ_Φ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3], Φ₁ = Φ₁, Φ₂ = Φ₂)
+
+trace_Ψ = scatter(df_Ψ_Φ, x = :Ψ₁, y = :Ψ₂, name = "Ψ")
+trace_Φ = scatter(df_Ψ_Φ, x = :Φ₁, y = :Φ₂, name = "Φ")
+
+plot_Ψ_Φ = plot([trace_Ψ, trace_Φ],
                 Layout(
                     title = attr(
                         text = "Damped Pendulum: Reconstructed State Space",  
@@ -225,12 +236,8 @@ plot_Ψ₁_Ψ₂ = plot(df_Ψ₁_Ψ₂, x = :Ψ₁, y = :Ψ₂,
                     title_x = 0.5,
                     xaxis_title = "Ψ₁",
                     yaxis_title = "Ψ₂",),
-                    line = attr(
-                        width = 2,
-                        color = "firebrick"),
-                    mode = "line",
                 )
 
-#display(plot_Ψ₁_Ψ₂)
+#display(plot_Ψ_Φ)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

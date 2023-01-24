@@ -64,7 +64,7 @@ function Shift_Operator(coords, eigenvalues; index_map = nothing, return_eigende
 
     X = nonneg_lsq(transpose(transpose(eigenvalues).*coords[valid_prev,:]), 
                     transpose(transpose(eigenvalues).*coords[indices_no_next,:]), 
-                    alg = :fnnls)
+                    alg = :nnls) #fnnls - for fast Non Neg Least Squares - less accurate
 
     X = X ./ sum(X, dims = 1) # should already be close to 1
     
@@ -81,7 +81,7 @@ function Shift_Operator(coords, eigenvalues; index_map = nothing, return_eigende
     
     shift_op[2:end,:] = transpose(coords \ (transpose(T)*coords[:, 2:end]))
     
-    # This may be another option
+    # This may be another option - gives similar results
     #= b = (transpose(T)*coords[:, 2:end])
     ldiv!(factorize(coords), b)
     rows_to_keep = b[:,1:end] .!= 0
@@ -229,7 +229,8 @@ function Expectation_Operator(coords, index_map, targets; func::Function = immed
     
     eoplist = Vector{Matrix{Float64}}(undef, length(targets_list))
     
-    sci = pinv(transpose(coords))
+    rtol = sqrt(eps(real(float(one(eltype(transpose(coords)))))))
+    sci = pinv(transpose(coords), rtol = rtol)
 
     e_cnt = 1
     
