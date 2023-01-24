@@ -1381,22 +1381,28 @@ function CM_generate(num_sources, num_loads,  S2L_p, S2S_p, L2L_p)
     # -1 bc last entry is 0 anyway
     for i in 1:tot_ele-1
         # start at i, bc we need to check only upper triangle
-        for j in i:tot_ele-1
-            if j >= num_sources-1 # select propability according to column
-                cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2L_p)
-                CM[i, j+1] = x
-            else
-                cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2S_p)
+        if i <= num_sources
+            for j in i:tot_ele-1
+                if j > num_sources-1  # select propability according to column
+                    cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2L_p)
+                    CM[i, j+1] = x
+                else
+                    cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2S_p)
+                    CM[i, j+1] = x
+                end
+            end
+        else
+            for j in i:tot_ele-1
+                cntr, x = tobe_or_n2b(cntr, CM[i, j+1], L2L_p)
                 CM[i, j+1] = x
             end
         end
     end
 
-    # println("CM: $(CM)")
-
     # make sure that no objects disappear or subnets are formed
     for i in 1:tot_ele
         # save rows and columns entries
+
         Col = CM[1:i-1, i]
         Row = CM[i, i+1:tot_ele]
         
@@ -1415,7 +1421,8 @@ function CM_generate(num_sources, num_loads,  S2L_p, S2S_p, L2L_p)
             idx_list = vcat([(j,i) for j in idx_row_entries], [(i,i+j) for j in idx_col_entries])
             
             samples = min(val_to_set, length(idx_list))
-            idx_rnd = sample(1:length(idx_list), samples) # draw samples from the list
+
+            idx_rnd = sample(1:length(idx_list), samples, replace=false) # draw samples from the list
             
             for (a, ix) in enumerate(idx_rnd)
                 # Based on the random sample, select an indize
@@ -1427,8 +1434,6 @@ function CM_generate(num_sources, num_loads,  S2L_p, S2S_p, L2L_p)
     end
 
     CM = CM - CM' # copy with negative sign to lower triangle
-
-    # println("CM: $(CM)")
 
     return cntr, CM
 end
