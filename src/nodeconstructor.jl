@@ -32,6 +32,7 @@ mutable struct NodeConstructor
     parameters
     S2S_p
     S2L_p
+    L2L_p
 end
 
 """
@@ -46,7 +47,7 @@ end
 
 Create a mutable struct NodeConstructor, which serves as a basis for the creation of an energy grid: `num_sources` corresponse to the amount of sources and `num_loads` is the amount of loads in the grid. `CM` is the connection matrix which indicates how the elements in the grid are connected to each other. To specify the elements of the net in more detail, values for the elements can be passed via `parameters`. If no connection matrix is entered, it can be generated automatically. `S2S_p` is the probability that a source is connected to another source and `S2L_p` is the probability that a source is connected to a load.
 """
-function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, verbosity = 0)
+function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, verbosity = 0)
 
     tot_ele = num_sources + num_loads
 
@@ -54,7 +55,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
     num_connections = 0
 
     if CM === nothing
-        cntr, CM = CM_generate(num_sources, num_loads, S2L_p, S2S_p)
+        cntr, CM = CM_generate(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
         num_connections = cntr
     else
         if size(CM)[1] != tot_ele
@@ -121,11 +122,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R)
 
-    NodeConstructor(verbosity, num_connections, num_sources, 
-    num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, 
-    num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, 
-    num_loads_R, num_impedance, num_fltr, num_spp, cntr, 
-    tot_ele, CM, parameters, S2S_p, S2L_p)
+    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p)
 end
 
 function get_fltr_distr(num)
@@ -172,6 +169,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
         grid_properties["fs"] =  10e3 # TODO: this should be 1/env.ts
+        println("fs has been incorrectly set")
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
@@ -1366,7 +1364,7 @@ end
 
 Returns the constructed CM and the total number of connections.
 """
-function CM_generate(num_sources, num_loads,  S2L_p, S2S_p)
+function CM_generate(num_sources, num_loads,  S2L_p, S2S_p, L2L_p)
 
     # counting the connections 
     cntr = 0
@@ -2105,15 +2103,7 @@ function generate_A(self::NodeConstructor)
         for i in 1:self.num_loads
             push!(A_tran_load_c_list, get_A_tran_load_c(self, i))
         end
-        A_tran_load_c = reduce(vcat, A_tran_load_c_list)
-
-        # get A_load_diag
-        self.num_impedance = (2 * (self.num_loads_RLC # Equivalent to the number of load states
-                                    + self.num_loads_LC
-                                    + self.num_loads_RL
-                                    + self.num_loads_L)
-                                    + self.num_loads_RC + self.num_loads_C + self.num_loads_R)
-        
+        A_tran_load_c = reduce(vcat, A_tran_load_c_list)       
 
         A_load_diag = zeros(self.num_impedance, self.num_impedance)
         A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
