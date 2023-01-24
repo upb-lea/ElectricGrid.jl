@@ -33,13 +33,13 @@ CM = [ 0. 1.
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8),
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8),
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 3),
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 3),
                         ],
         #= "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
                         ] =#
-        "grid" => Dict{Any, Any}("ramp_end" => 0.0)
+        #= "grid" => Dict{Any, Any}("ramp_end" => 0.0) =#
     )
 #_______________________________________________________________________________
 # Defining the environment

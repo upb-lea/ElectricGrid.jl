@@ -2175,7 +2175,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
     return nothing
 end
 
-function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
+function Source_Initialiser(env, Source, modes, source_indices)
 
     # logging
     count_V_K = 0
@@ -2249,7 +2249,7 @@ function Source_Initialiser(env, Source, modes, source_indices; pf = 0.8)
             Source.Cf[e] = Source.S[e]/(3*Source.fsys*2π*Source.Vrms[e]*Source.Vrms[e])
             Source.Rf_C[e] = Source.Cf[e]
 
-            if Source.Source_Modes[e] != "Swing" || Source.Source_Modes[e] != "PQ" || Source.Source_Modes[e] != "PV"
+            if Source.Source_Modes[e] != "Swing" && Source.Source_Modes[e] != "PQ" && Source.Source_Modes[e] != "PV"
                 count_L_fltr += 1
             end
         end
