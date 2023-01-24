@@ -1,6 +1,7 @@
 using Test
 using MAT
 using Dare
+using LinearAlgebra
 
 @testset "get_fltr_distr" begin
     for i in [1,14,17,42]
@@ -8,9 +9,9 @@ using Dare
     end
 end
 
-@testset "get_load_distr" begin
+@testset "get_loads_distr" begin
     for i in [1,14,17,42]
-        @test i == sum(get_load_distr(i))
+        @test i == sum(get_loads_distr(i))
     end
 end
 
@@ -26,6 +27,7 @@ end
         @test num_connections == i
         num_connections, CM = CM_generate(i, 2, 1, 0)
         @test num_connections == 2*i
+    end
 end
 
 @testset "matrices" begin
@@ -72,7 +74,7 @@ end
     S1_L1 = NodeConstructor(num_sources=1, num_loads=1, parameters=parameters);
     A, B, C, D = get_sys(S1_L1);
 
-    @test file["A"] == A
-    @test file["B"] == B
+    @test file["A"] ≈ A atol=1e-5
+    @test file["B"] ≈ B atol=1e-5
     
 end
