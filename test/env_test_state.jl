@@ -90,7 +90,7 @@ using ReinforcementLearning
     @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
 end
 
-#=
+
 @testset "env_2source_1load" begin
 
     CM = [ 0. 0. 1.
@@ -113,25 +113,30 @@ end
     "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)      
     )
 
-    env = SimEnv(ts = 1e-4, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1)
+    env = SimEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1)
 
-    plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
-    plt_action_ids = ["source1_u_a", "source2_u_a",]
-    hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1,2])
+    
+    hook = DataHook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
 
     Power_System_Dynamics(env, hook)
 
     #plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
 
     idx_end = 300
-    X_dare = Matrix(hook.df[!,plt_state_ids][2:idx_end,:])
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_source2_v_C_filt_a", "next_state_source2_i_L2_a","next_state_source2_v_C_cables_a", "next_state_cable2_i_L_a",]  
+    X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
 
-    #println("MATLAB:")
-    #display(vars["X_matlab"][1:idx_end-1,:])
+    X_malab = matread("./test/env_test_state_2source_1load1e6.mat")
+
+    #=
+    println("MATLAB:")
+    display(X_malab["X_matlab"][1:idx_end-1,:])
     println()
     println("DARE:")
     display(X_dare)
     println()  
+    =#
+
+    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=.001   # 1e-6
 
 end
-=#
