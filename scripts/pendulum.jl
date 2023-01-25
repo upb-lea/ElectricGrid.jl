@@ -106,8 +106,8 @@ nfuture = 1
 #******* =#
 
 #******* or read from CSV
-df = CSV.read(joinpath(pwd(), "pendulum.csv"), DataFrame)
-data = [df.x[1:end], df.y[1:end]]
+#= df = CSV.read(joinpath(pwd(), "pendulum.csv"), DataFrame)
+data = [df.x[1:end], df.y[1:end]] =#
 #*******
 
 N = length(data[1])# number of samples
@@ -134,7 +134,7 @@ display(Gs) =#
 # Compute a spectral basis for representing the causal states.
 # Find a reduced dimension embedding and extract the significant coordinates"
 println("\n3. Projection")
-eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 10, scaled = true)
+eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 15, scaled = true)
 
 #= println("eigenvalues = ")
 display(eigenvalues)
@@ -171,7 +171,7 @@ println("\n6. Prediction")
 #= pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
 final_dist = dist[:, end] =#
 
-pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 4, coords = coords)
+pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 0, coords = coords)
 final_dist = dist[:, end]
 
 #-------------------------------------------------------------------------------
@@ -231,12 +231,12 @@ plot_x_t = plot([trace_x, trace_y, trace_x̂, trace_ŷ],
                     yaxis_title = "y,x [m]",
                     ),  
                 )
-#display(plot_x_t)
+display(plot_x_t)
 
 N₁ = length(coords[:,2])
 N₂ = length(dist[2,:])
 nans = Array{Float64, 1}(undef, N₁ - N₂)
-nans= fill!(nans, NaN)
+nans = fill!(nans, NaN)
 Φ₁ = vec([nans; dist[2, :]])
 Φ₂ = vec([nans; dist[3, :]])
 Φ₃ = vec([nans; dist[4, :]])

@@ -100,11 +100,9 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
 
     for (ser, sca, npa, nfu, dec, ldiff) in zip(series_list, scales_list, npasts_list, nfutures_list, decays_list, localdiff_list)
         
-        ser = reshape(ser, :, 1) # turning the vector into a matrix
+        #ser = reshape(ser, :, 1) # turning the vector into a matrix
 
-        @time begin
-            lx, ly = series_xy_logk_indx(ser, sca, npa, nfu, dec, index_map, kernel_params_[1], kernel_params_[2], ldiff)
-        end
+        lx, ly = series_xy_logk_indx(ser, sca, npa, nfu, dec, index_map, kernel_params_[1], kernel_params_[2], ldiff)
 
         if total_lx === nothing
 
@@ -367,26 +365,8 @@ function set_kernel(;kernel_type = "Gaussian", kernel_params_ = [-0.5; 2])
     return nothing
 end
 
-function series_xy_logk(series, scale, npast, nfuture; decay = 1, concat_valid_map = nothing, localdiff = 0)
-    
-    if isa(series, Dict) || isa(series, Tuple)
-        # Concatenate all the series and use the global validity index below
-        println("This functionality does not exist yet")
-    end
-
-    if ndims(series) == 1
-        series = reshape(series, :, 1) # turning the vector into a matrix
-    end
-
-    #
-    kernel_params_ = [-0.5, 2]
-    #
-    return series_xy_logk_indx(series, scale, npast, nfuture, decay,
-     concat_valid_map, kernel_params_[1], kernel_params_[2], localdiff)
-end
-
 function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_map, kernel_params_1, kernel_params_2, localdiff)
-    
+
     if npast <= 1 factor_r_past = 1 else factor_r_past = exp(log(decay)/(npast - 1.)) end
     if nfuture <= 1 factor_r_future = 1 else factor_r_future = exp(log(decay)/(nfuture - 1.)) end
     
@@ -446,7 +426,7 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
             sy[i,j] = sumy
             sy[j,i] = sumy
         end
-            
+
         for l in k:m - 1
 
             i = m - k + 1
@@ -474,17 +454,16 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
     kernel_params_2, factor_r_past, factor_r_future, 
     sum_r_past, sum_past_factor, sum_future_factor)
 
-    delta = zeros(size(series, 2))
-
     if localdiff == 1
 
         # weighted average over each past series
         # diff of these => weighted avg of diffs
         r = 1
+        delta = zeros(size(series, 2))
 
         for t in 0:npast-1
 
-            d = series[i-t, :] .- series[j-t, :]
+            d = series[i-t] .- series[j-t]
             delta += d * r
             r *= factor_r_past
         end
@@ -493,7 +472,7 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
 
     elseif localdiff == 2
         # value of the "present"
-        delta = series[i,:] - series[j,:]
+        delta = series[i] - series[j]
     end
     
     r = 1
@@ -501,8 +480,12 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
 
     for t in 0:npast - 1
 
-        d = series[i-t,:] .- series[j-t,:]
-        d = d .- delta
+        d = series[i-t] .- series[j-t]
+
+        if localdiff != 0
+            d = d .- delta
+        end
+
         ds = sum(abs2, d)
 
         if kernel_params_2 != 2
@@ -519,8 +502,12 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
 
     for t in 0:nfuture - 1
 
-        d = series[i+1+t,:] .- series[j+1+t,:]
-        d = d .- delta
+        d = series[i + 1 + t] .- series[j + 1 + t]
+
+        if localdiff != 0
+            d = d .- delta
+        end
+
         ds = sum(abs2, d)
 
         if kernel_params_2 != 2

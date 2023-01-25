@@ -331,7 +331,7 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
 
         if knn_convexity > 1
 
-            problem = Model(Ipopt.Optimizer)
+            problem = Model(optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
             set_silent(problem)
 
             # Optimisation problem

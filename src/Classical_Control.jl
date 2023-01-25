@@ -823,7 +823,7 @@ function Classical_Control(Animo, env)
 
     Ornstein_Uhlenbeck(Source)
 
-    for ns in 1:Source.num_sources
+    Threads.@threads for ns in 1:Source.num_sources
 
         if Source.Source_Modes[ns] == "Swing"
 
@@ -2016,6 +2016,8 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
         1.5 sampling steps of the current control loop results.
     =#
 
+    pole_flag = 0
+
     #--------------------------------------
     # Current Controller
 
@@ -2069,6 +2071,8 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
 
         if i == max_i
 
+            pole_flag = 1
+
             ωp = 2π/((i)*Ts) # gain cross-over frequency
             pm = 60 # degrees, phase margin
             Gpi_i, kp_i, ki_i = loopshapingPI(Gsc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
@@ -2077,14 +2081,10 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
             Source.I_kp[num_source] = kp_i
             Source.I_ki[num_source] = ki_i
             Source.Gi_cl[num_source] = Gi_cl
-
-            @warn ("PI Current Controller with Positive Poles. 
-            Suggestion: Decrease Simulation Time Step
-            Source: $(num_source)")
         end
     end
 
-    return nothing
+    return pole_flag
 end
 
 function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
@@ -2118,6 +2118,8 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
         Together with the ZoH which samples the signals at the PoC, a total dead time of
         1.5 sampling steps of the current control loop results.
     =#
+
+    pole_flag = 0
 
     Goc_ol = minreal(Source.Gi_cl[num_source]*tf([1], [Source.Cf[num_source], 0]))
 
@@ -2163,13 +2165,11 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
             Source.V_ki[num_source] = ki_v
             Source.Gv_cl[num_source] = Gv_cl
 
-            @warn ("PI Voltage Controller with Positive Poles. 
-            Suggestion: Decrease Simulation Time Step
-            Source: $(num_source)")
+            pole_flag = 1
         end
     end
 
-    return nothing
+    return pole_flag
 end
 
 function Source_Initialiser(env, Source, modes, source_indices)
@@ -2180,6 +2180,8 @@ function Source_Initialiser(env, Source, modes, source_indices)
     count_Dp = 0
     count_Dq = 0
     count_L_fltr = 0
+    count_I_poles = 0
+    count_V_poles = 0
 
     Mode_Keys = [k[1] for k in sort(collect(Source.Modes), by = x -> x[2])]
 
@@ -2328,7 +2330,7 @@ function Source_Initialiser(env, Source, modes, source_indices)
         if Source.Source_Modes[e] != "Swing" && Source.Source_Modes[e] != "Step"
             if !haskey(env.nc.parameters["source"][ns], "I_kp") && !haskey(env.nc.parameters["source"][ns], "I_ki")
 
-                Current_PI_LoopShaping(Source, e)
+                count_I_poles += Current_PI_LoopShaping(Source, e)
                 count_I_K += 1
             else
 
@@ -2344,7 +2346,7 @@ function Source_Initialiser(env, Source, modes, source_indices)
 
             if !haskey(env.nc.parameters["source"][ns], "V_kp") && !haskey(env.nc.parameters["source"][ns], "V_ki")
 
-                Voltage_PI_LoopShaping(Source, e)
+                count_V_poles += Voltage_PI_LoopShaping(Source, e)
                 count_V_K += 1
             else
 
@@ -2369,11 +2371,29 @@ function Source_Initialiser(env, Source, modes, source_indices)
     # Logging
     
     if env.verbosity > 0
+
         if count_L_fltr == 1
             @warn "$(count_L_fltr) source with an 'L' filter is being controlled. 'LCL' or 'LC' filters are preferred for grid forming sources."
         elseif count_L_fltr > 1
             @warn "$(count_L_fltr) source 'L' filters are being controlled. 'LCL' or 'LC' filters are preferred for grid forming sources."
         end
+
+        if count_V_poles == 1
+            @warn "$(count_V_poles) Voltage Controller with Positive Poles. 
+            Suggestion: Decrease simulation time step or choose different filter values."
+        elseif count_L_fltr > 1
+            @warn "$(count_V_poles) Voltage Controllers with Positive Poles. 
+            Suggestion: Decrease simulation time step or choose different filter values."
+        end
+
+        if count_I_poles == 1
+            @warn "$(count_I_poles) Current Controller with Positive Poles. 
+            Suggestion: Decrease simulation time step or choose different filter values."
+        elseif count_I_poles > 1
+            @warn "$(count_I_poles) Current Controllers with Positive Poles. 
+            Suggestion: Decrease simulation time step or choose different filter values."
+        end
+
     end
 
     mode_count = Array{Int64, 1}(undef, length(Mode_Keys))
