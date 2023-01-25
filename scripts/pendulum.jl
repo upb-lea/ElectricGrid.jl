@@ -1,4 +1,9 @@
 using Dare
+using Distributions
+using DifferentialEquations
+using CSV
+using DataFrames
+using PlotlyJS
 
 #= using DrWatson
 @quickactivate "dare"
@@ -113,7 +118,7 @@ println("\n1. Generating gram matrices")
 
 Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
 
-#= #= println("Gx = ")
+#= println("Gx = ")
 display(Gx)
 println("Gy = ")
 display(Gy) =#
@@ -272,6 +277,6 @@ plot_Ψ_Φ_3d = plot([trace_Ψ, trace_Φ],
                     ),
                 )
 
-display(plot_Ψ_Φ_3d) =#
+display(plot_Ψ_Φ_3d)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
