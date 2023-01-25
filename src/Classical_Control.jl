@@ -1,8 +1,5 @@
 include("./env.jl")
 
-using Combinatorics
-using StatsBase
-
 mutable struct Classical_Controls
 
     #---------------------------------------------------------------------------
@@ -2249,7 +2246,10 @@ function Source_Initialiser(env, Source, modes, source_indices)
             Source.Cf[e] = Source.S[e]/(3*Source.fsys*2π*Source.Vrms[e]*Source.Vrms[e])
             Source.Rf_C[e] = Source.Cf[e]
 
-            if Source.Source_Modes[e] != "Swing" && Source.Source_Modes[e] != "PQ" && Source.Source_Modes[e] != "PV"
+            if (Source.Source_Modes[e] != "Swing" 
+                && Source.Source_Modes[e] != "PQ" 
+                && Source.Source_Modes[e] != "PV"
+                && Source.Source_Modes[e] != "Step")
                 count_L_fltr += 1
             end
         end
@@ -2325,24 +2325,32 @@ function Source_Initialiser(env, Source, modes, source_indices)
             Source.c_diff[e] = cat(coef, dims = 1)
         end
 
-        if !haskey(env.nc.parameters["source"][ns], "I_kp") && !haskey(env.nc.parameters["source"][ns], "I_ki")
+        if Source.Source_Modes[e] != "Swing" && Source.Source_Modes[e] != "Step"
+            if !haskey(env.nc.parameters["source"][ns], "I_kp") && !haskey(env.nc.parameters["source"][ns], "I_ki")
 
-            Current_PI_LoopShaping(Source, e)
-            count_I_K += 1
-        else
+                Current_PI_LoopShaping(Source, e)
+                count_I_K += 1
+            else
 
-            Source.I_kp[e] = env.nc.parameters["source"][ns]["I_kp"]
-            Source.I_ki[e] = env.nc.parameters["source"][ns]["I_ki"]
+                Source.I_kp[e] = env.nc.parameters["source"][ns]["I_kp"]
+                Source.I_ki[e] = env.nc.parameters["source"][ns]["I_ki"]
+            end
         end
 
-        if !haskey(env.nc.parameters["source"][ns], "V_kp") && !haskey(env.nc.parameters["source"][ns], "V_ki")
+        if (Source.Source_Modes[e] != "Swing" 
+            && Source.Source_Modes[e] != "Step" 
+            && Source.Source_Modes[e] != "PQ" 
+            && Source.Source_Modes[e] != "PV")
 
-            Voltage_PI_LoopShaping(Source, e)
-            count_V_K += 1
-        else
+            if !haskey(env.nc.parameters["source"][ns], "V_kp") && !haskey(env.nc.parameters["source"][ns], "V_ki")
 
-            Source.V_kp[e] = env.nc.parameters["source"][ns]["V_kp"]
-            Source.V_ki[e] = env.nc.parameters["source"][ns]["V_ki"]
+                Voltage_PI_LoopShaping(Source, e)
+                count_V_K += 1
+            else
+
+                Source.V_kp[e] = env.nc.parameters["source"][ns]["V_kp"]
+                Source.V_ki[e] = env.nc.parameters["source"][ns]["V_ki"]
+            end
         end
 
         if Source.Observer[e]
@@ -2372,6 +2380,7 @@ function Source_Initialiser(env, Source, modes, source_indices)
     mode_count = fill!(mode_count, 0)
 
     if env.verbosity > 1
+        
         @info "$(Source.num_sources) 'classically' controlled sources have been initialised."
 
         for modes in eachindex(Mode_Keys)
@@ -2388,7 +2397,7 @@ function Source_Initialiser(env, Source, modes, source_indices)
 
         end
 
-        if (count_V_K == Source.num_sources && count_I_K == Source.num_sources 
+        if (count_V_K == sum(mode_count[3:6]) && count_I_K == sum(mode_count[2:6])
             && count_Dp == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6] 
             && count_Dq == mode_count[3] + mode_count[4] + mode_count[5] + mode_count[6])
 

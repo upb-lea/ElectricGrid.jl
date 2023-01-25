@@ -1,6 +1,3 @@
-using JuMP
-import Ipopt
-
 function RMS(θ, t_signals)
 
     # Calcutates the DC offset, RMS magnitude, and phase angle relative to the
@@ -476,7 +473,6 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
     return result
 end
 
-
 function layout_cabels(CM, num_source, num_load, parameters)
 
     model = Model(Ipopt.Optimizer)
@@ -501,26 +497,32 @@ function layout_cabels(CM, num_source, num_load, parameters)
     total_S_source = 0 
 
     for i = 1:num_nodes
+
         if i <= num_source
+
             total_S_source = total_S_source + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
+
             if parameters["source"][i]["mode"] in ["PQ Control", 3]
+
                 if parameters["source"][i]["p_set"] < 0
                     total_P_load = total_P_load + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
                 end
+
                 if parameters["source"][i]["q_set"] < 0
                     total_Q_load = total_Q_load + parameters["source"][i]["q_set"]/parameters["grid"]["phase"]
                 end
+
             elseif parameters["source"][i]["mode"] in ["PV Control", 4]
+
                 if parameters["source"][i]["p_set"] < 0
                     total_P_load = total_P_load + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
                 end
             end
         else
+
             total_P_load = total_P_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             total_Q_load = total_Q_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
-        end
-
-    
+        end   
     end
 
     idx_p_mean_cal = []
@@ -528,6 +530,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
 
     for i = 1:num_nodes
         if i <= num_source
+
             if parameters["source"][i]["control_type"] == "classic" 
                 
                 if parameters["source"][i]["mode"] in ["Swing", "Voltage", 1, 7] 
@@ -542,6 +545,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
                     push!(idx_q_mean_cal, i)
 
                 elseif parameters["source"][i]["mode"] in ["PQ", 2] 
+
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "Q"], parameters["source"][i]["q_set"]/parameters["grid"]["phase"])
             
@@ -549,21 +553,24 @@ function layout_cabels(CM, num_source, num_load, parameters)
                     set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
 
                 elseif parameters["source"][i]["mode"] in ["PV", 9] 
+
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
                     set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_q_mean_cal, i)
 
-
                 elseif parameters["source"][i]["mode"] in ["Semi-Synchronverter", 6] 
+
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
                     set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
                     set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_p_mean_cal, i)
                     push!(idx_q_mean_cal, i)
+                    
                 else
+
                     # all variable - 
                     set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) 
                     set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses

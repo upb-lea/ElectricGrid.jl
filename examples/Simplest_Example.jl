@@ -33,18 +33,21 @@ CM = [ 0. 1.
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L"),
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L"),
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L", "L1" => 1e-3, "R1" => 1.1e-3, "i_limit"=>10e6),
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L", "L1" => 1e-3, "R1" => 1.1e-3, "i_limit"=>10e6),
                         ],
         #= "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
                         ] =#
+        "cable"   => Any[
+                        Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
+                        ],
         "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 1)
 
 #_______________________________________________________________________________
 # Setting up data hooks
@@ -66,10 +69,10 @@ Power_System_Dynamics(env, hook)
 plot_hook_results(hook = hook, 
                     states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a"], 
                     actions_to_plot = ["source1_u_a", "source2_u_a"],  
-                    p_to_plot       = [1 2], 
-                    q_to_plot       = [1 2], 
-                    vrms_to_plot    = [1 2], 
-                    irms_to_plot    = [1 2],
-                    freq_to_plot    = [1 2])
+                    p_to_plot       = [], 
+                    q_to_plot       = [], 
+                    vrms_to_plot    = [], 
+                    irms_to_plot    = [],
+                    freq_to_plot    = [])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

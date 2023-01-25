@@ -1,119 +1,54 @@
-using Dare
+#using Dare
 
-#= using DrWatson
+using DrWatson
 @quickactivate "dare"
 
-using CSV
+using PlotlyJS
 using DataFrames
-using DifferentialEquations
 using Distributions
-using LinearAlgebra
-using JuMP
-import Ipopt
-using KrylovKit #GenericSchur is another option
-using LoopVectorization 
-#using Memoization
-using NearestNeighbors
-using NonNegLeastSquares
-using PlotlyJS =#
+using CSV
 
-#= include(srcdir("Kernel_Machine.jl"))
+include(srcdir("Kernel_Machine.jl"))
 include(srcdir("Machine_Dynamics.jl"))
 include(srcdir("Dif_Map.jl"))
-include(srcdir("Dynamical_Systems.jl")) =#
+include(srcdir("Dynamical_Systems.jl"))
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #-------------------------------------------------------------------------------
-# Damped Pendulum Dynamics
-
-μ_s = 0.005 # time step size (seconds)
-t_final = 30 # max simulation time (seconds)
-
-# Other input constants 
-m = 1 # mass (kg)
-g = 9.81 # gravity (m/s^2)
-L = 1 # length (m)
-b = 0.1 # damping value (kg/m^2-s)
-
-# initial angle (rad) is drawn uniformly in this range
-θ₀_range = (π/180)*[30, 150]
-
-# same for initial angular velocity (rad/s)
-ω₀_range = [1, 2]
-
-#-------------------------------------------------------------------------------
 # Machine parameters
 
-sampling = 5 # machine retain 1 in every so many samples
+sampling = 1 # machine retain 1 in every so many samples
 
-history = 5 # backward trajectory [seconds]
-future = 5 # forward trajectory [seconds]
+history = 22*12 # backward trajectory [months]
+future = 22*12 # forward trajectory [months]
 
 scale = 1 #bandwidth, i.e. Kernel Scale
 
 #-------------------------------------------------------------------------------
-# Damped Pendulum Dynamics - time simulation
-
-tₛ = 0:μ_s:t_final # system time
-
-u0 = [rand(Uniform(θ₀_range[1], θ₀_range[2])), rand(Uniform(ω₀_range[1], ω₀_range[2]))] # initial conditions
-u0 = [π/4, 0.0]
-tspan = (0.0, t_final)
-
-#Parameters
-p = [m, g, L, b]
-prob = ODEProblem(Pendulum!, u0, tspan, p)
-
-sol = solve(prob, saveat = μ_s, wrap = Val(false))
-u = reduce(hcat, sol.u)
-
-#-------------------------------------------------------------------------------
 # Machine Perspective
 
-μ_m = sampling*μ_s # machine time step
-npast = convert(Int, round(history/μ_m)) #Past Series sample size
-nfuture = convert(Int, round(future/μ_m)) #Future series sample size
+npast = convert(Int, round(history/sampling)) #Past Series sample size
+nfuture = convert(Int, round(future/sampling)) #Future series sample size
 
 window_size = npast + nfuture
 
-tₘ = 0:μ_m:t_final # machine time
-xₘ = sol(tₘ) # machine samples of the continuous system
-uₘ = reduce(hcat, xₘ.u)
-
-# positions - no velocity, not a 1 to 1 mapping of state space
-# => require history for reconstruction
-x = L * sin.(uₘ[1,:])
-y = L .- L.*cos.(uₘ[1,:])
-tₘ = xₘ.t
-
-data = [vec(x), vec(y)]
-
-#******* Writing to CSV
-#= dateframe_x_y_t = DataFrame(x = x, y = y, t = tₘ)
-CSV.write("pendulum.csv", dateframe_x_y_t) =#
-#*******
-
-#= #******* for debugging
-data = [vec(x[1:7]), vec(y[1:7])]
-npast = 1
-nfuture = 1
-#******* =#
-
 #******* or read from CSV
-df = CSV.read(joinpath(pwd(), "pendulum.csv"), DataFrame)
-data = [df.x[1:end], df.y[1:end]]
+df = CSV.read(joinpath(pwd(), "SN_m_tot_V2.0.csv"), DataFrame, header = false)
+year = df.Column1
+month = df.Column2
+data = df.Column3 # sunspots
 #*******
 
-N = length(data[1])# number of samples
+N = length(data)# number of samples
 #-------------------------------------------------------------------------------
 # Emergence - Pattern Discovery
 
 println("\n1. Generating gram matrices")
 
-Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
+Gx, Gy, index_map = series_Gxy([data], scale, npast, nfuture)
 
-#= #= println("Gx = ")
+#= println("Gx = ")
 display(Gx)
 println("Gy = ")
 display(Gy) =#
@@ -172,20 +107,6 @@ final_dist = dist[:, end]
 #-------------------------------------------------------------------------------
 # Plots
 
-# Exact State space (θ, ω)
-df_θ_ω = DataFrame(θ = u[1,:], ω = u[2,:])
-plot_θ_ω = plot(df_θ_ω, x = :θ, y = :ω,
-                Layout(
-                    title = attr(
-                        text = "Damped Pendulum: Exact State Space",  
-                    ),
-                    title_x = 0.5,
-                    xaxis_title = "θ [rad]",
-                    yaxis_title = "ω [rad/s]",)
-                )
-
-#display(plot_θ_ω)    
-
 # (x, y) positions from machine perspective
 nans = Array{Float64, 1}(undef, N - 2*nfuture)
 nans= fill!(nans, NaN)
@@ -226,7 +147,7 @@ plot_x_t = plot([trace_x, trace_y, trace_x̂, trace_ŷ],
                     yaxis_title = "y,x [m]",
                     ),  
                 )
-#display(plot_x_t)
+display(plot_x_t)
 
 N₁ = length(coords[:,2])
 N₂ = length(dist[2,:])
@@ -272,6 +193,6 @@ plot_Ψ_Φ_3d = plot([trace_Ψ, trace_Φ],
                     ),
                 )
 
-display(plot_Ψ_Φ_3d) =#
+display(plot_Ψ_Φ_3d)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

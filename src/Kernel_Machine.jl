@@ -68,6 +68,8 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
     
     =#
 
+    kernel_params_ = [-0.5, 2]
+
     series_list = series
 
     nseries = size(series_list, 1) # the number of sources
@@ -98,10 +100,12 @@ function series_Gxy(series, scale, npast, nfuture; decay = 1, qcflags = nothing,
 
     for (ser, sca, npa, nfu, dec, ldiff) in zip(series_list, scales_list, npasts_list, nfutures_list, decays_list, localdiff_list)
         
-        # ser may itself be a list, this is handled by series_xy_logk
+        ser = reshape(ser, :, 1) # turning the vector into a matrix
 
-        lx, ly = series_xy_logk(ser, sca, npa, nfu, decay = dec, concat_valid_map = index_map, localdiff = ldiff)
-            
+        @time begin
+            lx, ly = series_xy_logk_indx(ser, sca, npa, nfu, dec, index_map, kernel_params_[1], kernel_params_[2], ldiff)
+        end
+
         if total_lx === nothing
 
             total_lx, total_ly = lx, ly
@@ -429,9 +433,13 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
             i = k + 1
             j = l + 1
 
-            sumx, sumy = sxy_logk(i, j, series, concat_valid_map, npast, nfuture, 
-            localdiff, kernel_params_2, factor_r_past, 
-            factor_r_future, sum_r_past, sum_past_factor, sum_future_factor)
+            # from index of (past,future) pairs to index in data series
+            î = concat_valid_map[i]
+            ĵ = concat_valid_map[j]
+
+            sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, 
+            localdiff, kernel_params_2, factor_r_past, factor_r_future, sum_r_past, 
+            sum_past_factor, sum_future_factor)
 
             sx[i,j] = sumx
             sx[j,i] = sumx
@@ -444,9 +452,13 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
             i = m - k + 1
             j = m - l
 
-            sumx, sumy = sxy_logk(i, j, series, concat_valid_map, npast, nfuture, 
-            localdiff, kernel_params_2, factor_r_past, 
-            factor_r_future, sum_r_past, sum_past_factor, sum_future_factor)
+            # from index of (past,future) pairs to index in data series
+            î = concat_valid_map[i]
+            ĵ = concat_valid_map[j]
+
+            sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, 
+            localdiff, kernel_params_2, factor_r_past, factor_r_future, sum_r_past, 
+            sum_past_factor, sum_future_factor)
 
             sx[i,j] = sumx
             sx[j,i] = sumx
@@ -458,11 +470,9 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
     return sx, sy
 end
 
-function sxy_logk(i, j, series, concat_valid_map, npast, nfuture, localdiff, kernel_params_2, factor_r_past, factor_r_future, sum_r_past, sum_past_factor, sum_future_factor)
-            
-    # from index of (past,future) pairs to index in data series
-    i = concat_valid_map[i]
-    j = concat_valid_map[j]
+function sxy_logk(i, j, series, npast, nfuture, localdiff, 
+    kernel_params_2, factor_r_past, factor_r_future, 
+    sum_r_past, sum_past_factor, sum_future_factor)
 
     delta = zeros(size(series, 2))
 
@@ -472,15 +482,14 @@ function sxy_logk(i, j, series, concat_valid_map, npast, nfuture, localdiff, ker
         # diff of these => weighted avg of diffs
         r = 1
 
-        for t in 0:npast-1 # TODO: Can this loop be parallelized?
+        for t in 0:npast-1
 
-            d = series[i-t, :] - series[j-t, :]
+            d = series[i-t, :] .- series[j-t, :]
             delta += d * r
             r *= factor_r_past
         end
 
-        delta /= sum_r_past
-        
+        delta /= sum_r_past 
 
     elseif localdiff == 2
         # value of the "present"
@@ -493,8 +502,8 @@ function sxy_logk(i, j, series, concat_valid_map, npast, nfuture, localdiff, ker
     for t in 0:npast - 1
 
         d = series[i-t,:] .- series[j-t,:]
-        d = d - delta
-        ds = sum(d.*d)
+        d = d .- delta
+        ds = sum(abs2, d)
 
         if kernel_params_2 != 2
             ds = ds^(0.5*kernel_params_2)
@@ -510,9 +519,9 @@ function sxy_logk(i, j, series, concat_valid_map, npast, nfuture, localdiff, ker
 
     for t in 0:nfuture - 1
 
-        d = series[i+1+t,:] - series[j+1+t,:]
-        d = d - delta
-        ds = sum(d.*d)
+        d = series[i+1+t,:] .- series[j+1+t,:]
+        d = d .- delta
+        ds = sum(abs2, d)
 
         if kernel_params_2 != 2
             ds = ds^(0.5*kernel_params_2)

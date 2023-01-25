@@ -1,8 +1,3 @@
-using NonNegLeastSquares
-using KrylovKit #GenericSchur is another option
-using NearestNeighbors
-using JuMP
-import Ipopt
 
 function Shift_Operator(coords, eigenvalues; index_map = nothing, return_eigendecomposition = false)
     """
@@ -263,7 +258,7 @@ function Expectation_Operator(coords, index_map, targets; func::Function = immed
     end
 end
 
-function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds = nothing, knn_convexity = nothing)
+function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds = nothing, knn_convexity = nothing, coords = coords, knndim = nothing, extent = nothing)
     """
     Predict values from the current causal states distribution
 
@@ -290,10 +285,12 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
     Returns
     -------
     predictions: array, or list of arrays, matching the expect_op type
-        As many series of npred values as there are expectation operators. Either a list, or a single array, matching the expect_op type
+        As many series of npred values as there are expectation operators. 
+        Either a list, or a single array, matching the expect_op type
     
     updated_dist: optional, array
-        If return_dist>0, the updated state distribution or all such distributions are returned as a second argument.
+        If return_dist > 0, the updated state distribution or all such distributions 
+        are returned as a second argument.
     
     Notes
     -----
@@ -318,11 +315,51 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
     all_state_dists = Array{Float64, 2}(undef, length(state_dist), npred)
 
     pred = Vector{Matrix{Float64}}(undef, length(expect_op))
+    num_basis = size(coords, 2)
 
-    if !isnothing(knn_convexity)
+    problem = nothing
 
+    if isa(knn_convexity, Int) && knn_convexity > 0
 
+        if isnothing(knndim) || knndim > num_basis || !isa(knndim, Int)
+            knndim = num_basis
+        end
+        if isnothing(extent) extent = 0.0 end
 
+        # Euclidean(3.0), Chebyshev, Minkowski(3.5) and Cityblock
+        balltree = BallTree(transpose(coords[:, 1:knndim]); leafsize = 30)
+
+        if knn_convexity > 1
+
+            problem = Model(Ipopt.Optimizer)
+            set_silent(problem)
+
+            # Optimisation problem
+            @variable(problem, -extent <= w[i = 1:knn_convexity] <= 1 + extent) # weights between nearest neighbours
+            @NLparameter(problem, M[i = 1:num_basis, j = 1:knn_convexity] == 0) # nearest neighbours
+
+            @NLexpression(problem, sum_w, sum(w[i] for i in 1:knn_convexity))
+            @NLconstraint(problem, sum_w == 1) # weights have to sum to 1
+
+            # x is defined as a combination of neighours
+            x = Array{NonlinearExpression, 1}(undef, num_basis) # the end result
+
+            for i in 1:num_basis # maybe parallelize?
+                x[i] = @NLexpression(problem, sum(M[i, j]*w[j] for j in 1:knn_convexity)) # matrix multiplication
+            end
+
+            # Preserve the state distribution normalization
+            # This is always 1, in whatever scaled or coords units, since 
+            # the first eigenvatlue is 1.
+            @NLconstraint(problem, x[1] == 1.0)
+
+            @NLparameter(problem, target_x[i = 1:num_basis] == 0) # nearest neighbours
+
+            @NLexpression(problem, sum_squares, sum((x[i] - target_x[i])^2 for i in 1:num_basis))
+        end
+    else
+
+        knn_convexity = nothing
     end
 
     for p in 1:npred
@@ -333,6 +370,7 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
 
         # Apply the expectation operator to the current distribution
         # in state space, to make a prediction in data space
+
         for (eidx, eop) in enumerate(expect_op)
 
             new_pred = (eop * state_dist)
@@ -347,10 +385,46 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
                 pred[eidx] = cat(pred[eidx], new_pred, dims = 1)
             end
         end
+
         # Evolve the distribution
         state_dist = shift_op * state_dist
         # Normalize - not needed anymore by construction of the shift op
         state_dist /= state_dist[1, 1]
+
+        if !isnothing(knn_convexity) 
+
+            idxs, _ = knn(balltree, state_dist[1:knndim], knn_convexity)
+            #idxs, dista = knn(balltree, coords[2, :], knn_convexity)
+
+            if !isnothing(problem)
+
+                temp_c = Matrix(transpose(coords[idxs, :]))
+
+                # Setting the parameters to their newest values - maybe parallelize?
+                for i in 1:num_basis
+
+                    for j in 1:knn_convexity
+
+                        set_value(M[i, j], temp_c[i, j])
+                    end
+
+                    set_value(target_x[i], state_dist[i])
+                end
+
+                @NLobjective(problem, Min, sum_squares)
+                optimize!(problem)
+
+                state_dist = value.(x)
+                # should not be needed mathematically if the 
+                # constraint was perfectly respected.
+                # There could be numerical inaccuracies in practice
+                state_dist /= state_dist[1, 1]
+
+            elseif knn_convexity == 1
+
+                state_dist = coords[idxs[1], :]
+            end
+        end
     end
         
     if return_dist == 1
