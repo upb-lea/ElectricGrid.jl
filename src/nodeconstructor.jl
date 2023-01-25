@@ -9,7 +9,6 @@ include("./Power_System_Theory.jl")
 
 # using Intervals
 mutable struct NodeConstructor
-    verbosity
     num_connections 
     num_sources
     num_loads
@@ -33,6 +32,7 @@ mutable struct NodeConstructor
     S2S_p
     S2L_p
     L2L_p
+    verbosity
 end
 
 """
@@ -42,12 +42,14 @@ end
         CM = nothing,
         parameters = nothing,
         S2S_p = 0.1,
-        S2L_p = 0.8
+        S2L_p = 0.8,
+        L2L_p = 0.3,
+        verbosity = 0
         )
 
 Create a mutable struct NodeConstructor, which serves as a basis for the creation of an energy grid: `num_sources` corresponse to the amount of sources and `num_loads` is the amount of loads in the grid. `CM` is the connection matrix which indicates how the elements in the grid are connected to each other. To specify the elements of the net in more detail, values for the elements can be passed via `parameters`. If no connection matrix is entered, it can be generated automatically. `S2S_p` is the probability that a source is connected to another source and `S2L_p` is the probability that a source is connected to a load.
 """
-function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, verbosity = 0)
+function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, verbosity=0)
 
     tot_ele = num_sources + num_loads
 
@@ -122,7 +124,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R)
 
-    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p)
+    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, L2L_p, verbosity)
 end
 
 function get_fltr_distr(num)
@@ -1400,35 +1402,38 @@ function CM_generate(num_sources, num_loads,  S2L_p, S2S_p, L2L_p)
     end
 
     # make sure that no objects disappear or subnets are formed
-    for i in 1:tot_ele
-        # save rows and columns entries
+    if S2L_p < 1
 
-        Col = CM[1:i-1, i]
-        Row = CM[i, i+1:tot_ele]
-        
-        # get one list in the form of: [column, row]-entries
-        entries = vcat(Col, Row)
+        for i in 1:tot_ele
+            # save rows and columns entries
 
-        non_zero = count(i->(i != 0), entries) # number of non_zero entries
-        zero = count(i->(i == 0), entries) # number of zero entries
-
-        val_to_set = min(2, zero) # minimum of connections is 2
-        
-        if non_zero <= 2 # we need to set values if there are less then 2 entries
-            idx_row_entries = findall(x->x==0, Col) # Get rows of the entries = 0
-            idx_col_entries = findall(x->x==0, Row) # Get col of the entries = 0
-
-            idx_list = vcat([(j,i) for j in idx_row_entries], [(i,i+j) for j in idx_col_entries])
+            Col = CM[1:i-1, i]
+            Row = CM[i, i+1:tot_ele]
             
-            samples = min(val_to_set, length(idx_list))
+            # get one list in the form of: [column, row]-entries
+            entries = vcat(Col, Row)
 
-            idx_rnd = sample(1:length(idx_list), samples, replace=false) # draw samples from the list
+            non_zero = count(i->(i != 0), entries) # number of non_zero entries
+            zero = count(i->(i == 0), entries) # number of zero entries
+
+            val_to_set = min(2, zero) # minimum of connections is 2
             
-            for (a, ix) in enumerate(idx_rnd)
-                # Based on the random sample, select an indize
-                # from the list and write into the corresponding CM cell.
-                cntr += 1
-                CM[idx_list[ix][1], idx_list[ix][2]] = cntr
+            if non_zero <= 2 # we need to set values if there are less then 2 entries
+                idx_row_entries = findall(x->x==0, Col) # Get rows of the entries = 0
+                idx_col_entries = findall(x->x==0, Row) # Get col of the entries = 0
+
+                idx_list = vcat([(j,i) for j in idx_row_entries], [(i,i+j) for j in idx_col_entries])
+                
+                samples = min(val_to_set, length(idx_list))
+
+                idx_rnd = sample(1:length(idx_list), samples, replace=false) # draw samples from the list
+                
+                for (a, ix) in enumerate(idx_rnd)
+                    # Based on the random sample, select an indize
+                    # from the list and write into the corresponding CM cell.
+                    cntr += 1
+                    CM[idx_list[ix][1], idx_list[ix][2]] = cntr
+                end
             end
         end
     end
