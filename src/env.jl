@@ -60,7 +60,12 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
         num_sources = length(parameters["source"])
         num_loads = length(parameters["load"])
+    elseif haskey(parameters, "source") 
+        num_sources = length(parameters["source"])
+        num_loads = 0
     end
+
+
 
     if haskey(parameters, "grid") 
 
