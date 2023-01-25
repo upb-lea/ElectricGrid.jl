@@ -40,7 +40,7 @@ env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, 
 
 plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
 plt_action_ids = ["source1_u_a", "source2_u_a",]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [])
+hook = DataHook(collect_sources = [1,2])
 
 #_______________________________________________________________________________
 # Starting time simulation

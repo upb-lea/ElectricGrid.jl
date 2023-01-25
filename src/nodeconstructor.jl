@@ -9,7 +9,6 @@ include("./Power_System_Theory.jl")
 
 # using Intervals
 mutable struct NodeConstructor
-    verbosity
     num_connections 
     num_sources
     num_loads
@@ -32,6 +31,8 @@ mutable struct NodeConstructor
     parameters
     S2S_p
     S2L_p
+    L2L_p
+    verbosity
 end
 
 """
@@ -41,12 +42,14 @@ end
         CM = nothing,
         parameters = nothing,
         S2S_p = 0.1,
-        S2L_p = 0.8
+        S2L_p = 0.8,
+        L2L_p = 0.3,
+        verbosity = 0
         )
 
 Create a mutable struct NodeConstructor, which serves as a basis for the creation of an energy grid: `num_sources` corresponse to the amount of sources and `num_loads` is the amount of loads in the grid. `CM` is the connection matrix which indicates how the elements in the grid are connected to each other. To specify the elements of the net in more detail, values for the elements can be passed via `parameters`. If no connection matrix is entered, it can be generated automatically. `S2S_p` is the probability that a source is connected to another source and `S2L_p` is the probability that a source is connected to a load.
 """
-function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, verbosity = 0)
+function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, verbosity=0)
 
     tot_ele = num_sources + num_loads
 
@@ -54,7 +57,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
     num_connections = 0
 
     if CM === nothing
-        cntr, CM = CM_generate(num_sources, num_loads, S2L_p, S2S_p)
+        cntr, CM = CM_generate(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
         num_connections = cntr
     else
         if size(CM)[1] != tot_ele
@@ -121,11 +124,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R)
 
-    NodeConstructor(verbosity, num_connections, num_sources, 
-    num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, 
-    num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, 
-    num_loads_R, num_impedance, num_fltr, num_spp, cntr, 
-    tot_ele, CM, parameters, S2S_p, S2L_p)
+    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, L2L_p, verbosity)
 end
 
 function get_fltr_distr(num)
@@ -172,6 +171,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
         grid_properties["fs"] =  10e3 # TODO: this should be 1/env.ts
+        println("fs has been incorrectly set")
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
@@ -1366,7 +1366,7 @@ end
 
 Returns the constructed CM and the total number of connections.
 """
-function CM_generate(num_sources, num_loads,  S2L_p, S2S_p)
+function CM_generate(num_sources, num_loads,  S2L_p, S2S_p, L2L_p)
 
     # counting the connections 
     cntr = 0
@@ -1383,54 +1383,62 @@ function CM_generate(num_sources, num_loads,  S2L_p, S2S_p)
     # -1 bc last entry is 0 anyway
     for i in 1:tot_ele-1
         # start at i, bc we need to check only upper triangle
-        for j in i:tot_ele-1
-            if j >= num_sources-1 # select propability according to column
-                cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2L_p)
-                CM[i, j+1] = x
-            else
-                cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2S_p)
+        if i <= num_sources
+            for j in i:tot_ele-1
+                if j > num_sources-1  # select propability according to column
+                    cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2L_p)
+                    CM[i, j+1] = x
+                else
+                    cntr, x = tobe_or_n2b(cntr, CM[i, j+1], S2S_p)
+                    CM[i, j+1] = x
+                end
+            end
+        else
+            for j in i:tot_ele-1
+                cntr, x = tobe_or_n2b(cntr, CM[i, j+1], L2L_p)
                 CM[i, j+1] = x
             end
         end
     end
 
-    # println("CM: $(CM)")
-
     # make sure that no objects disappear or subnets are formed
-    for i in 1:tot_ele
-        # save rows and columns entries
-        Col = CM[1:i-1, i]
-        Row = CM[i, i+1:tot_ele]
-        
-        # get one list in the form of: [column, row]-entries
-        entries = vcat(Col, Row)
+    if S2L_p < 1
 
-        non_zero = count(i->(i != 0), entries) # number of non_zero entries
-        zero = count(i->(i == 0), entries) # number of zero entries
+        for i in 1:tot_ele
+            # save rows and columns entries
 
-        val_to_set = min(2, zero) # minimum of connections is 2
-        
-        if non_zero <= 2 # we need to set values if there are less then 2 entries
-            idx_row_entries = findall(x->x==0, Col) # Get rows of the entries = 0
-            idx_col_entries = findall(x->x==0, Row) # Get col of the entries = 0
-
-            idx_list = vcat([(j,i) for j in idx_row_entries], [(i,i+j) for j in idx_col_entries])
+            Col = CM[1:i-1, i]
+            Row = CM[i, i+1:tot_ele]
             
-            samples = min(val_to_set, length(idx_list))
-            idx_rnd = sample(1:length(idx_list), samples) # draw samples from the list
+            # get one list in the form of: [column, row]-entries
+            entries = vcat(Col, Row)
+
+            non_zero = count(i->(i != 0), entries) # number of non_zero entries
+            zero = count(i->(i == 0), entries) # number of zero entries
+
+            val_to_set = min(2, zero) # minimum of connections is 2
             
-            for (a, ix) in enumerate(idx_rnd)
-                # Based on the random sample, select an indize
-                # from the list and write into the corresponding CM cell.
-                cntr += 1
-                CM[idx_list[ix][1], idx_list[ix][2]] = cntr
+            if non_zero <= 2 # we need to set values if there are less then 2 entries
+                idx_row_entries = findall(x->x==0, Col) # Get rows of the entries = 0
+                idx_col_entries = findall(x->x==0, Row) # Get col of the entries = 0
+
+                idx_list = vcat([(j,i) for j in idx_row_entries], [(i,i+j) for j in idx_col_entries])
+                
+                samples = min(val_to_set, length(idx_list))
+
+                idx_rnd = sample(1:length(idx_list), samples, replace=false) # draw samples from the list
+                
+                for (a, ix) in enumerate(idx_rnd)
+                    # Based on the random sample, select an indize
+                    # from the list and write into the corresponding CM cell.
+                    cntr += 1
+                    CM[idx_list[ix][1], idx_list[ix][2]] = cntr
+                end
             end
         end
     end
 
     CM = CM - CM' # copy with negative sign to lower triangle
-
-    # println("CM: $(CM)")
 
     return cntr, CM
 end
@@ -2105,15 +2113,7 @@ function generate_A(self::NodeConstructor)
         for i in 1:self.num_loads
             push!(A_tran_load_c_list, get_A_tran_load_c(self, i))
         end
-        A_tran_load_c = reduce(vcat, A_tran_load_c_list)
-
-        # get A_load_diag
-        self.num_impedance = (2 * (self.num_loads_RLC # Equivalent to the number of load states
-                                    + self.num_loads_LC
-                                    + self.num_loads_RL
-                                    + self.num_loads_L)
-                                    + self.num_loads_RC + self.num_loads_C + self.num_loads_R)
-        
+        A_tran_load_c = reduce(vcat, A_tran_load_c_list)       
 
         A_load_diag = zeros(self.num_impedance, self.num_impedance)
         A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
