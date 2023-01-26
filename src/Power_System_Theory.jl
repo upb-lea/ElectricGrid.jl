@@ -473,7 +473,8 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
     return result
 end
 
-function layout_cabels(CM, num_source, num_load, parameters)
+
+function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
 
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
@@ -614,7 +615,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
 
     # As radius goes down resistance goes up, inductance goes up, capacitance goes down. Put in formulas for this.
     #@variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]]) 
-    @variable(model, cables[1 : num_cables, ["radius"]])
+    @variable(model, cables[1 : num_cables, ["radius", "D-to-neutral"]])
 
     L_cable = Array{NonlinearExpression, 1}(undef, num_cables)
     R_cable = Array{NonlinearExpression, 1}(undef, num_cables)
@@ -625,17 +626,19 @@ function layout_cabels(CM, num_source, num_load, parameters)
     cable_susceptance_1 = Array{NonlinearExpression, 1}(undef, num_cables) # off diagonals
 
 
-    # fixed distance between cables
+    # fixed distance between cable and neutral [2*radius + η - 1.00] m
     D = 0.5 #m
 
     for i=1:num_cables
         
 
         set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
-        #set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
-        # assumption to line to line
+        # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
+        # assumption: min value of D-to-neutral : 3 * max radius
+        set_bounds(cables[i, "D-to-neutral"], 3*(4.1148e-3/2), 3*(4.1148e-3/2), 1.00 ) #m
+        # assumption to line to line(neutral) --  for low voltages
         #println(parameters["cable"][i]["len"])
-        L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(D/(0.7788 * cables[i, "radius"])))  # m* H/m
+        L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
 
         # resistivity remains constant ρ_(T=50) = 1.973e-8 
         R_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 1.973e-8 / (π * cables[i, "radius"]^2)) # m * Ω/m
@@ -644,7 +647,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
         # X_R = omega * L(r)/R(r)
 
         # line to neutral
-        C_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 2π * 8.854e-12 / (log(D/cables[i, "radius"]))) #m * F/m
+        C_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 2π * 8.854e-12 / (log(cables[i, "D-to-neutral"]/cables[i, "radius"]))) #m * F/m
     
         cable_conductance[i] = @NLexpression(model, (R_cable[i] / ((R_cable[i])^2 + (omega * L_cable[i])^2)))
         cable_susceptance_1[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2))))
@@ -725,7 +728,7 @@ function layout_cabels(CM, num_source, num_load, parameters)
     # Ibase_rms = f(Sbase_1_phase, Vbase_rms)
     # Zbase = f(Vbase_rms, Ibase_rms)
 
-    radius_upper_bound = upper_bound(cables[1, "radius"])
+    radius_upper_bound = upper_bound(cables[1, "radius"]);
     radius_lower_bound = lower_bound(cables[1, "radius"]);
 
     # Lagrangians/weights # TODO make these parameters depending on price ($)?
@@ -740,10 +743,13 @@ function layout_cabels(CM, num_source, num_load, parameters)
                             + sum( ((nodes[i,"P"] - P_source_mean)^2 )/ norm_P for i in idx_p_mean_cal) 
                             + sum( ((nodes[i,"Q"] - Q_source_mean)^2) / norm_Q for i in idx_q_mean_cal) # the variance - not exactly right (but good enough)
                             + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * (radius_upper_bound - radius_lower_bound) )
+                            #D-to-neutral to be minimized
                             )
                             
 
     optimize!(model)
+
+    # TODO: put these warning/messages with logger // verbosity 
     #= println("""
     termination_status = $(termination_status(model))
     primal_status      = $(primal_status(model))
@@ -754,7 +760,6 @@ function layout_cabels(CM, num_source, num_load, parameters)
     println()
     println(value.(nodes)) =#
 
-    
     for (index, cable) in enumerate(parameters["cable"])
 
         cable["L"] = value.(L_cable)[index]

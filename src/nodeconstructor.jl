@@ -86,7 +86,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     if parameters === nothing || isa(parameters, Dict) 
 
-        parameters = check_parameters(parameters, num_sources, num_loads, num_connections, CM)  # Checks if all entries are given, if not, fills up with random values
+        parameters = check_parameters(parameters, num_sources, num_loads, num_connections, CM, verbosity)  # Checks if all entries are given, if not, fills up with random values
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
@@ -155,7 +155,7 @@ function get_loads_distr(num)
     return num_loads_R, num_loads_C, num_loads_L, num_loads_RL, num_loads_RC, num_loads_LC, num_loads_RLC
 end
 
-function check_parameters(parameters, num_sources, num_loads, num_connections, CM)
+function check_parameters(parameters, num_sources, num_loads, num_connections, CM, verbosity)
 
     # Variable generation of the parameter dicts
 
@@ -347,12 +347,13 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if source["fltr"] == "LC" && 1/sqrt(source["L1"]*source["C"]) > parameters["grid"]["fs"]/2
-
-                @warn ("The LC filter parameters have been poorly chosen.
-                The filtering capacitors should be chosen such that the resonant 
-                frequency 1/sqrt(L*C) is approximately sqrt(ωn * ωs), where ωn 
-                is the angular frequency of the grid, and ωs is the angular 
-                switching frequency.")
+                if verbosity > 0
+                    @warn ("The LC filter parameters have been poorly chosen.
+                    The filtering capacitors should be chosen such that the resonant 
+                    frequency 1/sqrt(L*C) is approximately sqrt(ωn * ωs), where ωn 
+                    is the angular frequency of the grid, and ωs is the angular 
+                    switching frequency.")
+                end
 
             end
 
@@ -443,12 +444,13 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 fc = (1/2π)*sqrt((source["L1"] + source["L2"])/(source["L1"]*source["L2"]*source["C"]))
 
                 if fc > parameters["grid"]["fs"]/2
-
-                    @warn ("The LCL filter parameters have been poorly chosen.
-                    The cut-off frequency of the filter must be minimally one half 
-                    of the switching frequency of the converter, because the filter 
-                    must have enough attenuation in the range of the converter's 
-                    switching frequency.")
+                    if verbosity > 0
+                        @warn ("The LCL filter parameters have been poorly chosen.
+                        The cut-off frequency of the filter must be minimally one half 
+                        of the switching frequency of the converter, because the filter 
+                        must have enough attenuation in the range of the converter's 
+                        switching frequency.")
+                    end
                 end
             end
 

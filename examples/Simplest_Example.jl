@@ -45,6 +45,9 @@ parameters = Dict{Any, Any}(
         "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
 #_______________________________________________________________________________
+# cable layout
+
+
 # Defining the environment
 
 env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
@@ -54,7 +57,7 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 
 hook = DataHook(collect_vrms_ids = [1 2], 
                 collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2],
+                collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
                 collect_freq     = [1 2],
                 collect_sources  = [1 2])
 
@@ -76,3 +79,7 @@ plot_hook_results(hook = hook,
                     freq_to_plot    = [])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
+
+
+# Time domain : p, q
+# Freq domain : P, Q
