@@ -67,8 +67,11 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     #_______________________________________________________________________________
     # Logging
 
-    @info "Time simulation run time: $((env.maxsteps - 1)*env.ts) [s] ~ $(Int(env.maxsteps)) steps"
-    @info "Number of episodes: $(num_episodes)"
+    if env.verbosity > 1
+
+        @info "Time simulation run time: $((env.maxsteps - 1)*env.ts) [s] ~ $(Int(env.maxsteps)) steps"
+        @info "Number of episodes: $(num_episodes)"
+    end
     
     #_______________________________________________________________________________
     # Running the time simulation

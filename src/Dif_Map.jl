@@ -1,6 +1,6 @@
 using KrylovKit
 
-function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
+function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
 
     """
     Spectral decomposition of the similarity matrix, *after normalization*.
@@ -92,7 +92,7 @@ function spectral_basis(Gs; num_basis = nothing, scaled = true, alpha = 1)
 
     end
 
-    eigval, eigvec, info = geneigsolve((mat, diagm(q)), num_basis, :LM; krylovdim = num_basis + 1, issymmetric = true)
+    eigval, eigvec, info = geneigsolve((mat, diagm(q)), num_basis, :LM; krylovdim = N, issymmetric = true)
     eigvec = reduce(hcat, eigvec)
     
     if eigen_cutoff >= 0

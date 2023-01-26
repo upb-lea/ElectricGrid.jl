@@ -692,22 +692,18 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     end
 
     cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
-    # maybe remove this? but add as check after optimisation has been completed.
-    #TODO: this back in? -> Septimus
     
     for i in 1:num_cables
 
         j, k = Tuple(findfirst(x -> x == i, CM))
 
         cable_constraints[i] = @NLconstraint(model,
-            abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*L_cable[i])) # this formula is not quite correct - missing resistances and capacitances
-            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(C_cable[i]/L_cable[i]) # check if there should be a 2 in the equation
+            abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*L_cable[i]))
+            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(C_cable[i]/L_cable[i])
         )
 
     end
     
-    
-
     # non-linear objectives 
     @NLexpression(model, P_source_mean, sum(nodes[Int(j),"P"] for j in idx_p_mean_cal) / convert.(Int64,length(idx_p_mean_cal)))
     @NLexpression(model, Q_source_mean, sum(nodes[Int(j),"Q"] for j in idx_q_mean_cal) / convert.(Int64,length(idx_q_mean_cal)))
@@ -727,7 +723,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     radius_upper_bound = upper_bound(cables[1, "radius"]);
     radius_lower_bound = lower_bound(cables[1, "radius"]);
 
-    # Lagrangians # TODO make these parameters depending on price ($)?
+    # Lagrangians/weights # TODO make these parameters depending on price ($)?
     λ₁ = 0.99
     λ₂ = 0.00001
 

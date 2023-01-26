@@ -1,7 +1,10 @@
 using NonNegLeastSquares
 using KrylovKit #GenericSchur is another option
+using NearestNeighbors
+using JuMP
+import Ipopt
 
-function shift_operator(coords, eigenvalues; index_map = nothing, return_eigendecomposition = false)
+function Shift_Operator(coords, eigenvalues; index_map = nothing, return_eigendecomposition = false)
     """
     Compute a shift operator for the dynamical system, assuming coords are the time series of causal states
     Handles NaN values and split / multi series with index maps
@@ -61,7 +64,7 @@ function shift_operator(coords, eigenvalues; index_map = nothing, return_eigende
 
     X = nonneg_lsq(transpose(transpose(eigenvalues).*coords[valid_prev,:]), 
                     transpose(transpose(eigenvalues).*coords[indices_no_next,:]), 
-                    alg = :fnnls)
+                    alg = :nnls) #fnnls - for fast Non Neg Least Squares - less accurate
 
     X = X ./ sum(X, dims = 1) # should already be close to 1
     
@@ -78,7 +81,7 @@ function shift_operator(coords, eigenvalues; index_map = nothing, return_eigende
     
     shift_op[2:end,:] = transpose(coords \ (transpose(T)*coords[:, 2:end]))
     
-    # This may be another option
+    # This may be another option - gives similar results
     #= b = (transpose(T)*coords[:, 2:end])
     ldiv!(factorize(coords), b)
     rows_to_keep = b[:,1:end] .!= 0
@@ -141,7 +144,7 @@ function immediate_future(data, indices)
     return data[indices .+ 1, :]
 end
 
-function expectation_operator(coords, index_map, targets; func::Function = immediate_future, bounds = nothing, knn_convexity = nothing)
+function Expectation_Operator(coords, index_map, targets; func::Function = immediate_future)
     """
     Builds the expectation operator, mapping a state distribution expressed in the eigenbasis, into numerical values, expressed in the original series units.
 
@@ -226,7 +229,8 @@ function expectation_operator(coords, index_map, targets; func::Function = immed
     
     eoplist = Vector{Matrix{Float64}}(undef, length(targets_list))
     
-    sci = pinv(transpose(coords))
+    rtol = sqrt(eps(real(float(one(eltype(transpose(coords)))))))
+    sci = pinv(transpose(coords), rtol = rtol)
 
     e_cnt = 1
     
@@ -259,7 +263,7 @@ function expectation_operator(coords, index_map, targets; func::Function = immed
     end
 end
 
-function predict(npred, state_dist, shift_op, expect_op; return_dist = 0)
+function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds = nothing, knn_convexity = nothing)
     """
     Predict values from the current causal states distribution
 
@@ -282,7 +286,6 @@ function predict(npred, state_dist, shift_op, expect_op; return_dist = 0)
         - 0 (default): do not return a state vector
         - 1: return the updated state vector
         - 2: return an array of state_dist vectors, one row for each prediction
-
 
     Returns
     -------
@@ -316,11 +319,18 @@ function predict(npred, state_dist, shift_op, expect_op; return_dist = 0)
 
     pred = Vector{Matrix{Float64}}(undef, length(expect_op))
 
+    if !isnothing(knn_convexity)
+
+
+
+    end
+
     for p in 1:npred
 
         if return_dist==2
             all_state_dists[:, p] = state_dist
         end
+
         # Apply the expectation operator to the current distribution
         # in state space, to make a prediction in data space
         for (eidx, eop) in enumerate(expect_op)

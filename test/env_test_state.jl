@@ -31,65 +31,36 @@ using ReinforcementLearning
     )
 
 
-    env = SimEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
+    env = SimEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
 
-    state_ids = get_state_ids(env.nc)
-    action_ids = get_action_ids(env.nc)
-
-    #_______________________________________________________________________________
-    # Setting up the Classical Sources
-
-    Animo = NamedPolicy("classic", Classical_Policy(env))
-
-    state_ids_classic = Animo.policy.state_ids
-    action_ids_classic = Animo.policy.action_ids
-
-    Multi_Agents = Dict()
-    Multi_Agent_list = []
-
-    polc = Dict()
-
-    polc["policy"] = Animo
-    polc["state_ids"] = state_ids_classic
-    polc["action_ids"] = action_ids_classic
-
-    Multi_Agents[nameof(Animo)] = polc
-
-    ma = MultiAgentGridController(Multi_Agents, action_ids)
-
-    agentname = "agent"
-
-    #_______________________________________________________________________________
-    #%% Setting up data hooks
-
-    plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
+    plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
     plt_action_ids = ["source1_u_a"]
     hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
-    #_______________________________________________________________________________
-    # Starting time simulation
-    num_eps = 1
-    RLBase.run(ma, env, StopAfterEpisode(num_eps), hook); 
+    Power_System_Dynamics(env, hook)
 
     idx_end = 300
-    X_dare = [hook.df[!,"source1_i_L1_a"][2:idx_end,:] hook.df[!, "source1_v_C_filt_a"][2:idx_end,:] hook.df[!,"source1_v_C_cables_a"][2:idx_end,:] hook.df[!,"cable1_i_L_a"][2:idx_end,:] -hook.df[!,"load1_v_C_total_a"][2:idx_end,:] -hook.df[!,"load1_i_L_a"][2:idx_end,:]]
-
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]  
+    X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
-    # TODO: why do we have 2 zero lines in X_dare?
+        
+    #=println("MATLAB:")
+    display(X_malab["X_matlab"][1:idx_end,:])
+    println()
+    println("DARE:")
+    display(X_dare)
+    println() =#
 
-    #println("MATLAB:")
-    #display(vars["X_matlab"][1:idx_end-1,:])
-    #println()
-    #println("DARE:")
-    #display(X_dare)
-    #println()   
-
-    #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=12  # 1e-4
-    #@test X_dare≈vars["X_matlab"][1:idx_end-1,:] atol=0.1   # 1e-5
-    @test X_dare≈X_malab["X_matlab"][1:idx_end-1,:] atol=0.001   # 1e-6
+    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
 end
 
+
 @testset "env_2source_1load" begin
+
+    CM = [ 0. 0. 1.
+        0. 0. 2.
+        -1. -2. 0.]
+
 
     parameters = Dict{Any, Any}(
     "source" => Any[
@@ -106,35 +77,48 @@ end
     "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)      
     )
 
-    env = SimEnv(ts = 1e-4, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1)
+    env = SimEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1, verbosity = 0)
 
-    plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
-    plt_action_ids = ["source1_u_a", "source2_u_a",]
-    hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids,  collect_sources = [1,2])
+    hook = DataHook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
 
     Power_System_Dynamics(env, hook)
 
-    plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
-
     idx_end = 300
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_source2_v_C_filt_a", "next_state_source2_i_L2_a","next_state_source2_v_C_cables_a", "next_state_cable2_i_L_a",]  
+    X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
+    X_malab = matread("./test/env_test_state_2source_1load1e6.mat")
 
-    X_dare = [hook.df[!,"source1_i_L1_a"][2:idx_end,:] hook.df[!, "source1_v_C_filt_a"][2:idx_end,:] hook.df[!,"source1_v_C_cables_a"][2:idx_end,:] hook.df[!,"cable1_i_L_a"][2:idx_end,:] -hook.df[!,"load1_v_C_total_a"][2:idx_end,:] -hook.df[!,"load1_i_L_a"][2:idx_end,:]]
-
-    X_dare2 = []
-    for s_id in plt_state_ids
-        if s_id == plt_state_ids[1]
-            X_dare2 = [hook.df[!,s_id][2:idx_end,:]']
-        else
-            hcat(X_dare2, hook.df[!,s_id][2:idx_end,:]')
-        end
-    end
-
-    #println("MATLAB:")
-    #display(vars["X_matlab"][1:idx_end-1,:])
-    println()
-    println("DARE:")
-    display(X_dare2)
-    println()  
-
+    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=.001   # 1e-6
 
 end
+
+@testset "env_2source" begin
+    CM = [ 0. 1.
+        -1. 0.]
+
+    parameters = Dict{Any, Any}(
+        "source" => Any[
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L", "L1" => 1e-3, "R1" => 1.1e-3, "i_limit"=>10e6),
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 8, "fltr" => "L", "L1" => 1e-3, "R1" => 1.1e-3, "i_limit"=>10e6),
+                        ],
+        "cable"   => Any[
+                        Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
+                        ],
+        "grid" => Dict{Any, Any}("ramp_end" => 0.0)
+    )
+    env = SimEnv(ts = 1e-6, CM = CM, parameters = parameters, verbosity = 0, maxsteps = 600, action_delay = 1)
+
+    hook = DataHook(collect_sources  = [1 2],
+                    collect_cables = [1])
+    
+    Power_System_Dynamics(env, hook)
+
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source2_i_L1_a",   "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_source2_v_C_cables_a"]
+    idx_end = 300
+    X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
+    X_malab = matread("./test/env_test_state_2source1e6.mat")
+
+    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.01   # 1e-6
+end;
+
+

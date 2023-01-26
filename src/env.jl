@@ -16,6 +16,7 @@ include("./pv_module.jl")
 
 
 mutable struct SimEnv <: AbstractEnv
+    verbosity
     nc
     sys_d
     action_space
@@ -49,7 +50,7 @@ mutable struct SimEnv <: AbstractEnv
     y #holds all of the inductor voltages and capacitor currents
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing, verbosity = 0)
 
     if !(isnothing(t_end))
         maxsteps = floor(t_end/ts) + 1
@@ -59,19 +60,28 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
         num_sources = length(parameters["source"])
         num_loads = length(parameters["load"])
+    elseif haskey(parameters, "source") 
+        num_sources = length(parameters["source"])
+        num_loads = 0
     end
+
+
 
     if haskey(parameters, "grid") 
 
         if !haskey(parameters["grid"], "fs")
             parameters["grid"]["fs"] = 1/ts
         end
+    else
+
+        parameters["grid"] = Dict()
+        parameters["grid"]["fs"] = 1/ts
     end
 
     
     if !(isnothing(num_sources) || isnothing(num_loads)) 
 
-        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
+        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, verbosity = verbosity)
 
     else
         # Construct standard env with 2 sources, 1 load
@@ -81,9 +91,9 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
               -1. -2. 0.]
 
         if isnothing(parameters)
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM)
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, verbosity = verbosity)
         else
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters)
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, verbosity = verbosity)
         end
 
     end
@@ -220,8 +230,9 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
     vdc_fixed > 0 && @warn "$vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc."
 
-
-    @info "Normalization is done based on the defined parameter limits."
+    if verbosity > 1
+        @info "Normalization is done based on the defined parameter limits."
+    end
     states = get_state_ids(nc)
 
     i_limit_fixed = 0
@@ -311,7 +322,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
     y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
 
-    SimEnv(nc, sys_d, action_space, state_space, 
+    SimEnv(verbosity, nc, sys_d, action_space, state_space, 
     false, featurize, prepare_action, reward_function, 
     x0, x, t0, t, ts, state, maxsteps, 0, state_ids, 
     v_dc, v_dc_arr, norm_array, convert_state_to_cpu, 

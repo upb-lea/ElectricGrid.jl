@@ -72,7 +72,7 @@ source = Dict()
 
 source["mode"]     = 4
 
-source["fltr"]     = "LCL"  # Filter type
+source["fltr"]     = "LC"  # Filter type
 
 source["pwr"]      = 200e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
@@ -98,7 +98,7 @@ source = Dict()
 
 source["mode"]     = 2
 
-source["fltr"]     = "LC"   # Filter type
+source["fltr"]     = "L"   # Filter type
 
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
@@ -191,9 +191,9 @@ grid = Dict()
 grid["v_rms"] = 230
 load["ramp_end"] = 0.04
 load["process_start"] = 0.04
-load["f_grid"] = 50 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
-load["Δfmax"] = 0.005 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
-load["ΔEmax"] = 0.05
+load["f_grid"] = 50 
+load["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
+load["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
 #-------------------------------------------------------------------------------
 # Amalgamation
@@ -208,7 +208,7 @@ parameters["grid"] = grid
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
 # Setting up data hooks
