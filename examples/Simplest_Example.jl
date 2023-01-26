@@ -31,6 +31,9 @@ parameters = Dict{Any, Any}(
                         ]
     )
 #_______________________________________________________________________________
+# cable layout
+
+
 # Defining the environment
 
 env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
@@ -40,7 +43,7 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
 
 hook = DataHook(collect_vrms_ids = [1 2], 
                 collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2],
+                collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
                 collect_freq     = [1 2],
                 collect_sources  = [1 2])
 
@@ -56,9 +59,13 @@ plot_hook_results(hook = hook,
                     states_to_plot  = [], 
                     actions_to_plot = [],  
                     p_to_plot       = [1 2], 
-                    q_to_plot       = [], 
+                    q_to_plot       = [],  #no plotting q
                     vrms_to_plot    = [1 2], 
                     irms_to_plot    = [1 2],
                     freq_to_plot    = [1 2])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
+
+
+# Time domain : p, q
+# Freq domain : P, Q
