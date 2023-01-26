@@ -114,7 +114,7 @@ function Shift_Operator(coords, eigenvalues; index_map = nothing, return_eigende
         # faster formula using solve adapted from
 
         Λ = Diagonal(eigval)
-        shift_op = real.((right_eigvec * Λ) * inv(right_eigvec))
+        shift_op = real.((right_eigvec * Λ) * pinv(right_eigvec))
 
         if return_eigendecomposition
 
@@ -394,7 +394,6 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
         if !isnothing(knn_convexity) 
 
             idxs, _ = knn(balltree, state_dist[1:knndim], knn_convexity)
-            #idxs, dista = knn(balltree, coords[2, :], knn_convexity)
 
             if !isnothing(problem)
 

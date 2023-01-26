@@ -10,7 +10,7 @@ using FFTW
 using LinearAlgebra
 using JuMP
 import Ipopt
-using KrylovKit #GenericSchur is another option
+using KrylovKit
 using NearestNeighbors
 using NonNegLeastSquares
 using PlotlyJS

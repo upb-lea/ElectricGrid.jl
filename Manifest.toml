@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "6cccea9aed35ac97f3d45505597e07aae0741db7"
+project_hash = "773b7f05e60f41c843be8d15c10cb796135391fe"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1401,6 +1401,11 @@ git-tree-sha1 = "3c8d8a25ead9d7837731504b2f170b3763e46abd"
 uuid = "48965c70-4690-11ea-1f13-43a2532b2fa8"
 version = "1.7.5"
 
+[[deps.MaxMinFilters]]
+git-tree-sha1 = "6d66ee8aef9929366055499c7fbbb024aea3cdf1"
+uuid = "be03bc56-bb7c-4dbf-b252-c57e9365e4bb"
+version = "0.1.1"
+
 [[deps.MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "Random", "Sockets"]
 git-tree-sha1 = "03a9b9718f5682ecb107ac9f7308991db4ce395b"
@@ -1659,6 +1664,12 @@ deps = ["Dates", "SnoopPrecompile"]
 git-tree-sha1 = "8175fc2b118a3755113c8e68084dc1a9e63c61ee"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "2.5.3"
+
+[[deps.Peaks]]
+deps = ["Compat", "RecipesBase"]
+git-tree-sha1 = "ca47b866754525ede84e5dec84a104c45f92afb6"
+uuid = "18e31ff7-3703-566c-8e60-38913d67486b"
+version = "0.4.3"
 
 [[deps.Pidfile]]
 deps = ["FileWatching", "Test"]

@@ -25,7 +25,7 @@ include(srcdir("Machine_Dynamics.jl"))
 include(srcdir("Dif_Map.jl"))
 include(srcdir("Dynamical_Systems.jl")) =#
 
-print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
+println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #-------------------------------------------------------------------------------
 # Damped Pendulum Dynamics
@@ -165,7 +165,7 @@ N = length(data[1])# number of samples
     #= pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
     final_dist = dist[:, end] =#
 
-    pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 1, coords = coords)
+    pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 0, coords = coords)
     final_dist = dist[:, end]
 end
 #-------------------------------------------------------------------------------
@@ -237,7 +237,7 @@ nans = fill!(nans, NaN)
 
 df_Ψ_Φ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3], Ψ₃ = coords[:,4], Φ₁ = Φ₁, Φ₂ = Φ₂, Φ₃ = Φ₃)
 
-#= trace_Ψ = scatter(df_Ψ_Φ, x = :Ψ₁, y = :Ψ₂, name = "Ψ")
+trace_Ψ = scatter(df_Ψ_Φ, x = :Ψ₁, y = :Ψ₂, name = "Ψ")
 trace_Φ = scatter(df_Ψ_Φ, x = :Φ₁, y = :Φ₂, name = "Φ")
 
 plot_Ψ_Φ = plot([trace_Ψ, trace_Φ],
@@ -250,9 +250,7 @@ plot_Ψ_Φ = plot([trace_Ψ, trace_Φ],
                     yaxis_title = "Ψ₂",),
                 )
 
-display(plot_Ψ_Φ) =#
-
-df_Ψ_Φ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3], Ψ₃ = coords[:,4], Φ₁ = Φ₁, Φ₂ = Φ₂, Φ₃ = Φ₃)
+display(plot_Ψ_Φ)
 
 trace_Ψ = scatter3d(df_Ψ_Φ, x = :Ψ₁, y = :Ψ₂, z = :Ψ₃, name = "Ψ", mode = "lines")
 trace_Φ = scatter3d(df_Ψ_Φ, x = :Φ₁, y = :Φ₂, z = :Φ₃, name = "Φ", mode = "lines")
@@ -271,6 +269,6 @@ plot_Ψ_Φ_3d = plot([trace_Ψ, trace_Φ],
                     ),
                 )
 
-display(plot_Ψ_Φ_3d)
+#display(plot_Ψ_Φ_3d)
 
-print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
+println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
