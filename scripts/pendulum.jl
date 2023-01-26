@@ -1,17 +1,29 @@
-#using Dare
+using Dare
+using Distributions
+using DifferentialEquations
+using CSV
+using DataFrames
+using PlotlyJS
 
-using DrWatson
+#= using DrWatson
 @quickactivate "dare"
 
-using PlotlyJS
-using DataFrames
-using Distributions
 using CSV
+using DataFrames
+using DifferentialEquations
+using Distributions
+using LinearAlgebra
+using JuMP
+import Ipopt
+using KrylovKit #GenericSchur is another option
+using NearestNeighbors
+using NonNegLeastSquares
+using PlotlyJS =#
 
-include(srcdir("Kernel_Machine.jl"))
+#= include(srcdir("Kernel_Machine.jl"))
 include(srcdir("Machine_Dynamics.jl"))
 include(srcdir("Dif_Map.jl"))
-include(srcdir("Dynamical_Systems.jl"))
+include(srcdir("Dynamical_Systems.jl")) =#
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -85,78 +97,77 @@ data = [vec(x), vec(y)]
 CSV.write("pendulum.csv", dateframe_x_y_t) =#
 #*******
 
-#= #******* for debugging
-data = [vec(x[1:7]), vec(y[1:7])]
-npast = 1
-nfuture = 1
-#******* =#
-
 #******* or read from CSV
-df = CSV.read(joinpath(pwd(), "pendulum.csv"), DataFrame)
-data = [df.x[1:end], df.y[1:end]]
+#= df = CSV.read(joinpath(pwd(), "pendulum.csv"), DataFrame)
+data = [df.x[1:end], df.y[1:end]] =#
 #*******
 
 N = length(data[1])# number of samples
 #-------------------------------------------------------------------------------
 # Emergence - Pattern Discovery
 
-println("\n1. Generating gram matrices")
+@time begin
 
-Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
+    println("\n1. Generating gram matrices")
 
-#= println("Gx = ")
-display(Gx)
-println("Gy = ")
-display(Gy) =#
+    Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
 
-# Compute the state similarity matrix. See the paper
-# Embedding to get the similarity matrix between conditional distributions
-println("\n2. Computing Gs")
-Gs = Embed_States(Gx, Gy)
+    #= println("Gx = ")
+    display(Gx)
+    println("Gy = ")
+    display(Gy) =#
 
-#= println("Gs = ")
-display(Gs) =#
+    # Compute the state similarity matrix. See the paper
+    # Embedding to get the similarity matrix between conditional distributions
+    println("\n2. Computing Gs")
+    Gs = Embed_States(Gx, Gy)
 
-# Compute a spectral basis for representing the causal states.
-# Find a reduced dimension embedding and extract the significant coordinates"
-println("\n3. Projection")
-eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 10, scaled = true)
+    #= println("Gs = ")
+    display(Gs) =#
 
-#= println("eigenvalues = ")
-display(eigenvalues)
-println("basis = ")
-display(basis)
-println("coords = ")
-display(coords) =#
+    # Compute a spectral basis for representing the causal states.
+    # Find a reduced dimension embedding and extract the significant coordinates"
+    println("\n3. Projection")
+    eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 15, scaled = true)
 
-# This is the forward operator in state space. It is built from consecutive
-# indices in the index map. Data series formed by multiple contiguous time
-# blocks are supported, as well as the handling of NaN values
-println("\n4. Forward Shift Operator")
-#= eigenvalues[2] = 5
-eigenvalues[3] = 6
-coords[:,2] = collect(1:6)
-coords[:,3] = collect(100*(3:8)) =#
-shift_op = Shift_Operator(coords, eigenvalues, index_map = index_map)
+    #= println("eigenvalues = ")
+    display(eigenvalues)
+    println("basis = ")
+    display(basis)
+    println("coords = ")
+    display(coords) =#
 
-#= println("shift_op = ")
-display(shift_op) =#
+    # This is the forward operator in state space. It is built from consecutive
+    # indices in the index map. Data series formed by multiple contiguous time
+    # blocks are supported, as well as the handling of NaN values
+    println("\n4. Forward Shift Operator")
+    #= eigenvalues[2] = 5
+    eigenvalues[3] = 6
+    coords[:,2] = collect(1:6)
+    coords[:,3] = collect(100*(3:8)) =#
+    shift_op = Shift_Operator(coords, eigenvalues, index_map = index_map)
 
-# This is the expectation operator, using its default function that predicts
-# the first entry in the future sequence from the current state distribution. 
-# You can specify other functions, see the documentation
-println("\n5. Expectation Operator")
-expect_op = Expectation_Operator(coords, index_map, data)
+    #= println("shift_op = ")
+    display(shift_op) =#
 
-#= println("expect_op = ")
-display(expect_op) =#
+    # This is the expectation operator, using its default function that predicts
+    # the first entry in the future sequence from the current state distribution. 
+    # You can specify other functions, see the documentation
+    println("\n5. Expectation Operator")
+    expect_op = Expectation_Operator(coords, index_map, data)
 
-# Start from the last known point (represented by its coordinates) and
-# evolve the state for nfuture+1 points.
-println("\n6. Prediction")
-pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
-final_dist = dist[:, end]
+    #= println("expect_op = ")
+    display(expect_op) =#
 
+    # Start from the last known point (represented by its coordinates) and
+    # evolve the state for nfuture+1 points.
+    println("\n6. Prediction")
+    #= pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
+    final_dist = dist[:, end] =#
+
+    pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 1, coords = coords)
+    final_dist = dist[:, end]
+end
 #-------------------------------------------------------------------------------
 # Plots
 
@@ -219,13 +230,14 @@ display(plot_x_t)
 N₁ = length(coords[:,2])
 N₂ = length(dist[2,:])
 nans = Array{Float64, 1}(undef, N₁ - N₂)
-nans= fill!(nans, NaN)
+nans = fill!(nans, NaN)
 Φ₁ = vec([nans; dist[2, :]])
 Φ₂ = vec([nans; dist[3, :]])
+Φ₃ = vec([nans; dist[4, :]])
 
-df_Ψ_Φ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3], Φ₁ = Φ₁, Φ₂ = Φ₂)
+df_Ψ_Φ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3], Ψ₃ = coords[:,4], Φ₁ = Φ₁, Φ₂ = Φ₂, Φ₃ = Φ₃)
 
-trace_Ψ = scatter(df_Ψ_Φ, x = :Ψ₁, y = :Ψ₂, name = "Ψ")
+#= trace_Ψ = scatter(df_Ψ_Φ, x = :Ψ₁, y = :Ψ₂, name = "Ψ")
 trace_Φ = scatter(df_Ψ_Φ, x = :Φ₁, y = :Φ₂, name = "Φ")
 
 plot_Ψ_Φ = plot([trace_Ψ, trace_Φ],
@@ -238,6 +250,27 @@ plot_Ψ_Φ = plot([trace_Ψ, trace_Φ],
                     yaxis_title = "Ψ₂",),
                 )
 
-#display(plot_Ψ_Φ)
+display(plot_Ψ_Φ) =#
+
+df_Ψ_Φ = DataFrame(Ψ₁ = coords[:,2], Ψ₂ = coords[:,3], Ψ₃ = coords[:,4], Φ₁ = Φ₁, Φ₂ = Φ₂, Φ₃ = Φ₃)
+
+trace_Ψ = scatter3d(df_Ψ_Φ, x = :Ψ₁, y = :Ψ₂, z = :Ψ₃, name = "Ψ", mode = "lines")
+trace_Φ = scatter3d(df_Ψ_Φ, x = :Φ₁, y = :Φ₂, z = :Φ₃, name = "Φ", mode = "lines")
+
+plot_Ψ_Φ_3d = plot([trace_Ψ, trace_Φ],
+                Layout(
+                    title = attr(
+                        text = "Damped Pendulum: Reconstructed State Space",  
+                    ),
+                    title_x = 0.5,
+                    scene = attr(
+                        xaxis_title = "Ψ₁",
+                        yaxis_title = "Ψ₂",
+                        zaxis_title = "Ψ₃",  
+                    ),
+                    ),
+                )
+
+display(plot_Ψ_Φ_3d)
 
 print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")

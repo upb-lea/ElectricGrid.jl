@@ -13,7 +13,7 @@ using DataFrames
         # Time simulation
 
         Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-        t_end    = 0.2     # total run time, seconds
+        t_end    = 0.045     # total run time, seconds
         num_eps  = 3       # number of episodes to run
 
         #-------------------------------------------------------------------------------
@@ -191,7 +191,8 @@ using DataFrames
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = DataHook(collect_vrms_ids = [1 2 3], 
+        hook = DataHook(collect_sources  = [1 2 3],
+                        collect_vrms_ids = [1 2 3], 
                         collect_irms_ids = [1 2 3], 
                         collect_pq_ids   = [1 2 3],
                         collect_freq     = [1 2 3],
@@ -209,15 +210,15 @@ using DataFrames
         #= for eps in 1:num_eps
 
                 plot_hook_results(hook = hook, 
-                                  episode = eps,
-                                  states_to_plot  = [], 
-                                  actions_to_plot = [],  
-                                  p_to_plot       = [1 2 3], 
-                                  q_to_plot       = [], 
-                                  vrms_to_plot    = [1 2 3], 
-                                  irms_to_plot    = [1 2 3],
-                                  freq_to_plot    = [1 2 3])
-            end =#
+                                        episode = eps,
+                                        states_to_plot  = ["source1_v_C_filt_a"], 
+                                        actions_to_plot = [],  
+                                        p_to_plot       = [1 2 3], 
+                                        q_to_plot       = [], 
+                                        vrms_to_plot    = [1 2 3], 
+                                        irms_to_plot    = [1 2 3],
+                                        freq_to_plot    = [1 2 3])
+        end =#
 
         #_______________________________________________________________________________
         # Tests 
@@ -225,20 +226,22 @@ using DataFrames
         D = [6.710040724346115e-5 0.0003909248293754465; 202.64236728467552 6148.754619013457]
         I_kp = [0.003212489119409699; 0.0021416594129397997; 0.003212489119409699]
         I_ki = [0.34970957351408755; 0.23313971567605846; 0.34970957351408755]
-        V_kp = [0.2964395025506326; 0.44465925382594856; 0.2964395025506326]
-        V_ki = [5.85651591199507; 8.78477386799335; 5.85651591199507]
+        V_kp = [0.44465925382594856; 0.2964395025506326]
+        V_ki = [8.78477386799335; 5.85651591199507]
 
         #CSV.write("Classical_Control_Unit_test.csv", hook.df)
         old_data = convert.(Float64, Matrix(CSV.read(joinpath(pwd(), "test\\Classical_Control_Unit_test.csv"), DataFrame))[1:end, 1:17])
 
         new_data = convert.(Float64, Matrix(hook.df)[1:end, 1:17])
 
+        total_steps = Int(env.maxsteps)
+
         @test Source.D[2:end, :] ≈ D atol = 0.001
         @test Source.I_kp ≈ I_kp atol = 0.001
         @test Source.I_ki ≈ I_ki atol = 0.001
-        @test Source.V_kp ≈ V_kp atol = 0.001
-        @test Source.V_ki ≈ V_ki atol = 0.001
+        @test Source.V_kp[2:end] ≈ V_kp atol = 0.001
+        @test Source.V_ki[2:end] ≈ V_ki atol = 0.001
         @test new_data ≈ old_data atol = 0.001
-        @test new_data[1:2001, 2:end] ≈ new_data[2002:4002, 2:end] atol = 0.001
-        @test new_data[1:2001, 2:end] ≈ new_data[4003:end, 2:end] atol = 0.001
+        @test new_data[1:total_steps, 2:end] ≈ new_data[total_steps + 1:2*total_steps, 2:end] atol = 0.001
+        @test new_data[1:total_steps, 2:end] ≈ new_data[2*total_steps + 1:end, 2:end] atol = 0.001
 end

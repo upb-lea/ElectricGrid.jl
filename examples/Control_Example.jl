@@ -1,5 +1,5 @@
 using Dare
-
+using Distributions
 #= using DrWatson
 @quickactivate "dare"
 
@@ -16,7 +16,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 #_______________________________________________________________________________
 # Network Parameters 
-
+#a = rand(Uniform(1, 2))
 #-------------------------------------------------------------------------------
 # Time simulation
 
