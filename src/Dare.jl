@@ -1,9 +1,12 @@
 module Dare
 
 using Combinatorics
+using ControlSystems
 using CSV
 using DifferentialEquations
 using Distributions
+using DSP
+using FFTW
 using LinearAlgebra
 using JuMP
 import Ipopt

@@ -395,9 +395,10 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
     # computes sum of sq diff for past (sx) and future (sy) sequences
     # n is the number of valid (past, future) pairs
     n = length(concat_valid_map)
-    sx = zeros(n, n)
-    sy = zeros(n, n)
-    
+
+    sx = Array{Float64, 2}(undef, n, n)
+    sy = Array{Float64, 2}(undef, n, n)
+
     # Triangular indexing, folded
     # x
     # y y     =>    z z z y y
@@ -421,10 +422,10 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
             localdiff, kernel_params_2, factor_r_past, factor_r_future, sum_r_past, 
             sum_past_factor, sum_future_factor)
 
-            sx[i,j] = sumx
-            sx[j,i] = sumx
-            sy[i,j] = sumy
-            sy[j,i] = sumy
+            sx[i, j] = sumx
+            sx[j, i] = sumx
+            sy[i, j] = sumy
+            sy[j, i] = sumy
         end
 
         for l in k:m - 1
@@ -440,17 +441,17 @@ function series_xy_logk_indx(series, scale, npast, nfuture, decay, concat_valid_
             localdiff, kernel_params_2, factor_r_past, factor_r_future, sum_r_past, 
             sum_past_factor, sum_future_factor)
 
-            sx[i,j] = sumx
-            sx[j,i] = sumx
-            sy[i,j] = sumy
-            sy[j,i] = sumy
+            sx[i, j] = sumx
+            sx[j, i] = sumx
+            sy[i, j] = sumy
+            sy[j, i] = sumy
         end
     end
     
     return sx, sy
 end
 
-function sxy_logk(i, j, series, npast, nfuture, localdiff, 
+function sxy_logk(î, ĵ, series, npast, nfuture, localdiff, 
     kernel_params_2, factor_r_past, factor_r_future, 
     sum_r_past, sum_past_factor, sum_future_factor)
 
@@ -463,7 +464,7 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
 
         for t in 0:npast-1
 
-            d = series[i-t] .- series[j-t]
+            d = series[î - t] .- series[ĵ - t]
             delta += d * r
             r *= factor_r_past
         end
@@ -472,7 +473,7 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
 
     elseif localdiff == 2
         # value of the "present"
-        delta = series[i] - series[j]
+        delta = series[î] - series[ĵ]
     end
     
     r = 1
@@ -480,7 +481,7 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
 
     for t in 0:npast - 1
 
-        d = series[i-t] .- series[j-t]
+        d = series[î - t] .- series[ĵ - t]
 
         if localdiff != 0
             d = d .- delta
@@ -502,7 +503,7 @@ function sxy_logk(i, j, series, npast, nfuture, localdiff,
 
     for t in 0:nfuture - 1
 
-        d = series[i + 1 + t] .- series[j + 1 + t]
+        d = series[î + 1 + t] .- series[ĵ + 1 + t]
 
         if localdiff != 0
             d = d .- delta
@@ -557,7 +558,9 @@ end
 function parallel_exp_lowtri(mat, scale)
 
     N = size(mat, 1)
+
     if N%2 == 1 M = N else M = N-1 end
+
     invscale = 1/scale
         
     # outer loops can be parallelized - all have about the same duration
@@ -583,13 +586,14 @@ function parallel_exp_lowtri(mat, scale)
     end
 
     Threads.@threads for d in 1:N
+
         mat[d,d] = exp(mat[d,d] * invscale)
     end
 
     return mat
 end
 
-function Embed_States(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = false)
+function Embed_States(Gx, Gy; ϵ = 1e-8, normalize = true, return_embedder = false)
 
     """
     Compute a similarity matrix for the embedded causal states, seen as distributions P(Y|X), 
@@ -598,7 +602,7 @@ function Embed_States(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = fa
     Arguments:
         Gx: a similarity matrix of pasts X. Gx[i,j] = kernel_X(x_i, x_j) with kernel_X a reproducing kernel for X.
         Gy: a similarity matrix of futures Y.
-        eps: amount of regularization. The theory requires a regularizer and shows that the regularized 
+        ϵ: amount of regularization. The theory requires a regularizer and shows that the regularized 
         estimator is consistent in the limit of N -> infinity. In practice, using a too small regularizer 
         may cause divergence, too large causes innaccuracies.
         normalize: whether to renormalize the returned similarity matrix, so that each entry along the 
@@ -617,10 +621,10 @@ function Embed_States(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = fa
         embedder: (if return_embedder is True) A matrix for embedding new Kx kernel similarity vectors
     """
     
-    #Omega = (Gx + I*eps) \ Gx
+    #Omega = (Gx + I*ϵ) \ Gx
 
     Omega = copy(Gx)
-    ldiv!(factorize(Gx + I*eps), Omega)
+    ldiv!(factorize(Gx + I*ϵ), Omega)
 
     Omega = Symmetric(Omega) # should not be needed
     
@@ -649,14 +653,13 @@ function Embed_States(Gx, Gy; eps = 1e-8, normalize = true, return_embedder = fa
         Tests: this options yields some inaccuracies, but less than option 1 =#
 
         d = (1) ./ (sqrt.(diag(Gs)))
-        dr = reshape(d, :, 1)
-        embedder = embedder .* dr
+        embedder = embedder .* d
 
         # Now Gs
 
-        Gs = Gs .* dr
-        Gs = Gs .* reshape(d, 1, :)
-        Gs = 0.5 * (Gs + transpose(Gs))
+        Gs = Gs .* d
+        Gs = Gs .* transpose(d)
+        Gs = Symmetric(Gs)
 
         # just to be extra safe, avoid floating-point residual errors
         Gs[diagind(Gs)] .= 1.0

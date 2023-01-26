@@ -1,18 +1,17 @@
-using DrWatson
-@quickactivate "dare"
+using Dare
 
-using PlotlyJS
+using Distributions
+using DifferentialEquations
+using CSV
 using DataFrames
-
-include(srcdir("Kernel_Machine.jl"))
-include(srcdir("Dif_Map.jl"))
+using PlotlyJS
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
 
 npast = 10 #Past Series size
-nfuture = 5 #Future series size
+nfuture = 10 #Future series size
 
-N = 5000 #Number of training samples
+N = 4000 #Number of training samples
 
 scale = 1 #bandwidth
 
@@ -42,25 +41,26 @@ for i in 1:series_length
     end
 end
 
-println("\n1. Generating gram matrices")
-Gx, Gy, index_map = series_Gxy([series], scale, npast, nfuture)
+@time begin
 
-#= println("Gx = ")
-display(Gx)
-println("Gy = ")
-display(Gy) =#
+    println("\n1. Generating gram matrices")
+    Gx, Gy, index_map = series_Gxy([vec(series), vec(series)], scale, npast, nfuture)
 
-# Compute the state similarity matrix. See the paper
-println("\n2. Computing Gs")
-Gs = embed_states(Gx, Gy)
+    #= println("Gx = ")
+    display(Gx)
+    println("Gy = ")
+    display(Gy) =#
 
-#= println("Gs = ")
-display(Gs) =#
+    # Compute the state similarity matrix. See the paper
+    println("\n2. Computing Gs")
+    Gs = Embed_States(Gx, Gy)
 
-# Compute a spectral basis for representing the causal states. See the paper
-println("\n3. Projection")
-eigenvalues, basis, coords, info = spectral_basis(Gs, num_basis = 2, scaled = false)
-
+    #= println("Gs = ")
+    display(Gs) =#
+    # Compute a spectral basis for representing the causal states. See the paper
+    println("\n3. Projection")
+    eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 10, scaled = false)
+end
 #= println("eigenvalues = ")
 display(eigenvalues)
 println("basis = ")

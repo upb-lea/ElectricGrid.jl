@@ -92,7 +92,8 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
 
     end
 
-    eigval, eigvec, info = geneigsolve((mat, diagm(q)), num_basis, :LM; krylovdim = N, issymmetric = true)
+    # krylovdim = N (worst case) or krylovdim = num_basis + 1
+    eigval, eigvec, info = geneigsolve((mat, diagm(q)), num_basis, :LM; issymmetric = true, krylovdim = num_basis + 1)
     eigvec = reduce(hcat, eigvec)
     
     if eigen_cutoff >= 0

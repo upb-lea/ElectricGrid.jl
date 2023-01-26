@@ -16,8 +16,6 @@ using LinearAlgebra
 using JuMP
 import Ipopt
 using KrylovKit #GenericSchur is another option
-using LoopVectorization 
-#using Memoization
 using NearestNeighbors
 using NonNegLeastSquares
 using PlotlyJS =#
@@ -99,12 +97,6 @@ data = [vec(x), vec(y)]
 CSV.write("pendulum.csv", dateframe_x_y_t) =#
 #*******
 
-#= #******* for debugging
-data = [vec(x[1:7]), vec(y[1:7])]
-npast = 1
-nfuture = 1
-#******* =#
-
 #******* or read from CSV
 #= df = CSV.read(joinpath(pwd(), "pendulum.csv"), DataFrame)
 data = [df.x[1:end], df.y[1:end]] =#
@@ -114,66 +106,68 @@ N = length(data[1])# number of samples
 #-------------------------------------------------------------------------------
 # Emergence - Pattern Discovery
 
-println("\n1. Generating gram matrices")
+@time begin
 
-Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
+    println("\n1. Generating gram matrices")
 
-#= println("Gx = ")
-display(Gx)
-println("Gy = ")
-display(Gy) =#
+    Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
 
-# Compute the state similarity matrix. See the paper
-# Embedding to get the similarity matrix between conditional distributions
-println("\n2. Computing Gs")
-Gs = Embed_States(Gx, Gy)
+    #= println("Gx = ")
+    display(Gx)
+    println("Gy = ")
+    display(Gy) =#
 
-#= println("Gs = ")
-display(Gs) =#
+    # Compute the state similarity matrix. See the paper
+    # Embedding to get the similarity matrix between conditional distributions
+    println("\n2. Computing Gs")
+    Gs = Embed_States(Gx, Gy)
 
-# Compute a spectral basis for representing the causal states.
-# Find a reduced dimension embedding and extract the significant coordinates"
-println("\n3. Projection")
-eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 15, scaled = true)
+    #= println("Gs = ")
+    display(Gs) =#
 
-#= println("eigenvalues = ")
-display(eigenvalues)
-println("basis = ")
-display(basis)
-println("coords = ")
-display(coords) =#
+    # Compute a spectral basis for representing the causal states.
+    # Find a reduced dimension embedding and extract the significant coordinates"
+    println("\n3. Projection")
+    eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 15, scaled = true)
 
-# This is the forward operator in state space. It is built from consecutive
-# indices in the index map. Data series formed by multiple contiguous time
-# blocks are supported, as well as the handling of NaN values
-println("\n4. Forward Shift Operator")
-#= eigenvalues[2] = 5
-eigenvalues[3] = 6
-coords[:,2] = collect(1:6)
-coords[:,3] = collect(100*(3:8)) =#
-shift_op = Shift_Operator(coords, eigenvalues, index_map = index_map)
+    #= println("eigenvalues = ")
+    display(eigenvalues)
+    println("basis = ")
+    display(basis)
+    println("coords = ")
+    display(coords) =#
 
-#= println("shift_op = ")
-display(shift_op) =#
+    # This is the forward operator in state space. It is built from consecutive
+    # indices in the index map. Data series formed by multiple contiguous time
+    # blocks are supported, as well as the handling of NaN values
+    println("\n4. Forward Shift Operator")
+    #= eigenvalues[2] = 5
+    eigenvalues[3] = 6
+    coords[:,2] = collect(1:6)
+    coords[:,3] = collect(100*(3:8)) =#
+    shift_op = Shift_Operator(coords, eigenvalues, index_map = index_map)
 
-# This is the expectation operator, using its default function that predicts
-# the first entry in the future sequence from the current state distribution. 
-# You can specify other functions, see the documentation
-println("\n5. Expectation Operator")
-expect_op = Expectation_Operator(coords, index_map, data)
+    #= println("shift_op = ")
+    display(shift_op) =#
 
-#= println("expect_op = ")
-display(expect_op) =#
+    # This is the expectation operator, using its default function that predicts
+    # the first entry in the future sequence from the current state distribution. 
+    # You can specify other functions, see the documentation
+    println("\n5. Expectation Operator")
+    expect_op = Expectation_Operator(coords, index_map, data)
 
-# Start from the last known point (represented by its coordinates) and
-# evolve the state for nfuture+1 points.
-println("\n6. Prediction")
-#= pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
-final_dist = dist[:, end] =#
+    #= println("expect_op = ")
+    display(expect_op) =#
 
-pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 0, coords = coords)
-final_dist = dist[:, end]
+    # Start from the last known point (represented by its coordinates) and
+    # evolve the state for nfuture+1 points.
+    println("\n6. Prediction")
+    #= pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
+    final_dist = dist[:, end] =#
 
+    pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 1, coords = coords)
+    final_dist = dist[:, end]
+end
 #-------------------------------------------------------------------------------
 # Plots
 
