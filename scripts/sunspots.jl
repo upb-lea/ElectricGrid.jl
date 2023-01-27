@@ -67,7 +67,7 @@ scale = sum(true_pk_vals)/length(true_pk_vals) - sum(true_valy_vals)/length(true
 #-------------------------------------------------------------------------------
 # Emergence - Pattern Discovery
 
- #= 1. Generating gram matrices =#
+#= 1. Generating gram matrices =#
 println("\n1. Generating gram matrices")
 Gx, Gy, index_map = series_Gxy([data], scale, npast, nfuture)
 
@@ -78,13 +78,14 @@ Gx, Gy, index_map = series_Gxy([data], scale, npast, nfuture)
 println("\n2. Computing Gs")
 Gs = Embed_States(Gx, Gy)
 
-#= 3. Projection
-    Compute a spectral basis for representing the causal states.
-    Find a reduced dimension embedding and extract the significant coordinates
-=#
-println("\n3. Projection")
-eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 30, scaled = true)
-
+@time begin
+    #= 3. Projection
+        Compute a spectral basis for representing the causal states.
+        Find a reduced dimension embedding and extract the significant coordinates
+    =#
+    println("\n3. Projection")
+    eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 30, scaled = true)
+end
 #= 4. Forward Shift Operator
     This is the forward operator in state space. It is built from consecutive
     indices in the index map. Data series formed by multiple contiguous time
@@ -108,6 +109,8 @@ expect_op = Expectation_Operator(coords, index_map, [data])
 println("\n6. Prediction")
 pred, dist = Predict(2*N - window_size + nfuture, coords[1, :], shift_op, expect_op, return_dist = 2, knn_convexity = 5, coords = coords)
 final_dist = dist[:, end]
+
+
 
 #-------------------------------------------------------------------------------
 # Plots

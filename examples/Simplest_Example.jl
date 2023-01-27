@@ -45,9 +45,6 @@ parameters = Dict{Any, Any}(
         "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
 #_______________________________________________________________________________
-# cable layout
-
-
 # Defining the environment
 
 env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)

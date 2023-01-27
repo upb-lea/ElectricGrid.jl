@@ -112,52 +112,27 @@ N = length(data[1])# number of samples
 
     Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
 
-    #= println("Gx = ")
-    display(Gx)
-    println("Gy = ")
-    display(Gy) =#
-
     # Compute the state similarity matrix. See the paper
     # Embedding to get the similarity matrix between conditional distributions
     println("\n2. Computing Gs")
     Gs = Embed_States(Gx, Gy)
-
-    #= println("Gs = ")
-    display(Gs) =#
 
     # Compute a spectral basis for representing the causal states.
     # Find a reduced dimension embedding and extract the significant coordinates"
     println("\n3. Projection")
     eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 15, scaled = true)
 
-    #= println("eigenvalues = ")
-    display(eigenvalues)
-    println("basis = ")
-    display(basis)
-    println("coords = ")
-    display(coords) =#
-
     # This is the forward operator in state space. It is built from consecutive
     # indices in the index map. Data series formed by multiple contiguous time
     # blocks are supported, as well as the handling of NaN values
     println("\n4. Forward Shift Operator")
-    #= eigenvalues[2] = 5
-    eigenvalues[3] = 6
-    coords[:,2] = collect(1:6)
-    coords[:,3] = collect(100*(3:8)) =#
     shift_op = Shift_Operator(coords, eigenvalues, index_map = index_map)
-
-    #= println("shift_op = ")
-    display(shift_op) =#
 
     # This is the expectation operator, using its default function that predicts
     # the first entry in the future sequence from the current state distribution. 
     # You can specify other functions, see the documentation
     println("\n5. Expectation Operator")
     expect_op = Expectation_Operator(coords, index_map, data)
-
-    #= println("expect_op = ")
-    display(expect_op) =#
 
     # Start from the last known point (represented by its coordinates) and
     # evolve the state for nfuture+1 points.
