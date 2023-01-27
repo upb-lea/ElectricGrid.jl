@@ -3,6 +3,13 @@ using Flux
 using StableRNGs
 using IntervalSets
 
+
+
+Base.copyto!(dest::NeuralNetworkApproximator, src::NeuralNetworkApproximator) =
+    Flux.loadparams!(dest.model, Flux.params(src))
+
+
+
 # also in a sep src
 
 global rngg = StableRNG(123)
