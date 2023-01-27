@@ -1,5 +1,6 @@
 module Dare
 
+using ArnoldiMethod
 using Combinatorics
 using ControlSystems
 using CSV
@@ -8,6 +9,7 @@ using Distributions
 using DSP
 using FFTW
 using LinearAlgebra
+using LinearMaps
 using JuMP
 import Ipopt
 using KrylovKit

@@ -93,8 +93,37 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
     end
 
     # krylovdim = N (worst case) or krylovdim = num_basis + 1
-    eigval, eigvec, info = geneigsolve((mat, diagm(q)), num_basis, :LM; issymmetric = true, krylovdim = num_basis + 1)
+    eigval, eigvec, _ = geneigsolve((mat, diagm(q)), num_basis, :LM; issymmetric = true, krylovdim = num_basis + 1)
     eigvec = reduce(hcat, eigvec)
+
+    println("eigval = ")
+    display(eigval)
+
+    # Solve Ax = λBx using Shift-invert Arnoldi targeting complex σ: 
+    # (A-σB)^-1 Bx = 1/(λ-σ)x
+
+    # eigenvalue to target:
+    σ = 1.0
+
+    decomp, history  = partialschur(inv(mat .- σ*diagm(q)), nev = num_basis, 
+    tol = 1e-5, restarts = 200, maxdim = N, mindim = num_basis + 1, which = LM())
+    θ, X = partialeigen(decomp)
+
+    λ = 1.0 ./ θ .+ σ
+    #order = sortperm(λ, rev = true)
+    #λ = λ[order]
+    #X = reverse(X, dims = 2)
+
+    println("\nλ = ")
+    display(λ)
+    @show norm(mat * X - diagm(q) * X * Diagonal(λ))
+
+    #eigval = λ
+    #eigvec = abs.(X)
+
+    #= eigval, eigvec = eigen!(mat, diagm(q); sortby = x -> -x)
+    eigval = eigval[1:num_basis]
+    eigvec = eigvec[:, 1:num_basis] =#
     
     if eigen_cutoff >= 0
 
@@ -114,9 +143,27 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
     eigvec_l = eigvec .* (q * eigvec[1,1])
 
     if scaled
-        return eigval, eigvec_l, eigvec_r .* transpose(eigval), info
+        return eigval, eigvec_l, eigvec_r .* transpose(eigval)
     end
 
-    return eigval, eigvec_l, eigvec_r, info
+    return eigval, eigvec_l, eigvec_r
+end
+
+struct ShiftAndInvert{TA,TB,TT}
+
+    A_lu::TA
+    B::TB
+    temp::TT
+end
+
+function (M::ShiftAndInvert)(y,x)
+
+    mul!(M.temp, M.B, x)
+    ldiv!(y, M.A_lu, M.temp)
 end
     
+function construct_linear_map(A,B)
+
+    a = ShiftAndInvert(factorize(A),B,Vector{eltype(A)}(undef, size(A,1)))
+    LinearMap{eltype(A)}(a, size(A,1), ismutating=true)
+end

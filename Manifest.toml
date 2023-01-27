@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "773b7f05e60f41c843be8d15c10cb796135391fe"
+project_hash = "efe86b3bdcbdae9e2da934d4b10c769cecc0a361"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1400,11 +1400,6 @@ deps = ["LinearAlgebra", "Polynomials", "Random"]
 git-tree-sha1 = "3c8d8a25ead9d7837731504b2f170b3763e46abd"
 uuid = "48965c70-4690-11ea-1f13-43a2532b2fa8"
 version = "1.7.5"
-
-[[deps.MaxMinFilters]]
-git-tree-sha1 = "6d66ee8aef9929366055499c7fbbb024aea3cdf1"
-uuid = "be03bc56-bb7c-4dbf-b252-c57e9365e4bb"
-version = "0.1.1"
 
 [[deps.MbedTLS]]
 deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "Random", "Sockets"]

@@ -84,7 +84,7 @@ Gs = Embed_States(Gx, Gy)
         Find a reduced dimension embedding and extract the significant coordinates
     =#
     println("\n3. Projection")
-    eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 30, scaled = true)
+    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 30, scaled = true)
 end
 #= 4. Forward Shift Operator
     This is the forward operator in state space. It is built from consecutive

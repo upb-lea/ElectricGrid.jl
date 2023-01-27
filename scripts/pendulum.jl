@@ -109,7 +109,6 @@ N = length(data[1])# number of samples
 @time begin
 
     println("\n1. Generating gram matrices")
-
     Gx, Gy, index_map = series_Gxy(data, scale, npast, nfuture)
 
     # Compute the state similarity matrix. See the paper
@@ -120,7 +119,7 @@ N = length(data[1])# number of samples
     # Compute a spectral basis for representing the causal states.
     # Find a reduced dimension embedding and extract the significant coordinates"
     println("\n3. Projection")
-    eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 15, scaled = true)
+    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 10, scaled = true)
 
     # This is the forward operator in state space. It is built from consecutive
     # indices in the index map. Data series formed by multiple contiguous time
