@@ -17,24 +17,31 @@ using PlotlyJS
 using ReinforcementLearning
 using SpecialFunctions
 using StatsBase
-
 using Flux
 using StableRNGs
 using IntervalSets
+using CUDA
+using DataStructures
+using Graphs
+using GraphPlot
+using PlotlyJS
+
+
 
 #export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, DataHook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup, SimEnv
 
+include("./Power_System_Theory.jl")
 include("./nodeconstructor.jl")
+include("./custom_control.jl")
+include("./pv_module.jl")
 include("./env.jl")
 include("./agent_ddpg.jl")
 include("./Classical_Control.jl")
-include("./Power_System_Theory.jl")
 include("./MultiAgentGridController.jl")
 include("./plotting.jl")
 include("./data_hook.jl")
 include("./Dare_Wrapper.jl")
 include("./Dare_Logger.jl")
-
 include("./Kernel_Machine.jl")
 include("./Machine_Dynamics.jl")
 include("./Dif_Map.jl")
