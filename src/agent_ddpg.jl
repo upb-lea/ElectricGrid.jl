@@ -6,11 +6,6 @@ end
 # some model may accept multiple inputs
 (app::DareNeuralNetworkApproximator)(args...; kwargs...) = app.model(args...; kwargs...)
 
-@forward DareNeuralNetworkApproximator.model Flux.testmode!,
-Flux.trainmode!,
-Flux.params,
-device
-
 functor(x::DareNeuralNetworkApproximator) =
     (model=x.model,), y -> DareNeuralNetworkApproximator(y.model, x.optimizer)
 
