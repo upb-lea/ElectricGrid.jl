@@ -1,9 +1,6 @@
-using ReinforcementLearning
 using DataFrames
 using UnicodePlots
 
-include("./plotting.jl")
-include("./MultiAgentGridController.jl")
 
 Base.@kwdef mutable struct DataHook <: AbstractHook
 

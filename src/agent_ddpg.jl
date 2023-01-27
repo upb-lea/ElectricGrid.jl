@@ -1,11 +1,18 @@
-using ReinforcementLearning
-using Flux
-using StableRNGs
-using IntervalSets
+Base.@kwdef struct DareNeuralNetworkApproximator{M,O} <: AbstractApproximator
+    model::M
+    optimizer::O = nothing
+end
 
+# some model may accept multiple inputs
+(app::DareNeuralNetworkApproximator)(args...; kwargs...) = app.model(args...; kwargs...)
 
+functor(x::DareNeuralNetworkApproximator) =
+    (model=x.model,), y -> DareNeuralNetworkApproximator(y.model, x.optimizer)
 
-Base.copyto!(dest::NeuralNetworkApproximator, src::NeuralNetworkApproximator) =
+RLBase.update!(app::DareNeuralNetworkApproximator, gs) =
+    Flux.Optimise.update!(app.optimizer, Flux.params(app), gs)
+
+Base.copyto!(dest::DareNeuralNetworkApproximator, src::DareNeuralNetworkApproximator) =
     Flux.loadparams!(dest.model, Flux.params(src))
 
 
@@ -31,19 +38,19 @@ global create_critic(na, ns) = Chain(
 function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
     Agent(
         policy = DDPGPolicy(
-            behavior_actor = NeuralNetworkApproximator(
+            behavior_actor = DareNeuralNetworkApproximator(
                 model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
-            behavior_critic = NeuralNetworkApproximator(
+            behavior_critic = DareNeuralNetworkApproximator(
                 model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
-            target_actor = NeuralNetworkApproximator(
+            target_actor = DareNeuralNetworkApproximator(
                 model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
-            target_critic = NeuralNetworkApproximator(
+            target_critic = DareNeuralNetworkApproximator(
                 model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
