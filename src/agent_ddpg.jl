@@ -1,4 +1,6 @@
 using Random
+using Setfield: @set
+using Zygote: ignore
 
 Base.@kwdef struct DareNeuralNetworkApproximator{M,O} <: AbstractApproximator
     model::M
