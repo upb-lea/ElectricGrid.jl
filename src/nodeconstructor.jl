@@ -47,9 +47,16 @@ end
         verbosity = 0
         )
 
-Create a mutable struct NodeConstructor, which serves as a basis for the creation of an energy grid: `num_sources` corresponse to the amount of sources and `num_loads` is the amount of loads in the grid. `CM` is the connection matrix which indicates how the elements in the grid are connected to each other. To specify the elements of the net in more detail, values for the elements can be passed via `parameters`. If no connection matrix is entered, it can be generated automatically. `S2S_p` is the probability that a source is connected to another source and `S2L_p` is the probability that a source is connected to a load.
+Create a mutable struct NodeConstructor, which serves as a basis for the creation of an
+energy grid: `num_sources` corresponse to the amount of sources and `num_loads` is the
+amount of loads in the grid. `CM` is the connection matrix which indicates how the elements
+in the grid are connected to each other. To specify the elements of the net in more detail,
+values for the elements can be passed via `parameters`. If no connection matrix is entered,
+it can be generated automatically. `S2S_p` is the probability that a source is connected
+to another source and `S2L_p` is the probability that a source is connected to a load.
 """
-function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing, S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, verbosity=0)
+function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing,
+                        S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, verbosity=0)
 
     tot_ele = num_sources + num_loads
 
@@ -170,8 +177,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     ##############
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
-        grid_properties["fs"] =  10e3 # TODO: this should be 1/env.ts
-        println("fs has been incorrectly set")
+        grid_properties["fs"] =  1e-4 # TODO: this should be 1/env.ts
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
@@ -881,8 +887,9 @@ end
     
 Function that samples the parameters for the individual elements if no parameters are entered. 
 """
-function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
-                            num_loads_L, num_loads_C, num_loads_R)
+function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections,
+                             num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
+                             num_loads_L, num_loads_C, num_loads_R)
 
     source_list = []
     cable_list = []
@@ -1022,9 +1029,9 @@ function _sample_fltr_LCL(grid_properties)
     source["fltr"] = "LCL"
     #TODO: why are these things randomized again?? - maybe I'm not following the code, but surely these have been randomized if the user did not define them
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800 #rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
 
    #Inductor design
 
@@ -1080,9 +1087,9 @@ function _sample_fltr_LC(grid_properties)
     source["fltr"] = "LC"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800 #rand(range(start=690,step=10,stop=800))
+    source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
+    source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
 
     #Inductor design
 
