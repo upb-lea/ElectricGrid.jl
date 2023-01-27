@@ -45,8 +45,27 @@ parameters = Dict{Any, Any}(
     )
 #_______________________________________________________________________________
 # Defining the environment
+function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
+        if !isnothing(name)
+            state = env.state
+            if name == "agent"
+                state = state[findall(x -> x in env.state_ids_RL, env.state_ids)]
+                #state = vcat(state, reference(env.t)/600)
+            #else
+            #    global state_ids_classic
+            #    global state_ids
+            #    state = env.x[findall(x -> x in state_ids_classic, state_ids)]
+            end
+        elseif isnothing(env)
+            return x0
+        else
+            return env.state
+        end
+        return state
+end
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, featurize = featurize)
 
 #_______________________________________________________________________________
 # Setting up data hooks
@@ -62,7 +81,7 @@ hook = DataHook(collect_vrms_ids = [1 2],
 
 function RLBase.action_space(env::SimEnv, name::String)
         if name == "agent"
-                return Space(fill(-1.0..1.0, size(env.action_ids_agent)))
+                return Space(fill(-1.0..1.0, 3))#size(env.action_ids_agent)))
         end
 end
 

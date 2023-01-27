@@ -48,9 +48,11 @@ mutable struct SimEnv <: AbstractEnv
     D
     state_parameters
     y #holds all of the inductor voltages and capacitor currents
+    state_ids_RL
+    action_ids_RL
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing, verbosity = 0)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing, verbosity = 0, state_ids_RL = nothing, action_ids_RL = nothing)
 
     if !(isnothing(t_end))
         maxsteps = floor(t_end/ts) + 1
@@ -181,6 +183,14 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         else
             action_ids = get_action_ids(nc)
         end
+    end
+
+    if isnothing(state_ids_RL)
+        state_ids_RL = state_ids
+    end
+
+    if isnothing(action_ids_RL)
+        action_ids_RL = action_ids
     end
     
     vdc_fixed = 0
@@ -327,7 +337,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     x0, x, t0, t, ts, state, maxsteps, 0, state_ids, 
     v_dc, v_dc_arr, norm_array, convert_state_to_cpu, 
     reward, action, action_ids, action_delay_buffer,
-    A, B, C, D, state_parameters, y)
+    A, B, C, D, state_parameters, y, state_ids_RL, action_ids_RL)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
