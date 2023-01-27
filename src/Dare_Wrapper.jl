@@ -84,11 +84,6 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     if num_RL_sources > 0
 
         ns = length(env.state_ids) - length(Animo.policy.state_ids)  # all RL_type sources are controlled by 1 RL_agent (#TODO: spilt up to more then 1 agent?)
-
-        println(ns)
-        println(length(env.state_ids_RL))
-        println(length(env.state_ids))
-        println(length(Animo.policy.state_ids))
         na = length(env.action_ids) - length(Animo.policy.action_ids)
 
         agent = create_agent_ddpg(na = na, ns = length(env.state_ids_RL), use_gpu = false)
