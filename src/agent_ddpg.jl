@@ -1,3 +1,5 @@
+using Random
+
 Base.@kwdef struct DareNeuralNetworkApproximator{M,O} <: AbstractApproximator
     model::M
     optimizer::O = nothing
