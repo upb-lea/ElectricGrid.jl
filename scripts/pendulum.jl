@@ -25,7 +25,7 @@ include(srcdir("Machine_Dynamics.jl"))
 include(srcdir("Dif_Map.jl"))
 include(srcdir("Dynamical_Systems.jl")) =#
 
-println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
+println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........")
 
 #-------------------------------------------------------------------------------
 # Damped Pendulum Dynamics
@@ -119,7 +119,7 @@ N = length(data[1])# number of samples
     # Compute a spectral basis for representing the causal states.
     # Find a reduced dimension embedding and extract the significant coordinates"
     println("\n3. Projection")
-    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 10, scaled = true)
+    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 20, scaled = true)
 
     # This is the forward operator in state space. It is built from consecutive
     # indices in the index map. Data series formed by multiple contiguous time
@@ -139,9 +139,10 @@ N = length(data[1])# number of samples
     #= pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
     final_dist = dist[:, end] =#
 
-    pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2, knn_convexity = 0, coords = coords)
+    pred, dist = Predict(2*nfuture, coords[end - nfuture, :], shift_op, expect_op, return_dist = 2)
     final_dist = dist[:, end]
 end
+
 #-------------------------------------------------------------------------------
 # Plots
 
@@ -182,7 +183,7 @@ plot_x_y = plot(df_x_y_t,
                     size = 7),
                 mode = "markers")
 
-#display(plot_x_y)
+display(plot_x_y)
 
 trace_x = scatter(df_x_y_t, x = :t, y = :y, name = "y")
 trace_y = scatter(df_x_y_t, x = :t, y = :x, name = "x")

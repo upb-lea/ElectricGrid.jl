@@ -13,7 +13,7 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 #-------------------------------------------------------------------------------
 # Machine parameters
 
-sampling = 1 # machine retain 1 in every so many samples
+sampling = 1 # machine retains 1 in every so many samples
 
 history = 22*12 # backward trajectory [months]
 future = 22*12 # forward trajectory [months]
@@ -67,50 +67,49 @@ scale = sum(true_pk_vals)/length(true_pk_vals) - sum(true_valy_vals)/length(true
 #-------------------------------------------------------------------------------
 # Emergence - Pattern Discovery
 
-#= 1. Generating gram matrices =#
-println("\n1. Generating gram matrices")
-Gx, Gy, index_map = series_Gxy([data], scale, npast, nfuture)
-
-#=2. Computing Gs
-    Compute the state similarity matrix.
-    Embedding to get the similarity matrix between conditional distributions 
-=#
-println("\n2. Computing Gs")
-Gs = Embed_States(Gx, Gy)
-
 @time begin
-    #= 3. Projection
+
+    #= 1. Generating gram matrices =#
+    println("\n1. Generating gram matrices")
+    Gx, Gy, index_map = series_Gxy([data], scale, npast, nfuture)
+
+    #=2. Computing Gs
+        Compute the state similarity matrix.
+        Embedding to get the similarity matrix between conditional distributions 
+    =#
+    println("\n2. Computing Gs")
+    Gs = Embed_States(Gx, Gy)
+
+    #= 3. Projection1
         Compute a spectral basis for representing the causal states.
         Find a reduced dimension embedding and extract the significant coordinates
     =#
     println("\n3. Projection")
-    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 30, scaled = true)
+    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 400, scaled = true)
+
+    #= 4. Forward Shift Operator
+        This is the forward operator in state space. It is built from consecutive
+        indices in the index map. Data series formed by multiple contiguous time
+        blocks are supported, as well as the handling of NaN values 
+    =#
+    println("\n4. Forward Shift Operator")
+    shift_op = Shift_Operator(coords, eigenvalues, index_map = index_map)
+
+    #= 5. Expectation Operator
+        This is the expectation operator, using its default function that predicts
+        the first entry in the future sequence from the current state distribution. 
+        You can specify other functions, see the documentation 
+    =#
+    println("\n5. Expectation Operator")
+    expect_op = Expectation_Operator(coords, index_map, [data])
+
+    #= 6. Prediction
+        Start from the last known point (represented by its coordinates) and
+        evolve the state for nfuture+1 points. 
+    =#
+    println("\n6. Prediction")
+    pred, dist = Predict(2*N - window_size + nfuture, coords[1, :], shift_op, expect_op, return_dist = 2, knn_convexity = 0, coords = coords, extent = 0.05)
 end
-#= 4. Forward Shift Operator
-    This is the forward operator in state space. It is built from consecutive
-    indices in the index map. Data series formed by multiple contiguous time
-    blocks are supported, as well as the handling of NaN values 
-=#
-println("\n4. Forward Shift Operator")
-shift_op = Shift_Operator(coords, eigenvalues, index_map = index_map)
-
-#= 5. Expectation Operator
-    This is the expectation operator, using its default function that predicts
-    the first entry in the future sequence from the current state distribution. 
-    You can specify other functions, see the documentation 
-=#
-println("\n5. Expectation Operator")
-expect_op = Expectation_Operator(coords, index_map, [data])
-
-#= 6. Prediction
-    Start from the last known point (represented by its coordinates) and
-    evolve the state for nfuture+1 points. 
-=#
-println("\n6. Prediction")
-pred, dist = Predict(2*N - window_size + nfuture, coords[1, :], shift_op, expect_op, return_dist = 2, knn_convexity = 5, coords = coords)
-final_dist = dist[:, end]
-
-
 
 #-------------------------------------------------------------------------------
 # Plots
@@ -125,7 +124,7 @@ nans_pred = fill!(nans_pred, NaN)
 nans_fut = Array{Float64, 1}(undef, nfuture)
 nans_fut = fill!(nans_fut, NaN)
 
-nans_c = Array{Float64, 1}(undef, N+nfuture-1)
+nans_c = Array{Float64, 1}(undef, N + nfuture - 1)
 nans_c = fill!(nans_c, NaN)
 
 t = 1:1:2*N

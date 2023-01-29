@@ -87,43 +87,27 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
 
         q = (1) ./ q
 
-        mat = mat .* reshape(q, :, 1)
-        mat = mat .* reshape(q, 1, :)
+        mat = mat .* q
+        mat = mat .* transpose(q)
 
     end
 
+    q = (1) ./ vec(sum(mat, dims = 2))
+
     # krylovdim = N (worst case) or krylovdim = num_basis + 1
-    eigval, eigvec, _ = geneigsolve((mat, diagm(q)), num_basis, :LM; issymmetric = true, krylovdim = num_basis + 1)
+    #= eigval, eigvec, _ = geneigsolve((mat, inv(diagm(q))), num_basis, :LM; issymmetric = true, krylovdim = num_basis + 1)
     eigvec = reduce(hcat, eigvec)
 
-    println("eigval = ")
-    display(eigval)
+    println("\neigval = ")
+    display(eigval) =#
 
-    # Solve Ax = λBx using Shift-invert Arnoldi targeting complex σ: 
-    # (A-σB)^-1 Bx = 1/(λ-σ)x
+    decomp,_  = partialschur(diagm(q)*mat, nev = num_basis, 
+    tol = 1e-6, restarts = 200, which = LM())
+    eigval, eigvec = partialeigen(decomp)
 
-    # eigenvalue to target:
-    σ = 1.0
-
-    decomp, history  = partialschur(inv(mat .- σ*diagm(q)), nev = num_basis, 
-    tol = 1e-5, restarts = 200, maxdim = N, mindim = num_basis + 1, which = LM())
-    θ, X = partialeigen(decomp)
-
-    λ = 1.0 ./ θ .+ σ
-    #order = sortperm(λ, rev = true)
-    #λ = λ[order]
-    #X = reverse(X, dims = 2)
-
-    println("\nλ = ")
-    display(λ)
-    @show norm(mat * X - diagm(q) * X * Diagonal(λ))
-
-    #eigval = λ
-    #eigvec = abs.(X)
-
-    #= eigval, eigvec = eigen!(mat, diagm(q); sortby = x -> -x)
-    eigval = eigval[1:num_basis]
-    eigvec = eigvec[:, 1:num_basis] =#
+    order = sortperm(eigval, rev = true)
+    eigval = eigval[order]
+    eigvec = eigvec[:, order]
     
     if eigen_cutoff >= 0
 
@@ -132,8 +116,8 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
     
     if num_basis < size(eigval, 1)
         # copies avoid to keep the full matrix referenced
-        eigval = copy(eigval[1:num_basis])
-        eigvec = copy(eigvec[:, 1:num_basis])
+        eigval = eigval[1:num_basis]
+        eigvec = eigvec[:, 1:num_basis]
     end
     
     # Normalization so that eigvec_r[:,1] entries are all 1
@@ -164,6 +148,6 @@ end
     
 function construct_linear_map(A,B)
 
-    a = ShiftAndInvert(factorize(A),B,Vector{eltype(A)}(undef, size(A,1)))
+    a = ShiftAndInvert(factorize(A), B, Vector{eltype(A)}(undef, size(A,1)))
     LinearMap{eltype(A)}(a, size(A,1), ismutating=true)
 end
