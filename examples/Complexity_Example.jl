@@ -59,6 +59,8 @@ plot_hook_results(hook = hook,
                     irms_to_plot    = [],
                     freq_to_plot    = [])
 
-drawGraph(CM, parameters, Layout = 1)
+# Spring Layout (Layout = 3) is better for Barabasi-Albert
+# Circular Layout (Layout = 1) is better for SmallWolrd
+drawGraph(CM, parameters, Layout = 1) 
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
