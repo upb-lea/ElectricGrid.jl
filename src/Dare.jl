@@ -47,6 +47,7 @@ include("./Kernel_Machine.jl")
 include("./Machine_Dynamics.jl")
 include("./Dif_Map.jl")
 include("./Dynamical_Systems.jl")
+include("./Complexity.jl")
 
 #code to export all, taken from https://discourse.julialang.org/t/exportall/4970/18
 for n in names(@__MODULE__; all=true)

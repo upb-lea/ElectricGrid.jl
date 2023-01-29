@@ -831,7 +831,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             =#
             if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
-                @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation"
+                @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation. Create a counter - we don't want to see this every time."
                 push!(cable_from_pfe_idx, idx)
             end
 
@@ -2577,4 +2577,101 @@ function get_Y_bus(self::NodeConstructor)
         end
     end
     return Y_bus
+end
+
+function Source_Setup(num_sources; random = 0)
+
+    #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+    =#
+
+    source_list = []
+
+    for i in 1:num_sources
+
+        source = Dict()
+
+        if random == 0
+
+            source["mode"]     = 3
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            source["pwr"]      = 200e3 # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+            source["v_δ_set"]  = 0      # Voltage Angle, degrees
+
+            source["std_asy"]  = 50e3   # Asymptotic Standard Deviation
+            source["σ"]        = 0.0    # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+            source["Δt"]       = 0.02   # Time Step, seconds
+            source["X₀"]       = 0      # Initial Process Values, Watt
+            source["k"]        = 0      # Interpolation degree
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+        else
+
+
+            source["mode"]     = 4
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            source["pwr"]      = rand(range(start = 5,step = 5,stop = 50))*1e3  # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+            source["v_δ_set"]  = 0      # Voltage Angle, degrees
+
+            source["std_asy"]  = 50e3   # Asymptotic Standard Deviation
+            source["σ"]        = 0.0    # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+            source["Δt"]       = 0.02   # Time Step, seconds
+            source["X₀"]       = 0      # Initial Process Values, Watt
+            source["k"]        = 0      # Interpolation degree
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+        end
+
+        push!(source_list, source)
+
+    end
+
+    return source_list
+end
+
+function Cable_Length_Setup(num_cables; random = 0)
+
+    cable_list = []
+
+    for i in 1:num_cables
+
+        cable = Dict()
+        
+        if random == 0
+
+            cable["len"] = 1   # km
+        else
+
+            cable["len"] = rand(Uniform(1, 10))
+        end
+
+        push!(cable_list, cable)
+
+    end
+
+    return cable_list
+
 end

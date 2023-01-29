@@ -85,7 +85,7 @@ scale = sum(true_pk_vals)/length(true_pk_vals) - sum(true_valy_vals)/length(true
         Find a reduced dimension embedding and extract the significant coordinates
     =#
     println("\n3. Projection")
-    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 400, scaled = true)
+    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 200, scaled = true)
 
     #= 4. Forward Shift Operator
         This is the forward operator in state space. It is built from consecutive

@@ -2473,17 +2473,37 @@ function CircularGraph(M, L)
     return M
 end
 
-function SmallWorld(L, Z, p)
+function SmallWorld(L; Z = 2, p = 0.2)
 
     # Z, the short edges connecting it to its nearest neighbours, up to a distance
-    # of Z/2
+    # of Z/2. Coordination number, if Z = L, then we have a fully connected graph.
+
+    #p the fraction of random connections
+
+    # The L nodes in a small world networks are arranged around a circle
 
     # There are p x L x Z/2 shortcuts added to the network, which connect nodes
     # at random
 
+    #=
+        Newman and Watts contend that the model displays a critical point with a divergent
+        characteristic length as p tends to zero. They argue that the small-world model
+        has a critical point in the limit where the density of shortcuts tends to zero.
+        This phase transition gives rise to specific finite-size scaling behaviour in the
+        region close to the transition.
+
+        In the limit where the number of nodes N becomes large and the number of shortcuts,
+        pLZ/2 stays fixed, this network has a nice limit where the distance is measured in
+        radians Δθ around the circle. Dividing the average length by l(p = 0)~L/2Z, essentially
+        does this, since Δθ = πZl/L. In this limit, the average bond length should be a
+        function only of M = pLZ/2
+    =#
+
     distance = convert(Int64, round(Z/2))
-    M = Array{Float64, 2}(undef, L, L)
-    M = fill!(M, 0)
+    CM = Array{Int64, 2}(undef, L, L)
+    CM = fill!(CM, 0)
+
+    cablecount = 1
 
     for i in 1:L
 
@@ -2491,9 +2511,11 @@ function SmallWorld(L, Z, p)
         # each node i should be connected to nodes mod((i - Z/2),L),... mod((i + Z/2),L)
         for j in 1:distance
             if i + j <= L
-                M[i, i + j] = 1
-            else
-                M[i + j - L, i] = 1
+                CM[i, i + j] = cablecount
+                cablecount += 1
+            elseif CM[i + j - L, i] == 0 
+                CM[i + j - L, i] = cablecount
+                cablecount += 1
             end
         end
     end
@@ -2504,30 +2526,31 @@ function SmallWorld(L, Z, p)
         node1 = convert(Int64, round((L-1)*rand() + 1))
         node2 = convert(Int64, round((L-1)*rand() + 1))
 
-        while M[node1, node2] >= 1 || M[node2,node1] >= 1 || node1 == node2
+        while CM[node1, node2] >= 1 || CM[node2,node1] >= 1 || node1 == node2
 
             node1 = convert(Int64, round((L-1)*rand() + 1))
             node2 = convert(Int64, round((L-1)*rand() + 1))
 
-            if sum(M) >= L*(L - 1)/2
+            if sum(CM) >= L*(L - 1)/2
                 break
             end
         end
 
-        if node2 > node1 && M[node1,node2] < 1
-            M[node1,node2] = 1
-        elseif node1 > node2 && M[node2,node1] < 1
-            M[node2,node1] = 1
+        if node2 > node1 && CM[node1,node2] < 1
+            CM[node1,node2] = cablecount
+            cablecount += 1
+        elseif node1 > node2 && CM[node2,node1] < 1
+            CM[node2,node1] = cablecount
+            cablecount += 1
         end
     end
 
-    M = M + transpose(M) # The electrical network may not necessarily be
-    # birectional, since sources aren't capable of acting as loads.
+    CM = CM - transpose(CM)
 
-    return M
+    return CM, cablecount - 1
 end
 
-function Barabasi_Albert(L; m = 2)
+function Barabasi_Albert(L; m = 1, α = 0)
 
     #=
         The Barabasi-Albert model is an algorithm for generating random scale-free networks
@@ -2543,34 +2566,53 @@ function Barabasi_Albert(L; m = 2)
         links that the existing nodes already have.
 
         In this case m = 1 or m = 2. m0 is equal to 2
+
+        if α is not equal to 1 then we have the more general non-linear preferential
+        attachment (NLPA) model. If 0 < α < 1, NLPA is referred to as "sub-linear" and
+        the degree distribution of the network tends to a stretched exponential
+        distribution. if α > 1, NLPA is referred to as "super-linear" and a small
+        number of nodes connect to almost all other nodes in the network. For both
+        α < 1 and α > 1, the scale free property of the network is broken in the
+        limit of infinite system size.
     =#
 
-    M = Array{Float64, 2}(undef, L, L)
-    M = fill!(M, 0)
+    CM = Array{Int64, 2}(undef, L, L)
+    CM = fill!(CM, 0)
 
-    M[1,2] = 1 #just connecting the first node with the second
-    M[2,1] = 1
+    CM[1,2] = 1 #just connecting the first node with the second
+    CM[2,1] = -1
+
+    cablecount = 2
 
     for i in 3:L
 
         m_count = 0
+
         while m_count < m
+
             for j in 1:i-1
-                #k = length(GetNeighbours(M, j))
-                k = sum(M[j,:])
-                kt = sum(M[1:i-1, 1:i-1])
+
+                k = sum(abs.(CM[j, :]) .> 0)
+                kt = sum(abs.(CM[1:i-1, 1:i-1]) .> 0)
+
+                #= for k in 1:L
+                    kt = kt + sum(M[k,:])^α
+                end =#
+
                 p = k/kt
 
-                if rand() < p && M[i, j] != 1 && m_count < m
-                    M[i, j] = 1
-                    M[j, i] = 1
+                if rand() < p && CM[i, j] != 1 && m_count < m
+                    
+                    CM[i, j] = cablecount
+                    CM[j, i] = -1*cablecount
                     m_count += 1
+                    cablecount += 1
                 end
             end
         end
     end
 
-    return M
+    return CM, cablecount - 1
 end
 
 function FindpathLengthsFromNode(M, node)

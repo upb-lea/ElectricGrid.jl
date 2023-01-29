@@ -691,23 +691,23 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
         for s in axes(Source_Indices, 1)
 
             s_idx = string(Source_Indices[s])
-    
-            Source.V_cable_loc[:, s]  = findall(contains(s_idx*"_v_C_cable"), state_ids_classic)
-            Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+
+            Source.V_cable_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_cable"), state_ids_classic)
+            Source.I_inv_loc[:, s] = findall(contains("source"*s_idx*"_i_L1"), state_ids_classic)
 
             if Source.filter_type[s] == "LC"
 
-                Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_filt"), state_ids)
+                Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
+                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_filt"), state_ids)
 
             elseif Source.filter_type[s] == "LCL"
 
-                Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
+                Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
+                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_i_L2"), state_ids_classic)
             
             elseif Source.filter_type[s] == "L"
 
-                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_cable"), state_ids)
+                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_cable"), state_ids)
             end
         end
 
