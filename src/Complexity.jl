@@ -2537,9 +2537,12 @@ function SmallWorld(L; Z = 2, p = 0.2)
         end
 
         if node2 > node1 && CM[node1,node2] < 1
+
             CM[node1,node2] = cablecount
             cablecount += 1
+
         elseif node1 > node2 && CM[node2,node1] < 1
+            
             CM[node2,node1] = cablecount
             cablecount += 1
         end
