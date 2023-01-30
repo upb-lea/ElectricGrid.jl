@@ -2526,14 +2526,14 @@ function Observer_Initialiser(Source::Classical_Controls, ns)
                zeros(3,1) D]
 
         # reorganising matrices
-        A_DQ = Switch_Rows(A_DQ, 2, 4)
-        A_DQ = Switch_Rows(A_DQ, 3, 4)
-        A_DQ = Switch_Rows(A_DQ, 4, 5)
+        A_DQ = Switch_Rows!(A_DQ, 2, 4)
+        A_DQ = Switch_Rows!(A_DQ, 3, 4)
+        A_DQ = Switch_Rows!(A_DQ, 4, 5)
 
-        B_DQ = Switch_Rows(B_DQ, 2, 4)
+        B_DQ = Switch_Rows!(B_DQ, 2, 4)
 
-        D_DQ = Switch_Rows(D_DQ, 2, 3)
-        D_DQ = Switch_Rows(D_DQ, 4, 5)
+        D_DQ = Switch_Rows!(D_DQ, 2, 3)
+        D_DQ = Switch_Rows!(D_DQ, 4, 5)
 
         Ad = exp(A_DQ*Source.ts)
         Bd = A_DQ \ (Ad - I)*B_DQ
@@ -2624,7 +2624,7 @@ function Observability(C, A)
     return O, rank(O)
 end
 
-function Switch_Rows(A, row_1, row_2)
+function Switch_Rows!(A, row_1, row_2)
 
     num_rows = size(A, 1)
     num_cols = size(A, 2)

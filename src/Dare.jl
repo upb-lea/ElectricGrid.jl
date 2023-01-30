@@ -4,6 +4,8 @@ using ArnoldiMethod
 using Combinatorics
 using ControlSystems
 using CSV
+using CUDA
+using DataStructures
 using DifferentialEquations
 using Distributions
 using DSP
@@ -22,11 +24,10 @@ using StatsBase
 using Flux
 using StableRNGs
 using IntervalSets
-using CUDA
-using DataStructures
 using Graphs
 using GraphPlot
 using PlotlyJS
+using Random
 using StableRNGs
 
 #export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, DataHook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup, SimEnv
