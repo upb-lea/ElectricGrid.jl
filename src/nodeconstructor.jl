@@ -2683,7 +2683,7 @@ function Load_Setup(num_loads, total_gen; gen_load_ratio = 6, random = nothing, 
 
         if random == 0 || isnothing(random)
 
-            R_load, L_load, _, _ = Parallel_Load_Impedance(avg_load, 0.6, Vrms)
+            R_load, L_load, _, _ = Parallel_Load_Impedance(avg_load, 0.8, Vrms)
 
             load["impedance"] = "RL"
             load["R"] = R_load
