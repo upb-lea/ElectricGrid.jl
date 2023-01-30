@@ -2652,7 +2652,6 @@ function Source_Setup(num_sources; random = nothing, awg_pwr = 200e3, mode = 3)
                 source["γ"]        = 0      # asymptotic mean
 
             end
-
         end
 
         total_gen += pwr
