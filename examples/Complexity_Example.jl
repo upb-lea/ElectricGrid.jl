@@ -10,7 +10,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 # Time simulation
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_end    = 2     # total run time, seconds
+t_end    = 1     # total run time, seconds
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -53,6 +53,8 @@ Power_System_Dynamics(env, hook)
 #_______________________________________________________________________________
 # Plotting
 
+# Spring Layout (Layout = 3) is better for Barabasi-Albert
+# Circular Layout (Layout = 1) is better for SmallWolrd
 drawGraph(CM, parameters, Layout = 3)
 
 plot_hook_results(hook = hook, 
