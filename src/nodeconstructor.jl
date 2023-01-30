@@ -2708,14 +2708,14 @@ function Load_Setup(num_loads, total_gen; gen_load_ratio = 6, random = nothing, 
     return load_list
 end
 
-function Cable_Length_Setup(num_cables; random = 0, avg_length = 1.0)
+function Cable_Length_Setup(num_cables; random = 0, length_bounds = [0.5; 1.5])
 
     cable_list = []
 
     if random != 0 && !isnothing(random)
 
         Random.seed!(1234)
-        lengths = rand(Uniform(0.5*avg_length, 1.5*avg_length), num_cables)
+        lengths = rand(Uniform(length_bounds[1], length_bounds[2]), num_cables)
     end
 
     for i in 1:num_cables
@@ -2724,7 +2724,7 @@ function Cable_Length_Setup(num_cables; random = 0, avg_length = 1.0)
         
         if random == 0
 
-            cable["len"]     = 1   # km
+            cable["len"]     = sum(length_bounds)/2   # km
             cable["R"]       = 0.208   # Ω, line resistance
             cable["L"]       = 0.00025 # H, line inductance
             cable["C"]       = 0.4e-3  # F, line capacitance
