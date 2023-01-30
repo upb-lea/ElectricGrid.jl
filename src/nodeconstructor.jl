@@ -2734,7 +2734,6 @@ function Cable_Length_Setup(num_cables; random = 0, avg_length = 1.0)
         else
 
             cable["len"] = lengths[i]
-            #cable["i_limit"] = 10e12   # A, line current limit
         end
 
         push!(cable_list, cable)
