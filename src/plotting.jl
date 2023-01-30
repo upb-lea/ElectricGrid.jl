@@ -464,10 +464,10 @@ function drawGraph(CM, parameters; Layout = 1)
       pwr = source["pwr"]
 
       if pwr > 1000
-        pwr = string(pwr/1000)
+        pwr = string(round(pwr/1000, digits = 3))
         push!(node_descriptions, "Power: " * pwr * " kVA")
       else
-        pwr = string(pwr)
+        pwr = string(round(pwr, digits = 3))
         push!(node_descriptions, "Power: " * pwr * " VA")
       end
   
@@ -481,7 +481,23 @@ function drawGraph(CM, parameters; Layout = 1)
     end
   
     for load in parameters["load"]
-      push!(node_descriptions, "Load: " * load["impedance"])
+
+        if haskey(load, "S")
+
+            pwr = load["S"]
+
+            if pwr > 1000
+
+                pwr = string(round(pwr/1000, digits = 3))
+                push!(node_descriptions, "Load: " * pwr * " kVA")
+            else
+
+                pwr = string(round(pwr, digits = 3))
+                push!(node_descriptions, "Power: " * pwr * " VA")
+            end
+        else
+            push!(node_descriptions, "Load: " * load["impedance"])
+        end
   
       if load["impedance"] == "RLC"
         push!(color_map, "#8F00D1")

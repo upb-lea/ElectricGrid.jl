@@ -108,7 +108,7 @@ scale = sum(true_pk_vals)/length(true_pk_vals) - sum(true_valy_vals)/length(true
         evolve the state for nfuture+1 points. 
     =#
     println("\n6. Prediction")
-    pred, dist = Predict(2*N - window_size + nfuture, coords[1, :], shift_op, expect_op, return_dist = 2, knn_convexity = 0, coords = coords, extent = 0.05)
+    pred, dist = Predict(2*N - window_size + nfuture, coords[1, :], shift_op, expect_op, return_dist = 2, knn_convexity = 5, coords = coords, extent = 0.05)
 end
 
 #-------------------------------------------------------------------------------

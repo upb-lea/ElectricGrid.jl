@@ -820,7 +820,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
         vᵣ = value.(nodes[k, "v"]) # magnitude of receiving end voltage
         vₛ = value.(nodes[j, "v"]) # magnitude of sending end voltage
 
-        P = 1.5*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+        P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
         #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
         #Q = value.(nodes[j, "Q"])
         δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
@@ -835,7 +835,9 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
 
         #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
         
-        parameters["cable"][i]["i_limit"] = abs(Iₗ)
+        if !haskey(parameters["cable"][i], "i_limit")
+            parameters["cable"][i]["i_limit"] = abs(Iₗ)
+        end
 
         #= 
         S = sqrt(P^2 + Q^2)
