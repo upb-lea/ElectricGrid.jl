@@ -114,7 +114,7 @@ function Shift_Operator(coords, eigenvalues; index_map = nothing, return_eigende
         # faster formula using solve adapted from
 
         Λ = Diagonal(eigval)
-        shift_op = real.((right_eigvec * Λ) * inv(right_eigvec))
+        shift_op = real.((right_eigvec * Λ) * pinv(right_eigvec))
 
         if return_eigendecomposition
 
@@ -258,7 +258,7 @@ function Expectation_Operator(coords, index_map, targets; func::Function = immed
     end
 end
 
-function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds = nothing, knn_convexity = nothing, coords = coords, knndim = nothing, extent = nothing)
+function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds = nothing, knn_convexity = nothing, coords = nothing, knndim = nothing, extent = nothing)
     """
     Predict values from the current causal states distribution
 
@@ -282,6 +282,30 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
         - 1: return the updated state vector
         - 2: return an array of state_dist vectors, one row for each prediction
 
+    bounds : vector of vectors, optional
+        Bounds for each expect_op operator prediction. 
+        Should have the same length as expect_op.
+        Each list entry is itself an array-like of two elements, one for the lower and one for the upper bound. 
+        Use None or +/- inf values to leave a bound unspecified. 
+        
+    knn_convexity : int or None, optional
+        If specified, restrict each state estimate to the closest point in the convex enveloppe of its nearest neighbors. 
+        That envelop can be slightly enlarged with the extent parameter, because some valid states may exist out of the currently observed data points. 
+        knn_convexity specifies the number of neighbors to use. This number should be large enough so as to reach multiple nearby trajectories. 
+        Otherwise, neighbors consist only of the points just before/after along trajectories and the state synchronizes to the training data. 
+        Additional arguments are required:
+          
+          + coords: The coordinates of each observed state in the eigen basis. This argument is required.
+       
+          + extent (optional): Change the bounds of the convexity constraints from [0,1], to [0-extent,1+extent]. The default is 0, 
+          but you should really try to increase this to something like 0.05, possibly adding data bounds if needed.
+        
+          + knndim (optional): Restrict the number of data dimensions to make the nearest neighbors search on. 
+          This can be useful when a low-dimensional attractor is embedded in a large-dimension space, where only the first few 
+          dimensions contribute to the distances, for accelerating the computations. knndim can be a number, in which case the first 
+          dimensions below that number are selected, or an array-like object of indices. The default is 100, possibly lower if less 
+          components are provided.
+      
     Returns
     -------
     predictions: array, or list of arrays, matching the expect_op type
@@ -298,28 +322,29 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
     The causal state space (conditional distributions) is not convex: linear combinations of causal states do not 
     necessarily correspond to a valid value in the conditionned domain. We are dealing here with distributions of 
     causal states, but these distributions are ultimately represented as linear combinations of the data span in 
-    a Reproducing Kernel Hilbert Space, or, in this case, as combinations of eigenbasis vectors 
-    (themselves represented in RKHS). Therefore, the state distributions are also linear combinations of other 
-    causal states. Ultimately, the continuous-time model converges to a limit distribution, which is an average 
-    distribution that need not correspond to any single state, so the non-convexity is not an issue for that limit 
-    distribution. Making predictions with the expectation operator is still feasible, and we get the expected value 
-    from the limit distribution as a result. 
+    a Reproducing Kernel Hilbert Space, or, in this case, as combinations of eigenbasis vectors (themselves represented 
+    in RKHS). Therefore, the state distributions are also linear combinations of other causal states. Ultimately, 
+    the continuous-time model converges to a limit distribution, which is an average distribution that need not 
+    correspond to any single state, so the non-convexity is not an issue for that limit distribution. Making 
+    predictions with the expectation operator is still feasible, and we get the expected value from the limit 
+    distribution as a result. 
 
     If, instead, one wants a trajectory, and not the limit average, then a method is required to ensure that each 
-    predicted state remain valid as a result of applying a linear shift operator. The knn_convexity argument is an 
-    attempt to solve this issue. The API is not definitive and may change in the future. The preimage issue is a 
-    recurrent problem in machine learning and no single answer can currently solve all cases.
+    predicted state remains valid as a result of applying a linear shift operator. The Nearest Neighbours method is an 
+    attempt to solve this issue. The preimage issue is a recurrent problem in machine learning and no single answer 
+    can currently solve all cases.
     
     """
     
     all_state_dists = Array{Float64, 2}(undef, length(state_dist), npred)
 
     pred = Vector{Matrix{Float64}}(undef, length(expect_op))
-    num_basis = size(coords, 2)
 
     problem = nothing
 
     if isa(knn_convexity, Int) && knn_convexity > 0
+
+        num_basis = size(coords, 2)
 
         if isnothing(knndim) || knndim > num_basis || !isa(knndim, Int)
             knndim = num_basis
@@ -341,8 +366,8 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
             @NLexpression(problem, sum_w, sum(w[i] for i in 1:knn_convexity))
             @NLconstraint(problem, sum_w == 1) # weights have to sum to 1
 
-            # x is defined as a combination of neighours
-            x = Array{NonlinearExpression, 1}(undef, num_basis) # the end result
+            # x is defined as a combination of nearest neighours
+            x = Array{NonlinearExpression, 1}(undef, num_basis) # the end result - state distribution
 
             for i in 1:num_basis # maybe parallelize?
                 x[i] = @NLexpression(problem, sum(M[i, j]*w[j] for j in 1:knn_convexity)) # matrix multiplication
@@ -353,7 +378,7 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
             # the first eigenvatlue is 1.
             @NLconstraint(problem, x[1] == 1.0)
 
-            @NLparameter(problem, target_x[i = 1:num_basis] == 0) # nearest neighbours
+            @NLparameter(problem, target_x[i = 1:num_basis] == 0) # the distribution found by the shift operator
 
             @NLexpression(problem, sum_squares, sum((x[i] - target_x[i])^2 for i in 1:num_basis))
         end
@@ -362,6 +387,41 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
         knn_convexity = nothing
     end
 
+    if !isnothing(bounds)
+
+        if length(expect_op) == 1 && length(bounds) == 2
+            bounds = [bounds]
+        end
+
+        if isnothing(problem)
+
+            problem = Model(optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+            set_silent(problem)
+
+            @variable(problem, x[i = 1:num_basis] <= 1.0)
+
+            @NLconstraint(problem, x[1] == 1.0)
+
+            @NLparameter(problem, target_x[i = 1:num_basis] == 0)
+            @NLexpression(problem, sum_squares, sum((x[i] - target_x[i])^2 for i in 1:num_basis))
+        end
+
+        pred_value = Array{NonlinearExpression, 1}(undef, length(expect_op)) # the end result - state distribution
+
+        for (i, b) in enumerate(bounds)
+
+            pred_value[i] = @NLexpression(problem, sum(expect_op[i][j]*x[j] for j in 1:num_basis))
+
+            if b[1] != -Inf && b[1] != Inf && !isnothing(b[1])
+                @NLconstraint(problem, pred_value[i] >= b[1])
+            end
+
+            if b[2] != Inf && !isnothing(b[2])
+                @NLconstraint(problem, pred_value[i] <= b[2])
+            end
+        end
+    end
+    
     for p in 1:npred
 
         if return_dist==2
@@ -394,13 +454,14 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
         if !isnothing(knn_convexity) 
 
             idxs, _ = knn(balltree, state_dist[1:knndim], knn_convexity)
-            #idxs, dista = knn(balltree, coords[2, :], knn_convexity)
 
-            if !isnothing(problem)
+            # idea: it is possible to set the start values of the weights based on the distances
+            
+            if knn_convexity > 1
 
                 temp_c = Matrix(transpose(coords[idxs, :]))
 
-                # Setting the parameters to their newest values - maybe parallelize?
+                # Setting the parameters to their newest values
                 for i in 1:num_basis
 
                     for j in 1:knn_convexity
@@ -411,18 +472,41 @@ function Predict(npred, state_dist, shift_op, expect_op; return_dist = 0, bounds
                     set_value(target_x[i], state_dist[i])
                 end
 
-                @NLobjective(problem, Min, sum_squares)
-                optimize!(problem)
+            elseif knn_convexity == 1
+
+                state_dist = coords[idxs[1], :]
+
+                if !isnothing(problem)
+            
+                    for i in 1:num_basis
+        
+                        set_value(target_x[i], state_dist[i])
+                        set_start_value(x[i], state_dist[i])
+                    end
+                end
+            end
+
+        elseif !isnothing(problem)
+            
+            for i in 1:num_basis
+
+                set_value(target_x[i], state_dist[i])
+                set_start_value(x[i], state_dist[i])
+            end
+        end
+
+        if !isnothing(problem)
+
+            @NLobjective(problem, Min, sum_squares)
+            optimize!(problem)
+
+            if value.(x)[1] != NaN && value.(x)[1] != 0.0
 
                 state_dist = value.(x)
                 # should not be needed mathematically if the 
                 # constraint was perfectly respected.
                 # There could be numerical inaccuracies in practice
                 state_dist /= state_dist[1, 1]
-
-            elseif knn_convexity == 1
-
-                state_dist = coords[idxs[1], :]
             end
         end
     end

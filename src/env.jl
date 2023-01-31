@@ -94,7 +94,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     A, B, C, D = get_sys(nc)
     Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
-    Bd = (Ad - I) * B
+    Bd = (Ad - I) * B # 
     ldiv!(factorize(A), Bd)
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     state_parameters = get_state_paras(nc)

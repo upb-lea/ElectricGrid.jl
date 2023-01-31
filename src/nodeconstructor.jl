@@ -830,7 +830,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             =#
             if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
-                @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation"
+                @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation. Create a counter - we don't want to see this every time."
                 push!(cable_from_pfe_idx, idx)
             end
 
@@ -2576,4 +2576,168 @@ function get_Y_bus(self::NodeConstructor)
         end
     end
     return Y_bus
+end
+
+function Source_Setup(num_sources; random = nothing, awg_pwr = 200e3, mode = 3)
+
+    #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+    =#
+
+    source_list = []
+
+    total_gen = 0.0
+
+    if random != 0 && !isnothing(random)
+
+        Random.seed!(1234)
+        pwrs = rand(Uniform(0.5*awg_pwr, 1.5*awg_pwr), num_sources)
+    end
+
+    for i in 1:num_sources
+
+        source = Dict()
+
+        if random == 0 || isnothing(random)
+
+            pwr = 200e3
+
+            source["mode"]     = mode
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            pwr = awg_pwr
+            source["pwr"]      = pwr # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+            source["v_δ_set"]  = 0      # Voltage Angle, degrees
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+        else
+
+            source["mode"]     = mode
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            pwr = pwrs[i]
+            source["pwr"]      = pwr  # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+            source["v_δ_set"]  = 0      # Voltage Angle, degrees
+
+            if random == 2
+
+                source["std_asy"]  = pwr/8   # Asymptotic Standard Deviation
+                source["σ"]        = pwr/8   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+                source["Δt"]       = 0.1   # Time Step, seconds
+                #source["X₀"]       = 0      # Initial Process Values, Watt
+                source["k"]        = 1      # Interpolation degree
+                source["γ"]        = 0      # asymptotic mean
+
+            end
+        end
+
+        total_gen += pwr
+
+        push!(source_list, source)
+
+    end
+
+    return source_list, total_gen
+end
+
+function Load_Setup(num_loads, total_gen; gen_load_ratio = 6, random = nothing, Vrms = 230)
+
+    load_list = []
+
+    avg_load = total_gen/(num_loads*gen_load_ratio)
+
+    if random != 0 && !isnothing(random)
+
+        Random.seed!(1234)
+        pwrs = rand(Uniform(0.5*avg_load, 1.5*avg_load), num_loads)
+        Random.seed!(1234)
+        pfs = rand(Uniform(0.7, 1.0), num_loads)
+    end
+
+    for i in 1:num_loads
+
+        load = Dict()
+
+        if random == 0 || isnothing(random)
+
+            R_load, L_load, _, _ = Parallel_Load_Impedance(avg_load, 0.8, Vrms)
+
+            load["impedance"] = "RL"
+            load["R"] = R_load
+            load["L"] = L_load
+            load["S"] = avg_load
+
+        else
+
+            R_load, L_load, _, _ = Parallel_Load_Impedance(pwrs[i], pfs[i], Vrms)
+
+            load["impedance"] = "RL"
+            load["R"] = R_load
+            load["L"] = L_load
+            load["S"] = pwrs[i]
+
+        end
+
+        push!(load_list, load)
+
+    end
+
+    return load_list
+end
+
+function Cable_Length_Setup(num_cables; random = 0, length_bounds = [0.5; 1.5])
+
+    cable_list = []
+
+    if random != 0 && !isnothing(random)
+
+        Random.seed!(1234)
+        lengths = rand(Uniform(length_bounds[1], length_bounds[2]), num_cables)
+    end
+
+    for i in 1:num_cables
+
+        cable = Dict()
+        
+        if random == 0
+
+            cable["len"]     = sum(length_bounds)/2   # km
+            cable["R"]       = 0.208   # Ω, line resistance
+            cable["L"]       = 0.00025 # H, line inductance
+            cable["C"]       = 0.4e-3  # F, line capacitance
+            cable["i_limit"] = 10e12   # A, line current limit
+
+        else
+
+            cable["len"] = lengths[i]
+        end
+
+        push!(cable_list, cable)
+
+    end
+
+    return cable_list
+
 end
