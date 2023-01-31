@@ -2604,8 +2604,6 @@ function Source_Setup(num_sources; random = nothing, awg_pwr = 200e3, mode = 3)
 
         if random == 0 || isnothing(random)
 
-            pwr = 200e3
-
             source["mode"]     = mode
 
             source["fltr"]     = "LCL"  # Filter type
@@ -2741,4 +2739,184 @@ function Cable_Length_Setup(num_cables; random = 0, length_bounds = [0.5; 1.5])
 
     return cable_list
 
+end
+
+function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vrms = 230)
+
+    #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+    =#
+
+    gen_static_load_ratio = 40
+    gen_contr_load_ratio = 5
+
+    source_list = []
+    load_list = []
+    cable_list = []
+
+    num_contr_loads = num_sources
+    num_static_loads = num_sources
+    num_loads = num_contr_loads + num_static_loads   
+
+    total_gen = 0.0
+
+    if random != 0 && !isnothing(random)
+
+        Random.seed!(1234)
+        pwrs = rand(Uniform(0.5*awg_pwr, 1.5*awg_pwr), num_sources)
+    end
+
+    # Grid Forming sources
+
+    for i in 1:num_sources
+
+        source = Dict()
+
+        if random == 0 || isnothing(random)
+
+            # Grid Forming sources
+
+            source["mode"]     = 3
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            pwr = awg_pwr
+            source["pwr"]      = pwr # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+        else
+
+            source["mode"]     = 6
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            pwr = pwrs[i]
+            source["pwr"]      = pwr  # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+
+        end
+
+        total_gen += pwr
+
+        push!(source_list, source)
+
+    end   
+
+    # Grid Following sources, i.e. controllable loads 
+    avg_contr_load = total_gen/(num_contr_loads*gen_contr_load_ratio)
+
+    if random != 0 && !isnothing(random)
+
+        Random.seed!(1234)
+        pwrs = rand(Uniform(0.5*avg_contr_load, 1.5*avg_contr_load), num_contr_loads)
+        Random.seed!(1234)
+        pfs = rand(Uniform(0.7, 1.0), num_contr_loads)
+    end
+
+    for i in 1:num_contr_loads
+
+        source = Dict()
+
+        if random == 0 || isnothing(random)
+
+            source["mode"]     = 2
+
+            source["fltr"]     = "L"  # Filter type
+
+            pwr = avg_contr_load
+            pf = 0.8
+            source["pwr"]      = 1.5*pwr # Rated Apparent Power, VA
+            source["p_set"]    = -pf*pwr # Real Power Set Point, Watt
+            source["q_set"]    = -pwr*sqrt(1 - pf^2)   # Imaginary Power Set Point, VAi
+
+        else
+
+            source["mode"]     = 2
+
+            source["fltr"]     = "L"  # Filter type
+
+            source["pwr"]      = 1.5*pwrs[i] # Rated Apparent Power, VA
+            source["p_set"]    = -pfs[i]*pwrs[i] # Real Power Set Point, Watt
+            source["q_set"]    = -pwrs[i]*sqrt(1 - pfs[i]^2)   # Imaginary Power Set Point, VAi
+
+            source["std_asy"]  = pwrs[i]/2   # Asymptotic Standard Deviation
+            source["σ"]        = pwrs[i]/5   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+            source["Δt"]       = 0.04   # Time Step, seconds
+            source["X₀"]       = 0      # Initial Process Values, Watt
+            source["k"]        = 2      # Interpolation degree
+
+        end
+
+        push!(source_list, source)
+        
+    end
+
+    # Static loads
+    avg_static_load = total_gen/(num_static_loads*gen_static_load_ratio)
+
+    for i in 1:num_static_loads
+
+        load = Dict()
+
+        R_load, L_load, _, _ = Parallel_Load_Impedance(avg_static_load, 0.8, Vrms)
+
+        load["impedance"] = "RL"
+        load["R"] = R_load
+        load["L"] = L_load
+        load["S"] = avg_static_load
+
+        push!(load_list, load)
+
+    end
+
+    # Cables
+
+    MG_cables = 2*num_sources
+    inter_cables = num_cables - MG_cables
+
+    for i in 1:num_cables
+
+        cable = Dict()
+
+        if i <= inter_cables
+            l = 2
+        else
+            l = 0.5
+        end
+
+        cable["len"]     = 1
+        cable["R"]       = l*0.3  # Ω, line resistance
+        cable["L"]       = l*0.0001 # H, line inductance
+        cable["C"]       = l*0.4e-6  # F, line capacitance
+        cable["i_limit"] = 10e12   # A, line current limit
+        
+        push!(cable_list, cable)
+
+    end
+
+    # parameters
+
+    parameters = Dict{Any, Any}()
+
+    parameters["source"] = source_list
+    parameters["load"] = load_list
+    parameters["cable"] = cable_list
+    
+    return parameters
 end

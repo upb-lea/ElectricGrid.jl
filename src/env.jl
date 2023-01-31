@@ -423,7 +423,11 @@ function (env::SimEnv)(action)
     # Power constraint
     env.reward = env.reward_function(env)
 
-    env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
+    if env.t > env.nc.parameters["grid"]["ramp_end"] + 5*0.02
+        env.done = env.steps >= env.maxsteps# || any(abs.(env.x./env.norm_array) .> 1)
+    else
+        env.done = env.steps >= env.maxsteps
+    end
 
     # TODO define info on verbose
     if env.done

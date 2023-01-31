@@ -1922,9 +1922,9 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
                     end
                 end
 
-                if ns == 1   
+                if ns == 5   
                     
-                    Source.debug[1] = Pset
+                    Source.debug[1] = randn()
                 else
                     Source.debug[2] = Pset
                 end
@@ -2302,6 +2302,9 @@ function Source_Initialiser(env, Source, modes, source_indices)
         else
             Source.σ[e] = 0.0
         end
+
+        Random.seed!(rand([1,2,3,4,5,6,7,8,9,10]))
+        #Random.seed!(1)
 
         Source.κ[e] = abs(env.nc.parameters["source"][ns]["κ"]) # mean reversion parameter
         Source.γ[e] = env.nc.parameters["source"][ns]["γ"] # asymptotic mean
