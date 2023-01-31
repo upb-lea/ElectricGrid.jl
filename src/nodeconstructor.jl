@@ -1,6 +1,5 @@
 
 
-# using Intervals
 mutable struct NodeConstructor
     num_connections 
     num_sources

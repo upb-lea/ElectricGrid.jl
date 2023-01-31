@@ -1,5 +1,6 @@
 using Dare
 using ReinforcementLearning
+using IntervalSets
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -85,7 +86,7 @@ function RLBase.action_space(env::SimEnv, name::String)
         end
 end
 
-Power_System_Dynamics(env, hook)
+ma = Power_System_Dynamics(env, hook, return_Agents = true)
 
 #_______________________________________________________________________________
 # Plotting
