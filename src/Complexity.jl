@@ -4,7 +4,7 @@ using SpecialFunctions
 using Graphs
 using NetworkLayout
 
-import QHull
+# import QHull
 
 mutable struct Node
 

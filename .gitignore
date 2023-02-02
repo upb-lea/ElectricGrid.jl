@@ -57,3 +57,6 @@ db/*.sqlite
 
 # pre_investigations
 pre_investigations/*
+
+# Since user maintains their own manifest.toml, we don't need to track it
+Manifest.toml
