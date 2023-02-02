@@ -32,7 +32,7 @@ using Test
                                     ]
                 )
             #_______________________________________________________________________________
-            # cable layout
+        #     TODO cable layout
 
 
             # Defining the environment
@@ -66,7 +66,7 @@ using Test
 
             print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
-
+        # TODO: Compare P Q values 
             # Time domain : p, q
             # Freq domain : P, Q
 end
