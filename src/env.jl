@@ -1,14 +1,13 @@
-using ReinforcementLearning
-using IntervalSets
-using LinearAlgebra
-using ControlSystems
-using CUDA
 
-include("./custom_control.jl")
-include("./nodeconstructor.jl")
+
+#= # might be better for large sparse matrices
+using SparseArrays
+using FastExpm 
+=#
 
 
 mutable struct SimEnv <: AbstractEnv
+    verbosity
     nc
     sys_d
     action_space
@@ -27,76 +26,86 @@ mutable struct SimEnv <: AbstractEnv
     steps
     state_ids
     v_dc
+    v_dc_arr
     norm_array
     convert_state_to_cpu
     reward
     action
     action_ids
+    action_delay_buffer
+    A
+    B
+    C
+    D
+    state_parameters
+    y #holds all of the inductor voltages and capacitor currents
+    state_ids_RL
+    action_ids_RL
 end
 
-function SimEnv(; maxsteps = 500, 
-                ts = 1/10_000, 
-                action_space = nothing, 
-                state_space = nothing, 
-                prepare_action = nothing, 
-                featurize = nothing, 
-                reward_function = nothing, 
-                CM = nothing, 
-                num_sources = nothing, 
-                num_loads = nothing, 
-                parameters = nothing, 
-                x0 = nothing, 
-                t0 = 0.0, 
-                state_ids = nothing, 
-                v_dc = nothing, 
-                norm_array = nothing, 
-                convert_state_to_cpu = true, 
-                use_gpu = false, 
-                reward = nothing, 
-                action = nothing, 
-                action_ids = nothing)
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing, verbosity = 0, state_ids_RL = nothing, action_ids_RL = nothing)
+
+    if !(isnothing(t_end))
+        maxsteps = floor(t_end/ts) + 1
+    end
+
+    if haskey(parameters, "source") && haskey(parameters, "load")
+
+        num_sources = length(parameters["source"])
+        num_loads = length(parameters["load"])
+    elseif haskey(parameters, "source") 
+        num_sources = length(parameters["source"])
+        num_loads = 0
+    end
+
+
+
+    if haskey(parameters, "grid") 
+
+        if !haskey(parameters["grid"], "fs")
+            parameters["grid"]["fs"] = 1/ts
+        end
+    else
+
+        parameters["grid"] = Dict()
+        parameters["grid"]["fs"] = 1/ts
+    end
+
     
-    if !(isnothing(CM) || isnothing(num_sources) || isnothing(num_loads))
+    if !(isnothing(num_sources) || isnothing(num_loads)) 
 
-        if isnothing(parameters)
-            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM)
-        else
-            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters)
-        end
-
-        A, B, C, D = get_sys(nc)
-        Ad = exp(A*ts)
-        Bd = A \ (Ad - C) * B
-
-        if use_gpu
-            Ad = CuArray(A)
-            Bd = CuArray(B)
-            C = CuArray(C)
-            if isa(D, Array)
-                D = CuArray(D)
-            end
-        end
-
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, verbosity = verbosity)
 
     else
         # Construct standard env with 2 sources, 1 load
-        println("INFO: Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)")
+        @info "Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)" #TODO: Clarify what there problem is
         CM = [ 0. 0. 1.
                0. 0. 2
               -1. -2. 0.]
 
         if isnothing(parameters)
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM)
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, verbosity = verbosity)
         else
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters)
+            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, verbosity = verbosity)
         end
 
-        A, B, C, D = get_sys(nc)
-        Ad = exp(A*ts)
-        Bd = A \ (Ad - C) * B
-        sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    end
 
+    A, B, C, D = get_sys(nc)
+    Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
+    #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
+    Bd = (Ad - I) * B # 
+    ldiv!(factorize(A), Bd)
+    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    state_parameters = get_state_paras(nc)
+
+    if use_gpu
+        Ad = CuArray(A)
+        Bd = CuArray(B) 
+        C = CuArray(C)
+        if isa(D, Array)
+            D = CuArray(D)
+        end
     end
 
     if isnothing(action_space)
@@ -104,8 +113,10 @@ function SimEnv(; maxsteps = 500,
     end
 
     if isnothing(featurize)
-        featurize = function(x0 = nothing, t0 = nothing; env = nothing) 
-            if isnothing(env)
+        featurize = function(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
+            if !isnothing(name)
+                return env.state
+            elseif isnothing(env)
                 return x0
             else
                 return env.state
@@ -120,7 +131,7 @@ function SimEnv(; maxsteps = 500,
     end
 
     if isnothing(reward_function)
-        reward_function = function(env) 
+        reward_function = function(env, name = nothing) 
             return 0.0
         end
     end
@@ -150,7 +161,7 @@ function SimEnv(; maxsteps = 500,
     if isnothing(state_ids)
         if isnothing(nc)
             state_ids = []
-            println("WARNING: No state_ids array specified - observing states with DataHook not possible")
+            @warn "No state_ids array specified - observing states with DataHook not possible"
         else
             state_ids = get_state_ids(nc)
         end
@@ -159,42 +170,141 @@ function SimEnv(; maxsteps = 500,
     if isnothing(action_ids)
         if isnothing(nc)
             action_ids = []
-            println("WARNING: No state_ids array specified - observing states with DataHook not possible")
+            @warn "No state_ids array specified - observing states with DataHook not possible"
         else
             action_ids = get_action_ids(nc)
         end
     end
-    # TODO: take vdc per source from the nc.parameters[] something like:
-    # v_dc = [env.nc.parameters["sources"][n]["vdc"] for n = 1:env.nc.num_sources]
-    if isnothing(v_dc)
-        println("INFO: v_dc = 350V will get applied to all actions")
-        v_dc = 350 * ones(length(action_space))
-    elseif isa(v_dc, Number)
-        println("INFO: v_dc = $(v_dc)V will get applied to all actions")
-        v_dc = v_dc * ones(length(action_space))
+
+    if isnothing(state_ids_RL)
+        state_ids_RL = state_ids
+    end
+
+    if isnothing(action_ids_RL)
+        action_ids_RL = action_ids
     end
     
-    #TODO: norm_array from parameters Dict
-    if isnothing(norm_array)
-        if isnothing(nc)
-            println("INFO: norm_array set to ones - if neccessary please define norm_array in env initialization")
-            norm_array = ones(length(sys_d.A[1,:]))
+    vdc_fixed = 0
+    v_dc = ones(nc.num_sources)  # vector to store evaluated v_dc_arr (constants and functions) in the env, needed e.g. in the data_hook
+    v_dc_arr = []  # array to store all functions for v_dc as well as constants
+    for (source_number, source) in enumerate(nc.parameters["source"])
+        if haskey(source, "source_type")
+            if source["source_type"] == "ideal"
+                # set vdc for that source
+                if haskey(source, "vdc")
+                    v_dc[source_number] = source["vdc"]
+                    fun = (env, G, T) -> source["vdc"]
+                    push!(v_dc_arr, fun)
+                else
+                    v_dc[source_number] = 800
+                    fun = (env, G, T) -> 800
+                    push!(v_dc_arr, fun)
+                    vdc_fixed += 1
+                end
+            elseif source["source_type"] == "pv"
+                #v_dc[source_number] = :(get_V(pv_array, env.x[1]*env.action, G, T))
+                #TODO : how to calculate i_dc in 3-phase grid? Which current of env to use?
+                #TODO : $source_number does only fit if all L filters! Otherwise how to define the offet for $source_number?!?!?
+                # TODO built pv module from parameter dict - where to define? In env?
+                pv_m = PV_module()
+                pv_array = PV_array(;pv_module=pv_m)
+                # find(x -> .... source$source_number_i_L in state_ids)
+                fun = (env, G, T) -> get_V(:($pv_array), env.x[:($source_number)]*env.action, G, T)
+                push!(v_dc_arr, fun)
+                
+                # first value set to 0
+                v_dc[source_number] = 0
+            else
+                @warn "sourceType not known! vdc set to fixed value"
+                v_dc[source_number] = 800
+                fun = (env, G, T) -> 800
+                push!(v_dc_arr, fun)
+                vdc_fixed += 1
+            end
         else
-            println("INFO: Generating standard norm_array from nodeconstructor")
-            states = get_state_ids(nc)
-            norm_array = []
-            println("WARNING: limits set to fixed value - define in nc.parameters")
-            for state_name in states
-                if startswith(state_name, "i")
-                    #push!(norm_array, limits["i_lim"])
-                    push!(norm_array, 20.0)
-                elseif startswith(state_name, "u")
-                    #push!(norm_array, limits["v_lim"])
-                    push!(norm_array, 600.0)
+            @warn "sourceType not defined! vdc set to fixed value, if not wanted please define nc.parameters -> source -> source_type (e.g. = ideal"
+            v_dc[source_number] = 800
+            fun = (env, G, T) -> 800
+            push!(v_dc_arr, fun)
+            vdc_fixed += 1
+        end
+    end
+    vdc_fixed > 0 && @warn "$vdc_fixed DC-link voltages set to 800 V - please define in nc.parameters -> source -> vdc."
+
+    if verbosity > 1
+        @info "Normalization is done based on the defined parameter limits."
+    end
+    states = get_state_ids(nc)
+
+    i_limit_fixed = 0
+    v_limit_fixed = 0
+    norm_array = ones(length(states))
+
+    for (source_number, source) in enumerate(nc.parameters["source"])
+        # set norm_array based on in parameters defined limits
+        for state_index in get_source_state_indices(nc, [source_number])["source$source_number"]["state_indices"]
+            if contains(states[state_index], "_i")
+                if haskey(source, "i_limit")
+                    norm_array[state_index] = source["i_limit"]
+                else
+                    i_limit_fixed += 1
+                    norm_array[state_index] = 1.15*sqrt(2)*nc.parameters["source"][source_number]["pwr"]/(3*nc.parameters["grid"]["v_rms"])
+                    nc.parameters["source"][source_number]["i_limit"] = norm_array[state_index]
+                end
+            elseif contains(states[state_index], "_v")
+                if haskey(source, "v_limit")
+                    norm_array[state_index] = source["v_limit"]
+                else
+                    v_limit_fixed += 1
+                    norm_array[state_index] = 1.5*nc.parameters["source"][source_number]["vdc"]
+                    nc.parameters["source"][source_number]["v_limit"] = norm_array[state_index]
                 end
             end
         end
     end
+
+    for (load_number, load) in enumerate(nc.parameters["load"])
+        for state_index in get_load_state_indices(nc, [load_number])["load$load_number"]["state_indices"]
+            if contains(states[state_index], "_i")
+                if haskey(load, "i_limit")
+                    norm_array[state_index] = load["i_limit"]
+                else
+                    i_limit_fixed += 1
+                    norm_array[state_index] = 1000.0
+                end
+            elseif contains(states[state_index], "_v")
+                if haskey(load, "v_limit")
+                    norm_array[state_index] = load["v_limit"]
+                else
+                    v_limit_fixed += 1
+                    norm_array[state_index] = 1.15*nc.parameters["grid"]["v_rms"] * sqrt(2)
+                end
+            end
+        end
+    end
+
+    for (cable_number, cable) in enumerate(nc.parameters["cable"])
+        for state_index in get_cable_state_indices(nc, [cable_number])["cable$cable_number"]["state_indices"]
+            if contains(states[state_index], "_i")
+                if haskey(cable, "i_limit")
+                    norm_array[state_index] = cable["i_limit"]
+                else
+                    i_limit_fixed += 1
+                    norm_array[state_index] = 1000
+                end
+            elseif contains(states[state_index], "_v")
+                if haskey(cable, "v_limit")
+                    norm_array[state_index] = cable["v_limit"]
+                else
+                    v_limit_fixed += 1
+                    norm_array[state_index] = 1.15*nc.parameters["grid"]["v_rms"] * sqrt(2)
+                end
+            end
+        end
+    end
+
+    i_limit_fixed > 0 && @info "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit! What???"
+    v_limit_fixed > 0 && @info "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit! Whatt???"   
 
     if isnothing(reward)
         reward = 0.0
@@ -204,20 +314,47 @@ function SimEnv(; maxsteps = 500,
         action = zeros(length(action_space))
     end
 
-    SimEnv(nc, sys_d, action_space, state_space, false, featurize, prepare_action, reward_function, x0, x, t0, t, ts, state, maxsteps, 0, state_ids, v_dc, norm_array, convert_state_to_cpu, reward, action, action_ids)
+    if action_delay == 0
+        action_delay_buffer = nothing
+    else
+        action_delay_buffer = CircularBuffer{Vector{Float64}}(action_delay)
+        fill!(action_delay_buffer, zeros(length(action_space)))
+    end
+
+    y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
+
+    SimEnv(verbosity, nc, sys_d, action_space, state_space, 
+    false, featurize, prepare_action, reward_function, 
+    x0, x, t0, t, ts, state, maxsteps, 0, state_ids, 
+    v_dc, v_dc_arr, norm_array, convert_state_to_cpu, 
+    reward, action, action_ids, action_delay_buffer,
+    A, B, C, D, state_parameters, y, state_ids_RL, action_ids_RL)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
 RLBase.state_space(env::SimEnv) = env.state_space
-RLBase.reward(env::SimEnv) =  env.reward 
+RLBase.reward(env::SimEnv) =  env.reward
 
+function RLBase.reward(env::SimEnv, name::String)
+    return env.reward_function(env, name)
+end
 
 RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
 
+function RLBase.state(env::SimEnv, name::String)
+    return env.featurize(;env = env, name = name)
+end
+
 function RLBase.reset!(env::SimEnv)
     env.state = env.convert_state_to_cpu ? Array(env.featurize(env.x0, env.t0)) : env.featurize(env.x0, env.t0)
     env.x = env.x0
+    env.y = fill!(env.y, 0.0) #TODO: y0
+    if !isnothing(env.action_delay_buffer)
+        empty!(env.action_delay_buffer)
+        fill!(env.action_delay_buffer, zeros(length(env.action_space)))
+        env.action = zeros(length(env.action_space))
+    end
     env.t = env.t0
     env.steps = 0
     env.reward = 0.0
@@ -233,9 +370,22 @@ function (env::SimEnv)(action)
 
     env.t = tt[2]
 
-    env.action = action
+    if !isnothing(env.action_delay_buffer)
+        env.action = env.action_delay_buffer[1]
+        push!(env.action_delay_buffer, action)
+    else
+        env.action = action
+    end
 
-    env.action = env.action .* env.v_dc
+    # mutliply action with vdc vector
+    # assumes in all number of phases per source the same vdc by repeating the vdc value "phase"-times
+
+    # TODO define G and T via data_set or stochastic process next to pv_array
+    G = 1000
+    T = 27
+
+    env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
+    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
 
     env.action = env.prepare_action(env)
     
@@ -273,5 +423,26 @@ function (env::SimEnv)(action)
     # Power constraint
     env.reward = env.reward_function(env)
 
-    env.done = env.steps >= env.maxsteps
+    env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
+
+    # TODO define info on verbose
+    if env.done
+        if any(abs.(env.x./env.norm_array) .> 1)
+            states_exceeded = findall(env.x./env.norm_array.>1)
+            #println("The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort")
+            @warn "The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s) -> episode abort"
+            @warn "Corresponding limit(s): $(env.norm_array[states_exceeded]), corresponding index: $(states_exceeded)"
+        end
+    end
+
+    # calcultaing the inductor voltages and capacitor currents
+
+    env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action)) ) .* (env.state_parameters)
+
+end
+
+function get_vDC_PV(I)
+
+    V_dc = I *N_cell * P_cell
+    
 end

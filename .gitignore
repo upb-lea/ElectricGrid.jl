@@ -1,3 +1,5 @@
+Manifest.toml
+
 # App
 dev/*
 build/*
@@ -49,3 +51,9 @@ db/*.sqlite
 
 # Notebook helper
 .idea/*
+
+# Jupyter Nodebook
+*/.ipynb_checkpoints/
+
+# pre_investigations
+pre_investigations/*

@@ -48,8 +48,10 @@ function reward(env)
     """
 end
 
-function featurize(x0 = nothing, t0 = nothing; env = nothing) 
-    if isnothing(env)
+function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
+    if !isnothing(name)
+        return env.state
+    elseif isnothing(env)
         state = copy(x0)
         #push!(state, t0/(1e-4*500))  
         state = vcat(state, reference(t0)/600)
