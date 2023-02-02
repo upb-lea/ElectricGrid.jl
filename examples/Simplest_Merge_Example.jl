@@ -1,4 +1,6 @@
 using Dare
+using ReinforcementLearning
+using IntervalSets
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -14,12 +16,10 @@ t_end    = 0.2     # total run time, seconds
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-#= CM = [ 0. 0. 1.
+CM = [ 0. 0. 1.
         0. 0. 2.
-        -1. -2. 0.] =#
+        -1. -2. 0.]
 
-CM = [ 0. 1.
-        -1. 0.]
 
 #-------------------------------------------------------------------------------
 # Parameters
@@ -33,12 +33,12 @@ CM = [ 0. 1.
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3),
+                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL"),
                         Dict{Any, Any}("pwr" => 200e3),
                         ],
-        #= "load"   => Any[
+         "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
-                        ] =#
+                        ],
         "cable"   => Any[
                         Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
                         ],
@@ -46,8 +46,27 @@ parameters = Dict{Any, Any}(
     )
 #_______________________________________________________________________________
 # Defining the environment
+function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
+        if !isnothing(name)
+            state = env.state
+            if name == "agent"
+                state = state[findall(x -> x in env.state_ids_RL, env.state_ids)]
+                #state = vcat(state, reference(env.t)/600)
+            #else
+            #    global state_ids_classic
+            #    global state_ids
+            #    state = env.x[findall(x -> x in state_ids_classic, state_ids)]
+            end
+        elseif isnothing(env)
+            return x0
+        else
+            return env.state
+        end
+        return state
+end
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, featurize = featurize)
 
 #_______________________________________________________________________________
 # Setting up data hooks
@@ -61,7 +80,13 @@ hook = DataHook(collect_vrms_ids = [1 2],
 #_______________________________________________________________________________
 # Running the Time Simulation
 
-Power_System_Dynamics(env, hook)
+function RLBase.action_space(env::SimEnv, name::String)
+        if name == "agent"
+                return Space(fill(-1.0..1.0, 3))#size(env.action_ids_agent)))
+        end
+end
+
+ma = Power_System_Dynamics(env, hook, return_Agents = true)
 
 #_______________________________________________________________________________
 # Plotting

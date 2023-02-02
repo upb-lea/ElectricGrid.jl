@@ -2213,35 +2213,57 @@ function Plane_Layout(p, ax, L)
     return nothing
 end
 
-function AddNode(M, loc, node)
+function AddNode(CM, loc, nodes)
 
     # Adds new unconnected nodes to the system (if it is not already there)
 
-    if size(M,1) < node
-        increase = node-size(M,1)
-        L_or = size(M,1)
-        L_in = L_or + increase
-        new_M = Array{Float64, 2}(undef, L_in, L_in)
-        new_M = fill!(new_M, 0)
+    if size(CM, 1) < node
 
-        for i in 1:L_or
+        increase = node - size(CM, 1)
+        L_or = size(CM, 1)
+        L_in = L_or + increase
+        new_CM = Array{Int64, 2}(undef, L_in, L_in)
+        new_CM = fill!(new_CM, 0)
+        println("CM = ")
+        display(CM)
+
+        #= for i in 1:L_or
             for j in 1:L_or
                 if i < loc && j < loc
-                    new_M[i,j] = M[i,j]
+
+                    new_CM[i,j] = CM[i,j]
                 elseif i >= loc && j < loc
-                    new_M[i+increase,j] = M[i,j]
+
+                    new_CM[i+increase,j] = CM[i,j]
                 elseif i < loc && j >= loc
-                    new_M[i,j+increase] = M[i,j]
+
+                    new_CM[i,j+increase] = CM[i,j]
                 elseif i >= loc && j >= loc
-                    new_M[i+increase,j+increase] = M[i,j]
+
+                    new_CM[i+increase, j+increase] = CM[i,j]
                 end
             end
-        end
+        end =#
 
-        return new_M
+        return new_CM
     else
-        return M
+        return CM
     end
+
+    return CM
+end
+
+function NewCM(CM, loc, nodes)
+
+    new_CM = Array{Int64, 2}(undef, size(CM, 1)+nodes, size(CM, 1)+nodes)
+    new_CM = fill!(new_CM, 0)
+
+    new_CM[1:loc, 1:loc] = CM[1:loc, 1:loc]
+    new_CM[1:loc, (loc + nodes + 1):end] = CM[1:loc, loc+1:end]
+    new_CM[(loc + nodes + 1):end, 1:loc] = CM[loc+1:end, 1:loc]
+    new_CM[(loc + nodes + 1):end, (loc + nodes + 1):end] = CM[loc+1:end, loc+1:end]
+
+    return new_CM
 end
 
 function AddEdge(M, node1, node2)
@@ -2473,61 +2495,189 @@ function CircularGraph(M, L)
     return M
 end
 
-function SmallWorld(L, Z, p)
+function SmallWorld(num_nodes; Z = 2, p = 0.2, num_sources = num_nodes)
 
     # Z, the short edges connecting it to its nearest neighbours, up to a distance
-    # of Z/2
+    # of Z/2. Coordination number, if Z = num_nodes, then we have a fully connected graph.
+
+    #p the fraction of random connections
+
+    # The L nodes in a small world networks are arranged around a circle
 
     # There are p x L x Z/2 shortcuts added to the network, which connect nodes
     # at random
 
+    #=
+        Newman and Watts contend that the model displays a critical point with a divergent
+        characteristic length as p tends to zero. They argue that the small-world model
+        has a critical point in the limit where the density of shortcuts tends to zero.
+        This phase transition gives rise to specific finite-size scaling behaviour in the
+        region close to the transition.
+
+        In the limit where the number of nodes N becomes large and the number of shortcuts,
+        pLZ/2 stays fixed, this network has a nice limit where the distance is measured in
+        radians Δθ around the circle. Dividing the average length by l(p = 0)~L/2Z, essentially
+        does this, since Δθ = πZl/L. In this limit, the average bond length should be a
+        function only of M = pLZ/2
+    =#
+
+    num_loads = num_nodes - num_sources
+    
+    if num_sources > num_loads
+        num_sources = num_nodes
+    end
+
     distance = convert(Int64, round(Z/2))
-    M = Array{Float64, 2}(undef, L, L)
-    M = fill!(M, 0)
+    CM = Array{Int64, 2}(undef, num_sources, num_sources)
+    CM = fill!(CM, 0)
 
-    for i in 1:L
+    cablecount = 1
+    load_cnt = 0
 
-        # add the nearest neighbour connections
-        # each node i should be connected to nodes mod((i - Z/2),L),... mod((i + Z/2),L)
-        for j in 1:distance
-            if i + j <= L
-                M[i, i + j] = 1
-            else
-                M[i + j - L, i] = 1
+    if num_sources == num_nodes
+
+        for i in 1:num_sources
+
+            # add the nearest neighbour connections
+            # each node i should be connected to nodes mod((i - Z/2),L),... mod((i + Z/2),L)
+            for j in 1:distance
+
+                if i + j <= num_sources
+
+                    CM[i, i + j] = cablecount
+                    cablecount += 1
+
+                elseif CM[i + j - num_sources, i] == 0 
+
+                    CM[i + j - num_sources, i] = cablecount
+                    cablecount += 1
+                end
+            end
+        end
+
+    elseif num_sources <= num_loads
+
+        for i in 1:num_sources
+
+            # add the nearest neighbour connections
+            # each node i should be connected to nodes mod((i - Z/2),L),... mod((i + Z/2),L)
+
+            for j in 2:distance
+
+                if i + j <= num_sources
+
+                    CM[i, i + j] = cablecount
+                    cablecount += 1
+
+                elseif CM[i + j - num_sources, i] == 0 
+
+                    CM[i + j - num_sources, i] = cablecount
+                    cablecount += 1
+                end
             end
         end
     end
 
     # add the random connections
-    for i in 1:convert(Int64, round(p*L*Z/2))
+    for i in 1:convert(Int64, round(p*num_sources*Z/2))
 
-        node1 = convert(Int64, round((L-1)*rand() + 1))
-        node2 = convert(Int64, round((L-1)*rand() + 1))
+        node1 = convert(Int64, round((num_sources-1)*rand() + 1))
+        node2 = convert(Int64, round((num_sources-1)*rand() + 1))
 
-        while M[node1, node2] >= 1 || M[node2,node1] >= 1 || node1 == node2
+        while CM[node1, node2] >= 1 || CM[node2,node1] >= 1 || node1 == node2
 
-            node1 = convert(Int64, round((L-1)*rand() + 1))
-            node2 = convert(Int64, round((L-1)*rand() + 1))
+            node1 = convert(Int64, round((num_sources-1)*rand() + 1))
+            node2 = convert(Int64, round((num_sources-1)*rand() + 1))
 
-            if sum(M) >= L*(L - 1)/2
+            if sum(CM) >= num_sources*(num_sources - 1)/2
                 break
             end
         end
 
-        if node2 > node1 && M[node1,node2] < 1
-            M[node1,node2] = 1
-        elseif node1 > node2 && M[node2,node1] < 1
-            M[node2,node1] = 1
+        if node2 > node1 && CM[node1,node2] < 1
+
+            CM[node1,node2] = cablecount
+            cablecount += 1
+
+        elseif node1 > node2 && CM[node2,node1] < 1
+            
+            CM[node2,node1] = cablecount
+            cablecount += 1
         end
     end
 
-    M = M + transpose(M) # The electrical network may not necessarily be
-    # birectional, since sources aren't capable of acting as loads.
+    if num_sources <= num_loads
 
-    return M
+        ratio = Int(floor(num_loads/num_sources))
+        remainder = num_loads%num_sources
+
+        for i in 1:num_sources
+
+            if i <= remainder
+                ad_ratio = ratio + 1
+            else
+                ad_ratio = ratio
+            end
+
+            CM = NewCM(CM, size(CM, 1), ad_ratio)
+
+            # Add load nodes - starting
+            node1 = i
+            node2 = num_sources + load_cnt + 1
+
+            if node2 > num_nodes
+                node2 = 1
+            end
+
+            if node1 < node2
+                CM[node1, node2] = cablecount
+            else
+                CM[node2, node1] = cablecount
+            end
+
+            cablecount += 1
+
+            # Add edges between loads
+            for j in 1:ad_ratio-1
+
+                node1 = num_sources + load_cnt + j
+                node2 = num_sources + load_cnt + j + 1
+
+                if node1 < node2
+                    CM[node1, node2] = cablecount
+                else
+                    CM[node2, node1] = cablecount
+                end
+
+                cablecount += 1
+            end
+
+            load_cnt += ad_ratio
+
+            # Add load nodes - ending
+            node1 = num_sources + load_cnt
+            node2 = i + 1
+
+            if node2 > num_sources
+                node2 = 1
+            end
+
+            if node1 < node2
+                CM[node1, node2] = cablecount
+            else
+                CM[node2, node1] = cablecount
+            end
+
+            cablecount += 1
+        end
+    end
+
+    CM = CM - transpose(CM)
+
+    return CM, cablecount - 1
 end
 
-function Barabasi_Albert(L; m = 2)
+function Barabasi_Albert(L; m = 1, α = 0)
 
     #=
         The Barabasi-Albert model is an algorithm for generating random scale-free networks
@@ -2543,34 +2693,53 @@ function Barabasi_Albert(L; m = 2)
         links that the existing nodes already have.
 
         In this case m = 1 or m = 2. m0 is equal to 2
+
+        if α is not equal to 1 then we have the more general non-linear preferential
+        attachment (NLPA) model. If 0 < α < 1, NLPA is referred to as "sub-linear" and
+        the degree distribution of the network tends to a stretched exponential
+        distribution. if α > 1, NLPA is referred to as "super-linear" and a small
+        number of nodes connect to almost all other nodes in the network. For both
+        α < 1 and α > 1, the scale free property of the network is broken in the
+        limit of infinite system size.
     =#
 
-    M = Array{Float64, 2}(undef, L, L)
-    M = fill!(M, 0)
+    CM = Array{Int64, 2}(undef, L, L)
+    CM = fill!(CM, 0)
 
-    M[1,2] = 1 #just connecting the first node with the second
-    M[2,1] = 1
+    CM[1,2] = 1 #just connecting the first node with the second
+    CM[2,1] = -1
+
+    cablecount = 2
 
     for i in 3:L
 
         m_count = 0
+
         while m_count < m
+
             for j in 1:i-1
-                #k = length(GetNeighbours(M, j))
-                k = sum(M[j,:])
-                kt = sum(M[1:i-1, 1:i-1])
+
+                k = sum(abs.(CM[j, :]) .> 0)
+                kt = sum(abs.(CM[1:i-1, 1:i-1]) .> 0)
+
+                #= for k in 1:L
+                    kt = kt + sum(M[k,:])^α
+                end =#
+
                 p = k/kt
 
-                if rand() < p && M[i, j] != 1 && m_count < m
-                    M[i, j] = 1
-                    M[j, i] = 1
+                if rand() < p && CM[i, j] != 1 && m_count < m
+                    
+                    CM[i, j] = cablecount
+                    CM[j, i] = -1*cablecount
                     m_count += 1
+                    cablecount += 1
                 end
             end
         end
     end
 
-    return M
+    return CM, cablecount - 1
 end
 
 function FindpathLengthsFromNode(M, node)

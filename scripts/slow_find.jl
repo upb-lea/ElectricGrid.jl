@@ -30,15 +30,10 @@ function series_xy_logk_indx(series, npast, nfuture, concat_valid_map)
                 i = k + 1
                 j = l + 1
 
-                # from index of (past,future) pairs to index in data series
                 î = concat_valid_map[i]
                 ĵ = concat_valid_map[j]
 
-                sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, 0, 
-                2.0, 1.0, 1.0, 
-                200.0, -0.0025, -0.0025)
-
-                #sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, sum_past_factor, sum_future_factor)
+                sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, -0.0025, -0.0025)
 
                 sx[i,j] = sumx
                 sx[j,i] = sumx
@@ -51,15 +46,10 @@ function series_xy_logk_indx(series, npast, nfuture, concat_valid_map)
                 i = m - k + 1
                 j = m - l
 
-                # from index of (past,future) pairs to index in data series
                 î = concat_valid_map[i]
                 ĵ = concat_valid_map[j]
 
-                sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, 0, 
-                2.0, 1.0, 1.0, 
-                200.0, -0.0025, -0.0025)
-
-                #sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, sum_past_factor, sum_future_factor)
+                sumx, sumy = sxy_logk(î, ĵ, series, npast, nfuture, -0.0025, -0.0025)
 
                 sx[i,j] = sumx
                 sx[j,i] = sumx
@@ -72,162 +62,28 @@ function series_xy_logk_indx(series, npast, nfuture, concat_valid_map)
     return sx, sy
 end
 
-#= function sxy_logk(i, j, series, npast, nfuture, sum_past_factor, sum_future_factor)
+function sxy_logk(i, j, series, npast, nfuture, sum_past_factor, sum_future_factor)
     
     sumx = 0
 
     for t in 0:npast - 1
 
         d = series[i-t] .- series[j-t]
-        ds = sum(abs2, d)
-
-        sumx += ds
-
-    end
-    
-    sumy = 0
-
-    for t in 0:nfuture - 1
-
-        d = series[i+1+t] .- series[j+1+t]
-        ds = sum(abs2, d)
-
-        sumy += ds
-    end
-    
-    return sumx * sum_past_factor, sumy * sum_future_factor
-end =#
-
-function sxy_logk(i, j, series, npast, nfuture, localdiff, 
-    kernel_params_2, factor_r_past, factor_r_future, 
-    sum_r_past, sum_past_factor, sum_future_factor)
-
-    if localdiff == 1
-
-        # weighted average over each past series
-        # diff of these => weighted avg of diffs
-        r = 1
-        delta = zeros(size(series, 2))
-
-        for t in 0:npast-1
-
-            d = series[i-t, :] .- series[j-t, :]
-            delta += d * r
-            r *= factor_r_past
-        end
-
-        delta /= sum_r_past 
-
-    elseif localdiff == 2
-        # value of the "present"
-        delta = series[i,:] - series[j,:]
-    end
-    
-    r = 1
-    sumx = 0
-
-    for t in 0:npast - 1
-
-        d = series[i-t,:] .- series[j-t,:]
-
-        if localdiff != 0
-            d = d .- delta
-        end
         
         ds = sum(abs2, d)
 
-        if kernel_params_2 != 2
-            ds = ds^(0.5*kernel_params_2)
-        end
-
-        sumx += ds * r
-        r *= factor_r_past
-
+        sumx += ds
     end
-    
-    #= r = 1
-    sumy = 0
 
-    for t in 0:nfuture - 1
-
-        d = series[i+1+t,:] .- series[j+1+t,:]
-
-        if localdiff != 0
-            d = d .- delta
-        end
-
-        ds = sum(abs2, d)
-
-        if kernel_params_2 != 2
-            ds = ds^(0.5*kernel_params_2)
-        end
-
-        sumy += ds * r
-        r *= factor_r_future
-    end =#
-
-    #= if localdiff == 1
-
-        # weighted average over each past series
-        # diff of these => weighted avg of diffs
-        r = 1
-        delta = zeros(size(series, 2))
-
-        for t in 0:npast-1
-
-            d = series[i-t, :] .- series[j-t, :]
-
-            delta += d * r
-            r *= factor_r_past
-        end
-
-        delta /= sum_r_past 
-
-    elseif localdiff == 2
-        # value of the "present"
-        delta = series[i,:] .- series[j,:]
-    end =#
-    
-    #= r = 1
-    sumx = 0
-
-    for t in 0:npast - 1
-
-        d = series[i-t] .- series[j-t]
-
-        if localdiff != 0
-            d = d .- delta
-        end
-
-        ds = sum(abs2, d)
-
-        if kernel_params_2 != 2
-            ds = ds^(0.5*kernel_params_2)
-        end
-
-        sumx += ds * r
-        r *= factor_r_past
-    end =#
-    
-    r = 1
     sumy = 0
 
     for t in 0:nfuture - 1
 
         d = series[i+1+t] .- series[j+1+t]
 
-        if localdiff != 0
-            d = d .- delta
-        end
-
         ds = sum(abs2, d)
 
-        if kernel_params_2 != 2
-            ds = ds^(0.5*kernel_params_2)
-        end
-
-        sumy += ds * r
-        r *= factor_r_future
+        sumy += ds
     end
     
     return sumx * sum_past_factor, sumy * sum_future_factor

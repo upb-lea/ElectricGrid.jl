@@ -12,7 +12,7 @@ include(srcdir("Classical_Control.jl"))
 include(srcdir("Power_System_Theory.jl"))
 include(srcdir("MultiAgentGridController.jl")) =#
 
-print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
+println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
 # Network Parameters 
@@ -189,11 +189,11 @@ push!(load_list, load)
 grid = Dict()
 
 grid["v_rms"] = 230
-load["ramp_end"] = 0.04
-load["process_start"] = 0.04
-load["f_grid"] = 50 
-load["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
-load["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
+grid["ramp_end"] = 0.04
+grid["process_start"] = 0.04
+grid["f_grid"] = 50 
+grid["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
+grid["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
 #-------------------------------------------------------------------------------
 # Amalgamation
@@ -240,4 +240,4 @@ for eps in 1:num_eps
                       freq_to_plot    = [1 2])
 end
 
-print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
+println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

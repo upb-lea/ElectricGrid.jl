@@ -1,4 +1,4 @@
-include("./env.jl")
+
 
 mutable struct Classical_Controls
 
@@ -691,23 +691,23 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
         for s in axes(Source_Indices, 1)
 
             s_idx = string(Source_Indices[s])
-    
-            Source.V_cable_loc[:, s]  = findall(contains(s_idx*"_v_C_cable"), state_ids_classic)
-            Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+
+            Source.V_cable_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_cable"), state_ids_classic)
+            Source.I_inv_loc[:, s] = findall(contains("source"*s_idx*"_i_L1"), state_ids_classic)
 
             if Source.filter_type[s] == "LC"
 
-                Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_filt"), state_ids)
+                Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
+                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_filt"), state_ids)
 
             elseif Source.filter_type[s] == "LCL"
 
-                Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
+                Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
+                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_i_L2"), state_ids_classic)
             
             elseif Source.filter_type[s] == "L"
 
-                Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_cable"), state_ids)
+                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_cable"), state_ids)
             end
         end
 
@@ -2526,14 +2526,14 @@ function Observer_Initialiser(Source::Classical_Controls, ns)
                zeros(3,1) D]
 
         # reorganising matrices
-        A_DQ = Switch_Rows(A_DQ, 2, 4)
-        A_DQ = Switch_Rows(A_DQ, 3, 4)
-        A_DQ = Switch_Rows(A_DQ, 4, 5)
+        A_DQ = Switch_Rows!(A_DQ, 2, 4)
+        A_DQ = Switch_Rows!(A_DQ, 3, 4)
+        A_DQ = Switch_Rows!(A_DQ, 4, 5)
 
-        B_DQ = Switch_Rows(B_DQ, 2, 4)
+        B_DQ = Switch_Rows!(B_DQ, 2, 4)
 
-        D_DQ = Switch_Rows(D_DQ, 2, 3)
-        D_DQ = Switch_Rows(D_DQ, 4, 5)
+        D_DQ = Switch_Rows!(D_DQ, 2, 3)
+        D_DQ = Switch_Rows!(D_DQ, 4, 5)
 
         Ad = exp(A_DQ*Source.ts)
         Bd = A_DQ \ (Ad - I)*B_DQ
@@ -2624,7 +2624,7 @@ function Observability(C, A)
     return O, rank(O)
 end
 
-function Switch_Rows(A, row_1, row_2)
+function Switch_Rows!(A, row_1, row_2)
 
     num_rows = size(A, 1)
     num_cols = size(A, 2)

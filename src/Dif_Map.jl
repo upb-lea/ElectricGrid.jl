@@ -87,14 +87,27 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
 
         q = (1) ./ q
 
-        mat = mat .* reshape(q, :, 1)
-        mat = mat .* reshape(q, 1, :)
+        mat = mat .* q
+        mat = mat .* transpose(q)
 
     end
 
+    q = (1) ./ vec(sum(mat, dims = 2))
+
     # krylovdim = N (worst case) or krylovdim = num_basis + 1
-    eigval, eigvec, info = geneigsolve((mat, diagm(q)), num_basis, :LM; issymmetric = true, krylovdim = num_basis + 1)
+    #= eigval, eigvec, _ = geneigsolve((mat, inv(diagm(q))), num_basis, :LM; issymmetric = true, krylovdim = num_basis + 1)
     eigvec = reduce(hcat, eigvec)
+
+    println("\neigval = ")
+    display(eigval) =#
+
+    decomp,_  = partialschur(diagm(q)*mat, nev = num_basis, 
+    tol = 1e-6, restarts = 200, which = LM())
+    eigval, eigvec = partialeigen(decomp)
+
+    order = sortperm(eigval, rev = true)
+    eigval = eigval[order]
+    eigvec = eigvec[:, order]
     
     if eigen_cutoff >= 0
 
@@ -103,8 +116,8 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
     
     if num_basis < size(eigval, 1)
         # copies avoid to keep the full matrix referenced
-        eigval = copy(eigval[1:num_basis])
-        eigvec = copy(eigvec[:, 1:num_basis])
+        eigval = eigval[1:num_basis]
+        eigvec = eigvec[:, 1:num_basis]
     end
     
     # Normalization so that eigvec_r[:,1] entries are all 1
@@ -114,9 +127,27 @@ function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
     eigvec_l = eigvec .* (q * eigvec[1,1])
 
     if scaled
-        return eigval, eigvec_l, eigvec_r .* transpose(eigval), info
+        return eigval, eigvec_l, eigvec_r .* transpose(eigval)
     end
 
-    return eigval, eigvec_l, eigvec_r, info
+    return eigval, eigvec_l, eigvec_r
+end
+
+struct ShiftAndInvert{TA,TB,TT}
+
+    A_lu::TA
+    B::TB
+    temp::TT
+end
+
+function (M::ShiftAndInvert)(y,x)
+
+    mul!(M.temp, M.B, x)
+    ldiv!(y, M.A_lu, M.temp)
 end
     
+function construct_linear_map(A,B)
+
+    a = ShiftAndInvert(factorize(A), B, Vector{eltype(A)}(undef, size(A,1)))
+    LinearMap{eltype(A)}(a, size(A,1), ismutating=true)
+end

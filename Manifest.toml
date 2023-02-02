@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "6cccea9aed35ac97f3d45505597e07aae0741db7"
+project_hash = "efe86b3bdcbdae9e2da934d4b10c769cecc0a361"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1659,6 +1659,12 @@ deps = ["Dates", "SnoopPrecompile"]
 git-tree-sha1 = "8175fc2b118a3755113c8e68084dc1a9e63c61ee"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "2.5.3"
+
+[[deps.Peaks]]
+deps = ["Compat", "RecipesBase"]
+git-tree-sha1 = "ca47b866754525ede84e5dec84a104c45f92afb6"
+uuid = "18e31ff7-3703-566c-8e60-38913d67486b"
+version = "0.4.3"
 
 [[deps.Pidfile]]
 deps = ["FileWatching", "Test"]

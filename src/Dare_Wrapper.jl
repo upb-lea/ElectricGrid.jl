@@ -1,4 +1,3 @@
-using ReinforcementLearning
 
 """
     Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
@@ -18,12 +17,15 @@ Runs the simulation with the specified parameters.
 - `Multi_Agent::MultiAgentGridController`: (optional)
 
 """
+
+
 function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
+
 
     #_______________________________________________________________________________
     # Setting up the Agents
 
-    Multi_Agents = Dict()
+    Agents = Dict()
 
     #-------------------------------------------------------------------------------
     # Setting up the controls for the Classical Sources
@@ -37,13 +39,62 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
     num_RL_sources = env.nc.num_sources - num_clas_sources # number of reinforcement learning controlled sources
 
-    if num_RL_sources == 1
+    
 
-        ns = length(env.sys_d.A[1,:])
-        na = length(env.sys_d.B[1,:])
+    #= for s in axes(Source_Indices, 1)
 
-        agent = create_agent_ddpg(na = na, ns = ns, use_gpu = env_cuda)
+        s_idx = string(Source_Indices[s])
+
+        Source.V_cable_loc[:, s]  = findall(contains(s_idx*"_v_C_cable"), state_ids_classic)
+        Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
+
+        if Source.filter_type[s] == "LC"
+
+            Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
+            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_filt"), state_ids)
+
+        elseif Source.filter_type[s] == "LCL"
+
+            Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
+            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
+        
+        elseif Source.filter_type[s] == "L"
+
+            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_cable"), state_ids)   # TODO check _v_C_??
+        end
+    end
+
+    letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
+
+    Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
+    Source_Indices), letterdict[split(x, "_")[3]]] for x in action_ids_classic] =#
+
+    RL_Source_Indices = Array{Int64, 1}(undef, 0)
+    for ns in 1:env.nc.num_sources
+
+        if env.nc.parameters["source"][ns]["control_type"] == "RL"
+            RL_Source_Indices = [RL_Source_Indices; Int(ns)]
+        end
+    end
+
+    ssa = "source".*string.(RL_Source_Indices)
+    env.state_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.state_ids)     
+    env.action_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.action_ids)
+
+    if num_RL_sources > 0
+
+        ns = length(env.state_ids) - length(Animo.policy.state_ids)  # all RL_type sources are controlled by 1 RL_agent (#TODO: spilt up to more then 1 agent?)
+        na = length(env.action_ids) - length(Animo.policy.action_ids)
+
+        agent = create_agent_ddpg(na = na, ns = length(env.state_ids_RL), use_gpu = false)
         agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
+
+        RL_policy = Dict()
+        RL_policy["policy"] = agent
+        RL_policy["state_ids"] = env.state_ids_RL
+        RL_policy["action_ids"] = env.action_ids_RL
+
+        Agents[nameof(agent)] = RL_policy
     end
     
     #-------------------------------------------------------------------------------
@@ -59,10 +110,10 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
         polc["state_ids"] = Animo.policy.state_ids
         polc["action_ids"] = Animo.policy.action_ids
 
-        Multi_Agents[nameof(Animo)] = polc
+        Agents[nameof(Animo)] = polc
     end
     
-    Multi_Agent = MultiAgentGridController(Multi_Agents, env.action_ids)
+    Multi_Agent = MultiAgentGridController(Agents, env.action_ids)
 
     #_______________________________________________________________________________
     # Logging
@@ -86,6 +137,7 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
         return nothing
     end
 end
+
 
 #= 
     mutable struct dare_setup

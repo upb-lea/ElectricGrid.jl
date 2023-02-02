@@ -6,12 +6,12 @@ using CSV
 using DataFrames
 using PlotlyJS
 
-print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
+print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........")
 
 npast = 10 #Past Series size
 nfuture = 10 #Future series size
 
-N = 4000 #Number of training samples
+N = 8000 #Number of training samples
 
 scale = 1 #bandwidth
 
@@ -44,33 +44,21 @@ end
 @time begin
 
     println("\n1. Generating gram matrices")
-    Gx, Gy, index_map = series_Gxy([vec(series), vec(series)], scale, npast, nfuture)
+    Gx, Gy, index_map = series_Gxy([series], scale, npast, nfuture)
 
-    #= println("Gx = ")
-    display(Gx)
-    println("Gy = ")
-    display(Gy) =#
-
-    # Compute the state similarity matrix. See the paper
+    # Compute the state similarity matrix.
     println("\n2. Computing Gs")
     Gs = Embed_States(Gx, Gy)
 
-    #= println("Gs = ")
-    display(Gs) =#
-    # Compute a spectral basis for representing the causal states. See the paper
+    # Compute a spectral basis for representing the causal states.
     println("\n3. Projection")
-    eigenvalues, basis, coords, info = Spectral_Basis(Gs, num_basis = 10, scaled = false)
+    eigenvalues, basis, coords = Spectral_Basis(Gs, num_basis = 2, scaled = false)
+
 end
-#= println("eigenvalues = ")
-display(eigenvalues)
-println("basis = ")
-display(basis)
-println("coords = ")
-display(coords) =#
 
 df = DataFrame(Ψ₁ = coords[:,2])
 p = plot(df, x = :Ψ₁, kind = "histogram", nbinsx = 100, histnorm = "probability density")
 
 display(p)
 
-print("\n...........o0o----ooo0o0ooo~~~  END  ~~~ooo0o0ooo----o0o...........\n")
+print("\n...........o0o----ooo0o0ooo~~~   END   ~~~ooo0o0ooo----o0o...........\n")
