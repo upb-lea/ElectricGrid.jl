@@ -1635,8 +1635,8 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
     #----
 
     #----
-    cos_θ_new = cos.([θ_new; θ_new - 120*π/180; θ_new + 120*π/180])
-    Source.V_ref[num_source, :] = ω_new*Mfif_new*cos_θ_new # three phase generated voltage
+    # three phase generated voltage
+    Source.V_ref[num_source, :] = ω_new*Mfif_new*cos.([θ_new; θ_new - 2*π/3; θ_new + 2*π/3]) 
     #----
 
     return nothing
@@ -1908,6 +1908,12 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
                     Pset = Source.X[ns][end]
                 end
                
+                Pset = -1*abs.(Pset)
+
+                if sign(Pset) != sign(Source.X[ns][end])
+                    Source.X[ns][end] = -1*Source.X[ns][end]
+                end
+
                 Sset = Pset/Source.pf[ns]
                 Source.pq0_set[ns, 1] = Pset
                 Source.pq0_set[ns, 2] = sqrt(Sset^2 - Pset^2)*sign(Pset*Source.pf[ns])
@@ -1924,7 +1930,7 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
 
                 if ns == 5   
                     
-                    Source.debug[1] = randn()
+                    Source.debug[1] = Pset
                 else
                     Source.debug[2] = Pset
                 end

@@ -2709,54 +2709,58 @@ function MG_SmallWorld(num_sources; Z = 2, p = 0.2)
 
     cablecount = 1
 
-    for i in 1:num_sources
+    if num_sources > 1
 
-        # add the nearest neighbour connections
-        # each node i should be connected to nodes mod((i - Z/2),L),... mod((i + Z/2),L)
-        for j in 1:distance
+        for i in 1:num_sources
 
-            if i + j <= num_sources
+            # add the nearest neighbour connections
+            # each node i should be connected to nodes mod((i - Z/2),L),... mod((i + Z/2),L)
+            for j in 1:distance
 
-                CM[i, i + j] = cablecount
-                cablecount += 1
+                if i + j <= num_sources
 
-            elseif CM[i + j - num_sources, i] == 0 
+                    CM[i, i + j] = cablecount
+                    cablecount += 1
 
-                CM[i + j - num_sources, i] = cablecount
-                cablecount += 1
+                elseif CM[i + j - num_sources, i] == 0 
+
+                    CM[i + j - num_sources, i] = cablecount
+                    cablecount += 1
+                end
             end
         end
-    end
 
-    # add the random connections
-    for i in 1:convert(Int64, round(p*num_sources*Z/2))
-
-        node1 = convert(Int64, round((num_sources-1)*rand() + 1))
-        node2 = convert(Int64, round((num_sources-1)*rand() + 1))
-
-        while CM[node1, node2] >= 1 || CM[node2, node1] >= 1 || node1 == node2
+        # add the random connections
+        for i in 1:convert(Int64, round(p*num_sources*Z/2))
 
             node1 = convert(Int64, round((num_sources-1)*rand() + 1))
             node2 = convert(Int64, round((num_sources-1)*rand() + 1))
 
-            if sum(CM) >= num_sources*(num_sources - 1)/2
-                break
+            while CM[node1, node2] >= 1 || CM[node2, node1] >= 1 || node1 == node2
+
+                node1 = convert(Int64, round((num_sources-1)*rand() + 1))
+                node2 = convert(Int64, round((num_sources-1)*rand() + 1))
+
+                if sum(CM) >= num_sources*(num_sources - 1)/2
+                    break
+                end
+            end
+
+            if node2 > node1 && CM[node1,node2] < 1
+
+                CM[node1, node2] = cablecount
+                cablecount += 1
+
+            elseif node1 > node2 && CM[node2, node1] < 1
+                
+                CM[node2, node1] = cablecount
+                cablecount += 1
             end
         end
 
-        if node2 > node1 && CM[node1,node2] < 1
-
-            CM[node1, node2] = cablecount
-            cablecount += 1
-
-        elseif node1 > node2 && CM[node2, node1] < 1
-            
-            CM[node2, node1] = cablecount
-            cablecount += 1
-        end
     end
 
-    CM = NewCM(CM, size(CM, 1), 2*num_sources) 
+    #= CM = NewCM(CM, size(CM, 1), 2*num_sources) 
 
     for i in 1:num_sources
 
@@ -2771,6 +2775,19 @@ function MG_SmallWorld(num_sources; Z = 2, p = 0.2)
 
         node1 = i
         node2 = i + 2*num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+    end
+ =#
+
+    CM = NewCM(CM, size(CM, 1), num_sources) 
+
+    for i in 1:num_sources
+
+        # Add Static Load
+
+        node1 = i
+        node2 = i + num_sources
         CM[node1, node2] = cablecount
         cablecount += 1
     end
@@ -2910,7 +2927,7 @@ function MG_Barabasi_Albert(num_sources; m = 1, α = 0)
         end
     end
 
-    CM = NewCM(CM, size(CM, 1), 2*num_sources) 
+    #= CM = NewCM(CM, size(CM, 1), 2*num_sources) 
 
     for i in 1:num_sources
 
@@ -2925,6 +2942,18 @@ function MG_Barabasi_Albert(num_sources; m = 1, α = 0)
 
         node1 = i
         node2 = i + 2*num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+    end =#
+
+    CM = NewCM(CM, size(CM, 1), num_sources) 
+
+    for i in 1:num_sources
+
+        # Add Static Load
+
+        node1 = i
+        node2 = i + num_sources
         CM[node1, node2] = cablecount
         cablecount += 1
     end

@@ -2741,7 +2741,7 @@ function Cable_Length_Setup(num_cables; random = 0, length_bounds = [0.5; 1.5])
 
 end
 
-function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vrms = 230)
+function MG_Setup(num_sources, num_cables; random = nothing, avg_pwr = 200e3, Vrms = 230)
 
     #= Modes:
         1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
@@ -2750,8 +2750,8 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
         4 -> "Synchronverter" - enhanced droop control
     =#
 
-    gen_static_load_ratio = 40
-    gen_contr_load_ratio = 5
+    gen_static_load_ratio = 6
+    gen_contr_load_ratio = 3
 
     source_list = []
     load_list = []
@@ -2766,7 +2766,7 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
     if random != 0 && !isnothing(random)
 
         Random.seed!(1234)
-        pwrs = rand(Uniform(0.5*awg_pwr, 1.5*awg_pwr), num_sources)
+        pwrs = rand(Uniform(0.5*avg_pwr, 1.5*avg_pwr), num_sources)
     end
 
     # Grid Forming sources
@@ -2779,11 +2779,11 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
 
             # Grid Forming sources
 
-            source["mode"]     = 3
+            source["mode"]     = 6
 
             source["fltr"]     = "LCL"  # Filter type
 
-            pwr = awg_pwr
+            pwr = avg_pwr
             source["pwr"]      = pwr # Rated Apparent Power, VA
             source["p_set"]    = 0   # Real Power Set Point, Watt
             source["q_set"]    = 0   # Imaginary Power Set Point, VAi
@@ -2791,6 +2791,9 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
             source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
 
             source["Observer"] = true   # Discrete Luenberger Observer
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
 
         else
 
@@ -2818,7 +2821,7 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
 
     end   
 
-    # Grid Following sources, i.e. controllable loads 
+    #= # Grid Following sources, i.e. controllable loads 
     avg_contr_load = total_gen/(num_contr_loads*gen_contr_load_ratio)
 
     if random != 0 && !isnothing(random)
@@ -2826,7 +2829,7 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
         Random.seed!(1234)
         pwrs = rand(Uniform(0.5*avg_contr_load, 1.5*avg_contr_load), num_contr_loads)
         Random.seed!(1234)
-        pfs = rand(Uniform(0.7, 1.0), num_contr_loads)
+        pfs = rand(Uniform(0.9, 1.0), num_contr_loads)
     end
 
     for i in 1:num_contr_loads
@@ -2840,7 +2843,7 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
             source["fltr"]     = "L"  # Filter type
 
             pwr = avg_contr_load
-            pf = 0.8
+            pf = 0.9
             source["pwr"]      = 1.5*pwr # Rated Apparent Power, VA
             source["p_set"]    = -pf*pwr # Real Power Set Point, Watt
             source["q_set"]    = -pwr*sqrt(1 - pf^2)   # Imaginary Power Set Point, VAi
@@ -2853,19 +2856,19 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
 
             source["pwr"]      = 1.5*pwrs[i] # Rated Apparent Power, VA
             source["p_set"]    = -pfs[i]*pwrs[i] # Real Power Set Point, Watt
-            source["q_set"]    = -pwrs[i]*sqrt(1 - pfs[i]^2)   # Imaginary Power Set Point, VAi
+            source["q_set"]    = -pwrs[i]*sqrt(1 - pfs[i]^2) # Imaginary Power Set Point, VAi
 
             source["std_asy"]  = pwrs[i]/2   # Asymptotic Standard Deviation
-            source["σ"]        = pwrs[i]/5   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
-            source["Δt"]       = 0.04   # Time Step, seconds
-            source["X₀"]       = 0      # Initial Process Values, Watt
-            source["k"]        = 2      # Interpolation degree
+            source["σ"]        = pwrs[i]/2   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+            source["Δt"]       = 0.02   # Time Step, seconds
+            #source["X₀"]       = 0      # Initial Process Values, Watt
+            source["k"]        = 1      # Interpolation degree
 
         end
 
         push!(source_list, source)
         
-    end
+    end =#
 
     # Static loads
     avg_static_load = total_gen/(num_static_loads*gen_static_load_ratio)
@@ -2874,9 +2877,9 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
 
         load = Dict()
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(avg_static_load, 0.8, Vrms)
+        R_load, L_load, _, _ = Parallel_Load_Impedance(avg_static_load, 1.0, Vrms)
 
-        load["impedance"] = "RL"
+        load["impedance"] = "R"
         load["R"] = R_load
         load["L"] = L_load
         load["S"] = avg_static_load
@@ -2887,7 +2890,8 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
 
     # Cables
 
-    MG_cables = 2*num_sources
+    #MG_cables = 2*num_sources
+    MG_cables = num_sources
     inter_cables = num_cables - MG_cables
 
     for i in 1:num_cables
@@ -2895,16 +2899,20 @@ function MG_Setup(num_sources, num_cables; random = nothing, awg_pwr = 200e3, Vr
         cable = Dict()
 
         if i <= inter_cables
-            l = 2
+            l = 1
         else
-            l = 0.5
+            l = 0.1
         end
 
-        cable["len"]     = 1
-        cable["R"]       = l*0.3  # Ω, line resistance
-        cable["L"]       = l*0.0001 # H, line inductance
+        cable["len"]     = l
+        cable["R"]       = l*0.722  # Ω, line resistance
+        cable["L"]       = l*0.264e-3# H, line inductance
         cable["C"]       = l*0.4e-6  # F, line capacitance
         cable["i_limit"] = 10e12   # A, line current limit
+
+        #= cable["Rb"] =  0.722
+        cable["Cb"] = 0.4e-6
+        cable["Lb"] =  0.264e-3 =#
         
         push!(cable_list, cable)
 
