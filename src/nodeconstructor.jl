@@ -2721,12 +2721,12 @@ function Cable_Length_Setup(num_cables; random = 0, length_bounds = [0.5; 1.5])
 
         cable = Dict()
         
-        if random == 0
+        if random == 0 #remove 
 
             cable["len"]     = sum(length_bounds)/2   # km
-            cable["R"]       = 0.208   # Ω, line resistance
-            cable["L"]       = 0.00025 # H, line inductance
-            cable["C"]       = 0.4e-3  # F, line capacitance
+            # cable["R"]       = 0.208   # Ω, line resistance
+            # cable["L"]       = 0.00025 # H, line inductance
+            # cable["C"]       = 0.4e-3  # F, line capacitance
             cable["i_limit"] = 10e12   # A, line current limit
 
         else
