@@ -42,16 +42,16 @@ parameters = Dict{Any, Any}(
                         ],
          "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
-                        ]. 
+                        ], 
         # "cable"   => Any[
         #                 Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
         #                 ],
-        "grid" => Dict{Any, Any}("vrms" => 230, "ramp_end" => 0.0)
+        "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 1)
 
 #_______________________________________________________________________________
 # Setting up data hooks
