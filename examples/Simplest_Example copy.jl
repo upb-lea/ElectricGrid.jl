@@ -1,5 +1,5 @@
 # Copy of Simplest_Example.jl
-# invoke layout_cabels() by not specifying the cables in parameters
+# invoke layout_cabels() by specifying the cables in parameters #L832 from nodeconstructor
 #  - 2 sources - 1 load  (mode 1)
 # compare P, Q, p, q 
 using Dare
@@ -40,18 +40,18 @@ parameters = Dict{Any, Any}(
                         Dict{Any, Any}("pwr" => 200e3, "mode" => 1),
                         Dict{Any, Any}("pwr" => 200e3, "mode" => 1),
                         ],
-         "load"   => Any[
+        "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
                         ], 
-        # "cable"   => Any[
-        #                 Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
-        #                 ],
+        "cable"   => Any[
+                        Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
+                        ],
         "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 1)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
 # Setting up data hooks
