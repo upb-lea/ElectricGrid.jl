@@ -12,6 +12,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
+num_eps  = 100       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -71,11 +72,11 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [1 2], 
-                collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
-                collect_freq     = [1 2],
-                collect_sources  = [1 2])
+hook = DataHook(collect_vrms_ids = [1], 
+                collect_irms_ids = [1], 
+                collect_pq_ids   = [1], 
+                collect_freq     = [1],
+                collect_sources  = [1])
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -86,22 +87,19 @@ function RLBase.action_space(env::SimEnv, name::String)
         end
 end
 
-ma = Power_System_Dynamics(env, hook, return_Agents = true)
+ma = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
 
 #_______________________________________________________________________________
 # Plotting
 
 plot_hook_results(hook = hook, 
+                    episode = num_eps,
                     states_to_plot  = [], 
                     actions_to_plot = [],  
-                    p_to_plot       = [1 2], 
-                    q_to_plot       = [1 2], 
-                    vrms_to_plot    = [1 2], 
+                    p_to_plot       = [1], 
+                    q_to_plot       = [1], 
+                    vrms_to_plot    = [1], 
                     irms_to_plot    = [],
                     freq_to_plot    = [])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
-
-
-# Time domain : p, q
-# Freq domain : P, Q
