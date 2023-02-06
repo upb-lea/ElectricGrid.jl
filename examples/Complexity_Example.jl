@@ -15,8 +15,8 @@ t_end    = 1     # total run time, seconds
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-num_nodes = 10
-num_sources = 5
+num_nodes = 4
+num_sources = 2
 
 CM, num_cables  = SmallWorld(num_nodes, p = 0.0, Z = 2, num_sources = num_sources)
 #CM, num_cables = Barabasi_Albert(num_nodes)
@@ -26,8 +26,8 @@ CM, num_cables  = SmallWorld(num_nodes, p = 0.0, Z = 2, num_sources = num_source
 
 parameters = Dict{Any, Any}()
 
-parameters["source"], total_gen = Source_Setup(num_sources, random = 1, mode = 4)
-parameters["load"] = Load_Setup(num_nodes - num_sources, total_gen, random = 1)
+parameters["source"], total_gen = Source_Setup(num_sources, random = 0, mode = 4)
+parameters["load"] = Load_Setup(num_nodes - num_sources, total_gen, random = 0)
 parameters["cable"] = Cable_Length_Setup(num_cables, random = 0)
 parameters["grid"] = Dict("v_rms" => 230, "ramp_end" => 0.04, "process_start" => 1.0)
 
@@ -62,7 +62,7 @@ plot_hook_results(hook = hook,
                     actions_to_plot = [],  
                     p_to_plot       = 1:num_sources, 
                     q_to_plot       = [], 
-                    vrms_to_plot    = [], 
+                    vrms_to_plot    = 1:num_sources, 
                     irms_to_plot    = [],
                     freq_to_plot    = [])
 
