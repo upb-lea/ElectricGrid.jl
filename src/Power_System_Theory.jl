@@ -750,11 +750,12 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     optimize!(model)
 
     # TODO: put these warning/messages with logger // verbosity 
-    #= println("""
-    termination_status = $(termination_status(model))
-    primal_status      = $(primal_status(model))
-    objective_value    = $(objective_value(model))
-    """) =#
+    if verbosity:
+        println("""
+        termination_status = $(termination_status(model))
+        primal_status      = $(primal_status(model))
+        objective_value    = $(objective_value(model))
+        """) 
 
     #= println()
     println()
