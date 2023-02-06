@@ -475,6 +475,7 @@ end
 
 
 function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
+    @info "layout_cables invoked"
 
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
