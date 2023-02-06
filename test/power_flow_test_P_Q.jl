@@ -1,6 +1,7 @@
 using Dare
 using Test
 
+# with basic commands without SmallWorld
 @testset "Layout cables with Power flow equations" begin
  
             #_______________________________________________________________________________
@@ -21,22 +22,28 @@ using Test
 
             #-------------------------------------------------------------------------------
             # Sources
-
+            # invoke layout_cabels() by not specifying the cables in parameters
             parameters = Dict{Any, Any}(
                     "source" => Any[
-                                    Dict{Any, Any}("pwr" => 200e3),
-                                    Dict{Any, Any}("pwr" => 200e3)
+                                    Dict{Any, Any}("pwr" => 200e3, "mode" => 1),
+                                    Dict{Any, Any}("pwr" => 200e3, "mode" => 1)
                                     ],
                     "load"   => Any[
                                     Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006) 
-                                    ]
+                                    ],
+                #     "cable"   => Any[
+                #                     Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,)
+                #                     ]
                 )
             #_______________________________________________________________________________
         #     TODO cable layout
 
-
+            
             # Defining the environment
-            env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
+            env = SimEnv(   ts = Timestep, 
+                            CM = CM, 
+                            parameters = parameters, 
+                            t_end = t_end)
 
             #_______________________________________________________________________________
             # Setting up data hooks
@@ -67,6 +74,6 @@ using Test
             print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
         # TODO: Compare P Q values 
-            # Time domain : p, q
-            # Freq domain : P, Q
+            # Time domain : p, q from DataHook
+            # Freq domain : P, Q from optimizer
 end

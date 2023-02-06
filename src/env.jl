@@ -43,7 +43,30 @@ mutable struct SimEnv <: AbstractEnv
     action_ids_RL
 end
 
-function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing, verbosity = 0, state_ids_RL = nothing, action_ids_RL = nothing)
+function SimEnv(; maxsteps = 500, 
+                  ts = 1/10_000, 
+                  action_space = nothing, 
+                  state_space = nothing, 
+                  prepare_action = nothing, 
+                  featurize = nothing, 
+                  reward_function = nothing, 
+                  CM = nothing, 
+                  num_sources = nothing, 
+                  num_loads = nothing, 
+                  parameters = nothing, 
+                  x0 = nothing, 
+                  t0 = 0.0, 
+                  state_ids = nothing, 
+                  convert_state_to_cpu = true, 
+                  use_gpu = false, 
+                  reward = nothing, 
+                  action = nothing, 
+                  action_ids = nothing, 
+                  action_delay = 1, 
+                  t_end = nothing, 
+                  verbosity = 0, 
+                  state_ids_RL = nothing, 
+                  action_ids_RL = nothing)
 
     if !(isnothing(t_end))
         maxsteps = floor(t_end/ts) + 1
@@ -423,7 +446,7 @@ function (env::SimEnv)(action)
     # Power constraint
     env.reward = env.reward_function(env)
 
-    env.done = env.steps >= env.maxsteps || any(abs.(env.x./env.norm_array) .> 1)
+    env.done = env.steps >= env.maxsteps #|| any(abs.(env.x./env.norm_array) .> 1)
 
     # TODO define info on verbose
     if env.done
