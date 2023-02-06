@@ -474,9 +474,11 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
 end
 
 
-function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
-    @info "layout_cables invoked"
-
+function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosity)
+    if verbosity > 0
+        @info "layout_cables invoked"
+    end
+    
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
 
