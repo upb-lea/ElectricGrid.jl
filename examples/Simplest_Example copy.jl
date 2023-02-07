@@ -2,6 +2,14 @@
 # invoke layout_cabels() by specifying the cables in parameters #L832 from nodeconstructor
 #  - 2 sources - 1 load  (mode 1)
 # compare P, Q, p, q 
+# Start with putting every source in "mode" => 1 or "Swing". This is open loop - no control
+# All sources given filters that are "L" with small "L1" and "R1".
+# Start with only sources no loads.
+# All sources set to 1 p.u. peak
+# All sources set to delta = 0 degrees at first. Then vary angles.
+# Test for Vrms = 230 V, 100 V to make sure it works for different voltages
+# Add in loads and try different topologies.
+
 using Dare
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
@@ -15,7 +23,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
 
-#-------------------------------------------------------------------------------
+#---------------------------------------------------------------------------
 # Connectivity Matrix
 
  CM = [ 0. 0. 1.
@@ -37,12 +45,13 @@ t_end    = 0.2     # total run time, seconds
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 1),
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 1),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "RL",  "mode" => 1),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "RL",  "mode" => 1),
                         ],
-        "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
-                        ], 
+        # No load
+        # "load"   => Any[
+        #                 Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
+        #                 ], 
         "cable"   => Any[
                         Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
                         ],
