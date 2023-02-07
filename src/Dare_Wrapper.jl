@@ -30,7 +30,7 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
     Animo = NamedPolicy("classic", Classical_Policy(env))
 
-    if !isnothing(Animo)
+    if !isnothing(Animo.policy)
         num_clas_sources = Animo.policy.Source.num_sources # number of classically controlled sources
     else
         num_clas_sources = 0
@@ -40,8 +40,6 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     # Setting up the controls for the Reinforcement Learning Sources
 
     num_RL_sources = env.nc.num_sources - num_clas_sources # number of reinforcement learning controlled sources
-
-    
 
     #= for s in axes(Source_Indices, 1)
 
@@ -85,8 +83,13 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
     if num_RL_sources > 0
 
-        ns = length(env.state_ids) - length(Animo.policy.state_ids)  # all RL_type sources are controlled by 1 RL_agent (#TODO: spilt up to more then 1 agent?)
-        na = length(env.action_ids) - length(Animo.policy.action_ids)
+        if num_clas_sources > 0
+            ns = length(env.state_ids) - length(Animo.policy.state_ids)  # all RL_type sources are controlled by 1 RL_agent (#TODO: spilt up to more then 1 agent?)
+            na = length(env.action_ids) - length(Animo.policy.action_ids)
+        else
+            ns = length(env.state_ids)
+            na = length(env.action_ids)
+        end
 
         agent = create_agent_ddpg(na = na, ns = length(env.state_ids_RL), use_gpu = false)
         agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
