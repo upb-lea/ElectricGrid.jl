@@ -1,7 +1,7 @@
 using Plots
 using LinearAlgebra
 using FFTW
-using SymPy
+#using SymPy
 using ControlSystems
 
 #= Theory 1: Controller Definitions
@@ -39,11 +39,11 @@ f_cntr = 1/(Timestep*1e-6) # Hz, Sampling frequency of controller ~ 15 kHz -> 50
 
 #num_source = 1
 
-Lf = Source.Lf[num_source] # 2.3e-3 # Henry, filter inductor 
-Rf = Source.Rf[num_source]  # 400e-3 # Ohms, inductor parasitic resistance
-Cf = Source.Cf[num_source] # 10e-6  # Farad, filter capacitor
-Ts = Timestep*1e-6 # 0.1e-3 # Seconds, switching/sampling time step
-Vdc = Source.Vdc[num_source] # 2*600 # Volts, DC bus 
+Lf = 2.3e-3#Source.Lf[num_source] # 2.3e-3 # Henry, filter inductor 
+Rf = 400e-3#Source.Rf[num_source]  # 400e-3 # Ohms, inductor parasitic resistance
+Cf = 10e-6#Source.Cf[num_source] # 10e-6  # Farad, filter capacitor
+Ts = 0.1e-3# Timestep*1e-6 # 0.1e-3 # Seconds, switching/sampling time step
+Vdc = 2*600# Source.Vdc[num_source] # 2*600 # Volts, DC bus 
 
 fsys = 50 # Hz, System frequency
 
