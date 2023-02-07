@@ -120,7 +120,7 @@ hook = DataHook(collect_vrms_ids = [],
                 collect_irms_ids = [], 
                 collect_pq_ids   = [], 
                 collect_freq     = [],
-                collect_sources  = [1, 2])
+                collect_sources  = [])
 
 #_______________________________________________________________________________
 # Running the Time Simulation
