@@ -691,49 +691,56 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
             action_delay = 0
         end
 
-        Source = Classical_Controls(1/env.ts, 
-                                    length(Source_Indices), 
-                                    phases = env.nc.parameters["grid"]["phase"],
-                                    action_delay = action_delay)
+        if length(Source_Indices) > 0
 
-        Source_Initialiser(env, Source, Modes, Source_Indices)
+            Source = Classical_Controls(1/env.ts, 
+                                        length(Source_Indices), 
+                                        phases = env.nc.parameters["grid"]["phase"],
+                                        action_delay = action_delay)
 
-        #------------------------------------
+            Source_Initialiser(env, Source, Modes, Source_Indices)
 
-        for s in axes(Source_Indices, 1)
+            #------------------------------------
 
-            s_idx = string(Source_Indices[s])
+            for s in axes(Source_Indices, 1)
 
-            Source.V_cable_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_cable"), state_ids_classic)
-            Source.I_inv_loc[:, s] = findall(contains("source"*s_idx*"_i_L1"), state_ids_classic)
+                s_idx = string(Source_Indices[s])
 
-            if Source.filter_type[s] == "LC"
+                Source.V_cable_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_cable"), state_ids_classic)
+                Source.I_inv_loc[:, s] = findall(contains("source"*s_idx*"_i_L1"), state_ids_classic)
 
-                Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
-                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_filt"), state_ids)
+                if Source.filter_type[s] == "LC"
 
-            elseif Source.filter_type[s] == "LCL"
+                    Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
+                    Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_filt"), state_ids)
 
-                Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
-                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_i_L2"), state_ids_classic)
-            
-            elseif Source.filter_type[s] == "L"
+                elseif Source.filter_type[s] == "LCL"
 
-                Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_cable"), state_ids)
+                    Source.V_cap_loc[:, s]  = findall(contains("source"*s_idx*"_v_C_filt"), state_ids_classic)
+                    Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_i_L2"), state_ids_classic)
+                
+                elseif Source.filter_type[s] == "L"
+
+                    Source.I_poc_loc[:, s] = findall(contains("source"*s_idx*"_v_C_cable"), state_ids)
+                end
             end
+
+            letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
+
+            Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
+            Source_Indices), letterdict[split(x, "_")[3]]] for x in action_ids_classic]
+
+            #------------------------------------
+
+            animo = Classical_Policy(Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), Source,
+            state_ids_classic, action_ids_classic, Source_Indices)
+
+            return animo
+
+        else
+
+            return nothing
         end
-
-        letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
-
-        Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
-        Source_Indices), letterdict[split(x, "_")[3]]] for x in action_ids_classic]
-
-        #------------------------------------
-
-        animo = Classical_Policy(Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), Source,
-        state_ids_classic, action_ids_classic, Source_Indices)
-
-        return animo
     end
 end
 

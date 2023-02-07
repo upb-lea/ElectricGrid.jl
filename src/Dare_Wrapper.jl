@@ -30,7 +30,11 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
     Animo = NamedPolicy("classic", Classical_Policy(env))
 
-    num_clas_sources = Animo.policy.Source.num_sources # number of classically controlled sources
+    if !isnothing(Animo)
+        num_clas_sources = Animo.policy.Source.num_sources # number of classically controlled sources
+    else
+        num_clas_sources = 0
+    end
 
     #-------------------------------------------------------------------------------
     # Setting up the controls for the Reinforcement Learning Sources
