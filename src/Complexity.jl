@@ -4,8 +4,6 @@ using SpecialFunctions
 using Graphs
 using NetworkLayout
 
-import QHull
-
 mutable struct Node
 
     value::Int64 # value of the link leading to node
