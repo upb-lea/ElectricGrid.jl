@@ -11,7 +11,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 # Time simulation
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_end    = 0.2     # total run time, seconds
+t_end    = 10    # total run time, seconds
 num_eps  = 100       # number of episodes to run
 
 #-------------------------------------------------------------------------------
@@ -42,7 +42,7 @@ C_1 = 1e-5;
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "fltr" => "L", "L1" => L_1, "R1" => R_1, "i_limit"=>100000),
+                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "L", "L1" => L_1, "R1" => R_1, "i_limit"=>100),
                         #Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1, "R1"=>R_1, "L1"=>L_1, "C"=>C_1, "R_C"=>R_c, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10e8),
                         ],
          "load"   => Any[
@@ -60,10 +60,10 @@ function reference(t)
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
     #i = [10 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
-    return 1# * cos.(θph)
+    return [1, 1, 1]# * cos.(θph)
 end
 
-function reward(env)
+function reward(env, name = nothing)
     
     index_1 = findfirst(x -> x == "source1_i_L1_a", env.state_ids)
     index_2 = findfirst(x -> x == "source1_i_L1_b", env.state_ids)
@@ -111,7 +111,7 @@ function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
 end
 
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, featurize = featurize)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, featurize = featurize, reward_function = reward)
 
 #_______________________________________________________________________________
 # Setting up data hooks
@@ -137,7 +137,7 @@ ma = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = tr
 # Plotting
 
 plot_hook_results(hook = hook, 
-                    episode = num_eps,
+                    episode = 20,
                     #states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],
                     states_to_plot  = env.state_ids,  
                     actions_to_plot = env.action_ids,  
@@ -145,6 +145,7 @@ plot_hook_results(hook = hook,
                     q_to_plot       = [], 
                     vrms_to_plot    = [], 
                     irms_to_plot    = [],
-                    freq_to_plot    = [])
+                    freq_to_plot    = [],
+                    plot_reward=true)
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
