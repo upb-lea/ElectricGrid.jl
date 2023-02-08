@@ -1,5 +1,3 @@
-
-
 mutable struct NodeConstructor
     num_connections 
     num_sources
@@ -778,14 +776,18 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     ################
     # CHECK CABLES #
     ################
-    
-    if !haskey(parameters, "cable")
 
+    if !haskey(parameters, "cable")
+        # no cable params defined -- invoke PFE from here ??
         cable_list = []
         for c in 1:num_connections
             push!(cable_list, _sample_cable())
         end
         parameters["cable"] = cable_list
+
+        # invoke PFE
+        parameters = layout_cabels(CM, num_sources, num_loads, parameters)
+        
     else
         num_def_cables = length(parameters["cable"])
 
