@@ -1,10 +1,8 @@
 using LinearAlgebra
 using SpecialFunctions
 
-using Graphs
-using NetworkLayout
-
-import QHull
+#= using Graphs
+using NetworkLayout =#
 
 mutable struct Node
 

@@ -1,12 +1,6 @@
 using Dare
 
-using Distributions
-using DifferentialEquations
-using CSV
-using DataFrames
-using PlotlyJS
-
-print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........")
+println("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........")
 
 npast = 10 #Past Series size
 nfuture = 10 #Future series size

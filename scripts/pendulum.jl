@@ -15,7 +15,6 @@ using Distributions
 using LinearAlgebra
 using JuMP
 import Ipopt
-using KrylovKit 
 using NearestNeighbors
 using NonNegLeastSquares
 using PlotlyJS =#

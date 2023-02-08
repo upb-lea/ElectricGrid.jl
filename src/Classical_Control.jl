@@ -2661,7 +2661,7 @@ function Switch_Rows!(A, row_1, row_2)
     return A
 end
 
-function charpoly_coef(λ)
+function Charpoly_Coef(λ)
 
     # given the roots, this function finds the coefficients
 
@@ -2699,7 +2699,7 @@ function Ackermann_Gain_Matrix(A, C, λ)
 
     αd_A = Array{Float64, 2}(undef, size(A,1), size(A,2))
 
-    α = charpoly_coef(λ)
+    α = Charpoly_Coef(λ)
 
     αd_A = α[1]*I
 
