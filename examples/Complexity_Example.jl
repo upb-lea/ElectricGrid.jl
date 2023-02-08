@@ -10,21 +10,26 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 # Time simulation
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_end    = 1     # total run time, seconds
+t_end    = 0.2     # total run time, seconds
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-num_sources = 2
+num_nodes = 50
+num_sources = 25
 
-CM, num_cables  = MG_SmallWorld(num_sources, p = 0.0, Z = 2)
-#CM, num_cables = MG_Barabasi_Albert(num_sources)
+CM, num_cables  = SmallWorld(num_nodes, p = 0.0, Z = 4, num_sources = num_sources)
+#CM, num_cables = Barabasi_Albert(num_nodes)
 
 #-------------------------------------------------------------------------------
 # Parameters
 
-parameters = MG_Setup(num_sources, num_cables; random = 0, avg_pwr = 10e3, Vrms = 230)
-parameters["grid"] = Dict("v_rms" => 230, "ramp_end" => 0.04, "process_start" => 0.06)
+parameters = Dict{Any, Any}()
+
+parameters["source"], total_gen = Source_Setup(num_sources, random = 1, mode = 4)
+parameters["load"] = Load_Setup(num_nodes - num_sources, total_gen, random = 1)
+parameters["cable"] = Cable_Length_Setup(num_cables, random = 0)
+parameters["grid"] = Dict("v_rms" => 230, "ramp_end" => 0.04, "process_start" => 0.05)
 
 #_______________________________________________________________________________
 # Defining the environment
@@ -43,22 +48,21 @@ hook = DataHook(collect_vrms_ids = 1:num_sources,
 #_______________________________________________________________________________
 # Running the Time Simulation
 
-Multi_Agent = Power_System_Dynamics(env, hook, return_Agents = true)
-Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+Power_System_Dynamics(env, hook)
 
 #_______________________________________________________________________________
 # Plotting
 
 # Spring Layout (Layout = 3) is better for Barabasi-Albert
 # Circular Layout (Layout = 1) is better for SmallWolrd
-drawGraph(CM, parameters, Layout = 3)
+drawGraph(CM, parameters, Layout = 1)
 
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
                     p_to_plot       = 1:num_sources, 
                     q_to_plot       = [], 
-                    vrms_to_plot    = 1:num_sources, 
+                    vrms_to_plot    = [], 
                     irms_to_plot    = [],
                     freq_to_plot    = [])
 
