@@ -61,7 +61,7 @@ hook = DataHook(collect_vrms_ids = [1 2],
 #_______________________________________________________________________________
 # Running the Time Simulation
 
-Power_System_Dynamics(env, hook)
+ma = Power_System_Dynamics(env, hook; return_Agents = true)
 
 #_______________________________________________________________________________
 # Plotting

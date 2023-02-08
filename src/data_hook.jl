@@ -59,6 +59,8 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
 
     # add states of chosen sources to the state and action plotting list 
     # with this method, in addition to the states at L and C, one also obtains the states of R
+
+
     for source in hook.collect_sources
         para = env.nc.parameters["source"][source]
         indices = get_source_state_indices(env.nc,source)
@@ -67,21 +69,22 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
 
             if !(env.state_ids[id] in hook.collect_state_ids)
                 push!(hook.collect_state_ids,env.state_ids[id])
-                if occursin("_L1", env.state_ids[id])
+            end
+
+            if occursin("_L1", env.state_ids[id])
+                push!(hook.extra_state_ids,id)
+                push!(hook.extra_state_paras,para["R1"])
+                push!(hook.extra_state_names,replace(env.state_ids[id], "_L1" => "_R1"))
+            elseif occursin("v_C", env.state_ids[id])
+                if haskey(para, "R_C")
                     push!(hook.extra_state_ids,id)
-                    push!(hook.extra_state_paras,para["R1"])
-                    push!(hook.extra_state_names,replace(env.state_ids[id], "_L1" => "_R1"))
-                elseif occursin("v_C", env.state_ids[id])
-                    if haskey(para, "R_C")
-                        push!(hook.extra_state_ids,id)
-                        push!(hook.extra_state_paras,para["R_C"])
-                        push!(hook.extra_state_names, replace(env.state_ids[id], "v_C" => "i_R_C"))
-                    end
-                elseif occursin("_L2", env.state_ids[id])
-                    push!(hook.extra_state_ids,id)
-                    push!(hook.extra_state_paras,para["R2"])
-                    push!(hook.extra_state_names, replace(env.state_ids[id], "_L2" => "_R2"))
+                    push!(hook.extra_state_paras,para["R_C"])
+                    push!(hook.extra_state_names, replace(env.state_ids[id], "v_C" => "i_R_C"))
                 end
+            elseif occursin("_L2", env.state_ids[id])
+                push!(hook.extra_state_ids,id)
+                push!(hook.extra_state_paras,para["R2"])
+                push!(hook.extra_state_names, replace(env.state_ids[id], "_L2" => "_R2"))
             end
         end
 
