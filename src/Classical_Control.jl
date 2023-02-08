@@ -2866,7 +2866,7 @@ function Switch_Rows!(A, row_1, row_2)
 end
 
 """
-    α = charpoly_coef(λ)
+    α = Charpoly_Coef(λ)
 
 # Description
 given the roots, this function finds the coefficients
@@ -2874,7 +2874,7 @@ given the roots, this function finds the coefficients
 # Return Values
 - `α`: vector of length(λ)
 """
-function charpoly_coef(λ)
+function Charpoly_Coef(λ)
 
     # given the roots, this function finds the coefficients
 
