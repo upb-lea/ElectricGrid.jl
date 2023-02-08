@@ -42,7 +42,7 @@ parameters = Dict{Any, Any}(
         "cable"   => Any[
                         Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
                         ],
-        "grid" => Dict{Any, Any}("ramp_end" => 0.0)
+        "grid" => Dict{Any, Any}("ramp_end" => 0.04)
     )
 #_______________________________________________________________________________
 # Defining the environment
@@ -61,7 +61,7 @@ hook = DataHook(collect_vrms_ids = [1 2],
 #_______________________________________________________________________________
 # Running the Time Simulation
 
-Power_System_Dynamics(env, hook)
+ma = Power_System_Dynamics(env, hook; return_Agents = true)
 
 #_______________________________________________________________________________
 # Plotting

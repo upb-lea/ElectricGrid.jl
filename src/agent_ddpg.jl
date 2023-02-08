@@ -1,6 +1,8 @@
 using Random
 using Setfield: @set
 using Zygote: ignore
+import CUDA: device
+using MacroTools: @forward
 
 Base.@kwdef struct DareNeuralNetworkApproximator{M,O} <: AbstractApproximator
     model::M
@@ -9,6 +11,11 @@ end
 
 # some model may accept multiple inputs
 (app::DareNeuralNetworkApproximator)(args...; kwargs...) = app.model(args...; kwargs...)
+
+@forward DareNeuralNetworkApproximator.model Flux.testmode!,
+Flux.trainmode!,
+Flux.params,
+device
 
 functor(x::DareNeuralNetworkApproximator) =
     (model=x.model,), y -> DareNeuralNetworkApproximator(y.model, x.optimizer)
@@ -105,15 +112,18 @@ function DareDDPGPolicy(;
     )
 end
 
-# TODO: handle Training/Testing mode
-function (p::DareDDPGPolicy)(env, player::Any = nothing)
+function (::DareDDPGPolicy)(::AbstractStage, ::AbstractEnv)
+    nothing
+end
+
+function (p::DareDDPGPolicy)(env::SimEnv, name::Any = nothing)
     p.update_step += 1
 
     if p.update_step <= p.start_steps
         p.start_policy(env)
     else
         D = device(p.behavior_actor)
-        s = DynamicStyle(env) == SEQUENTIAL ? state(env) : state(env, player)
+        s = isnothing(name) ? state(env) : state(env, name)
         s = Flux.unsqueeze(s, ndims(s) + 1)
         actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
         c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
@@ -131,7 +141,7 @@ function RLBase.update!(
     length(traj) > p.update_after || return
     p.update_step % p.update_freq == 0 || return
     inds, batch = sample(p.rng, traj, BatchSampler{SARTS}(p.batch_size))
-    update!(p, batch)
+    RLBase.update!(p, batch)
 end
 
 function RLBase.update!(p::DareDDPGPolicy, batch::NamedTuple{SARTS})
@@ -163,7 +173,7 @@ function RLBase.update!(p::DareDDPGPolicy, batch::NamedTuple{SARTS})
         loss
     end
 
-    update!(C, gs1)
+    RLBase.update!(C, gs1)
 
     gs2 = gradient(Flux.params(A)) do
         loss = -mean(C(vcat(s, A(s))))
@@ -173,7 +183,7 @@ function RLBase.update!(p::DareDDPGPolicy, batch::NamedTuple{SARTS})
         loss
     end
 
-    update!(A, gs2)
+    RLBase.update!(A, gs2)
 
     # polyak averaging
     for (dest, src) in zip(Flux.params([Aₜ, Cₜ]), Flux.params([A, C]))
@@ -239,22 +249,3 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
     )
 end
 
-function (::DDPGPolicy)(::AbstractStage, ::AbstractEnv)
-    nothing
-end
-
-function (p::DDPGPolicy)(env::SimEnv, name::Any = nothing)
-    p.update_step += 1
-
-    if p.update_step <= p.start_steps
-        p.start_policy(env)
-    else
-        D = device(p.behavior_actor)
-        s = isnothing(name) ? state(env) : state(env, name)
-        s = Flux.unsqueeze(s, ndims(s) + 1)
-        actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
-        c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
-        p.na == 1 && return c[1]
-        c
-    end
-end

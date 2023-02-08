@@ -383,14 +383,63 @@ function Parallel_Load_Impedance(S, pf, vrms; fsys = 50)
     return R, L_C, X, Z
 end
 
-function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
 
-    #=
-    The filtering capacitors C should be chosen such that the resonant frequency
-    1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
-    frequency of the gird voltage, and ωs is the angular switching frequency
-    used to turn on/off the switches)
+    #= Theory:
+        The filtering capacitors C should be chosen such that the resonant frequency
+        1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
+        frequency of the gird voltage, and ωs is the angular switching frequency
+        used to turn on/off the switches)
+        
+        The attenuation of the LCL-filter is 60db/decade for frequencies above the 
+        resonant frequency, therefore lower switching frequency for the converter 
+        can be used. It also provides better decoupling between the filter and the 
+        grid impedance and lower current ripple accross the grid inductor. 
+
+        The LCL filter has good current ripple attenuattion even with small inductance 
+        values. However it can bring also resonances and unstable states into the system. 
+        Therefore the filter must be designed precisely accoring to the parameters of the 
+        specific converter. 
+
+        The importatnt parameter of the filter is its cut-off frequency. The cut-off 
+        frequency of the filter must be minimally one half of the switching frequency of 
+        the converter, because the filter must have enough attenuation in the range of the 
+        converter's switching frequency.
+
+        The LCL filter will be vulnerable to oscillation too and it will magnify frequencies 
+        around its cut-off frequency. Therefore the filter is added with damping. The simplest 
+        way is to add damping resistor. In general there are four possible places where the 
+        resistor can be placed series/parallel to the inverter side inductor or series/parallel 
+        to the filter capacitor.
+
+        The variant with the resistor connected in series with the filter capacitor has been 
+        chosen. The peak near the resonant frequency can be significantly attenuated. This is 
+        a simple and reliable solution, but it increases the heat losses in the system and it 
+        greatly decreases the efficiency of the filter. This problem can be solved by active 
+        damping. Such a resistor reduces the voltage across the capacitor by a voltage proportional 
+        to the current that flows through it. This can be also done in the control loop. The 
+        current through the filter capacitor is measured and differentiatbed by the term 
+        (s*Cf*R_C). A real resistor is not used and the calculated value is subtracted from the 
+        demanded current. In this way the filter is actively damped with a virtual resistor 
+        without any losses. The disadvantage of this method is that an additional current sensor 
+        is required and the differentiator may bring noise problems because it amplifies high 
+        frequency signals.          
     =#
+
+    #= Practical Example:
+            L_filter = 70e-6
+            R_filter = 1.1e-3
+            R_filter_C = 7e-3
+            C_filter = 250e-6
+            =#
+
+    #____________________________________________________________
+    # ratios
+
+    r_p = 200
+
+    f_p = 5
+
     Ir = ΔILf_ILf
     Vr = ΔVCf_VCf
 
@@ -406,7 +455,7 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
 
     ΔIlfmax = Ir*Iop
 
-    Lf = Vdc/(4*fs*ΔIlfmax)
+    Lf_1 = Vdc/(4*fs*ΔIlfmax)
 
     #____________________________________________________________
     # Capacitor Design
@@ -423,9 +472,33 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
 
     Cf = ΔIlfmax/(8*fs*ΔVcfmax)
 
-    fc = 1/(2π*sqrt(Lf*Cf))
+    fc = 1/(2π*sqrt(Lf_1*Cf))
 
-    return Lf, Cf, fc
+    #____________________________________________________________
+    # Resistor Design
+
+    R_1 = 200 * Lf_1
+
+    R_C = 1/(3*ωc*Cf)
+
+    if fltr == "LCL" 
+
+        fc = fs/f_p
+        ωc = 2π*fc
+        Lf_2 = Lf_1/(ωc^2*Lf_1*Cf - 1)
+
+        R_2 = r_p * Lf_2
+
+        return Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C
+
+    elseif fltr == "LC"  
+
+        return Lf_1, Cf, fc, R_1, R_2, R_C
+
+    elseif fltr == "L"
+
+        return Lf_1, R_1
+    end
 end
 
 #############################
