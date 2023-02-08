@@ -60,28 +60,28 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         num_connections = cntr
     else
         if size(CM)[1] != tot_ele
-            throw("Expect the number of elements in the node to match the specified structure in the CM, but got $tot_ele and $(size(A)[1])")
+            throw("Expect the number of elements in the node to match the specified structure in the CM, but got $tot_ele and $(size(CM)[1])")
         end
         num_connections = Int(maximum(CM))
     end
+    # TODO: Check if needed
+    # if parameters === "random"
+        
+    #     num_fltr_L, num_fltr_LC, num_fltr_LCL = get_fltr_distr(num_sources)
+        
+    #     loads_distr = get_loads_distr(num)
+    #     num_loads_R = loads_distr[1]
+    #     num_loads_C = loads_distr[2]
+    #     num_loads_L = loads_distr[3]
+    #     num_loads_RL = loads_distr[4]
+    #     num_loads_RC = loads_distr[5]
+    #     num_loads_LC = loads_distr[6]
+    #     num_loads_RLC  = loads_distr[7]
+        
 
-    if parameters === "random"
-        
-        num_fltr_L, num_fltr_LC, num_fltr_LCL = get_fltr_distr(num_sources)
-        
-        loads_distr = get_loads_distr(num)
-        num_loads_R = loads_distr[1]
-        num_loads_C = loads_distr[2]
-        num_loads_L = loads_distr[3]
-        num_loads_RL = loads_distr[4]
-        num_loads_RC = loads_distr[5]
-        num_loads_LC = loads_distr[6]
-        num_loads_RLC  = loads_distr[7]
-        
-
-        parameters = generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
-                                        num_loads_L, num_loads_C, num_loads_R)
-    end
+    #     parameters = generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
+    #                                     num_loads_L, num_loads_C, num_loads_R)
+    # end
 
     if parameters === nothing || isa(parameters, Dict) 
 
@@ -169,7 +169,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     ##############
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
-        grid_properties["fs"] =  1e-4 # TODO: this should be 1/env.ts
+        grid_properties["fs"] =  1e4 # TODO: this should be 1/env.ts
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
@@ -275,7 +275,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             
                 ΔIlfmax = source["i_rip"]*Iop
             
-                source["L1"] = 0.5*(source["vdc"]*(4*parameters["grid"]["fs"]*ΔIlfmax)^-1)
+                source["L1"] = (source["vdc"]*(4*parameters["grid"]["fs"]*ΔIlfmax)^-1)
                 
             end
 
@@ -417,7 +417,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                 if !haskey(source, "L2")
 
-                    source["L2"] = source["L1"]/(ωc^2*source["L1"]*source["C"] - 1)
+                    source["L2"] = source["L1"]/(ωc^2*source["L1"]*source["C"] - 1) #*** filter layout
 
                     if source["L2"] < 0
                         source["L2"] == 1e-6
@@ -432,7 +432,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                 if !haskey(source, "R_C")
 
-                    source["R_C"] = 1/(3*ωc*source["C"])
+                    source["R_C"] = 1/(3*ωc*source["C"]) #*** filter layout
                 end 
 
             end
@@ -1025,45 +1025,49 @@ function _sample_fltr_LCL(grid_properties)
     source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
     source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
 
-   #Inductor design
+    Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C = Filter_Design(source["pwr"], grid_properties["fs"], source["fltr"]; Vrms = grid_properties["v_rms"], Vdc = source["vdc"], ΔILf_ILf = source["i_rip"], ΔVCf_VCf = source["v_rip"])
 
-   Vorms = grid_properties["v_rms"]*1.05
-   Vop = Vorms*sqrt(2)
+    # source["L1"] = Lf_1
 
-   Zl = 3*Vorms*Vorms/source["pwr"]
+    #Inductor design
 
-   Iorms = Vorms/Zl
-   Iop = Iorms*sqrt(2)
+    Vorms = grid_properties["v_rms"]*1.05
+    Vop = Vorms*sqrt(2)
 
-   ΔIlfmax = source["i_rip"]*Iop
+    Zl = 3*Vorms*Vorms/source["pwr"]
 
-   source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
-   source["L2"] = deepcopy(source["L1"]) 
-   source["i_limit"]= Iop + ΔIlfmax
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
 
-   #Capacitor design
+    ΔIlfmax = source["i_rip"]*Iop
 
-   Vorms = grid_properties["v_rms"]*0.95
-   Vop = Vorms*sqrt(2)
+    source["L1"] = (source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
+    source["L2"] = deepcopy(source["L1"]) 
+    source["i_limit"]= Iop + ΔIlfmax
 
-   Zl = 3*Vorms*Vorms/source["pwr"]
+    #Capacitor design
 
-   Iorms = Vorms/Zl
-   Iop = Iorms*sqrt(2)
-   Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
-   ΔIlfmax = Ir_d*Iop
-   ΔVcfmax = source["v_rip"]*Vop
+    Vorms = grid_properties["v_rms"]*0.95
+    Vop = Vorms*sqrt(2)
 
-   source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
+    Zl = 3*Vorms*Vorms/source["pwr"]
 
-   source["R1"] = 400 * source["L1"]
-   source["R2"] = deepcopy(source["R1"])   
-   source["R_C"] = 28* source["C"]
-   source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
-   
-   
+    Iorms = Vorms/Zl
+    Iop = Iorms*sqrt(2)
+    Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
+    ΔIlfmax = Ir_d*Iop
+    ΔVcfmax = source["v_rip"]*Vop
 
-   source
+    source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
+
+    source["R1"] = 400 * source["L1"]
+    source["R2"] = deepcopy(source["R1"])   
+    source["R_C"] = 28* source["C"]
+    source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
+    
+    
+
+    source
 end
 
 
@@ -1082,6 +1086,8 @@ function _sample_fltr_LC(grid_properties)
     source["vdc"] = 800 #rand(range(start=690,step=10,stop=800))
     source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
     source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
+
+    Lf_1, Cf, fc, R_1, R_2, R_C = Filter_Design(source["pwr"], grid_properties["fs"], source["fltr"]; Vrms = grid_properties["v_rms"], Vdc = source["vdc"], ΔILf_ILf = source["i_rip"], ΔVCf_VCf = source["v_rip"])
 
     #Inductor design
 
@@ -1136,6 +1142,8 @@ function _sample_fltr_L(grid_properties)
     source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
     source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
     source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
+    
+    Lf_1, R_1 = Filter_Design(source["pwr"], grid_properties["fs"], source["fltr"]; Vrms = grid_properties["v_rms"], Vdc = source["vdc"], ΔILf_ILf = source["i_rip"], ΔVCf_VCf = source["v_rip"])
 
     #Inductor design
 
@@ -1152,7 +1160,7 @@ function _sample_fltr_L(grid_properties)
     source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
 
     source["R1"] = 400 * source["L1"] 
-    source["i_limit"]= Iop+ ΔIlfmax
+    source["i_limit"]= Iop + ΔIlfmax
 
     source
 end

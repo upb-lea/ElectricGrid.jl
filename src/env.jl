@@ -49,13 +49,15 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         maxsteps = floor(t_end/ts) + 1
     end
 
-    if haskey(parameters, "source") && haskey(parameters, "load")
+    if isnothing(num_sources) && isnothing(num_loads) 
+        if haskey(parameters, "source") && haskey(parameters, "load")
 
-        num_sources = length(parameters["source"])
-        num_loads = length(parameters["load"])
-    elseif haskey(parameters, "source") 
-        num_sources = length(parameters["source"])
-        num_loads = 0
+            num_sources = length(parameters["source"])
+            num_loads = length(parameters["load"])
+        elseif haskey(parameters, "source") 
+            num_sources = length(parameters["source"])
+            num_loads = 0
+        end
     end
 
 
