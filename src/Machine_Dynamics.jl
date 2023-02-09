@@ -85,8 +85,9 @@ function Shift_Operator(coords, eigenvalues; index_map = nothing, return_eigende
     
     # Now ensure the operator power does not blow up
     # Eigenvalues should have modulus less than 1...
-    eigval, right_eigvec, info = eigsolve(shift_op)
-    right_eigvec = reduce(hcat, right_eigvec)
+    #eigval, right_eigvec, info = eigsolve(shift_op) # for KrylovKit
+    #right_eigvec = reduce(hcat, right_eigvec)
+    eigval, right_eigvec = eigen(shift_op)
 
     # This is to check that the eigendecomposition isn't bullshit
     #= Λ = Diagonal(eigval)

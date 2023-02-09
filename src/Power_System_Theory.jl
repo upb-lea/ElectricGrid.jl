@@ -383,16 +383,68 @@ function Parallel_Load_Impedance(S, pf, vrms; fsys = 50)
     return R, L_C, X, Z
 end
 
-function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
 
-    #=
-    The filtering capacitors C should be chosen such that the resonant frequency
-    1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
-    frequency of the gird voltage, and ωs is the angular switching frequency
-    used to turn on/off the switches)
+    #= Theory:
+        The filtering capacitors C should be chosen such that the resonant frequency
+        1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
+        frequency of the gird voltage, and ωs is the angular switching frequency
+        used to turn on/off the switches)
+        
+        The attenuation of the LCL-filter is 60db/decade for frequencies above the 
+        resonant frequency, therefore lower switching frequency for the converter 
+        can be used. It also provides better decoupling between the filter and the 
+        grid impedance and lower current ripple accross the grid inductor. 
+
+        The LCL filter has good current ripple attenuattion even with small inductance 
+        values. However it can bring also resonances and unstable states into the system. 
+        Therefore the filter must be designed precisely accoring to the parameters of the 
+        specific converter. 
+
+        The importatnt parameter of the filter is its cut-off frequency. The cut-off 
+        frequency of the filter must be minimally one half of the switching frequency of 
+        the converter, because the filter must have enough attenuation in the range of the 
+        converter's switching frequency.
+
+        The LCL filter will be vulnerable to oscillation too and it will magnify frequencies 
+        around its cut-off frequency. Therefore the filter is added with damping. The simplest 
+        way is to add damping resistor. In general there are four possible places where the 
+        resistor can be placed series/parallel to the inverter side inductor or series/parallel 
+        to the filter capacitor.
+
+        The variant with the resistor connected in series with the filter capacitor has been 
+        chosen. The peak near the resonant frequency can be significantly attenuated. This is 
+        a simple and reliable solution, but it increases the heat losses in the system and it 
+        greatly decreases the efficiency of the filter. This problem can be solved by active 
+        damping. Such a resistor reduces the voltage across the capacitor by a voltage proportional 
+        to the current that flows through it. This can be also done in the control loop. The 
+        current through the filter capacitor is measured and differentiatbed by the term 
+        (s*Cf*R_C). A real resistor is not used and the calculated value is subtracted from the 
+        demanded current. In this way the filter is actively damped with a virtual resistor 
+        without any losses. The disadvantage of this method is that an additional current sensor 
+        is required and the differentiator may bring noise problems because it amplifies high 
+        frequency signals.          
     =#
+
+    #= Practical Example:
+            L_filter = 70e-6
+            R_filter = 1.1e-3
+            R_filter_C = 7e-3
+            C_filter = 250e-6
+            =#
+
+    #____________________________________________________________
+    # ratios
+
+    r_p = 200
+
+    f_p = 5
+
     Ir = ΔILf_ILf
     Vr = ΔVCf_VCf
+
+    i_lim_r = 1.5
+    v_lim_r = 1.5
 
     #____________________________________________________________
     # Inductor Design
@@ -406,26 +458,61 @@ function Filter_Design(Sr, fs; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VC
 
     ΔIlfmax = Ir*Iop
 
-    Lf = Vdc/(4*fs*ΔIlfmax)
+    Lf_1 = Vdc/(4*fs*ΔIlfmax)
 
     #____________________________________________________________
     # Capacitor Design
     Vorms = Vrms*0.95
     Vop = Vorms*sqrt(2)
 
-    Zl = 3*Vorms*Vorms/Sr
+    Zl = 3*Vorms^2/Sr
 
     Iorms = Vorms/Zl
     Iop = Iorms*sqrt(2)
-    Ir = Vdc/(4*fs*Lf*Iop)
+    Ir = Vdc/(4*fs*Lf_1*Iop)
     ΔIlfmax = Ir*Iop
     ΔVcfmax = Vr*Vop
 
     Cf = ΔIlfmax/(8*fs*ΔVcfmax)
 
-    fc = 1/(2π*sqrt(Lf*Cf))
+    fc = 1/(2π*sqrt(Lf_1*Cf))
 
-    return Lf, Cf, fc
+    #____________________________________________________________
+    # Resistor Design
+
+    R_1 = 200 * Lf_1
+
+    ωc = 2π*fc
+
+    R_C = 1/(3*ωc*Cf)
+
+    # v_limit
+    v_limit = v_lim_r * Vdc * (1 + ΔVCf_VCf/2)
+
+    if fltr == "LCL"
+
+        i_limit = i_lim_r*Iop
+
+        fc = fs/f_p
+        ωc = 2π*fc
+        Lf_2 = Lf_1/(ωc^2*Lf_1*Cf - 1)
+
+        R_2 = r_p * Lf_2
+
+        return Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit
+
+    elseif fltr == "LC"
+
+        i_limit = i_lim_r*Iop*(1 + ΔILf_ILf/2)
+
+        return Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit
+
+    elseif fltr == "L"
+
+        i_limit = i_lim_r*Iop*(1 + ΔILf_ILf/2)
+
+        return Lf_1, R_1, i_limit
+    end
 end
 
 #############################
@@ -474,11 +561,74 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
 end
 
 
+function CheckPowerBalance(parameters, num_source, num_load, CM)
+    """
+    p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
+
+    # Description
+    Determines based on the parameters of the grid the total power (active and reactive) drawn from all load 
+    and the total power provided by the sources. 
+    Thereby, steady state is assumed.
+
+    # Arguments
+    - `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/nodeconstructor.
+    - `num_source::Int`: number of sources in the grid (todo: calulate based on parameter dict?)
+    - `num_load::Int`: number of num_load in the grid (todo: calulate based on parameter dict?)
+    - `CM::Matrix`: connectivity matrix describing the connections in the grid
+
+
+    # Return Values
+    - `p_load_total::float`: total active power drawn by all loads (passive components as well as controlled with negative reference value)
+    - `q_load_total::float`: total reactive power drawn by all loads
+    -  s_load_total::float`: total aparent power drawn by all loads
+    - `s_source_total::float`: total aparent power provided by all sources in steady state
+    """
+
+    num_nodes = num_source + num_load
+    num_cables = Int(maximum(CM))
+
+    p_load_total = 0
+    q_load_total = 0 
+    s_source_total = 0 
+
+    for i = 1:num_nodes
+
+        if i <= num_source
+
+            s_source_total = s_source_total + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
+
+            if parameters["source"][i]["mode"] in ["PQ Control", 3]
+
+                if parameters["source"][i]["p_set"] < 0
+                    p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
+                end
+
+                if parameters["source"][i]["q_set"] < 0
+                    q_load_total = q_load_total + parameters["source"][i]["q_set"]/parameters["grid"]["phase"]
+                end
+
+            elseif parameters["source"][i]["mode"] in ["PV Control", 4]
+
+                if parameters["source"][i]["p_set"] < 0
+                    p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
+                end
+            end
+        else
+
+            p_load_total = p_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
+            q_load_total = q_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
+        end   
+    end
+    s_load_total = sqrt(p_load_total^2 + q_load_total^2)
+    return p_load_total, q_load_total, s_load_total, s_source_total
+end
+
+
 function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosity)
     if verbosity > 0
         @info "layout_cables invoked"
     end
-    
+
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
 
@@ -496,9 +646,13 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
     @variable(model, nodes[1 : num_nodes, ["v", "theta", "P", "Q"]])
    
     # cal total load[pwr]
+    total_P_load, total_Q_load, s_load_total, total_S_source = CheckPowerBalance(parameters, num_source, num_load, CM)
+
+    #=
     total_P_load = 0
     total_Q_load = 0 
     total_S_source = 0 
+    
 
     for i = 1:num_nodes
 
@@ -528,6 +682,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
             total_Q_load = total_Q_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
         end   
     end
+    =#
 
     idx_p_mean_cal = []
     idx_q_mean_cal = []
@@ -540,8 +695,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
                 if parameters["source"][i]["mode"] in ["Swing", "Voltage", 1, 7] 
 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
-                    #fix(nodes[1, "theta"], 0.0) 
-                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # question, does this limit too much, should be more or less.
+                    fix(nodes[i, "theta"], (π/180)*parameters["source"][i]["v_δ_set"]) 
                     
                     set_bounds(nodes[i, "P"], (total_P_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # come from parameter dict/user?
                     set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses

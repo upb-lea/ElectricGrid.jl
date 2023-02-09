@@ -1,5 +1,3 @@
-using KrylovKit
-
 function Spectral_Basis(Gs; num_basis = nothing, scaled = false, alpha = 1)
 
     """

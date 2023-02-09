@@ -1,5 +1,3 @@
-
-
 mutable struct NodeConstructor
     num_connections 
     num_sources
@@ -60,28 +58,28 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         num_connections = cntr
     else
         if size(CM)[1] != tot_ele
-            throw("Expect the number of elements in the node to match the specified structure in the CM, but got $tot_ele and $(size(A)[1])")
+            throw("Expect the number of elements in the node to match the specified structure in the CM, but got $tot_ele and $(size(CM)[1])")
         end
         num_connections = Int(maximum(CM))
     end
+    # TODO: Check if needed
+    # if parameters === "random"
+        
+    #     num_fltr_L, num_fltr_LC, num_fltr_LCL = get_fltr_distr(num_sources)
+        
+    #     loads_distr = get_loads_distr(num)
+    #     num_loads_R = loads_distr[1]
+    #     num_loads_C = loads_distr[2]
+    #     num_loads_L = loads_distr[3]
+    #     num_loads_RL = loads_distr[4]
+    #     num_loads_RC = loads_distr[5]
+    #     num_loads_LC = loads_distr[6]
+    #     num_loads_RLC  = loads_distr[7]
+        
 
-    if parameters === "random"
-        
-        num_fltr_L, num_fltr_LC, num_fltr_LCL = get_fltr_distr(num_sources)
-        
-        loads_distr = get_loads_distr(num)
-        num_loads_R = loads_distr[1]
-        num_loads_C = loads_distr[2]
-        num_loads_L = loads_distr[3]
-        num_loads_RL = loads_distr[4]
-        num_loads_RC = loads_distr[5]
-        num_loads_LC = loads_distr[6]
-        num_loads_RLC  = loads_distr[7]
-        
-
-        parameters = generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
-                                        num_loads_L, num_loads_C, num_loads_R)
-    end
+    #     parameters = generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connections, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC,
+    #                                     num_loads_L, num_loads_C, num_loads_R)
+    # end
 
     if parameters === nothing || isa(parameters, Dict) 
 
@@ -122,6 +120,13 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
                         + num_loads_RC + num_loads_C + num_loads_R)
 
     num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R)
+
+    
+    p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
+    
+    if s_load_total > s_source_total
+        @warn "The aparent power drawn from the loads exceeds the aparent power provided by all loads in steady state! Stable grid operation maybe not possible! Please reconfigure the parameters!"
+    end    
 
     NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, L2L_p, verbosity)
 end
@@ -169,7 +174,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     ##############
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
-        grid_properties["fs"] =  1e-4 # TODO: this should be 1/env.ts
+        grid_properties["fs"] =  1e4 # TODO: this should be 1/env.ts
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
@@ -251,45 +256,50 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             
             if !haskey(source, "vdc")
-                source["vdc"] = 800#rand(range(start=690,step=10,stop=800)) # if randomized then the classic controllers go unstable - maybe range is too wide
+                source["vdc"] = 800 #rand(range(start=690,step=10,stop=800)) # if randomized then the classic controllers go unstable - maybe range is too wide
             end
 
             if !haskey(source, "i_rip")
-                source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15)) # no reason to randomize
+                source["i_rip"] = 0.15
             end
                 
             if !haskey(source, "v_rip")                    
-                source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016)) # no reason to randomize
+                source["v_rip"] = 0.01537
             end
         
             #Inductor design
             if !haskey(source, "L1") 
                 
-                Vorms = parameters["grid"]["v_rms"]*1.05
-                Vop = Vorms*sqrt(2)
+                Vorms = parameters["grid"]["v_rms"] * 1.05
+                Vop = Vorms * sqrt(2)
             
-                Zl = 3*Vorms*Vorms/source["pwr"]
+                Zl = 3 * Vorms^2/source["pwr"]
             
                 Iorms = Vorms/Zl
-                Iop = Iorms*sqrt(2)
+                Iop = Iorms * sqrt(2)
             
-                ΔIlfmax = source["i_rip"]*Iop
+                ΔIlfmax = source["i_rip"] * Iop
             
-                source["L1"] = 0.5*(source["vdc"]*(4*parameters["grid"]["fs"]*ΔIlfmax)^-1)
+                source["L1"] = (source["vdc"] * (4 * parameters["grid"]["fs"] * ΔIlfmax)^-1)
                 
             end
 
             if !haskey(source, "i_limit")
-                Vorms = parameters["grid"]["v_rms"]*1.05
-                Vop = Vorms*sqrt(2)
+
+                Vorms = parameters["grid"]["v_rms"] * 1.05
+                Vop = Vorms * sqrt(2)
+                i_lim_r = 1.5
             
-                Zl = 3*Vorms*Vorms/source["pwr"]
+                Zl = 3 * Vorms^2/source["pwr"]
             
                 Iorms = Vorms/Zl
-                Iop = Iorms*sqrt(2)
-            
-                ΔIlfmax = source["i_rip"]*Iop
-                source["i_limit"]= 1.15*Iop + ΔIlfmax
+                Iop = Iorms * sqrt(2)
+
+                if source["fltr"] == "LCL"
+                    source["i_limit"]= 1.15 * Iop
+                else
+                    source["i_limit"] = i_lim_r * Iop * (1 + source["i_rip"]/2)
+                end
             end
 
             if !haskey(source, "R1")
@@ -306,7 +316,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             
             if !haskey(source, "fltr")
-                source["fltr"] = "LCL"#rand(["LC", "LCL"]) 
+                source["fltr"] = "LCL"
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "L"
@@ -323,7 +333,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 end
                 if !haskey(source, "C")
 
-                    Vorms = parameters["grid"]["v_rms"]*0.95
+                    Vorms = parameters["grid"]["v_rms"] * 0.95
                     Vop = Vorms*sqrt(2)
 
                     Zl = 3*Vorms*Vorms/source["pwr"]
@@ -333,18 +343,21 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                     Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
 
-                    ΔIlfmax = Ir_d*Iop
-                    ΔVcfmax = source["v_rip"]*Vop
+                    ΔIlfmax = Ir_d * Iop
+                    ΔVcfmax = source["v_rip"] * Vop
 
-                    source["C"] = ΔIlfmax/(8*parameters["grid"]["fs"]*ΔVcfmax)
+                    source["C"] = ΔIlfmax/(8 * parameters["grid"]["fs"] * ΔVcfmax)
                 end
 
                 if source["fltr"] == "LC" && !haskey(source, "R_C")
-                    source["R_C"] = 28*source["C"] # TODO: actually design the damping resistance
+
+                    ωc = 2π*fc
+
+                    source["R_C"] = 1/ (3 * ωc * source["C"])
                 end  
             end
 
-            if source["fltr"] == "LC" && 1/sqrt(source["L1"]*source["C"]) > parameters["grid"]["fs"]/2
+            if source["fltr"] == "LC" && 1/sqrt(source["L1"] * source["C"]) > parameters["grid"]["fs"]/2
                 if verbosity > 0
                     @warn ("The LC filter parameters have been poorly chosen.
                     The filtering capacitors should be chosen such that the resonant 
@@ -356,73 +369,23 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "v_limit")
-                Vorms = parameters["grid"]["v_rms"]*0.95
-                Vop = Vorms*sqrt(2)
 
-                Zl = 3*Vorms*Vorms/source["pwr"]
-
-                Iorms = Vorms/Zl
-                Iop = Iorms*sqrt(2)
-                Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
-                ΔIlfmax = Ir_d*Iop
-                ΔVcfmax = source["v_rip"]*Vop
+                v_lim_r = 1.5
                 
-                source["v_limit"]= 1.5*2*(sqrt(2)*parameters["grid"]["v_rms"] + ΔVcfmax)
+                source["v_limit"]= v_lim_r * source["vdc"] * (1 + source["v_rip"]/2)
             end
 
             if  source["fltr"] == "LCL" && !haskey(source, "L2")
-
-                #= Theory:
-                    The attenuation of the LCL-filter is 60db/decade for frequencies above the 
-                    resonant frequency, therefore lower switching frequency for the converter 
-                    can be used. It also provides better decoupling between the filter and the 
-                    grid impedance and lower current ripple accross the grid inductor. 
-
-                    The LCL filter has good current ripple attenuattion even with small inductance 
-                    values. However it can bring also resonances and unstable states into the system. 
-                    Therefore the filter must be designed precisely accoring to the parameters of the 
-                    specific converter. 
-
-                    The importatnt parameter of the filter is its cut-off frequency. The cut-off 
-                    frequency of the filter must be minimally one half of the switching frequency of 
-                    the converter, because the filter must have enough attenuation in the range of the 
-                    converter's switching frequency.
-
-                    The LCL filter will be vulnerable to oscillation too and it will magnify frequencies 
-                    around its cut-off frequency. Therefore the filter is added with damping. The simplest 
-                    way is to add damping resistor. In general there are four possible places where the 
-                    resistor can be placed series/parallel to the inverter side inductor or series/parallel 
-                    to the filter capacitor.
-
-                    The variant with the resistor connected in series with the filter capacitor has been 
-                    chosen. The peak near the resonant frequency can be significantly attenuated. This is 
-                    a simple and reliable solution, but it increases the heat losses in the system and it 
-                    greatly decreases the efficiency of the filter. This problem can be solved by active 
-                    damping. Such a resistor reduces the voltage across the capacitor by a voltage proportional 
-                    to the current that flows through it. This can be also done in the control loop. The 
-                    current through the filter capacitor is measured and differentiatbed by the term 
-                    (s*Cf*R_C). A real resistor is not used and the calculated value is subtracted from the 
-                    demanded current. In this way the filter is actively damped with a virtual resistor 
-                    without any losses. The disadvantage of this method is that an additional current sensor 
-                    is required and the differentiator may bring noise problems because it amplifies high 
-                    frequency signals. 
-
-                =#
 
                 #TODO: add user warnings if the L, C, parameters they choose are stupid  (more than 0.5*fs)  
                 # also calculate the maximal power factor variation. If more than 5% add warning             
 
                 fc = parameters["grid"]["fs"]/5
-                ωc = 2π*fc
+                ωc = 2π * fc
 
                 if !haskey(source, "L2")
 
-                    source["L2"] = source["L1"]/(ωc^2*source["L1"]*source["C"] - 1)
-
-                    if source["L2"] < 0
-                        source["L2"] == 1e-6
-                        # TODO: add warning - the user choose bad ripple values
-                    end
+                    source["L2"] = source["L1"]/(ωc^2 * source["L1"] * source["C"] - 1)
                 end
                 
                 if !haskey(source, "R2")
@@ -432,7 +395,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                 if !haskey(source, "R_C")
 
-                    source["R_C"] = 1/(3*ωc*source["C"])
+                    source["R_C"] = 1/(3 * ωc *source["C"]) #*** filter layout
                 end 
 
             end
@@ -484,7 +447,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
 
-                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)*sign(source["p_set"]*source["q_set"])
+                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2) * sign(source["p_set"]*source["q_set"])
 
                     if s_set == 0
                         source["pf"] = 1/sqrt(2)
@@ -533,7 +496,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                     source["std_asy"] = source["pwr"]/4
                 else
 
-                    source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
+                    source["std_asy"] = source["σ"]/sqrt(2 * source["κ"])
                 end
             end
 
@@ -544,7 +507,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                     source["κ"] = 0.0
                 else
 
-                    source["κ"] = source["σ"]^2/(2*source["std_asy"]^2)
+                    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
                 end
             end
 
@@ -746,46 +709,54 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
         # add Z and pwr to the parameter_load dict; needed for solving the power flow equations
         # assuming all passive loads as parrallel connection of devices
-        for (index, load) in enumerate(parameters["load"])
-            if load["impedance"] == "R"
-                load["Z"] = load["R"]
-                load["pf"] = 1
-            elseif load["impedance"] == "L"
-                load["Z"] = 1im*2*pi*parameters["grid"]["f_grid"]*load["L"]
-                load["pf"] = 0
-            elseif load["impedance"] == "C"
-                load["Z"] = 1/(1im*2*pi*parameters["grid"]["f_grid"]*load["C"])
-                load["pf"] = 0
-            elseif load["impedance"] == "RL"
-                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
-                load["pf"] = cos(atan(load["R"]/(parameters["grid"]["f_grid"]*2*pi*load["L"])))
-            elseif load["impedance"] == "RC"
-                load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
-                load["pf"] = cos(-atan(load["R"]*parameters["grid"]["f_grid"]*2*pi*load["C"]))
-            elseif load["impedance"] == "LC"
-                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
-            elseif load["impedance"] == "RLC"
-                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
-                # TODO PF RLC parallel             
-            end
-            
-            load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
-            #println(load["pf"])
+        
+    end
+    
+    for (index, load) in enumerate(parameters["load"])
+        if load["impedance"] == "R"
+            load["Z"] = load["R"]
+            load["pf"] = 1
+        elseif load["impedance"] == "L"
+            load["Z"] = 1im*2*pi*parameters["grid"]["f_grid"]*load["L"]
+            load["pf"] = 0
+        elseif load["impedance"] == "C"
+            load["Z"] = 1/(1im*2*pi*parameters["grid"]["f_grid"]*load["C"])
+            load["pf"] = 0
+        elseif load["impedance"] == "RL"
+            load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
+            load["pf"] = cos(atan(load["R"]/(parameters["grid"]["f_grid"]*2*pi*load["L"])))
+        elseif load["impedance"] == "RC"
+            load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
+            load["pf"] = cos(-atan(load["R"]*parameters["grid"]["f_grid"]*2*pi*load["C"]))
+        elseif load["impedance"] == "LC"
+            load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+            load["pf"] = 0.8 #TODO: change based on paremter values!!!!
+        elseif load["impedance"] == "RLC"
+            load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+            # TODO PF RLC parallel 
+            load["pf"] = 0.8 #TODO: change based on paremter values!!!!            
         end
+        
+        load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
+        #println(load["pf"])
     end
 
 
     ################
     # CHECK CABLES #
     ################
-    
-    if !haskey(parameters, "cable")
 
+    if !haskey(parameters, "cable")
+        # no cable params defined -- invoke PFE from here ??
         cable_list = []
         for c in 1:num_connections
             push!(cable_list, _sample_cable())
         end
         parameters["cable"] = cable_list
+
+        # invoke PFE
+        parameters = layout_cabels(CM, num_sources, num_loads, parameters)
+        
     else
         num_def_cables = length(parameters["cable"])
 
@@ -796,39 +767,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         if num_undef_cables > 0
             @warn "The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!"
         end
+
         cable_from_pfe_idx = []
+
         for (idx, cable) in enumerate(parameters["cable"])
             # solve powerflow equation (pfe) only if needed - but if not all values are give - take all values from pfe and overwrite the rest
             
             if !haskey(cable, "len")
                 cable["len"] = rand(Uniform(1e-3, 1e1))
             end
-            #=
-            if !haskey(cable, "Rb")
-                cable["Rb"] = 0.722 # TODO: Fixed?!
-            end
 
-            if !haskey(cable, "Cb")
-                cable["Cb"] = 0.4e-6 # TODO: Fixed?!
-            end
-
-            if !haskey(cable, "Lb")
-                cable["Lb"] = 0.264e-3 # TODO: Fixed?!
-            end
-            
-
-            if !haskey(cable, "R")
-                cable["R"] = cable["len"] * cable["Rb"]
-            end
-
-            if !haskey(cable, "L")
-                cable["L"] = cable["len"] * cable["Lb"]
-            end
-
-            if !haskey(cable, "C")
-                cable["C"] = cable["len"] * cable["Cb"]
-            end
-            =#
             if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
                 @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation. Create a counter - we don't want to see this every time."
                 push!(cable_from_pfe_idx, idx)
@@ -848,17 +796,6 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         end
 
     end
-    
-    # source_list = []
-    # cable_list = []
-    # load_list = []
-
-    # parameters = Dict()
-    # parameters["source"] = source_list
-    # parameters["cable"] = cable_list
-    # parameters["load"] = load_list
-    # # parameters["grid"] = grid_properties
-
     return parameters
 end
 
@@ -955,8 +892,6 @@ function cntr_fltrs(source_list)
     cntr_LCL = 0
     cntr_LC = 0
     cntr_L = 0
-
-
     
     for (i, source) in enumerate(source_list)
         # println(source)
@@ -1019,51 +954,51 @@ function _sample_fltr_LCL(grid_properties)
     source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = "LCL"
-    #TODO: why are these things randomized again?? - maybe I'm not following the code, but surely these have been randomized if the user did not define them
+    
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800 #rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
+    source["source_type"] = "ideal"
 
-   #Inductor design
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.8 # power factor
+    source["p_set"] = source["pwr"]*source["pf"]
+    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Droop"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"]/4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"]/(grid_properties["f_grid"]))/grid_properties["fs"]
+    source["k"] = 0
 
-   Vorms = grid_properties["v_rms"]*1.05
-   Vop = Vorms*sqrt(2)
 
-   Zl = 3*Vorms*Vorms/source["pwr"]
+    Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = Filter_Design(
+        source["pwr"],
+        grid_properties["fs"],
+        source["fltr"];
+        Vrms = grid_properties["v_rms"],
+        Vdc = source["vdc"],
+        ΔILf_ILf = source["i_rip"],
+        ΔVCf_VCf = source["v_rip"]
+        )
 
-   Iorms = Vorms/Zl
-   Iop = Iorms*sqrt(2)
-
-   ΔIlfmax = source["i_rip"]*Iop
-
-   source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
-   source["L2"] = deepcopy(source["L1"]) 
-   source["i_limit"]= Iop + ΔIlfmax
-
-   #Capacitor design
-
-   Vorms = grid_properties["v_rms"]*0.95
-   Vop = Vorms*sqrt(2)
-
-   Zl = 3*Vorms*Vorms/source["pwr"]
-
-   Iorms = Vorms/Zl
-   Iop = Iorms*sqrt(2)
-   Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
-   ΔIlfmax = Ir_d*Iop
-   ΔVcfmax = source["v_rip"]*Vop
-
-   source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
-
-   source["R1"] = 400 * source["L1"]
-   source["R2"] = deepcopy(source["R1"])   
-   source["R_C"] = 28* source["C"]
-   source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
-   
-   
-
-   source
+    source["L1"] = Lf_1
+    source["L2"] = Lf_2
+    source["C"] = Cf
+    source["R1"] = R_1
+    source["R2"] = R_2
+    source["R_C"] = R_C
+    source["i_limit"]= i_limit
+    source["v_limit"]= v_limit
+    
+    source
 end
 
 
@@ -1079,43 +1014,43 @@ function _sample_fltr_LC(grid_properties)
     source["fltr"] = "LC"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800 #rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
 
-    #Inductor design
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.8 # power factor
+    source["p_set"] = source["pwr"]*source["pf"]
+    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Droop"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"]/4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"]/(grid_properties["f_grid"]))/grid_properties["fs"]
+    source["k"] = 0
 
-    Vorms = grid_properties["v_rms"]*1.05
-    Vop = Vorms*sqrt(2)
+    Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = Filter_Design(
+        source["pwr"],
+        grid_properties["fs"],
+        source["fltr"];
+        Vrms = grid_properties["v_rms"],
+        Vdc = source["vdc"],
+        ΔILf_ILf = source["i_rip"],
+        ΔVCf_VCf = source["v_rip"]
+        )
 
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-
-    ΔIlfmax = source["i_rip"]*Iop
-
-    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
-    source["i_limit"]= Iop+ ΔIlfmax
-
-    #Capacitor design
-
-    Vorms = grid_properties["v_rms"]*0.95
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-    Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
-    ΔIlfmax = Ir_d*Iop
-    ΔVcfmax = source["v_rip"]*Vop
-
-    source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
-
-    source["R1"] = 400 * source["L1"]
-    source["R_C"] = 28* source["C"]
-    source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
+    source["L1"] = Lf_1
+    source["C"] = Cf
+    source["R1"] = R_1
+    source["R_C"] = R_C
+    source["i_limit"]= i_limit
+    source["v_limit"] = v_limit
 
     source
 end
@@ -1133,26 +1068,39 @@ function _sample_fltr_L(grid_properties)
     source["fltr"] = "L"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
 
-    #Inductor design
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.8 # power factor
+    source["p_set"] = source["pwr"]*source["pf"]
+    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Droop"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"]/4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"]/(grid_properties["f_grid"]))/grid_properties["fs"]
+    source["k"] = 0
+    
+    Lf_1, R_1, i_limit = Filter_Design(
+        source["pwr"],
+        grid_properties["fs"],
+        source["fltr"];
+        Vrms = grid_properties["v_rms"],
+        Vdc = source["vdc"],
+        ΔILf_ILf = source["i_rip"],
+        ΔVCf_VCf = source["v_rip"])
 
-    Vorms = grid_properties["v_rms"]*1.05
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-
-    ΔIlfmax = source["i_rip"] *Iop
-
-    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
-
-    source["R1"] = 400 * source["L1"] 
-    source["i_limit"]= Iop+ ΔIlfmax
+    source["L1"] = Lf_1
+    source["R1"] = R_1
+    source["i_limit"]= i_limit
 
     source
 end
@@ -2603,8 +2551,6 @@ function Source_Setup(num_sources; random = nothing, awg_pwr = 200e3, mode = 3)
 
         if random == 0 || isnothing(random)
 
-            pwr = 200e3
-
             source["mode"]     = mode
 
             source["fltr"]     = "LCL"  # Filter type
@@ -2740,4 +2686,192 @@ function Cable_Length_Setup(num_cables; random = 0, length_bounds = [0.5; 1.5])
 
     return cable_list
 
+end
+
+function MG_Setup(num_sources, num_cables; random = nothing, avg_pwr = 200e3, Vrms = 230)
+
+    #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+    =#
+
+    gen_static_load_ratio = 6
+    gen_contr_load_ratio = 3
+
+    source_list = []
+    load_list = []
+    cable_list = []
+
+    num_contr_loads = num_sources
+    num_static_loads = num_sources
+    num_loads = num_contr_loads + num_static_loads   
+
+    total_gen = 0.0
+
+    if random != 0 && !isnothing(random)
+
+        Random.seed!(1234)
+        pwrs = rand(Uniform(0.5*avg_pwr, 1.5*avg_pwr), num_sources)
+    end
+
+    # Grid Forming sources
+
+    for i in 1:num_sources
+
+        source = Dict()
+
+        if random == 0 || isnothing(random)
+
+            # Grid Forming sources
+
+            source["mode"]     = 6
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            pwr = avg_pwr
+            source["pwr"]      = pwr # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
+
+        else
+
+            source["mode"]     = 6
+
+            source["fltr"]     = "LCL"  # Filter type
+
+            pwr = pwrs[i]
+            source["pwr"]      = pwr  # Rated Apparent Power, VA
+            source["p_set"]    = 0   # Real Power Set Point, Watt
+            source["q_set"]    = 0   # Imaginary Power Set Point, VAi
+
+            source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
+            source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
+
+            source["Observer"] = true   # Discrete Luenberger Observer
+
+            source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
+
+        end
+
+        total_gen += pwr
+
+        push!(source_list, source)
+
+    end   
+
+    #= # Grid Following sources, i.e. controllable loads 
+    avg_contr_load = total_gen/(num_contr_loads*gen_contr_load_ratio)
+
+    if random != 0 && !isnothing(random)
+
+        Random.seed!(1234)
+        pwrs = rand(Uniform(0.5*avg_contr_load, 1.5*avg_contr_load), num_contr_loads)
+        Random.seed!(1234)
+        pfs = rand(Uniform(0.9, 1.0), num_contr_loads)
+    end
+
+    for i in 1:num_contr_loads
+
+        source = Dict()
+
+        if random == 0 || isnothing(random)
+
+            source["mode"]     = 2
+
+            source["fltr"]     = "L"  # Filter type
+
+            pwr = avg_contr_load
+            pf = 0.9
+            source["pwr"]      = 1.5*pwr # Rated Apparent Power, VA
+            source["p_set"]    = -pf*pwr # Real Power Set Point, Watt
+            source["q_set"]    = -pwr*sqrt(1 - pf^2)   # Imaginary Power Set Point, VAi
+
+        else
+
+            source["mode"]     = 2
+
+            source["fltr"]     = "L"  # Filter type
+
+            source["pwr"]      = 1.5*pwrs[i] # Rated Apparent Power, VA
+            source["p_set"]    = -pfs[i]*pwrs[i] # Real Power Set Point, Watt
+            source["q_set"]    = -pwrs[i]*sqrt(1 - pfs[i]^2) # Imaginary Power Set Point, VAi
+
+            source["std_asy"]  = pwrs[i]/2   # Asymptotic Standard Deviation
+            source["σ"]        = pwrs[i]/2   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+            source["Δt"]       = 0.02   # Time Step, seconds
+            #source["X₀"]       = 0      # Initial Process Values, Watt
+            source["k"]        = 1      # Interpolation degree
+
+        end
+
+        push!(source_list, source)
+        
+    end =#
+
+    # Static loads
+    avg_static_load = total_gen/(num_static_loads*gen_static_load_ratio)
+
+    for i in 1:num_static_loads
+
+        load = Dict()
+
+        R_load, L_load, _, _ = Parallel_Load_Impedance(avg_static_load, 1.0, Vrms)
+
+        load["impedance"] = "R"
+        load["R"] = R_load
+        load["L"] = L_load
+        load["S"] = avg_static_load
+
+        push!(load_list, load)
+
+    end
+
+    # Cables
+
+    #MG_cables = 2*num_sources
+    MG_cables = num_sources
+    inter_cables = num_cables - MG_cables
+
+    for i in 1:num_cables
+
+        cable = Dict()
+
+        if i <= inter_cables
+            l = 1
+        else
+            l = 0.1
+        end
+
+        cable["len"]     = l
+        cable["R"]       = l*0.722  # Ω, line resistance
+        cable["L"]       = l*0.264e-3# H, line inductance
+        cable["C"]       = l*0.4e-6  # F, line capacitance
+        cable["i_limit"] = 10e12   # A, line current limit
+
+        #= cable["Rb"] =  0.722
+        cable["Cb"] = 0.4e-6
+        cable["Lb"] =  0.264e-3 =#
+        
+        push!(cable_list, cable)
+
+    end
+
+    # parameters
+
+    parameters = Dict{Any, Any}()
+
+    parameters["source"] = source_list
+    parameters["load"] = load_list
+    parameters["cable"] = cable_list
+    
+    return parameters
 end
