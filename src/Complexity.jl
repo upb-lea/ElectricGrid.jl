@@ -1,9 +1,6 @@
 using LinearAlgebra
 using SpecialFunctions
 
-#= using Graphs
-using NetworkLayout =#
-
 mutable struct Node
 
     value::Int64 # value of the link leading to node

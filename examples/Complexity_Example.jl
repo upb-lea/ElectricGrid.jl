@@ -15,10 +15,10 @@ t_end    = 0.2     # total run time, seconds
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-num_nodes = 50
-num_sources = 25
+num_nodes = 20
+num_sources = 10
 
-CM, num_cables  = SmallWorld(num_nodes, p = 0.0, Z = 4, num_sources = num_sources)
+CM, num_cables  = SmallWorld(num_nodes, p = 0.2, Z = 2, num_sources = num_sources)
 #CM, num_cables = Barabasi_Albert(num_nodes)
 
 #-------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ Power_System_Dynamics(env, hook)
 
 # Spring Layout (Layout = 3) is better for Barabasi-Albert
 # Circular Layout (Layout = 1) is better for SmallWolrd
-drawGraph(CM, parameters, Layout = 1)
+drawGraph(CM, parameters, Layout = 3)
 
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
