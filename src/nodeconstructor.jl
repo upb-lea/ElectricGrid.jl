@@ -251,45 +251,50 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             
             if !haskey(source, "vdc")
-                source["vdc"] = 800#rand(range(start=690,step=10,stop=800)) # if randomized then the classic controllers go unstable - maybe range is too wide
+                source["vdc"] = 800 #rand(range(start=690,step=10,stop=800)) # if randomized then the classic controllers go unstable - maybe range is too wide
             end
 
             if !haskey(source, "i_rip")
-                source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15)) # no reason to randomize
+                source["i_rip"] = 0.15
             end
                 
             if !haskey(source, "v_rip")                    
-                source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016)) # no reason to randomize
+                source["v_rip"] = 0.01537
             end
         
             #Inductor design
             if !haskey(source, "L1") 
                 
-                Vorms = parameters["grid"]["v_rms"]*1.05
-                Vop = Vorms*sqrt(2)
+                Vorms = parameters["grid"]["v_rms"] * 1.05
+                Vop = Vorms * sqrt(2)
             
-                Zl = 3*Vorms*Vorms/source["pwr"]
+                Zl = 3 * Vorms^2/source["pwr"]
             
                 Iorms = Vorms/Zl
-                Iop = Iorms*sqrt(2)
+                Iop = Iorms * sqrt(2)
             
-                ΔIlfmax = source["i_rip"]*Iop
+                ΔIlfmax = source["i_rip"] * Iop
             
-                source["L1"] = (source["vdc"]*(4*parameters["grid"]["fs"]*ΔIlfmax)^-1)
+                source["L1"] = (source["vdc"] * (4 * parameters["grid"]["fs"] * ΔIlfmax)^-1)
                 
             end
 
             if !haskey(source, "i_limit")
-                Vorms = parameters["grid"]["v_rms"]*1.05
-                Vop = Vorms*sqrt(2)
+
+                Vorms = parameters["grid"]["v_rms"] * 1.05
+                Vop = Vorms * sqrt(2)
+                i_lim_r = 1.5
             
-                Zl = 3*Vorms*Vorms/source["pwr"]
+                Zl = 3 * Vorms^2/source["pwr"]
             
                 Iorms = Vorms/Zl
-                Iop = Iorms*sqrt(2)
-            
-                ΔIlfmax = source["i_rip"]*Iop
-                source["i_limit"]= 1.15*Iop + ΔIlfmax
+                Iop = Iorms * sqrt(2)
+
+                if source["fltr"] == "LCL"
+                    source["i_limit"]= 1.15 * Iop
+                else
+                    source["i_limit"] = i_lim_r * Iop * (1 + source["i_rip"]/2)
+                end
             end
 
             if !haskey(source, "R1")
@@ -306,7 +311,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             
             if !haskey(source, "fltr")
-                source["fltr"] = "LCL"#rand(["LC", "LCL"]) 
+                source["fltr"] = "LCL"
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "L"
@@ -323,7 +328,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 end
                 if !haskey(source, "C")
 
-                    Vorms = parameters["grid"]["v_rms"]*0.95
+                    Vorms = parameters["grid"]["v_rms"] * 0.95
                     Vop = Vorms*sqrt(2)
 
                     Zl = 3*Vorms*Vorms/source["pwr"]
@@ -333,18 +338,21 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                     Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
 
-                    ΔIlfmax = Ir_d*Iop
-                    ΔVcfmax = source["v_rip"]*Vop
+                    ΔIlfmax = Ir_d * Iop
+                    ΔVcfmax = source["v_rip"] * Vop
 
-                    source["C"] = ΔIlfmax/(8*parameters["grid"]["fs"]*ΔVcfmax)
+                    source["C"] = ΔIlfmax/(8 * parameters["grid"]["fs"] * ΔVcfmax)
                 end
 
                 if source["fltr"] == "LC" && !haskey(source, "R_C")
-                    source["R_C"] = 28*source["C"] # TODO: actually design the damping resistance
+
+                    ωc = 2π*fc
+
+                    source["R_C"] = 1/ (3 * ωc * source["C"])
                 end  
             end
 
-            if source["fltr"] == "LC" && 1/sqrt(source["L1"]*source["C"]) > parameters["grid"]["fs"]/2
+            if source["fltr"] == "LC" && 1/sqrt(source["L1"] * source["C"]) > parameters["grid"]["fs"]/2
                 if verbosity > 0
                     @warn ("The LC filter parameters have been poorly chosen.
                     The filtering capacitors should be chosen such that the resonant 
@@ -356,73 +364,23 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "v_limit")
-                Vorms = parameters["grid"]["v_rms"]*0.95
-                Vop = Vorms*sqrt(2)
 
-                Zl = 3*Vorms*Vorms/source["pwr"]
-
-                Iorms = Vorms/Zl
-                Iop = Iorms*sqrt(2)
-                Ir_d = source["vdc"]/(4*parameters["grid"]["fs"]*source["L1"]*Iop)
-                ΔIlfmax = Ir_d*Iop
-                ΔVcfmax = source["v_rip"]*Vop
+                v_lim_r = 1.5
                 
-                source["v_limit"]= 1.5*2*(sqrt(2)*parameters["grid"]["v_rms"] + ΔVcfmax)
+                source["v_limit"]= v_lim_r * source["vdc"] * (1 + source["v_rip"]/2)
             end
 
             if  source["fltr"] == "LCL" && !haskey(source, "L2")
-
-                #= Theory:
-                    The attenuation of the LCL-filter is 60db/decade for frequencies above the 
-                    resonant frequency, therefore lower switching frequency for the converter 
-                    can be used. It also provides better decoupling between the filter and the 
-                    grid impedance and lower current ripple accross the grid inductor. 
-
-                    The LCL filter has good current ripple attenuattion even with small inductance 
-                    values. However it can bring also resonances and unstable states into the system. 
-                    Therefore the filter must be designed precisely accoring to the parameters of the 
-                    specific converter. 
-
-                    The importatnt parameter of the filter is its cut-off frequency. The cut-off 
-                    frequency of the filter must be minimally one half of the switching frequency of 
-                    the converter, because the filter must have enough attenuation in the range of the 
-                    converter's switching frequency.
-
-                    The LCL filter will be vulnerable to oscillation too and it will magnify frequencies 
-                    around its cut-off frequency. Therefore the filter is added with damping. The simplest 
-                    way is to add damping resistor. In general there are four possible places where the 
-                    resistor can be placed series/parallel to the inverter side inductor or series/parallel 
-                    to the filter capacitor.
-
-                    The variant with the resistor connected in series with the filter capacitor has been 
-                    chosen. The peak near the resonant frequency can be significantly attenuated. This is 
-                    a simple and reliable solution, but it increases the heat losses in the system and it 
-                    greatly decreases the efficiency of the filter. This problem can be solved by active 
-                    damping. Such a resistor reduces the voltage across the capacitor by a voltage proportional 
-                    to the current that flows through it. This can be also done in the control loop. The 
-                    current through the filter capacitor is measured and differentiatbed by the term 
-                    (s*Cf*R_C). A real resistor is not used and the calculated value is subtracted from the 
-                    demanded current. In this way the filter is actively damped with a virtual resistor 
-                    without any losses. The disadvantage of this method is that an additional current sensor 
-                    is required and the differentiator may bring noise problems because it amplifies high 
-                    frequency signals. 
-
-                =#
 
                 #TODO: add user warnings if the L, C, parameters they choose are stupid  (more than 0.5*fs)  
                 # also calculate the maximal power factor variation. If more than 5% add warning             
 
                 fc = parameters["grid"]["fs"]/5
-                ωc = 2π*fc
+                ωc = 2π * fc
 
                 if !haskey(source, "L2")
 
-                    source["L2"] = source["L1"]/(ωc^2*source["L1"]*source["C"] - 1) #*** filter layout
-
-                    if source["L2"] < 0
-                        source["L2"] == 1e-6
-                        # TODO: add warning - the user choose bad ripple values
-                    end
+                    source["L2"] = source["L1"]/(ωc^2 * source["L1"] * source["C"] - 1)
                 end
                 
                 if !haskey(source, "R2")
@@ -432,7 +390,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                 if !haskey(source, "R_C")
 
-                    source["R_C"] = 1/(3*ωc*source["C"]) #*** filter layout
+                    source["R_C"] = 1/(3 * ωc *source["C"]) #*** filter layout
                 end 
 
             end
@@ -484,7 +442,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
 
-                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2)*sign(source["p_set"]*source["q_set"])
+                    s_set = sqrt(source["p_set"]^2 + source["q_set"]^2) * sign(source["p_set"]*source["q_set"])
 
                     if s_set == 0
                         source["pf"] = 1/sqrt(2)
@@ -533,7 +491,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                     source["std_asy"] = source["pwr"]/4
                 else
 
-                    source["std_asy"] = source["σ"]/sqrt(2*source["κ"])
+                    source["std_asy"] = source["σ"]/sqrt(2 * source["κ"])
                 end
             end
 
@@ -544,7 +502,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                     source["κ"] = 0.0
                 else
 
-                    source["κ"] = source["σ"]^2/(2*source["std_asy"]^2)
+                    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
                 end
             end
 
@@ -1019,54 +977,31 @@ function _sample_fltr_LCL(grid_properties)
     source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = "LCL"
-    #TODO: why are these things randomized again?? - maybe I'm not following the code, but surely these have been randomized if the user did not define them
+    
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800 #rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
 
-    Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C = Filter_Design(source["pwr"], grid_properties["fs"], source["fltr"]; Vrms = grid_properties["v_rms"], Vdc = source["vdc"], ΔILf_ILf = source["i_rip"], ΔVCf_VCf = source["v_rip"])
+    Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = Filter_Design(
+        source["pwr"],
+        grid_properties["fs"],
+        source["fltr"];
+        Vrms = grid_properties["v_rms"],
+        Vdc = source["vdc"],
+        ΔILf_ILf = source["i_rip"],
+        ΔVCf_VCf = source["v_rip"]
+        )
 
-    # source["L1"] = Lf_1
-
-    #Inductor design
-
-    Vorms = grid_properties["v_rms"]*1.05
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-
-    ΔIlfmax = source["i_rip"]*Iop
-
-    source["L1"] = (source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
-    source["L2"] = deepcopy(source["L1"]) 
-    source["i_limit"]= Iop + ΔIlfmax
-
-    #Capacitor design
-
-    Vorms = grid_properties["v_rms"]*0.95
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-    Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
-    ΔIlfmax = Ir_d*Iop
-    ΔVcfmax = source["v_rip"]*Vop
-
-    source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
-
-    source["R1"] = 400 * source["L1"]
-    source["R2"] = deepcopy(source["R1"])   
-    source["R_C"] = 28* source["C"]
-    source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
+    source["L1"] = Lf_1
+    source["L2"] = Lf_2
+    source["C"] = Cf
+    source["R1"] = R_1
+    source["R2"] = R_2
+    source["R_C"] = R_C
+    source["i_limit"]= i_limit
+    source["v_limit"]= v_limit
     
-    
-
     source
 end
 
@@ -1083,45 +1018,26 @@ function _sample_fltr_LC(grid_properties)
     source["fltr"] = "LC"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800 #rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15 #rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537 #rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
 
-    Lf_1, Cf, fc, R_1, R_2, R_C = Filter_Design(source["pwr"], grid_properties["fs"], source["fltr"]; Vrms = grid_properties["v_rms"], Vdc = source["vdc"], ΔILf_ILf = source["i_rip"], ΔVCf_VCf = source["v_rip"])
+    Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = Filter_Design(
+        source["pwr"],
+        grid_properties["fs"],
+        source["fltr"];
+        Vrms = grid_properties["v_rms"],
+        Vdc = source["vdc"],
+        ΔILf_ILf = source["i_rip"],
+        ΔVCf_VCf = source["v_rip"]
+        )
 
-    #Inductor design
-
-    Vorms = grid_properties["v_rms"]*1.05
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-
-    ΔIlfmax = source["i_rip"]*Iop
-
-    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
-    source["i_limit"]= Iop+ ΔIlfmax
-
-    #Capacitor design
-
-    Vorms = grid_properties["v_rms"]*0.95
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-    Ir_d = source["vdc"]/(4*grid_properties["fs"]*source["L1"]*Iop)
-    ΔIlfmax = Ir_d*Iop
-    ΔVcfmax = source["v_rip"]*Vop
-
-    source["C"] = ΔIlfmax/(8*grid_properties["fs"]*ΔVcfmax)
-
-    source["R1"] = 400 * source["L1"]
-    source["R_C"] = 28* source["C"]
-    source["v_limit"]= 2*(sqrt(2)*grid_properties["v_rms"] + ΔVcfmax)
+    source["L1"] = Lf_1
+    source["C"] = Cf
+    source["R1"] = R_1
+    source["R_C"] = R_C
+    source["i_limit"]= i_limit
+    source["v_limit"] = v_limit
 
     source
 end
@@ -1139,28 +1055,22 @@ function _sample_fltr_L(grid_properties)
     source["fltr"] = "L"
 
     source["pwr"] = rand(range(start=5,step=5,stop=50))*1e3
-    source["vdc"] = 800#rand(range(start=690,step=10,stop=800))
-    source["i_rip"] = 0.15#rand(Uniform(0.1, 0.15))
-    source["v_rip"] = 0.01537#rand(Uniform(0.014, 0.016))
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
     
-    Lf_1, R_1 = Filter_Design(source["pwr"], grid_properties["fs"], source["fltr"]; Vrms = grid_properties["v_rms"], Vdc = source["vdc"], ΔILf_ILf = source["i_rip"], ΔVCf_VCf = source["v_rip"])
+    Lf_1, R_1, i_limit = Filter_Design(
+        source["pwr"],
+        grid_properties["fs"],
+        source["fltr"];
+        Vrms = grid_properties["v_rms"],
+        Vdc = source["vdc"],
+        ΔILf_ILf = source["i_rip"],
+        ΔVCf_VCf = source["v_rip"])
 
-    #Inductor design
-
-    Vorms = grid_properties["v_rms"]*1.05
-    Vop = Vorms*sqrt(2)
-
-    Zl = 3*Vorms*Vorms/source["pwr"]
-
-    Iorms = Vorms/Zl
-    Iop = Iorms*sqrt(2)
-
-    ΔIlfmax = source["i_rip"] *Iop
-
-    source["L1"] = 0.5*(source["vdc"]*(4*grid_properties["fs"]*ΔIlfmax)^-1)
-
-    source["R1"] = 400 * source["L1"] 
-    source["i_limit"]= Iop + ΔIlfmax
+    source["L1"] = Lf_1
+    source["R1"] = R_1
+    source["i_limit"]= i_limit
 
     source
 end

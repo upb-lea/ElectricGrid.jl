@@ -443,6 +443,9 @@ function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, Δ
     Ir = ΔILf_ILf
     Vr = ΔVCf_VCf
 
+    i_lim_r = 1.5
+    v_lim_r = 1.5
+
     #____________________________________________________________
     # Inductor Design
     Vorms = Vrms*1.05
@@ -462,11 +465,11 @@ function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, Δ
     Vorms = Vrms*0.95
     Vop = Vorms*sqrt(2)
 
-    Zl = 3*Vorms*Vorms/Sr
+    Zl = 3*Vorms^2/Sr
 
     Iorms = Vorms/Zl
     Iop = Iorms*sqrt(2)
-    Ir = Vdc/(4*fs*Lf*Iop)
+    Ir = Vdc/(4*fs*Lf_1*Iop)
     ΔIlfmax = Ir*Iop
     ΔVcfmax = Vr*Vop
 
@@ -479,9 +482,16 @@ function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, Δ
 
     R_1 = 200 * Lf_1
 
+    ωc = 2π*fc
+
     R_C = 1/(3*ωc*Cf)
 
-    if fltr == "LCL" 
+    # v_limit
+    v_limit = v_lim_r * Vdc * (1 + ΔVCf_VCf/2)
+
+    if fltr == "LCL"
+
+        i_limit = i_lim_r*Iop
 
         fc = fs/f_p
         ωc = 2π*fc
@@ -489,15 +499,19 @@ function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, Δ
 
         R_2 = r_p * Lf_2
 
-        return Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C
+        return Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit
 
-    elseif fltr == "LC"  
+    elseif fltr == "LC"
 
-        return Lf_1, Cf, fc, R_1, R_2, R_C
+        i_limit = i_lim_r*Iop*(1 + ΔILf_ILf/2)
+
+        return Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit
 
     elseif fltr == "L"
 
-        return Lf_1, R_1
+        i_limit = i_lim_r*Iop*(1 + ΔILf_ILf/2)
+
+        return Lf_1, R_1, i_limit
     end
 end
 
