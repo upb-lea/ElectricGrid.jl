@@ -1,5 +1,5 @@
 # Copy of Simplest_Example.jl
-# invoke layout_cabels() by specifying the cables in parameters #L832 from nodeconstructor
+# invoke layout_cables() by specifying the cables in parameters #L832 from nodeconstructor
 #  - 2 sources - 1 load  (mode 1)
 # compare P, Q, p, q 
 # Start with putting every source in "mode" => 1 or "Swing". This is open loop - no control
@@ -44,7 +44,7 @@ CM = [ 0. 1.
 =#
 
 
-R, L_C, _, _ = Parallel_Load_Impedance(150e3, 0.95, 230; fsys = 50)
+R, L_C, _, _ = Parallel_Load_Impedance(190e3, 0.99, 230; fsys = 50)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
@@ -58,7 +58,7 @@ parameters = Dict{Any, Any}(
         # "cable"   => Any[
         #                 Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
         #                 ],
-        "grid" => Dict{Any, Any}("ramp_end" => 0.0) #, "vrms" => 230.0) #, "f" => 50.0, "L" => 1e-6, "R" => 1e-3, "C" => 1e-4, "i_limit" => 10e4,)
+        "grid" => Dict{Any, Any}("ramp_end" => 0.02) #, "vrms" => 230.0) #, "f" => 50.0, "L" => 1e-6, "R" => 1e-3, "C" => 1e-4, "i_limit" => 10e4,)
     )
 #_______________________________________________________________________________
 # Defining the environment
@@ -92,7 +92,7 @@ plot_hook_results(hook = hook,
 
 # steady state values from Source p , q from data_hook
 for i in 1:2
-    println("Source $i : p = ", hook.df[!,"source$(i)_p"][end], " q = ", hook.df[!,"source$(i)_p"][end])
+    println("Source $i : p = ", hook.df[!,"source$(i)_p"][end], " q = ", hook.df[!,"source$(i)_q"][end])
 end
 
 p_test = 0.0;

@@ -48,8 +48,6 @@ print(parameters["load"])
 
 
 
-
-
 # define same setting for env and check if 
 parameters_nc = Dict{Any, Any}(
     "source" => Any[

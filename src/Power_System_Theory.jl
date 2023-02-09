@@ -624,7 +624,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 end
 
 
-function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosity)
+function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosity)
     if verbosity > 0
         @info "layout_cables invoked"
     end
@@ -788,11 +788,11 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
 
     for i=1:num_cables
         
-
+        # (2.05232e-3)/2, (4.1148e-3)/2)
         set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
         # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
         # assumption: min value of D-to-neutral : 3 * max radius
-        set_bounds(cables[i, "D-to-neutral"], 0.5, 0.1, 1.00 ) #m
+        set_bounds(cables[i, "D-to-neutral"], 0.5, 0.01, 1.0 ) #m
         # assumption to line to line(neutral) --  for low voltages
         #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
@@ -856,18 +856,18 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
 
     end
 
-    cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
+    # cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
     
-    for i in 1:num_cables
+    # for i in 1:num_cables
 
-        j, k = Tuple(findfirst(x -> x == i, CM))
+    #     j, k = Tuple(findfirst(x -> x == i, CM))
 
-        cable_constraints[i] = @NLconstraint(model,
-            abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*L_cable[i]))
-            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(C_cable[i]/L_cable[i])
-        )
+    #     cable_constraints[i] = @NLconstraint(model,
+    #         abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*L_cable[i]))
+    #         <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(C_cable[i]/L_cable[i])
+    #     )
 
-    end
+    # end
     
     # non-linear objectives 
     @NLexpression(model, P_source_mean, sum(nodes[Int(j),"P"] for j in idx_p_mean_cal) / convert.(Int64,length(idx_p_mean_cal)))
@@ -919,7 +919,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
 
         @show total_P_load, total_Q_load
         # check radius - check bounds
-        @show R_cable.value
+        @show value.(R_cable)
     end
 
     println()
