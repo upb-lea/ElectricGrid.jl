@@ -755,7 +755,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         parameters["cable"] = cable_list
 
         # invoke PFE
-        parameters = layout_cabels(CM, num_sources, num_loads, parameters)
+        parameters = layout_cabels(CM, num_sources, num_loads, parameters; verbosity=verbosity)
         
     else
         num_def_cables = length(parameters["cable"])
