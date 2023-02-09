@@ -122,10 +122,12 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
     num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R)
 
     
-    p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
-    
+    p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters,  num_sources, num_loads, CM)
+
     if s_load_total > s_source_total
-        @warn "The aparent power drawn from the loads exceeds the aparent power provided by all loads in steady state! Stable grid operation maybe not possible! Please reconfigure the parameters!"
+        if verbosity > 0
+            @warn "The aparent power drawn from the loads exceeds the aparent power provided by all loads in steady state! Stable grid operation maybe not possible! Please reconfigure the parameters!"
+        end
     end    
 
     NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, L2L_p, verbosity)
