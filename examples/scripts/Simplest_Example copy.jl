@@ -43,19 +43,22 @@ CM = [ 0. 1.
     4 -> "Synchronverter" - enhanced droop control
 =#
 
+
+R, L_C, _, _ = Parallel_Load_Impedance(150e3, 0.95, 230; fsys = 50)
+
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "RL",  "mode" => 1),
-                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "RL",  "mode" => 1),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "L", "R1" => 1e-3,"L1" => 1e-6, "mode" => 1, "v_δ_set" => 0.0, "pu" => 1.0),
+                        # Dict{Any, Any}("pwr" => 200e3, "fltr" => "L", "R1" => 1e-3,"L1" => 1e-6, "mode" => 1, "v_δ_set" => 0.0, "pu" => 1.0),
                         ],
         # No load
-        # "load"   => Any[
-        #                 Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
-        #                 ], 
+        "load"   => Any[
+                        Dict{Any, Any}("impedance" => "RL", "R" => R, "L" => L_C),
+                        ], 
         # "cable"   => Any[
         #                 Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
         #                 ],
-        "grid" => Dict{Any, Any}("ramp_end" => 0.0)
+        "grid" => Dict{Any, Any}("ramp_end" => 0.0) #, "vrms" => 230.0) #, "f" => 50.0, "L" => 1e-6, "R" => 1e-3, "C" => 1e-4, "i_limit" => 10e4,)
     )
 #_______________________________________________________________________________
 # Defining the environment
@@ -65,11 +68,11 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [1 2], 
-                collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
-                collect_freq     = [1 2],
-                collect_sources  = [1 2])
+hook = DataHook(collect_vrms_ids = [1 ], 
+                collect_irms_ids = [1 ], 
+                collect_pq_ids   = [1 ], #collecting p and q for sources 1, 2
+                collect_freq     = [1 ],
+                collect_sources  = [1 ])
 #_______________________________________________________________________________
 # Running the Time Simulation
 
@@ -81,9 +84,9 @@ Power_System_Dynamics(env, hook)
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
-                    p_to_plot       = [1 2], 
-                    q_to_plot       = [1 2], 
-                    vrms_to_plot    = [1 2], 
+                    p_to_plot       = [1], 
+                    q_to_plot       = [1], 
+                    vrms_to_plot    = [1], 
                     irms_to_plot    = [],
                     freq_to_plot    = [])
 
@@ -92,6 +95,20 @@ for i in 1:2
     println("Source $i : p = ", hook.df[!,"source$(i)_p"][end], " q = ", hook.df[!,"source$(i)_p"][end])
 end
 
+p_test = 0.0;
+q_test = 0.0;
+for i in 1:2
+    p_test += hook.df[!,"source$(i)_p"][end]
+    q_test += hook.df[!,"source$(i)_q"][end]
+    @show p_test, q_test
+end
+
+@show p_test, q_test
+
+num_source = length(parameters["source"])
+num_load   = length(parameters["load"])
+
+total_P_load, total_Q_load, s_load_total, total_S_source = CheckPowerBalance(parameters, num_source, num_load, CM)
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
