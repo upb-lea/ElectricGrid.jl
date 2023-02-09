@@ -286,6 +286,14 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 
             end
 
+            if !haskey(source, "fltr")
+                source["fltr"] = "LCL"
+            elseif !(source["fltr"] in ["L", "LC", "LCL"])
+                # TODO: Raise warning: False key
+                source["fltr"] = "L"
+                @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
+            end
+
             if !haskey(source, "i_limit")
 
                 Vorms = parameters["grid"]["v_rms"] * 1.05
@@ -316,14 +324,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 source["R1"] = 200 * source["L1"] # can be as low as 15
                 
             end
-            
-            if !haskey(source, "fltr")
-                source["fltr"] = "LCL"
-            elseif !(source["fltr"] in ["L", "LC", "LCL"])
-                # TODO: Raise warning: False key
-                source["fltr"] = "L"
-                @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
-            end
+        
             
             if (source["fltr"] == "LC" || source["fltr"] == "LCL")
                 #Capacitor design
