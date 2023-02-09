@@ -624,8 +624,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
                 if parameters["source"][i]["mode"] in ["Swing", "Voltage", 1, 7] 
 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
-                    #fix(nodes[1, "theta"], 0.0) 
-                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # question, does this limit too much, should be more or less.
+                    fix(nodes[i, "theta"], (π/180)*parameters["source"][i]["v_δ_set"]) 
                     
                     set_bounds(nodes[i, "P"], (total_P_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # come from parameter dict/user?
                     set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses

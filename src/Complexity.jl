@@ -1,9 +1,6 @@
 using LinearAlgebra
 using SpecialFunctions
 
-using Graphs
-using NetworkLayout
-
 mutable struct Node
 
     value::Int64 # value of the link leading to node
@@ -2582,7 +2579,7 @@ function SmallWorld(num_nodes; Z = 2, p = 0.2, num_sources = num_nodes)
         node1 = convert(Int64, round((num_sources-1)*rand() + 1))
         node2 = convert(Int64, round((num_sources-1)*rand() + 1))
 
-        while CM[node1, node2] >= 1 || CM[node2,node1] >= 1 || node1 == node2
+        while CM[node1, node2] >= 1 || CM[node2, node1] >= 1 || node1 == node2
 
             node1 = convert(Int64, round((num_sources-1)*rand() + 1))
             node2 = convert(Int64, round((num_sources-1)*rand() + 1))
@@ -2675,6 +2672,126 @@ function SmallWorld(num_nodes; Z = 2, p = 0.2, num_sources = num_nodes)
     return CM, cablecount - 1
 end
 
+function MG_SmallWorld(num_sources; Z = 2, p = 0.2)
+
+    # Z, the short edges connecting it to its nearest neighbours, up to a distance
+    # of Z/2. Coordination number, if Z = num_nodes, then we have a fully connected graph.
+
+    #p the fraction of random connections
+
+    # The L nodes in a small world networks are arranged around a circle
+
+    # There are p x L x Z/2 shortcuts added to the network, which connect nodes
+    # at random
+
+    #=
+        Newman and Watts contend that the model displays a critical point with a divergent
+        characteristic length as p tends to zero. They argue that the small-world model
+        has a critical point in the limit where the density of shortcuts tends to zero.
+        This phase transition gives rise to specific finite-size scaling behaviour in the
+        region close to the transition.
+
+        In the limit where the number of nodes N becomes large and the number of shortcuts,
+        pLZ/2 stays fixed, this network has a nice limit where the distance is measured in
+        radians Δθ around the circle. Dividing the average length by l(p = 0)~L/2Z, essentially
+        does this, since Δθ = πZl/L. In this limit, the average bond length should be a
+        function only of M = pLZ/2
+    =#
+
+    distance = convert(Int64, round(Z/2))
+    CM = Array{Int64, 2}(undef, num_sources, num_sources)
+    CM = fill!(CM, 0)
+
+    cablecount = 1
+
+    if num_sources > 1
+
+        for i in 1:num_sources
+
+            # add the nearest neighbour connections
+            # each node i should be connected to nodes mod((i - Z/2),L),... mod((i + Z/2),L)
+            for j in 1:distance
+
+                if i + j <= num_sources
+
+                    CM[i, i + j] = cablecount
+                    cablecount += 1
+
+                elseif CM[i + j - num_sources, i] == 0 
+
+                    CM[i + j - num_sources, i] = cablecount
+                    cablecount += 1
+                end
+            end
+        end
+
+        # add the random connections
+        for i in 1:convert(Int64, round(p*num_sources*Z/2))
+
+            node1 = convert(Int64, round((num_sources-1)*rand() + 1))
+            node2 = convert(Int64, round((num_sources-1)*rand() + 1))
+
+            while CM[node1, node2] >= 1 || CM[node2, node1] >= 1 || node1 == node2
+
+                node1 = convert(Int64, round((num_sources-1)*rand() + 1))
+                node2 = convert(Int64, round((num_sources-1)*rand() + 1))
+
+                if sum(CM) >= num_sources*(num_sources - 1)/2
+                    break
+                end
+            end
+
+            if node2 > node1 && CM[node1,node2] < 1
+
+                CM[node1, node2] = cablecount
+                cablecount += 1
+
+            elseif node1 > node2 && CM[node2, node1] < 1
+                
+                CM[node2, node1] = cablecount
+                cablecount += 1
+            end
+        end
+
+    end
+
+    #= CM = NewCM(CM, size(CM, 1), 2*num_sources) 
+
+    for i in 1:num_sources
+
+        # Add controllable Load
+
+        node1 = i
+        node2 = i + num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+
+        # Add Static Load
+
+        node1 = i
+        node2 = i + 2*num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+    end
+ =#
+
+    CM = NewCM(CM, size(CM, 1), num_sources) 
+
+    for i in 1:num_sources
+
+        # Add Static Load
+
+        node1 = i
+        node2 = i + num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+    end
+
+    CM = CM - transpose(CM)
+
+    return CM, cablecount - 1
+end
+
 function Barabasi_Albert(L; m = 1, α = 0)
 
     #=
@@ -2736,6 +2853,107 @@ function Barabasi_Albert(L; m = 1, α = 0)
             end
         end
     end
+
+    return CM, cablecount - 1
+end
+
+function MG_Barabasi_Albert(num_sources; m = 1, α = 0)
+
+    #=
+        The Barabasi-Albert model is an algorithm for generating random scale-free networks
+        using a preferential attachment mechanism. Several natural and human-made systems,
+        including the Internet, the World-wide-web, and some social networks are thought
+        to be approximately scale-free and certainly contain few nodes (called hubs) with
+        unusually high degree as compared to other nodes of the network.
+
+        The network can begin with an initial connected network of m0 nodes.
+
+        New nodes are added to the network one at a time. Each node is connected to
+        m<= m0 existing nodes with a probability that is proportional to the number of
+        links that the existing nodes already have.
+
+        In this case m = 1 or m = 2. m0 is equal to 2
+
+        if α is not equal to 1 then we have the more general non-linear preferential
+        attachment (NLPA) model. If 0 < α < 1, NLPA is referred to as "sub-linear" and
+        the degree distribution of the network tends to a stretched exponential
+        distribution. if α > 1, NLPA is referred to as "super-linear" and a small
+        number of nodes connect to almost all other nodes in the network. For both
+        α < 1 and α > 1, the scale free property of the network is broken in the
+        limit of infinite system size.
+    =#
+
+    CM = Array{Int64, 2}(undef, num_sources, num_sources)
+    CM = fill!(CM, 0)
+
+    cablecount = 1
+
+    if num_sources > 1
+
+        CM[1,2] = 1 #just connecting the first node with the second
+
+        cablecount += 1
+
+        for i in 3:num_sources
+
+            m_count = 0
+
+            while m_count < m
+
+                for j in 1:i-1
+
+                    k = sum(abs.(CM[j, :]) .> 0)
+                    kt = sum(abs.(CM[1:i-1, 1:i-1]) .> 0)
+
+                    #= for k in 1:L
+                        kt = kt + sum(M[k,:])^α
+                    end =#
+
+                    p = k/kt
+
+                    if rand() < p && CM[i, j] != 1 && m_count < m
+                        
+                        CM[i, j] = cablecount
+                        m_count += 1
+                        cablecount += 1
+                    end
+                end
+            end
+        end
+    end
+
+    #= CM = NewCM(CM, size(CM, 1), 2*num_sources) 
+
+    for i in 1:num_sources
+
+        # Add controllable Load
+
+        node1 = i
+        node2 = i + num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+
+        # Add Static Load
+
+        node1 = i
+        node2 = i + 2*num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+    end =#
+
+    CM = NewCM(CM, size(CM, 1), num_sources) 
+
+    for i in 1:num_sources
+
+        # Add Static Load
+
+        node1 = i
+        node2 = i + num_sources
+        CM[node1, node2] = cablecount
+        cablecount += 1
+    end
+
+    CM = CM - transpose(CM)
 
     return CM, cablecount - 1
 end

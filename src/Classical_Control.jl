@@ -2066,6 +2066,12 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
                     Pset = Source.X[ns][end]
                 end
                
+                Pset = -1*abs.(Pset)
+
+                if sign(Pset) != sign(Source.X[ns][end])
+                    Source.X[ns][end] = -1*Source.X[ns][end]
+                end
+
                 Sset = Pset/Source.pf[ns]
                 Source.pq0_set[ns, 1] = Pset
                 Source.pq0_set[ns, 2] = sqrt(Sset^2 - Pset^2)*sign(Pset*Source.pf[ns])
@@ -2080,7 +2086,7 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
                     end
                 end
 
-                if ns == 1   
+                if ns == 5   
                     
                     Source.debug[1] = Pset
                 else
@@ -2485,6 +2491,9 @@ function Source_Initialiser(env, Source, modes, source_indices)
             Source.σ[e] = 0.0
         end
 
+        Random.seed!(rand([1,2,3,4,5,6,7,8,9,10]))
+        #Random.seed!(1)
+
         Source.κ[e] = abs(env.nc.parameters["source"][ns]["κ"]) # mean reversion parameter
         Source.γ[e] = env.nc.parameters["source"][ns]["γ"] # asymptotic mean
         Source.k[e] = env.nc.parameters["source"][ns]["k"] # interpolation degree
@@ -2857,7 +2866,7 @@ function Switch_Rows!(A, row_1, row_2)
 end
 
 """
-    α = charpoly_coef(λ)
+    α = Charpoly_Coef(λ)
 
 # Description
 given the roots, this function finds the coefficients
@@ -2865,7 +2874,7 @@ given the roots, this function finds the coefficients
 # Return Values
 - `α`: vector of length(λ)
 """
-function charpoly_coef(λ)
+function Charpoly_Coef(λ)
 
     # given the roots, this function finds the coefficients
 
@@ -2909,7 +2918,7 @@ function Ackermann_Gain_Matrix(A, C, λ)
 
     αd_A = Array{Float64, 2}(undef, size(A,1), size(A,2))
 
-    α = charpoly_coef(λ)
+    α = Charpoly_Coef(λ)
 
     αd_A = α[1]*I
 
