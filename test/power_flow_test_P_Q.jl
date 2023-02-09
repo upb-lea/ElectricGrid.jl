@@ -1,6 +1,15 @@
 using Dare
 using Test
 
+#= 
+    Rationale for this unit test:
+    - The goal is to compare the P Q values from the time domain simulation with the P Q values from the frequency domain simulation
+    - The frequency domain simulation is run with the Power_System_Dynamics() function
+    - The time domain simulation is run with the SimEnv() function
+=#
+
+
+
 # with basic commands without SmallWorld
 @testset "Layout cables with Power flow equations" begin
  
@@ -32,7 +41,7 @@ using Test
                                     Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006) 
                                     ],
                 #     "cable"   => Any[
-                #                     Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,)
+                #                     Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,) #covered in hotfix
                 #                     ]
                 )
             #_______________________________________________________________________________
