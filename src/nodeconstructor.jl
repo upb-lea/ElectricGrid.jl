@@ -121,6 +121,13 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections + (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 + (num_loads_RC + num_loads_C + num_loads_R)
 
+    
+    p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
+    
+    if s_load_total > s_source_total
+        @warn "The aparent power drawn from the loads exceeds the aparent power provided by all loads in steady state! Stable grid operation maybe not possible! Please reconfigure the parameters!"
+    end    
+
     NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, L2L_p, verbosity)
 end
 
@@ -702,32 +709,36 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
         # add Z and pwr to the parameter_load dict; needed for solving the power flow equations
         # assuming all passive loads as parrallel connection of devices
-        for (index, load) in enumerate(parameters["load"])
-            if load["impedance"] == "R"
-                load["Z"] = load["R"]
-                load["pf"] = 1
-            elseif load["impedance"] == "L"
-                load["Z"] = 1im*2*pi*parameters["grid"]["f_grid"]*load["L"]
-                load["pf"] = 0
-            elseif load["impedance"] == "C"
-                load["Z"] = 1/(1im*2*pi*parameters["grid"]["f_grid"]*load["C"])
-                load["pf"] = 0
-            elseif load["impedance"] == "RL"
-                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
-                load["pf"] = cos(atan(load["R"]/(parameters["grid"]["f_grid"]*2*pi*load["L"])))
-            elseif load["impedance"] == "RC"
-                load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
-                load["pf"] = cos(-atan(load["R"]*parameters["grid"]["f_grid"]*2*pi*load["C"]))
-            elseif load["impedance"] == "LC"
-                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
-            elseif load["impedance"] == "RLC"
-                load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
-                # TODO PF RLC parallel             
-            end
-            
-            load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
-            #println(load["pf"])
+        
+    end
+    
+    for (index, load) in enumerate(parameters["load"])
+        if load["impedance"] == "R"
+            load["Z"] = load["R"]
+            load["pf"] = 1
+        elseif load["impedance"] == "L"
+            load["Z"] = 1im*2*pi*parameters["grid"]["f_grid"]*load["L"]
+            load["pf"] = 0
+        elseif load["impedance"] == "C"
+            load["Z"] = 1/(1im*2*pi*parameters["grid"]["f_grid"]*load["C"])
+            load["pf"] = 0
+        elseif load["impedance"] == "RL"
+            load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
+            load["pf"] = cos(atan(load["R"]/(parameters["grid"]["f_grid"]*2*pi*load["L"])))
+        elseif load["impedance"] == "RC"
+            load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
+            load["pf"] = cos(-atan(load["R"]*parameters["grid"]["f_grid"]*2*pi*load["C"]))
+        elseif load["impedance"] == "LC"
+            load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+            load["pf"] = 0.8 #TODO: change based on paremter values!!!!
+        elseif load["impedance"] == "RLC"
+            load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
+            # TODO PF RLC parallel 
+            load["pf"] = 0.8 #TODO: change based on paremter values!!!!            
         end
+        
+        load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
+        #println(load["pf"])
     end
 
 
@@ -756,39 +767,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         if num_undef_cables > 0
             @warn "The number of defined cables $num_def_cables is smaller than the number specified cables in the environment $num_connections, therefore the remaining $num_undef_cables cables are selected randomly!"
         end
+
         cable_from_pfe_idx = []
+
         for (idx, cable) in enumerate(parameters["cable"])
             # solve powerflow equation (pfe) only if needed - but if not all values are give - take all values from pfe and overwrite the rest
             
             if !haskey(cable, "len")
                 cable["len"] = rand(Uniform(1e-3, 1e1))
             end
-            #=
-            if !haskey(cable, "Rb")
-                cable["Rb"] = 0.722 # TODO: Fixed?!
-            end
 
-            if !haskey(cable, "Cb")
-                cable["Cb"] = 0.4e-6 # TODO: Fixed?!
-            end
-
-            if !haskey(cable, "Lb")
-                cable["Lb"] = 0.264e-3 # TODO: Fixed?!
-            end
-            
-
-            if !haskey(cable, "R")
-                cable["R"] = cable["len"] * cable["Rb"]
-            end
-
-            if !haskey(cable, "L")
-                cable["L"] = cable["len"] * cable["Lb"]
-            end
-
-            if !haskey(cable, "C")
-                cable["C"] = cable["len"] * cable["Cb"]
-            end
-            =#
             if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
                 @info "Parameters from cable $(idx) missing. All cable parameters are calculate based on power flow equation. Create a counter - we don't want to see this every time."
                 push!(cable_from_pfe_idx, idx)
@@ -808,17 +796,6 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
         end
 
     end
-    
-    # source_list = []
-    # cable_list = []
-    # load_list = []
-
-    # parameters = Dict()
-    # parameters["source"] = source_list
-    # parameters["cable"] = cable_list
-    # parameters["load"] = load_list
-    # # parameters["grid"] = grid_properties
-
     return parameters
 end
 
@@ -915,8 +892,6 @@ function cntr_fltrs(source_list)
     cntr_LCL = 0
     cntr_LC = 0
     cntr_L = 0
-
-
     
     for (i, source) in enumerate(source_list)
         # println(source)
@@ -984,6 +959,25 @@ function _sample_fltr_LCL(grid_properties)
     source["vdc"] = 800
     source["i_rip"] = 0.15
     source["v_rip"] = 0.01537
+    source["source_type"] = "ideal"
+
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.8 # power factor
+    source["p_set"] = source["pwr"]*source["pf"]
+    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Droop"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"]/4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"]/(grid_properties["f_grid"]))/grid_properties["fs"]
+    source["k"] = 0
+
 
     Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = Filter_Design(
         source["pwr"],
@@ -1024,6 +1018,23 @@ function _sample_fltr_LC(grid_properties)
     source["i_rip"] = 0.15
     source["v_rip"] = 0.01537
 
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.8 # power factor
+    source["p_set"] = source["pwr"]*source["pf"]
+    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Droop"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"]/4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"]/(grid_properties["f_grid"]))/grid_properties["fs"]
+    source["k"] = 0
+
     Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = Filter_Design(
         source["pwr"],
         grid_properties["fs"],
@@ -1060,6 +1071,23 @@ function _sample_fltr_L(grid_properties)
     source["vdc"] = 800
     source["i_rip"] = 0.15
     source["v_rip"] = 0.01537
+
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.8 # power factor
+    source["p_set"] = source["pwr"]*source["pf"]
+    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Droop"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"]/4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2/(2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"]/(grid_properties["f_grid"]))/grid_properties["fs"]
+    source["k"] = 0
     
     Lf_1, R_1, i_limit = Filter_Design(
         source["pwr"],

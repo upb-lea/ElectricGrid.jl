@@ -561,6 +561,69 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
 end
 
 
+function CheckPowerBalance(parameters, num_source, num_load, CM)
+    """
+    p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
+
+    # Description
+    Determines based on the parameters of the grid the total power (active and reactive) drawn from all load 
+    and the total power provided by the sources. 
+    Thereby, steady state is assumed.
+
+    # Arguments
+    - `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/nodeconstructor.
+    - `num_source::Int`: number of sources in the grid (todo: calulate based on parameter dict?)
+    - `num_load::Int`: number of num_load in the grid (todo: calulate based on parameter dict?)
+    - `CM::Matrix`: connectivity matrix describing the connections in the grid
+
+
+    # Return Values
+    - `p_load_total::float`: total active power drawn by all loads (passive components as well as controlled with negative reference value)
+    - `q_load_total::float`: total reactive power drawn by all loads
+    -  s_load_total::float`: total aparent power drawn by all loads
+    - `s_source_total::float`: total aparent power provided by all sources in steady state
+    """
+
+    num_nodes = num_source + num_load
+    num_cables = Int(maximum(CM))
+
+    p_load_total = 0
+    q_load_total = 0 
+    s_source_total = 0 
+
+    for i = 1:num_nodes
+
+        if i <= num_source
+
+            s_source_total = s_source_total + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
+
+            if parameters["source"][i]["mode"] in ["PQ Control", 3]
+
+                if parameters["source"][i]["p_set"] < 0
+                    p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
+                end
+
+                if parameters["source"][i]["q_set"] < 0
+                    q_load_total = q_load_total + parameters["source"][i]["q_set"]/parameters["grid"]["phase"]
+                end
+
+            elseif parameters["source"][i]["mode"] in ["PV Control", 4]
+
+                if parameters["source"][i]["p_set"] < 0
+                    p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
+                end
+            end
+        else
+
+            p_load_total = p_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
+            q_load_total = q_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
+        end   
+    end
+    s_load_total = sqrt(p_load_total^2 + q_load_total^2)
+    return p_load_total, q_load_total, s_load_total, s_source_total
+end
+
+
 function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
 
     model = Model(Ipopt.Optimizer)
@@ -580,9 +643,13 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     @variable(model, nodes[1 : num_nodes, ["v", "theta", "P", "Q"]])
    
     # cal total load[pwr]
+    total_P_load, total_Q_load, s_load_total, total_S_source = CheckPowerBalance(parameters, num_source, num_load, CM)
+
+    #=
     total_P_load = 0
     total_Q_load = 0 
     total_S_source = 0 
+    
 
     for i = 1:num_nodes
 
@@ -612,6 +679,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
             total_Q_load = total_Q_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
         end   
     end
+    =#
 
     idx_p_mean_cal = []
     idx_q_mean_cal = []
