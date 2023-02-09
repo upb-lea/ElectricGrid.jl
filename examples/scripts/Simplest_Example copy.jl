@@ -70,7 +70,6 @@ hook = DataHook(collect_vrms_ids = [1 2],
                 collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
                 collect_freq     = [1 2],
                 collect_sources  = [1 2])
-
 #_______________________________________________________________________________
 # Running the Time Simulation
 
@@ -87,6 +86,12 @@ plot_hook_results(hook = hook,
                     vrms_to_plot    = [1 2], 
                     irms_to_plot    = [],
                     freq_to_plot    = [])
+
+# steady state values from Source p , q from data_hook
+for i in 1:2
+    println("Source $i : p = ", hook.df[!,"source$(i)_p"][end], " q = ", hook.df[!,"source$(i)_p"][end])
+end
+
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
