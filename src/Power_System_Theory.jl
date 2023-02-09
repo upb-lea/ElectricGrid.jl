@@ -759,6 +759,8 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
         primal_status      = $(primal_status(model))
         objective_value    = $(objective_value(model))
         """) 
+
+        @show total_P_load, total_Q_load
     end
 
     #= println()
