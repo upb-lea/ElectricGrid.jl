@@ -15,10 +15,10 @@ t_end    = 0.2     # total run time, seconds
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-num_nodes = 20
-num_sources = 10
+num_nodes = 10
+num_sources = 5
 
-CM, num_cables  = SmallWorld(num_nodes, p = 0.2, Z = 2, num_sources = num_sources)
+CM, num_cables  = SmallWorld(num_nodes, p = 0.0, Z = 2, num_sources = num_sources)
 #CM, num_cables = Barabasi_Albert(num_nodes)
 
 #-------------------------------------------------------------------------------
@@ -60,9 +60,9 @@ drawGraph(CM, parameters, Layout = 3)
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
-                    p_to_plot       = 1:num_sources, 
+                    p_to_plot       = [], 
                     q_to_plot       = [], 
-                    vrms_to_plot    = [], 
+                    vrms_to_plot    = 1:num_sources, 
                     irms_to_plot    = [],
                     freq_to_plot    = [])
 
