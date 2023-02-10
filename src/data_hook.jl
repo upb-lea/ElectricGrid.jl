@@ -34,7 +34,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     save_best_NNA = false
     bestNNA = nothing
     bestreward = -1000000.0
-    bestepisode = 0
+    bestepisode = 1
     currentNNA = nothing
 
     collect_reference = false

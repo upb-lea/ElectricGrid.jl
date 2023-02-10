@@ -1,6 +1,7 @@
 using Dare
 using ReinforcementLearning
 using IntervalSets
+using Statistics
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -10,9 +11,9 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 #-------------------------------------------------------------------------------
 # Time simulation
 
-Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_end    = 10    # total run time, seconds
-num_eps  = 100       # number of episodes to run
+Timestep = 1e-4  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+t_end    = 0.1   # total run time, seconds
+num_eps  = 7000       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -60,7 +61,7 @@ function reference(t)
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
     #i = [10 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
-    return [1, 1, 1]# * cos.(θph)
+    return [30, 30, 30]# * cos.(θph)
 end
 
 function reward(env, name = nothing)
@@ -78,15 +79,15 @@ function reward(env, name = nothing)
     # problem, u_cable is state as well
 
     u = [u_l1, u_l2, u_l3]
-    any(abs.(env.x./env.norm_array) .> 1)
-    if any(u.>1)
+  
+    if any(abs.(u).>1)
         return -1
     else
 
         refs = reference(env.t)
         norm_ref = env.nc.parameters["source"][1]["i_limit"]
-        r = 1-(sum(abs.(refs/norm_ref - u)/2))/3  # TODO: replace by correct entry of norm array
-        return r
+        r = 1-(mean(abs.(refs/norm_ref - u)/2))                 # TODO: replace by correct entry of norm array
+        return r * (1-0.99f0)
     end
 end
 
@@ -96,14 +97,15 @@ function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
             state = env.state
             if name == "agent"
                 state = state[findall(x -> x in env.state_ids_RL, env.state_ids)]
-                #state = vcat(state, reference(env.t)/600)
+                norm_ref = env.nc.parameters["source"][1]["i_limit"]
+                state = vcat(state, reference(env.t)/norm_ref)
             #else
             #    global state_ids_classic
             #    global state_ids
             #    state = env.x[findall(x -> x in state_ids_classic, state_ids)]
             end
         elseif isnothing(env)
-            return x0
+            return vcat(x0, zeros(size(reference(t0))))
         else
             return env.state
         end
@@ -120,7 +122,8 @@ hook = DataHook(collect_vrms_ids = [],
                 collect_irms_ids = [], 
                 collect_pq_ids   = [], 
                 collect_freq     = [],
-                collect_sources  = [])
+                collect_sources  = [1],
+                plot_rewards = true)
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -137,7 +140,8 @@ ma = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = tr
 # Plotting
 
 plot_hook_results(hook = hook, 
-                    episode = 20,
+                    episode = hook.bestepisode,
+                    #episode = 1,
                     #states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],
                     states_to_plot  = env.state_ids,  
                     actions_to_plot = env.action_ids,  

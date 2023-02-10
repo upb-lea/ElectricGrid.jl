@@ -68,6 +68,8 @@ reference values can be added to provide the to an RL agent or other feature eng
 - `num_sources::Int`: Number of sources in the electric power grid 
 - `num_loads::Int`: Number of loads in the electric power grid 
 - `parameter::Dict`: Dictonary to define the parameterof the grid. Entries can be "grid", "source", "load", "cable". Here, e.g. the electric components are defined.
+- `x0::Vactor`: Co
+
 # Return Values
 - `Multi_Agent::MultiAgentGridController`: (optional)
 
@@ -455,11 +457,9 @@ function (env::SimEnv)(action)
     # Power constraint
     env.reward = env.reward_function(env)
 
-    if env.t > env.nc.parameters["grid"]["ramp_end"] + 5*0.02
-        env.done = env.steps >= env.maxsteps# || any(abs.(env.x./env.norm_array) .> 1)
-    else
-        env.done = env.steps >= env.maxsteps
-    end
+ 
+
+    env.done = (env.steps >= env.maxsteps) || (any(abs.(env.x./env.norm_array) .> 1))
 
     # TODO define info on verbose
     if env.done

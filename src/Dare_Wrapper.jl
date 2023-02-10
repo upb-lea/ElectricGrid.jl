@@ -84,14 +84,20 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     if num_RL_sources > 0
 
         if num_clas_sources > 0
-            ns = length(env.state_ids) - length(Animo.policy.state_ids)  # all RL_type sources are controlled by 1 RL_agent (#TODO: spilt up to more then 1 agent?)
             na = length(env.action_ids) - length(Animo.policy.action_ids)
         else
-            ns = length(env.state_ids)
             na = length(env.action_ids)
         end
 
-        agent = create_agent_ddpg(na = na, ns = length(env.state_ids_RL), use_gpu = false)
+        agent = create_agent_ddpg(na = na, ns = length(state(env,"agent")), use_gpu = false)
+
+        for i in 1:3
+            agent.policy.behavior_actor.model.layers[i].weight ./= 100
+            agent.policy.behavior_actor.model.layers[i].bias ./= 100
+            agent.policy.target_actor.model.layers[i].weight ./= 100
+            agent.policy.target_actor.model.layers[i].bias ./= 100
+        end
+
         agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
 
         RL_policy = Dict()
