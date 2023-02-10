@@ -123,10 +123,13 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     
     p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters,  num_sources, num_loads, CM)
-
+    println()
+    println(3*s_load_total)
+    println(3*s_source_total)
+    println()
     if s_load_total > s_source_total
         if verbosity > 0
-            @warn "The aparent power drawn from the loads exceeds the aparent power provided by all loads in steady state! Stable grid operation maybe not possible! Please reconfigure the parameters!"
+            @warn "The apparent power drawn from the loads exceeds the apparent power provided by all sources in steady state! Stable grid operation maybe not possible! Please reconfigure the parameters!"
         end
     end    
 

@@ -580,7 +580,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
     # Return Values
     - `p_load_total::float`: total active power drawn by all loads (passive components as well as controlled with negative reference value)
     - `q_load_total::float`: total reactive power drawn by all loads
-    -  s_load_total::float`: total aparent power drawn by all loads
+    - `s_load_total::float`: total aparent power drawn by all loads
     - `s_source_total::float`: total aparent power provided by all sources in steady state
     """
 
@@ -595,7 +595,9 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 
         if i <= num_source
 
-            s_source_total = s_source_total + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
+            #s_source_total = s_source_total + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
+
+            #= println(s_source_total)
 
             if parameters["source"][i]["mode"] in ["PQ Control", 3]
 
@@ -612,11 +614,14 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
                 if parameters["source"][i]["p_set"] < 0
                     p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
                 end
-            end
+            end =#
         else
 
-            p_load_total = p_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
+            p_load_total = p_load_total + parameters["load"][i-num_source]["pf"]*parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             q_load_total = q_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
+
+            println("p = ", parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
+            println("q = ", parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"])
         end   
     end
     s_load_total = sqrt(p_load_total^2 + q_load_total^2)
