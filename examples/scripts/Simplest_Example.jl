@@ -41,9 +41,9 @@ parameters = Dict{Any, Any}(
         "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => R, "L" => L_C),
                         ],
-        "cable"   => Any[
+        #= "cable"   => Any[
                         Dict{Any, Any}("R" => 1e-5, "L" => 1e-6, "C" => 1e-7, "i_limit" => 10e4,),
-                        ],
+                        ], =#
         "grid" => Dict{Any, Any}("ramp_end" => 0.04)
     )
 #_______________________________________________________________________________
@@ -57,7 +57,8 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [1], 
+hook = DataHook(collect_vrms_ids = [1],
+                collect_state_ids = ["cable1_i_L_a"], 
                 collect_irms_ids = [1], 
                 collect_pq_ids   = [1], #collecting p and q for sources 1, 2
                 collect_freq     = [1],
@@ -72,12 +73,12 @@ ma = Power_System_Dynamics(env, hook; return_Agents = true)
 # Plotting
 
 plot_hook_results(hook = hook, 
-                    states_to_plot  = [], 
+                    states_to_plot  = ["cable1_i_L_a"], 
                     actions_to_plot = [],  
                     p_to_plot       = [1], 
                     q_to_plot       = [1], 
                     vrms_to_plot    = [1], 
-                    irms_to_plot    = [],
+                    irms_to_plot    = [1],
                     freq_to_plot    = [])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
