@@ -85,4 +85,19 @@ using Test
         # TODO: Compare P Q values 
             # Time domain : p, q from DataHook
             # Freq domain : P, Q from optimizer
+
+        # Collect steady state values from DataHook
+            # p q values from DataHook
+            p = 0;
+            q = 0;
+            for i in 1:2
+                p += hook.df[!,"source$(i)_i"][end]
+                q += hook.pq[!,"source$(i)_p"][end]
+            end
+
+            @show p, q
+
+            total_P_load, total_Q_load, s_load_total, total_S_source = CheckPowerBalance(parameters, num_source, num_load, CM)
+
+
 end

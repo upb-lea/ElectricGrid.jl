@@ -629,7 +629,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 end
 
 
-function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosity)
+function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosity)
     if verbosity > 0
         @info "layout_cables invoked"
     end
@@ -793,11 +793,11 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
 
     for i=1:num_cables
         
-
+        # (2.05232e-3)/2, (4.1148e-3)/2)
         set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
         # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
         # assumption: min value of D-to-neutral : 3 * max radius
-        set_bounds(cables[i, "D-to-neutral"], 3*(4.1148e-3/2), 3*(4.1148e-3/2), 1.00 ) #m
+        set_bounds(cables[i, "D-to-neutral"], 0.5, 0.01, 1.0 ) #m
         # assumption to line to line(neutral) --  for low voltages
         #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
@@ -861,18 +861,18 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
 
     end
 
-    cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
+    # cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
     
-    for i in 1:num_cables
+    # for i in 1:num_cables
 
-        j, k = Tuple(findfirst(x -> x == i, CM))
+    #     j, k = Tuple(findfirst(x -> x == i, CM))
 
-        cable_constraints[i] = @NLconstraint(model,
-            abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*L_cable[i]))
-            <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(C_cable[i]/L_cable[i])
-        )
+    #     cable_constraints[i] = @NLconstraint(model,
+    #         abs( nodes[j, "v"] * nodes[k, "v"] * (sin(nodes[j, "theta"] - nodes[k, "theta"]))/(omega*L_cable[i]))
+    #         <= 0.93 * nodes[j, "v"] * nodes[k, "v"] * sqrt(C_cable[i]/L_cable[i])
+    #     )
 
-    end
+    # end
     
     # non-linear objectives 
     @NLexpression(model, P_source_mean, sum(nodes[Int(j),"P"] for j in idx_p_mean_cal) / convert.(Int64,length(idx_p_mean_cal)))
@@ -892,10 +892,12 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
 
     radius_upper_bound = upper_bound(cables[1, "radius"]);
     radius_lower_bound = lower_bound(cables[1, "radius"]);
+    D_to_neutral_upper = upper_bound(cables[1, "D-to-neutral"]);
+    D_to_neutral_lower = lower_bound(cables[1, "D-to-neutral"]);
 
     # Lagrangians/weights # TODO make these parameters depending on price ($)?
-    λ₁ = 0.99
-    λ₂ = 0.00001
+    λ₁ = 1
+    λ₂ = 1
 
     norm_P = length(idx_p_mean_cal)
     norm_Q = length(idx_q_mean_cal)
@@ -905,6 +907,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
                             + sum( ((nodes[i,"P"] - P_source_mean)^2 )/ norm_P for i in idx_p_mean_cal) 
                             + sum( ((nodes[i,"Q"] - Q_source_mean)^2) / norm_Q for i in idx_q_mean_cal) # the variance - not exactly right (but good enough)
                             + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * (radius_upper_bound - radius_lower_bound) )
+                            + λ₂ * sum( (cables[i, "D-to-neutral"]  for i in 1:num_cables)) / (num_cables * (D_to_neutral_upper - D_to_neutral_lower) )
                             #D-to-neutral to be minimized
                             )
                             
@@ -920,11 +923,13 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = verbosi
         """) 
 
         @show total_P_load, total_Q_load
+        # check radius - check bounds
+        @show value.(R_cable)
     end
 
-    #= println()
     println()
-    println(value.(nodes)) =#
+    println()
+    @show value.(nodes)
 
     for (index, cable) in enumerate(parameters["cable"])
 
