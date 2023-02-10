@@ -230,7 +230,7 @@ using DataFrames
         V_ki = [8.78477386799335; 5.85651591199507]
 
         #CSV.write("Classical_Control_Unit_test.csv", hook.df)
-        old_data = convert.(Float64, Matrix(CSV.read(joinpath(pwd(), "test\\Classical_Control_Unit_test.csv"), DataFrame))[1:end, 1:17])
+        old_data = convert.(Float64, Matrix(CSV.read("./test/Classical_Control_Unit_test.csv", DataFrame))[1:end, 1:17])
 
         new_data = convert.(Float64, Matrix(hook.df)[1:end, 1:17])
 

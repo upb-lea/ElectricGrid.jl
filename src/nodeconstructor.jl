@@ -289,6 +289,14 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 
             end
 
+            if !haskey(source, "fltr")
+                source["fltr"] = "LCL"
+            elseif !(source["fltr"] in ["L", "LC", "LCL"])
+                # TODO: Raise warning: False key
+                source["fltr"] = "L"
+                @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
+            end
+
             if !haskey(source, "i_limit")
 
                 Vorms = parameters["grid"]["v_rms"] * 1.05
@@ -319,14 +327,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 source["R1"] = 200 * source["L1"] # can be as low as 15
                 
             end
-            
-            if !haskey(source, "fltr")
-                source["fltr"] = "LCL"
-            elseif !(source["fltr"] in ["L", "LC", "LCL"])
-                # TODO: Raise warning: False key
-                source["fltr"] = "L"
-                @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
-            end
+        
             
             if (source["fltr"] == "LC" || source["fltr"] == "LCL")
                 #Capacitor design
@@ -729,21 +730,19 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             load["pf"] = 0
         elseif load["impedance"] == "RL"
             load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["R"]*load["L"]/(load["R"]+1im*parameters["grid"]["f_grid"]*2*pi*load["L"])
-            load["pf"] = cos(atan(load["R"]/(parameters["grid"]["f_grid"]*2*pi*load["L"])))
+            load["pf"] = sign(imag(load["Z"]))abs(cos(atan(imag(load["Z"])/real(load["Z"])))) 
         elseif load["impedance"] == "RC"
             load["Z"] = load["R"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["C"]*load["R"])
-            load["pf"] = cos(-atan(load["R"]*parameters["grid"]["f_grid"]*2*pi*load["C"]))
+            load["pf"] = sign(imag(load["Z"]))abs(cos(atan(imag(load["Z"])/real(load["Z"])))) 
         elseif load["impedance"] == "LC"
             load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
-            load["pf"] = 0.8 #TODO: change based on paremter values!!!!
+            load["pf"] = 0 
         elseif load["impedance"] == "RLC"
             load["Z"] = 1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/(1+1im*parameters["grid"]["f_grid"]*2*pi*load["L"]/load["R"]-(parameters["grid"]["f_grid"]*2*pi)^2*load["L"]*load["C"])
-            # TODO PF RLC parallel 
-            load["pf"] = 0.8 #TODO: change based on paremter values!!!!            
+            load["pf"] = sign(imag(load["Z"]))abs(cos(atan(imag(load["Z"])/real(load["Z"]))))          
         end
         
         load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
-        #println(load["pf"])
     end
 
 

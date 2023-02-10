@@ -43,30 +43,37 @@ mutable struct SimEnv <: AbstractEnv
     action_ids_RL
 end
 
-function SimEnv(; maxsteps = 500, 
-                  ts = 1/10_000, 
-                  action_space = nothing, 
-                  state_space = nothing, 
-                  prepare_action = nothing, 
-                  featurize = nothing, 
-                  reward_function = nothing, 
-                  CM = nothing, 
-                  num_sources = nothing, 
-                  num_loads = nothing, 
-                  parameters = nothing, 
-                  x0 = nothing, 
-                  t0 = 0.0, 
-                  state_ids = nothing, 
-                  convert_state_to_cpu = true, 
-                  use_gpu = false, 
-                  reward = nothing, 
-                  action = nothing, 
-                  action_ids = nothing, 
-                  action_delay = 1, 
-                  t_end = nothing, 
-                  verbosity = 0, 
-                  state_ids_RL = nothing, 
-                  action_ids_RL = nothing)
+
+"""
+    SimEnv(env, hook; num_episodes = 1, return_Agents = false)
+
+# Description
+Returns an environment consisting of an electrical power grid as control plant, 
+which can interact via this interface with a reinforcement learing agent from 
+https://juliareinforcementlearning.org/ 
+
+# Arguments
+
+# Keyword Arguments
+- `maxsteps::Int`: the number of time steps that the simulation is run.
+- `ts::Float`: Sampling time by which the environment is evolved per step.
+- `action_space::Space`: Defines the valide space per action.
+- `state_space::Space`: Defines the valide space per state. Default is [-1, 1] since the states of the env will be normalized.
+- `prepare_action::function(env::SimEnv)`: Function to adjust, change, prepare the actions before they are applied to the env during a step(). 
+                                           Per default it returns the action without changes.
+- `featurize::function(x:Vector, t:Float; env::SimEnv, name::String)`: Function to adjust the state before it is returned by the env. For example here 
+reference values can be added to provide the to an RL agent or other feature engineering to improve the learning.  
+- `reward_function::function(env::SimEnv, name::String) )`: Function to define the reward for a (named) policy. Return 0 per default.
+- `CM::Vactor`: Conectivity matrix to define the structure of the electric power grid (for more details see NodeConstructor)
+- `num_sources::Int`: Number of sources in the electric power grid 
+- `num_loads::Int`: Number of loads in the electric power grid 
+- `parameter::Dict`: Dictonary to define the parameterof the grid. Entries can be "grid", "source", "load", "cable". Here, e.g. the electric components are defined.
+# Return Values
+- `Multi_Agent::MultiAgentGridController`: (optional)
+
+"""
+
+function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing, verbosity = 0, state_ids_RL = nothing, action_ids_RL = nothing)
 
     if !(isnothing(t_end))
         maxsteps = floor(t_end/ts) + 1
