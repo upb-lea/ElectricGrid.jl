@@ -59,6 +59,10 @@ mutable struct Classical_Controls
     fsys::Float64
     θsys::Float64
     ts::Float64 # s, sampling timestep
+
+    f_avg::Matrix{Float64} 
+    θ_avg::Vector{Float64}
+
     N::Int64
     steps::Int64
     action_delay::Int64
@@ -71,6 +75,9 @@ mutable struct Classical_Controls
     I_inv_loc::Matrix{Int64}
 
     Action_loc::Vector{Vector{Int64}}
+
+    grid_forming::Vector{Int64}
+    grid_following::Vector{Int64}
 
     #---------------------------------------------------------------------------
     # Phase Locked Loops
@@ -209,10 +216,11 @@ mutable struct Classical_Controls
         debug::Vector{Float64}, Modes::Dict{String, Int64}, Source_Modes::Vector{String},
         num_sources::Int64, phases::Int64,
         f_cntr::Float64, fsys::Float64, θsys::Float64,
-        ts::Float64, N::Int64, steps::Int64, action_delay::Int64, ramp_end::Float64, process_start::Float64,
+        ts::Float64, f_avg::Matrix{Float64}, θ_avg::Vector{Float64},
+        N::Int64, steps::Int64, action_delay::Int64, ramp_end::Float64, process_start::Float64,
         V_cable_loc::Matrix{Int64}, V_cap_loc::Matrix{Int64}, 
         I_poc_loc::Matrix{Int64}, I_inv_loc::Matrix{Int64},
-        Action_loc::Vector{Vector{Int64}},
+        Action_loc::Vector{Vector{Int64}}, grid_forming::Vector{Int64}, grid_following::Vector{Int64},
         pll_err::Array{Float64}, pll_err_t::Matrix{Float64},
         vd::Array{Float64}, qvd::Array{Float64},
         fpll::Array{Float64}, θpll::Array{Float64},
@@ -254,10 +262,11 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay, ramp_end, process_start,
+        ts, f_avg, θ_avg,
+        N, steps, action_delay, ramp_end, process_start,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
-        Action_loc,
+        Action_loc, grid_forming, grid_following,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -290,7 +299,7 @@ mutable struct Classical_Controls
         X, X₀, rol, cnt)
     end
 
-    function Classical_Controls(f_cntr, num_sources; phases = 3, action_delay = 1)
+    function Classical_Controls(f_cntr, num_sources; phases = 3, action_delay = 1, fsys = 50.0)
 
         #---------------------------------------------------------------------------
         # Physical Electrical Parameters
@@ -335,7 +344,6 @@ mutable struct Classical_Controls
         ts = 1/f_cntr
 
         steps = 0
-        fsys = 50.0
         θsys = 0.0
         ramp_end = 2/fsys
         process_start = 4/fsys
@@ -382,7 +390,7 @@ mutable struct Classical_Controls
                     "Not Used 3" => 10)
 
         Source_Modes = Array{String, 1}(undef, num_sources)
-        Source_Modes = fill!(Source_Modes, "Voltage Synchronverter")
+        Source_Modes = fill!(Source_Modes, "Synchronverter")
 
         V_cable_loc = Array{Int64, 2}(undef, phases, num_sources)
         V_cable_loc = fill!(V_cable_loc, 1)
@@ -396,6 +404,14 @@ mutable struct Classical_Controls
         Action_loc = Vector{Vector{Int64}}(undef, 0)
 
         Order = 3 #integration Order
+
+        f_avg = Array{Float64, 2}(undef, phases, Order)
+        f_avg = fill!(f_avg, fsys)
+        θ_avg = Array{Float64, 1}(undef, phases)
+        θ_avg = fill!(θ_avg, 0.0)
+
+        grid_forming = Array{Int64, 1}()
+        grid_following = Array{Int64, 1}()
 
         #---------------------------------------------------------------------------
         # Phase Locked Loops
@@ -609,10 +625,11 @@ mutable struct Classical_Controls
         debug, Modes, Source_Modes,
         num_sources, phases,
         f_cntr, fsys, θsys,
-        ts, N, steps, action_delay, ramp_end, process_start,
+        ts, f_avg, θ_avg,
+        N, steps, action_delay, ramp_end, process_start,
         V_cable_loc, V_cap_loc,
         I_poc_loc, I_inv_loc,
-        Action_loc,
+        Action_loc, grid_forming, grid_following,
         pll_err, pll_err_t,
         vd, qvd,
         fpll, θpll,
@@ -696,7 +713,8 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
             Source = Classical_Controls(1/env.ts, 
                                         length(Source_Indices), 
                                         phases = env.nc.parameters["grid"]["phase"],
-                                        action_delay = action_delay)
+                                        action_delay = action_delay,
+                                        fsys = convert(Float64, env.nc.parameters["grid"]["f_grid"]))
 
             Source_Initialiser(env, Source, Modes, Source_Indices)
 
@@ -757,6 +775,9 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
 
     Source.steps = 0
     Source.θsys = 0.0
+
+    Source.f_avg = fill!(Source.f_avg, Source.fsys)
+    Source.θ_avg = fill!(Source.θ_avg, 0.0)
 
     Source.vd = fill!(Source.vd, 0.0)
     Source.qvd = fill!(Source.qvd, 0.0)
@@ -2065,12 +2086,6 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
                 else
                     Pset = Source.X[ns][end]
                 end
-               
-                Pset = -1*abs.(Pset)
-
-                if sign(Pset) != sign(Source.X[ns][end])
-                    Source.X[ns][end] = -1*Source.X[ns][end]
-                end
 
                 Sset = Pset/Source.pf[ns]
                 Source.pq0_set[ns, 1] = Pset
@@ -2086,11 +2101,10 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
                     end
                 end
 
-                if ns == 5   
+                if ns == 3   
                     
-                    Source.debug[1] = Pset
-                else
-                    Source.debug[2] = Pset
+                    Source.debug[1] = Source.pq0_set[ns, 1]
+                    Source.debug[2] = Source.pq0_set[ns, 2] 
                 end
 
             end
@@ -2136,12 +2150,12 @@ function Measurements(Source::Classical_Controls)
             # Voltages
             v_signals = transpose(Source.V_filt_cap[ns, :, i_range])
             Source.V_ph[ns,  :, :] = RMS(θ, v_signals)
-            Source.V_ph[ns,  :, 3] = Source.V_ph[ns,  :, 3]# .+ π/2
+            #Source.V_ph[ns,  :, 3] = Source.V_ph[ns,  :, 3] .+ π/2
 
             # Currents
             i_signals = transpose(Source.I_filt_poc[ns, :, i_range])
             Source.I_ph[ns, :, :] = RMS(θ, i_signals)
-            Source.I_ph[ns, :, 3] = Source.I_ph[ns, :, 3]# .+ π/2
+            #Source.I_ph[ns, :, 3] = Source.I_ph[ns, :, 3] .+ π/2
 
             # Per phase (and total) Active and Reactiv Powers
             Source.Pm[ns, 1:3] = (Source.V_ph[ns, :, 2].*Source.I_ph[ns, :, 2]).*cos.(Source.V_ph[ns, :, 3] .- Source.I_ph[ns, :, 3])
@@ -2149,6 +2163,22 @@ function Measurements(Source::Classical_Controls)
             Source.Qm[ns, 1:3] = (Source.V_ph[ns, :, 2].*Source.I_ph[ns, :, 2]).*sin.(Source.V_ph[ns, :, 3] .- Source.I_ph[ns, :, 3])
             Source.Qm[ns, 4] = sum(Source.Qm[ns, 1:3])
         end
+    end
+
+    # global metrics
+
+    #f_avg = Array{Float64, 2}(undef, phases, Order)
+    #θ_avg = Array{Float64, 1}(undef, phases)
+
+    Source.f_avg[:, 1:end-1] = Source.f_avg[:, 2:end] 
+    Source.θ_avg[:, 1:end-1] = Source.θ_avg[:, 2:end] 
+
+    Source.f_avg[:, end] = sum(Source.fpll[Source.grid_forming , : , end], dims = 1)./length(Source.grid_forming)
+
+    for i in 1:Source.phases
+        Source.θ_avg[i, end] = Third_Order_Integrator(Source.θ_avg[i, end], Source.ts, 2π*Source.f_avg[i, :]) # integration
+        #Source.θ_avg[i, end] = (Source.θ_avg[i, end] + Source.ts*2π*Source.f_avg[i, end])%(2π)
+        Source.θ_avg[i, end] = (Source.θ_avg[i, end] - (i - 1)*120π/180)%(2π)
     end
 
     return nothing
@@ -2375,7 +2405,6 @@ function Source_Initialiser(env, Source, modes, source_indices)
 
     e = 1
 
-    Source.fsys = env.nc.parameters["grid"]["f_grid"]
     Source.ramp_end = env.nc.parameters["grid"]["ramp_end"]
     Source.process_start = env.nc.parameters["grid"]["process_start"]
     Source.Δfmax = env.nc.parameters["grid"]["Δfmax"]
@@ -2557,6 +2586,18 @@ function Source_Initialiser(env, Source, modes, source_indices)
 
         e += 1
     end
+
+    Source.grid_forming = union(findall(x->x == "Synchronverter", Source.Source_Modes),
+                        findall(x->x == "Droop", Source.Source_Modes),
+                        findall(x->x == "Swing", Source.Source_Modes),
+                        findall(x->x == "Voltage", Source.Source_Modes),
+                        findall(x->x == "Semi-Synchronverter", Source.Source_Modes),
+                        findall(x->x == "Semi-Droop", Source.Source_Modes),
+                        )
+
+    Source.grid_following = union(findall(x->x == "PQ", Source.Source_Modes),
+                        findall(x->x == "PV", Source.Source_Modes),
+                        )
 
     #-------------------------------------------------------------------------------
     # Logging

@@ -1,6 +1,6 @@
 module Dare
 
-using ArnoldiMethod
+using ArnoldiMethod #*
 using Combinatorics
 using ControlSystems
 using CSV
@@ -11,11 +11,11 @@ using Distributions
 using DSP
 using FFTW
 using LinearAlgebra
-using LinearMaps
+using LinearMaps #*
 using JuMP
 import Ipopt
-using NearestNeighbors
-using NonNegLeastSquares
+using NearestNeighbors #*
+using NonNegLeastSquares #*
 using PlotlyJS
 using ReinforcementLearning
 using SpecialFunctions
