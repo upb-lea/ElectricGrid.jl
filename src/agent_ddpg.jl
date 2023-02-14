@@ -127,7 +127,7 @@ function (p::DareDDPGPolicy)(env::SimEnv, name::Any = nothing)
         s = Flux.unsqueeze(s, ndims(s) + 1)
         actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
         c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
-        p.na == 1 && return c[1]
+        #p.na == 1 && return c[1]
         c
     end
 end
@@ -228,8 +228,8 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
                 model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
-            γ = 0.99f0,
-            ρ = 0.995f0,
+            γ = 0.999f0,
+            ρ = 0.895f0,
             na = na,
             batch_size = batch_size,
             start_steps = -1,
@@ -237,7 +237,7 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
             update_after = 50, #1000 
             update_freq = 10,
             act_limit = 1.0,
-            act_noise = 0.002,
+            act_noise = 0.032,
             rng = rngg,
         ),
         trajectory = CircularArraySARTTrajectory(

@@ -138,7 +138,7 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     #_______________________________________________________________________________
     # Running the time simulation
     
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook);    
+    #RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook);    
 
     if return_Agents
 
