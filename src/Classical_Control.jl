@@ -477,7 +477,7 @@ mutable struct Classical_Controls
         Vd_abc_new = fill!(Vd_abc_new, 0)
 
         s_lim = Array{Float64, 2}(undef, num_sources, phases)
-        s_lim = fill!(s_lim, 0)
+        s_lim = fill!(s_lim, 0.0)
 
         #---------------------------------------------------------------------------
         # Voltage Controller
@@ -534,7 +534,7 @@ mutable struct Classical_Controls
         ω_droop = fill!(ω_droop, fsys*2π)
 
         θ_droop = Array{Float64, 2}(undef, num_sources, phases)
-        θ_droop = fill!(θ_droop, 0)
+        θ_droop = fill!(θ_droop, -ts*π*fsys)
 
         #---------------------------------------------------------------------------
         # PQ Mode
@@ -563,7 +563,7 @@ mutable struct Classical_Controls
         ω_sync = Array{Float64, 2}(undef, num_sources, Order)
         ω_sync = fill!(ω_sync, fsys*2π)
         θ_sync = Array{Float64, 1}(undef, num_sources)
-        θ_sync = fill!(θ_sync, 0)
+        θ_sync = fill!(θ_sync, -ts*π*fsys)
         Δω_sync = Array{Float64, 2}(undef, num_sources, Order)
         Δω_sync = fill!(Δω_sync, 0)
         eq = Array{Float64, 2}(undef, num_sources, Order)
@@ -810,14 +810,15 @@ function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
     Source.V_dq0_inv = fill!(Source.V_dq0_inv, 0)
 
     Source.I_lim = fill!(Source.I_lim, 0)
+    Source.s_lim = fill!(Source.s_lim, 0)
 
     Source.ω_droop = fill!(Source.ω_droop, Source.fsys*2π)
 
-    Source.θ_droop = fill!(Source.θ_droop, 0)
+    Source.θ_droop = fill!(Source.θ_droop, -Source.ts*π*Source.fsys)
 
     Source.α_sync = fill!(Source.α_sync, 0)
     Source.ω_sync = fill!(Source.ω_sync, Source.fsys*2π)
-    Source.θ_sync = fill!(Source.θ_sync, 0)
+    Source.θ_sync = fill!(Source.θ_sync, -Source.ts*π*Source.fsys)
     Source.Δω_sync = fill!(Source.Δω_sync, 0)
     Source.eq = fill!(Source.eq, 0)
     Source.Mfif = fill!(Source.Mfif, 0)
@@ -1138,6 +1139,7 @@ function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
     ω = 2π*Source.fpll[num_source, 1, end]
 
     Filtering(Source, num_source, θ)
+    #Source.V_dq0_inv[num_source, :] = DQ0_transform(Source.V_filt_poc[num_source, :, end], θ) # for when filter becomes unstable
 
     if Source.steps*Source.ts > Source.process_start
 
@@ -1543,6 +1545,13 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
     I_αβγ_ref = Inv_p_q_v(V_αβγ, pq0_ref)
     Source.I_ref_dq0[num_source, :] = Park_Transform(I_αβγ_ref, θ)
 
+    Ip_ref = sqrt(2/3)*norm(Source.I_ref_dq0[num_source, :]) # peak set point
+
+    if Ip_ref > 0.98*Source.i_max[num_source]
+
+        Source.I_ref_dq0[num_source, :] = Source.I_ref_dq0[num_source, :]*(0.98*Source.i_max[num_source]/(sqrt(2/3)*norm(Source.I_ref_dq0[num_source, :])))
+    end
+
     #-------------------------------------------------------------
     I_αβγ = Clarke_Transform(Source.I_filt_inv[num_source, :, end])
 
@@ -1626,7 +1635,7 @@ end
 # Description
 Inner current control with anti-windup.
 """
-function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb = 1)
+function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb = 0.5)
 
     #= Theory:
         When a grid-connected inverter is controlled as a current supply, the output
@@ -1667,8 +1676,15 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         I_err_new = I_ref_dq0 .- I_dq0
     end
 
+    max_I_err = Source.i_max[num_source]/sqrt(2) # maximum rms error
+
+    if norm(I_err_new) > max_I_err/sqrt(1/3)
+
+        I_err_new = I_err_new.*(max_I_err/(sqrt(1/3)*norm(I_err_new))) 
+    end
+
     Source.s_lim[num_source, :], Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] =
-    PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts)
+    PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts, max_t_err = 0.2*sqrt(3))
 
     # cross-coupling / feedforward
     Source.s_lim[num_source, 1] = Source.s_lim[num_source, 1] - 
@@ -1677,7 +1693,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     (Source.Lf_1[num_source]*ω*I_dq0[1] + V_dq0[2])*2/Source.Vdc[num_source]
 
     # ---- Limiting Output (Saturation)
-    Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2/3)*norm(Source.s_lim[num_source,:]) # peak set point
+    Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2)*DQ_RMS(Source.s_lim[num_source,:]) # peak set point
 
     if Vp_ref > Source.v_max[num_source]
         Source.s_dq0_avg[num_source, :]  = Source.s_lim[num_source, :]*Source.v_max[num_source]/Vp_ref
@@ -1697,6 +1713,17 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         slowly varying. That is, the above equation holds when averaging over one
         pulse period.
     =#
+
+    if num_source == 1
+
+        Source.debug[5] = sqrt(2)*(Source.Vdc[num_source]/2)*DQ_RMS(Source.s_dq0_avg[num_source, :] .- Source.s_lim[num_source, :])/Source.v_max[num_source]
+
+        Source.debug[6] = DQ_RMS(Source.I_err_t[num_source, :])
+        Source.debug[7] = DQ_RMS(Source.I_err[num_source, :, end])
+
+        Source.debug[8] = Vp_ref - Source.v_max[num_source]
+
+    end
 
     return nothing
 end
@@ -1729,8 +1756,15 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         V_err_new = V_ref_dq0 .- V_dq0
     end
 
+    max_V_err = Source.v_max[num_source]/sqrt(2) # maximum rms error
+
+    if norm(V_err_new) > max_V_err/sqrt(1/3)
+
+        V_err_new = V_err_new.*(max_V_err/(sqrt(1/3)*norm(V_err_new))) 
+    end
+
     Source.I_lim[num_source, :], Source.V_err_t[num_source, :], Source.V_err[num_source, :, :] =
-    PI_Controller(V_err_new, V_err, V_err_t, Kp, Ki, Source.ts)
+    PI_Controller(V_err_new, V_err, V_err_t, Kp, Ki, Source.ts, max_t_err = 2*sqrt(3))
 
     # cross-coupling / feedforward
     Source.I_lim[num_source, 1] = Source.I_lim[num_source, 1] + I_dq0_poc[1] 
@@ -1739,12 +1773,22 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     + Source.Cf[num_source]*ω*V_dq0[1] 
 
     # ---- Limiting Output (Saturation)
-    Ip_ref = sqrt(2/3)*norm(Source.I_lim[num_source,:]) # peak set point
+    Ip_ref = sqrt(2)*DQ_RMS(Source.I_lim[num_source,:]) # peak set point
 
-    if Ip_ref > Source.i_max[num_source]
-        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]*Source.i_max[num_source]/Ip_ref
+    if Ip_ref > 0.98*Source.i_max[num_source]
+        Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]*0.98*Source.i_max[num_source]/Ip_ref
     else
         Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]
+    end
+
+    if num_source == 1
+
+        Source.debug[1] = sqrt(2)*DQ_RMS(Source.I_ref_dq0[num_source, :] .- Source.I_lim[num_source, :])/(0.98*Source.i_max[num_source])
+
+        Source.debug[2] = DQ_RMS(Source.V_err_t[num_source, :])
+        Source.debug[3] = DQ_RMS(Source.V_err[num_source, :, end])
+
+        Source.debug[4] = Ip_ref - Source.i_max[num_source]
     end
 
     return nothing
@@ -1756,7 +1800,7 @@ end
 # Description
 Generic PI controller.
 """
-function PI_Controller(Error_new, Error_Hist, Error_t, Kp, Ki, μ; bias = zeros(length(Error_new)))
+function PI_Controller(Error_new, Error_Hist, Error_t, Kp, Ki, μ; bias = zeros(length(Error_new)), max_t_err = nothing)
 
     d = length(Error_new)
 
@@ -1774,6 +1818,13 @@ function PI_Controller(Error_new, Error_Hist, Error_t, Kp, Ki, μ; bias = zeros(
     for j in 1:d
         Err_t_new[j] = Third_Order_Integrator(Error_t[j], μ, Err_int[j,:]) # integration
         #Err_t_new[j] = Error_t[j] + μ*Err_int[j, end] # integration
+    end
+
+    if !isnothing(max_t_err)
+
+        if norm(Err_t_new) > max_t_err
+            Err_t_new = Err_t_new.*(max_t_err/norm(Err_t_new))
+        end
     end
 
     Action = bias + Kp.*Error_new .+ Ki.*Err_t_new
@@ -1897,7 +1948,7 @@ function Filtering(Source::Classical_Controls, num_source, θ)
     Source.V_pre_dq0[num_source, :, 1:end-1] = Source.V_pre_dq0[num_source, :, 2:end]
     Source.V_pre_dq0[num_source, :, end] = DQ0_transform(V_inv, θ)
 
-    Source.V_dq0_inv[num_source, :] = First_Order_LPF(500, Source.V_pre_dq0[num_source, :, :], 
+    Source.V_dq0_inv[num_source, :] = First_Order_LPF(100, Source.V_pre_dq0[num_source, :, :], 
     Source.V_dq0_inv[num_source, :], Source.ts)
 
     return nothing
@@ -2099,12 +2150,6 @@ function Ornstein_Uhlenbeck(Source::Classical_Controls)
                     if Source.X[ns][end] > abs(Source.pq0_set[ns, 1])
                         Source.X[ns][end] = Source.pq0_set[ns, 1]
                     end
-                end
-
-                if ns == 3   
-                    
-                    Source.debug[1] = Source.pq0_set[ns, 1]
-                    Source.debug[2] = Source.pq0_set[ns, 2] 
                 end
 
             end

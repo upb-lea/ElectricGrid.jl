@@ -9,7 +9,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 # Time simulation
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_end    = 2.0     # total run time, seconds
+t_end    = 1.0     # total run time, seconds
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -31,10 +31,12 @@ CM = [ 0. 0. 1.
     4 -> "Synchronverter" - enhanced droop control
 =#
 
+R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 4, "v_δ_set" => 2.0),
-                        Dict{Any, Any}("pwr" => 100e3, "mode" => 4, "v_δ_set" => 5.0),
+                        Dict{Any, Any}("pwr" => 200e3, "mode" => 4),
+                        Dict{Any, Any}("pwr" => 100e3, "mode" => 4),
                         ],
         "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
@@ -55,7 +57,7 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 
 hook = DataHook(collect_vrms_ids = [1 2], 
                 collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
+                collect_pq_ids   = [1 2],
                 collect_freq     = [1 2],
                 collect_sources  = [1 2],
                 collect_θ        = [1 2])
@@ -72,11 +74,11 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
-                    p_to_plot       = [], 
+                    p_to_plot       = [1 2], 
                     q_to_plot       = [], 
                     vrms_to_plot    = [1 2], 
                     irms_to_plot    = [],
-                    freq_to_plot    = [],
+                    freq_to_plot    = [1 2],
                     θ_to_plot       = [1 2])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

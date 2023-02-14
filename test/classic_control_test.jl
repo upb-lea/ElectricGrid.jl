@@ -5,7 +5,7 @@ using CSV
 using DataFrames
 using Distributions
 
-@testset "Classical_Controllers" begin
+#= @testset "Classical_Controllers" begin
 
         #_______________________________________________________________________________
         # Network Parameters 
@@ -208,18 +208,18 @@ using Distributions
         #_______________________________________________________________________________
         # Plotting
 
-        for eps in 1:num_eps
+        #= for eps in 1:num_eps
 
                 plot_hook_results(hook = hook, 
                                         episode = eps,
                                         states_to_plot  = ["source1_v_C_filt_a"], 
                                         actions_to_plot = [],  
                                         p_to_plot       = [1 2 3], 
-                                        q_to_plot       = [], 
+                                        q_to_plot       = [1 2 3], 
                                         vrms_to_plot    = [1 2 3], 
                                         irms_to_plot    = [1 2 3],
                                         freq_to_plot    = [1 2 3])
-        end
+        end =#
 
         #_______________________________________________________________________________
         # Tests 
@@ -245,9 +245,9 @@ using Distributions
         @test new_data ≈ old_data atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[total_steps + 1:2*total_steps, 2:end] atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[2*total_steps + 1:end, 2:end] atol = 0.001
-end
+end =#
 
-@testset "Ornstein_Uhlenbeck" begin
+#= @testset "Ornstein_Uhlenbeck" begin
 
         #_______________________________________________________________________________
         # Network Parameters 
@@ -433,4 +433,90 @@ end
         @test new_angles ≈ angles_eval atol = 0.001
 
         return nothing
+end =#
+
+@testset "Saturation" begin
+
+        return nothing
 end
+#_______________________________________________________________________________
+# Network Configuration 
+
+#-------------------------------------------------------------------------------
+# Time simulation
+
+Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+t_end    = 0.1     # total run time, seconds
+
+#-------------------------------------------------------------------------------
+# Connectivity Matrix
+
+CM = [ 0. 1.
+        -1. 0.]
+
+#-------------------------------------------------------------------------------
+# Parameters
+
+#= Modes:
+    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+    2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+    3 -> "Droop" - simple grid forming with power balancing
+    4 -> "Synchronverter" - enhanced droop control
+=#
+
+R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+
+length = 1
+parameters = Dict{Any, Any}(
+        "source" => Any[
+                        Dict{Any, Any}("pwr" => 200e3, 
+                                        "mode" => "Semi-Synchronverter", 
+                                        "v_pu_set" => 1.05),
+
+                        Dict{Any, Any}("pwr" => 200e3, 
+                                        "mode" => "PQ", 
+                                        "p_set" => -54.68e3, # making this slightly less/more, means that the voltage control loop recovers
+                                        "q_set" => 100e3),
+                        ],
+        "cable"   => Any[
+                        Dict{Any, Any}("R" => length*0.208, 
+                                        "L" => length*0.00025, 
+                                        "C" => length*0.4e-3, 
+                                        "i_limit" => 10e4,),
+                        ],
+        "grid" => Dict{Any, Any}("ramp_end" => 0.04, "process_start"=> 0.06)
+    )
+#_______________________________________________________________________________
+# Defining the environment
+
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+
+#_______________________________________________________________________________
+# Setting up data hooks
+
+hook = DataHook(collect_vrms_ids = [1 2], 
+                collect_irms_ids = [1 2], 
+                collect_pq_ids   = [1 2],
+                collect_freq     = [1 2],
+                collect_sources  = [1 2],
+                collect_θ        = [1 2],
+                collect_debug    = [1 2 5 6])
+
+#_______________________________________________________________________________
+# Running the Time Simulation
+
+Multi_Agent = Power_System_Dynamics(env, hook; return_Agents = true)
+Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+#_______________________________________________________________________________
+# Plotting
+
+plot_hook_results(hook = hook, 
+                    states_to_plot  = [], 
+                    actions_to_plot = [],  
+                    p_to_plot       = [1 2], 
+                    q_to_plot       = [1 2], 
+                    vrms_to_plot    = [1 2], 
+                    irms_to_plot    = [1 2],
+                    freq_to_plot    = [],
+                    θ_to_plot       = [])

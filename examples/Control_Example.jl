@@ -234,11 +234,11 @@ for eps in 1:num_eps
                       episode = eps,
                       states_to_plot  = [], 
                       actions_to_plot = [],  
-                      p_to_plot       = [], 
+                      p_to_plot       = [1 2], 
                       q_to_plot       = [], 
-                      vrms_to_plot    = [], 
+                      vrms_to_plot    = [1 2], 
                       irms_to_plot    = [],
-                      freq_to_plot    = [],
+                      freq_to_plot    = [1 2],
                       θ_to_plot       = [1 2])
 end
 
