@@ -34,7 +34,8 @@ end
 
 @testset "Env" begin
     #env_test_function.jl
-    
+
+    include("./env_test_basics.jl")
     include("./env_test_state.jl")
 
     #env = SimEnv()

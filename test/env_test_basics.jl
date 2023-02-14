@@ -20,4 +20,9 @@ using Dare
                             ],
             "grid" => Dict{Any, Any}("ramp_end" => 0.0)
         )
+    env = SimEnv(CM = CM, parameters = parameters, verbosity = 0, action_delay = 0)
+    reset!(env)
+    env([1,1,1])
+    env([1,1,1])
+    @test env.done == true
 end

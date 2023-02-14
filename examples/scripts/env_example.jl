@@ -17,8 +17,12 @@ parameters = Dict{Any, Any}(
     )
 
 
-env = SimEnv(CM = CM, parameters = parameters, verbosity = 2)
+env = SimEnv(CM = CM, parameters = parameters, verbosity = 2, action_delay = 0)
 
 reset!(env)
-
 env([1,1,1])
+#for _ in 1:2
+#    env([1,1,1])
+#end
+
+println(env.done)
