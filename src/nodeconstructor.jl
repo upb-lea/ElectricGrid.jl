@@ -373,10 +373,13 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "v_limit")
-
-                v_lim_r = 1.5
-                
-                source["v_limit"]= v_lim_r * source["vdc"] * (1 + source["v_rip"]/2)
+                if source["fltr"] == "L"
+                    source["v_limit"] = 1.1 * parameters["grid"]["v_rms"] *sqrt(2)
+                else
+                    v_lim_r = 1.5
+                    
+                    source["v_limit"]= v_lim_r * source["vdc"] * (1 + source["v_rip"]/2)
+                end
             end
 
             if  source["fltr"] == "LCL" && !haskey(source, "L2")
@@ -1103,6 +1106,7 @@ function _sample_fltr_L(grid_properties)
     source["L1"] = Lf_1
     source["R1"] = R_1
     source["i_limit"]= i_limit
+    source["v_limit"]= 1.1*grid_properties["v_rms"]*sqrt(2)
 
     source
 end
