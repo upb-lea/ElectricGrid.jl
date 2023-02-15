@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - feature_15_first_rl_experiments
     tags: '*'
   pull_request:
 concurrency:
