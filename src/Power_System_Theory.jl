@@ -796,7 +796,7 @@ function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosi
         set_bounds(cables[i, "radius"], (3e-3)/2, 0.1*(2.05232e-3)/2, 100*(4.1148e-3)/2) #m 
         # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
         # assumption: min value of D-to-neutral : 3 * max radius
-        set_bounds(cables[i, "D-to-neutral"], 0.5, 0.4999, 0.500001) #m
+        set_bounds(cables[i, "D-to-neutral"], 0.5, 0.1, 1.0) #m
         # assumption to line to line(neutral) --  for low voltages
         #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
