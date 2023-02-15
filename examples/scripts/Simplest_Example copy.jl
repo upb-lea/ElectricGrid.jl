@@ -44,7 +44,7 @@ CM = [ 0. 1.
 =#
 
 
-R, L_C, _, _ = Parallel_Load_Impedance(190e3, 0.99, 230; fsys = 50)
+R, L_C, _, _ = Parallel_Load_Impedance(190e3, 0.95, 230; fsys = 50)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
@@ -91,19 +91,20 @@ plot_hook_results(hook = hook,
                     freq_to_plot    = [])
 
 # steady state values from Source p , q from data_hook
-for i in 1:2
+for i in env.nc.num_sources
     println("Source $i : p = ", hook.df[!,"source$(i)_p"][end], " q = ", hook.df[!,"source$(i)_q"][end])
 end
 
 p_test = 0.0;
 q_test = 0.0;
-for i in 1:2
+
+for i in env.nc.num_sources
     p_test += hook.df[!,"source$(i)_p"][end]
     q_test += hook.df[!,"source$(i)_q"][end]
     @show p_test, q_test
 end
 
-@show p_test, q_test
+
 
 num_source = length(parameters["source"])
 num_load   = length(parameters["load"])
