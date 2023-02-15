@@ -1,5 +1,5 @@
 using Dare
-
+using ReinforcementLearning
 CM = [0. 1.
     -1. 0.]
     
@@ -18,6 +18,8 @@ parameters = Dict{Any, Any}(
 
 
 env = SimEnv(CM = CM, parameters = parameters, verbosity = 2, action_delay = 0)
+
+#env = SimEnv(num_sources = 1, num_loads = 1)
 
 reset!(env)
 env([1,1,1])

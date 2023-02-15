@@ -22,6 +22,7 @@ mutable struct NodeConstructor
     S2S_p
     S2L_p
     L2L_p
+    ts
     verbosity
 end
 
@@ -46,7 +47,7 @@ it can be generated automatically. `S2S_p` is the probability that a source is c
 to another source and `S2L_p` is the probability that a source is connected to a load.
 """
 function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing,
-                        S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, verbosity=0)
+                        S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, ts = 10000, verbosity=0)
 
     tot_ele = num_sources + num_loads
 
@@ -83,7 +84,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
 
     if parameters === nothing || isa(parameters, Dict) 
 
-        parameters = check_parameters(parameters, num_sources, num_loads, num_connections, CM, verbosity)  # Checks if all entries are given, if not, fills up with random values
+        parameters = check_parameters(parameters, num_sources, num_loads, num_connections, CM, ts, verbosity)  # Checks if all entries are given, if not, fills up with random values
 
         @assert length(keys(parameters)) == 4 "Expect parameters to have the four entries 'cable', 'load', 'grid' and 'source' but got $(keys(parameters))"
 
@@ -130,7 +131,7 @@ function NodeConstructor(;num_sources, num_loads, CM=nothing, parameters=nothing
         end
     end    
 
-    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, L2L_p, verbosity)
+    NodeConstructor(num_connections, num_sources, num_loads, num_fltr_LCL, num_fltr_LC, num_fltr_L, num_loads_RLC, num_loads_LC, num_loads_RL, num_loads_RC, num_loads_L, num_loads_C, num_loads_R, num_impedance, num_fltr, num_spp, cntr, tot_ele, CM, parameters, S2S_p, S2L_p, L2L_p, ts, verbosity)
 end
 
 function get_fltr_distr(num)
@@ -161,7 +162,7 @@ function get_loads_distr(num)
     return num_loads_R, num_loads_C, num_loads_L, num_loads_RL, num_loads_RC, num_loads_LC, num_loads_RLC
 end
 
-function check_parameters(parameters, num_sources, num_loads, num_connections, CM, verbosity)
+function check_parameters(parameters, num_sources, num_loads, num_connections, CM, ts, verbosity)
 
     # Variable generation of the parameter dicts
 
@@ -176,7 +177,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
     ##############
     if !haskey(parameters, "grid") 
         grid_properties = Dict()
-        grid_properties["fs"] =  1e4 # TODO: this should be 1/env.ts
+        grid_properties["fs"] =  1/ts 
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
@@ -188,7 +189,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
 
     else
         if !haskey(parameters["grid"], "fs")
-            parameters["grid"]["fs"] = 10e3
+            parameters["grid"]["fs"] = 1/ts
         end
         if !haskey(parameters["grid"], "v_rms")
             parameters["grid"]["v_rms"] = 230
