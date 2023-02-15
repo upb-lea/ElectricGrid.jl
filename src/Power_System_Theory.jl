@@ -906,7 +906,7 @@ function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosi
                             + sum( ((nodes[i,"P"] - P_source_mean)^2 )/ norm_P for i in idx_p_mean_cal) 
                             + sum( ((nodes[i,"Q"] - Q_source_mean)^2) / norm_Q for i in idx_q_mean_cal) # the variance - not exactly right (but good enough)
                             + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * (radius_upper_bound - radius_lower_bound) )
-                            #+ λ₂ * sum( (cables[i, "D-to-neutral"]  for i in 1:num_cables)) / (num_cables * (D_to_neutral_upper - D_to_neutral_lower) )
+                            # + λ₂ * sum( (cables[i, "D-to-neutral"]  for i in 1:num_cables)) / (num_cables * (D_to_neutral_upper - D_to_neutral_lower) )
                             )
                             
 
