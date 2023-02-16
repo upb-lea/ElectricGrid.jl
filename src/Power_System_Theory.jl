@@ -597,7 +597,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 
             s_source_total = s_source_total + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
 
-            println(s_source_total)
+            # println(s_source_total)
 
             if parameters["source"][i]["mode"] in ["PQ Control", 3]
 
