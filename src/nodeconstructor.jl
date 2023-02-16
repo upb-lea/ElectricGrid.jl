@@ -851,31 +851,31 @@ function generate_parameters(num_fltr_LCL, num_fltr_LC, num_fltr_L, num_connecti
     end
 
     for l in 1:num_loads_RLC
-        push!(load_list, _sample_load_RLC())
+        push!(load_list, _sample_load_RLC())       
     end
 
     for l in 1:num_loads_LC
-        push!(load_list, _sample_load_LC())
+        push!(load_list, _sample_load_LC())        #pf = 0    
     end
 
     for l in 1:num_loads_RL
-        push!(load_list, _sample_load_RL())
+        push!(load_list, _sample_load_RL())        #pf < 1
     end
 
     for l in 1:num_loads_L
-        push!(load_list, _sample_load_L())
+        push!(load_list, _sample_load_L())         #pf=0        ϕ = 90°
     end
 
     for l in 1:num_loads_RC
-        push!(load_list, _sample_load_RC())
+        push!(load_list, _sample_load_RC())        #pf < 1     0 > ϕ > -90°
     end
 
     for l in 1:num_loads_C
-        push!(load_list, _sample_load_C())
+        push!(load_list, _sample_load_C())          #pf = 0      \phi = -90°
     end
 
     for l in 1:num_loads_R
-        push!(load_list, _sample_load_R())
+        push!(load_list, _sample_load_R())          #pf = 1
     end
 
     parameters = Dict()
