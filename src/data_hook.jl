@@ -40,14 +40,21 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     collect_reference = false
     collect_vdc_ids = []
 
-    collect_vdq_ids = []
-    collect_vrms_ids = []
-    collect_idq_ids = []
-    collect_irms_ids = []
-    collect_pq_ids = []
-    collect_freq = []
-    collect_θ = []
-    collect_debug = []
+    vdq = []
+    vrms = []
+    idq = []
+    irms = []
+    power_pq = []
+    freq = []
+    angles = []
+    i_sat = []
+    i_err = []
+    i_err_t = []
+    v_sat = []
+    v_err = []
+    v_err_t = []
+
+    debug = []
 
 end
 
@@ -178,12 +185,12 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
 
         Classical_Policy = agent.agents["classic"]["policy"].policy
 
-        for idx in hook.collect_debug
+        for idx in hook.debug
     
             insertcols!(hook.tmp, "debug_$(idx)" => Classical_Policy.Source.debug[idx])           
         end
 
-        for idx in hook.collect_vdq_ids
+        for idx in hook.vdq
 
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
@@ -192,7 +199,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_idq_ids
+        for idx in hook.idq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
                 insertcols!(hook.tmp, "source$(idx)_id" => Classical_Policy.Source.I_dq0[s_idx, 1])
@@ -200,7 +207,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_pq_ids
+        for idx in hook.power_pq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
                 insertcols!(hook.tmp, "source$(idx)_p" => Classical_Policy.Source.p_q_filt[s_idx, 1])
@@ -208,7 +215,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_vrms_ids
+        for idx in hook.vrms
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
                 vrms = DQ_RMS(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
@@ -217,7 +224,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_irms_ids
+        for idx in hook.irms
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
                 irms = DQ_RMS(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
@@ -226,7 +233,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        for idx in hook.collect_freq
+        for idx in hook.freq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
                 freq = Classical_Policy.Source.fpll[s_idx, 1, end]
@@ -234,10 +241,10 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         end
 
-        if !isempty(hook.collect_θ)
+        if !isempty(hook.angles)
             θ_ref = Classical_Policy.Source.θ_avg[1, end]
         end
-        for idx in hook.collect_θ
+        for idx in hook.angles
 
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             
@@ -252,6 +259,54 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
                     θpll = θpll + 360
                 end
                 insertcols!(hook.tmp, "source$(idx)_θ" => θpll)
+            end
+        end
+
+        for idx in hook.i_sat
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*DQ_RMS(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
+                insertcols!(hook.tmp, "source$(idx)_i_sat" => i_sat)
+            end
+        end
+
+        for idx in hook.i_err
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                i_err = DQ_RMS(Classical_Policy.Source.I_err[s_idx, :])
+                insertcols!(hook.tmp, "source$(idx)_i_err" => i_err)
+            end
+        end
+
+        for idx in hook.i_err_t
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                i_err_t = DQ_RMS(Classical_Policy.Source.I_err_t[s_idx, :])
+                insertcols!(hook.tmp, "source$(idx)_i_err_t" => i_err_t)
+            end
+        end
+
+        for idx in hook.v_sat
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                v_sat = sqrt(2)*DQ_RMS(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
+                insertcols!(hook.tmp, "source$(idx)_v_sat" => v_sat)
+            end
+        end
+
+        for idx in hook.v_err
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                v_err = DQ_RMS(Classical_Policy.Source.V_err[s_idx, :])
+                insertcols!(hook.tmp, "source$(idx)_v_err" => v_err)
+            end
+        end
+
+        for idx in hook.i_err_t
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                v_err_t = DQ_RMS(Classical_Policy.Source.V_err_t[s_idx, :])
+                insertcols!(hook.tmp, "source$(idx)_v_err_t" => v_err_t)
             end
         end
 

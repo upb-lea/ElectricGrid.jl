@@ -111,7 +111,7 @@ source["std_asy"]  = 50e3   # Asymptotic Standard Deviation
 source["σ"]        = 50e3   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"]       = 0.01   # Time Step, seconds
 source["X₀"]       = 0      # Initial Process Values, Watt
-source["k"]        = 0      # Interpolation degree
+source["k"]        = 1      # Interpolation degree
 
 source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
 source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
@@ -213,11 +213,11 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [1 2], 
-                collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2],
-                collect_freq     = [1 2],
-                collect_θ        = [1 2])
+hook = DataHook(vrms     = [1 2], 
+                irms     = [1 2], 
+                power_pq = [1 2],
+                freq     = [1 2],
+                angles   = [1 2])
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -234,12 +234,12 @@ for eps in 1:num_eps
                       episode = eps,
                       states_to_plot  = [], 
                       actions_to_plot = [],  
-                      p_to_plot       = [1 2], 
-                      q_to_plot       = [], 
-                      vrms_to_plot    = [1 2], 
-                      irms_to_plot    = [],
-                      freq_to_plot    = [1 2],
-                      θ_to_plot       = [1 2])
+                      power_p         = [1 2], 
+                      power_q         = [], 
+                      vrms            = [1 2], 
+                      irms            = [],
+                      freq            = [1 2],
+                      angles          = [1 2])
 end
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

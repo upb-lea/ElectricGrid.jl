@@ -133,8 +133,12 @@ end
 
 function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
     plot_reward = false, plot_reference = false, episode = 1, vdc_to_plot = [],
-    vdq_to_plot = [], idq_to_plot = [], p_to_plot = [], q_to_plot = [], vrms_to_plot = [], 
-    irms_to_plot = [], freq_to_plot = [], θ_to_plot = [])
+    vdq = [], idq = [], 
+    power_p = [], power_q = [], 
+    vrms = [], irms = [], 
+    freq = [], angles = [], 
+    i_sat = [], i_err = [], i_err_t = [], 
+    v_sat = [], v_err = [], v_err_t = [])
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -192,42 +196,66 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
 
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
-        for idx in hook.collect_debug
+        for idx in hook.debug
             push!(traces, scatter(df, x = :time, y = Symbol("debug_$(idx)"), mode="lines", name = "debug_$(idx)"))
         end
         
-        for idx in vdq_to_plot #hook.collect_vdq_ids #
+        for idx in vdq #hook.collect_vdq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vd"), mode="lines", name = "source$(idx)_vd"))
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vq"), mode="lines", name = "source$(idx)_vq"))
         end
 
-        for idx in idq_to_plot #hook.collect_idq_ids #
+        for idx in idq #hook.collect_idq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_id"), mode="lines", name = "source$(idx)_id"))
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_iq"), mode="lines", name = "source$(idx)_iq"))
         end
 
-        for idx in p_to_plot #hook.collect_pq_ids #
+        for idx in power_p #hook.collect_pq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p"), mode="lines", name = "source$(idx)_p"))
         end
 
-        for idx in q_to_plot #hook.collect_pq_ids #
+        for idx in power_q #hook.collect_pq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q"), mode="lines", name = "source$(idx)_q"))
         end
 
-        for idx in vrms_to_plot #hook.collect_vrms_ids #
+        for idx in vrms #hook.collect_vrms_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms"), mode="lines", name = "source$(idx)_vrms"))
         end
 
-        for idx in irms_to_plot #hook.collect_irms_ids #
+        for idx in irms #hook.collect_irms_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms"), mode="lines", name = "source$(idx)_irms"))
         end
 
-        for idx in freq_to_plot
+        for idx in freq
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_freq"), mode="lines", name = "source$(idx)_freq"))
         end
 
-        for idx in θ_to_plot
+        for idx in angles
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_θ"), mode="lines", name = "source$(idx)_θ"))
+        end
+
+        for idx in i_sat
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_sat"), mode="lines", name = "source$(idx)_i_sat"))
+        end
+
+        for idx in i_err
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_err"), mode="lines", name = "source$(idx)_i_err"))
+        end
+
+        for idx in i_err_t
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_err_t"), mode="lines", name = "source$(idx)_i_err_t"))
+        end
+
+        for idx in v_sat
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_sat"), mode="lines", name = "source$(idx)_v_sat"))
+        end
+
+        for idx in v_err
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_err"), mode="lines", name = "source$(idx)_v_err"))
+        end
+
+        for idx in v_err_t
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_err_t"), mode="lines", name = "source$(idx)_v_err_t"))
         end
     end
 

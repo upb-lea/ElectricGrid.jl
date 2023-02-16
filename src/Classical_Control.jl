@@ -1684,7 +1684,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     end
 
     Source.s_lim[num_source, :], Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] =
-    PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts, max_t_err = 0.2*sqrt(3))
+    PI_Controller(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts, max_t_err = 0.3*sqrt(3))
 
     # cross-coupling / feedforward
     Source.s_lim[num_source, 1] = Source.s_lim[num_source, 1] - 
@@ -1713,17 +1713,6 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         slowly varying. That is, the above equation holds when averaging over one
         pulse period.
     =#
-
-    if num_source == 1
-
-        Source.debug[5] = sqrt(2)*(Source.Vdc[num_source]/2)*DQ_RMS(Source.s_dq0_avg[num_source, :] .- Source.s_lim[num_source, :])/Source.v_max[num_source]
-
-        Source.debug[6] = DQ_RMS(Source.I_err_t[num_source, :])
-        Source.debug[7] = DQ_RMS(Source.I_err[num_source, :, end])
-
-        Source.debug[8] = Vp_ref - Source.v_max[num_source]
-
-    end
 
     return nothing
 end
@@ -1764,7 +1753,7 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     end
 
     Source.I_lim[num_source, :], Source.V_err_t[num_source, :], Source.V_err[num_source, :, :] =
-    PI_Controller(V_err_new, V_err, V_err_t, Kp, Ki, Source.ts, max_t_err = 2*sqrt(3))
+    PI_Controller(V_err_new, V_err, V_err_t, Kp, Ki, Source.ts, max_t_err = 3*sqrt(3))
 
     # cross-coupling / feedforward
     Source.I_lim[num_source, 1] = Source.I_lim[num_source, 1] + I_dq0_poc[1] 
@@ -1779,16 +1768,6 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]*0.98*Source.i_max[num_source]/Ip_ref
     else
         Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]
-    end
-
-    if num_source == 1
-
-        Source.debug[1] = sqrt(2)*DQ_RMS(Source.I_ref_dq0[num_source, :] .- Source.I_lim[num_source, :])/(0.98*Source.i_max[num_source])
-
-        Source.debug[2] = DQ_RMS(Source.V_err_t[num_source, :])
-        Source.debug[3] = DQ_RMS(Source.V_err[num_source, :, end])
-
-        Source.debug[4] = Ip_ref - Source.i_max[num_source]
     end
 
     return nothing
@@ -2211,9 +2190,6 @@ function Measurements(Source::Classical_Controls)
     end
 
     # global metrics
-
-    #f_avg = Array{Float64, 2}(undef, phases, Order)
-    #θ_avg = Array{Float64, 1}(undef, phases)
 
     Source.f_avg[:, 1:end-1] = Source.f_avg[:, 2:end] 
     Source.θ_avg[:, 1:end-1] = Source.θ_avg[:, 2:end] 
