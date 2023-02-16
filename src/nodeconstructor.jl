@@ -354,7 +354,8 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 end
 
                 if source["fltr"] == "LC" && !haskey(source, "R_C")
-
+                    
+                    fc = parameters["grid"]["fs"]/5
                     ωc = 2π*fc
 
                     source["R_C"] = 1/ (3 * ωc * source["C"])
