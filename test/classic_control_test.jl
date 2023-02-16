@@ -41,11 +41,18 @@ using Distributions
         #-------------------------------------------------------------------------------
         # Sources
 
+        #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+        =#
+
         source_list = []
 
         source = Dict()
 
-        source["mode"]         = 2
+        source["mode"]         = "PQ"
         source["control_type"] = "classic"
 
         source["fltr"]         = "LCL"  # Filter type
@@ -80,7 +87,7 @@ using Distributions
 
         source = Dict()
 
-        source["mode"]         = 3
+        source["mode"]         = "Droop"
         source["control_type"] = "classic"
 
         source["fltr"]         = "LC"   # Filter type
@@ -113,7 +120,7 @@ using Distributions
 
         source = Dict()
 
-        source["mode"]         = 4
+        source["mode"]         = "Synchronverter"
         source["control_type"] = "classic"
 
         source["fltr"]         = "LCL"  # Filter type
@@ -231,7 +238,7 @@ using Distributions
         V_ki = [8.78477386799335; 5.85651591199507]
 
         #CSV.write("Classical_Control_Unit_test.csv", hook.df)
-        old_data = convert.(Float64, Matrix(CSV.read(joinpath(pwd(), "test\\Classical_Control_Unit_test.csv"), DataFrame))[1:end, 1:17])
+        old_data = convert.(Float64, Matrix(CSV.read("./test/Classical_Control_Unit_test.csv", DataFrame))[1:end, 1:17])
 
         new_data = convert.(Float64, Matrix(hook.df)[1:end, 1:17])
 
@@ -527,7 +534,7 @@ end
                         angles          = []) =#
 
         #CSV.write("Control_Saturation_Unit_test.csv", hook.df[end-100:end,:])
-        old_data = convert.(Float64, Matrix(CSV.read(joinpath(pwd(), "test\\Control_Saturation_Unit_test.csv"), DataFrame))[1:end, 1:17])
+        old_data = convert.(Float64, Matrix(CSV.read("./test/Control_Saturation_Unit_test.csv", DataFrame))[1:end, 1:17])
 
         new_data = convert.(Float64, Matrix(hook.df)[end-100:end, 1:17])
 
