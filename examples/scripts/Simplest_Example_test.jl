@@ -12,6 +12,17 @@
 
 using Dare
 
+status = Dict{Any, Any}() #
+
+function optimiser_status(model)
+    status = Dict{Any, Any}(     
+                                "termination_status" => $(termination_status(model)),
+                                "primal_status"      => $(primal_status(model)),
+                                "objective_value"    => $(objective_value(model)),
+                            )
+    return status
+end 
+
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
