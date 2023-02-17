@@ -39,11 +39,16 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = 1:num_sources, 
-                collect_irms_ids = 1:num_sources, 
-                collect_pq_ids   = 1:num_sources,
-                collect_freq     = 1:num_sources,
-                collect_sources  = 1:num_sources)
+hook = DataHook(collect_sources  = 1:num_sources,
+                vrms             = 1:num_sources, 
+                irms             = 1:num_sources, 
+                power_pq         = 1:num_sources,
+                freq             = 1:num_sources,
+                i_sat            = 1:num_sources,
+                v_sat            = 1:num_sources,
+                i_err            = 1:num_sources,
+                v_err            = 1:num_sources,
+                )
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -60,10 +65,14 @@ drawGraph(CM, parameters, Layout = 3)
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
-                    p_to_plot       = [], 
-                    q_to_plot       = [], 
-                    vrms_to_plot    = 1:num_sources, 
-                    irms_to_plot    = [],
-                    freq_to_plot    = [])
+                    power_p         = [], 
+                    power_q         = [], 
+                    vrms            = 1:num_sources, 
+                    irms            = [],
+                    freq            = [],
+                    i_sat           = 1:num_sources,
+                    v_sat           = 1:num_sources,
+                    i_err           = 1:num_sources,
+                    v_err           = 1:num_sources,)
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

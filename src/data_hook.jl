@@ -273,7 +273,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         for idx in hook.i_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_err = DQ_RMS(Classical_Policy.Source.I_err[s_idx, :])
+                i_err = DQ_RMS(Classical_Policy.Source.I_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_err" => i_err)
             end
         end
@@ -297,7 +297,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         for idx in hook.v_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_err = DQ_RMS(Classical_Policy.Source.V_err[s_idx, :])
+                v_err = DQ_RMS(Classical_Policy.Source.V_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_err" => v_err)
             end
         end

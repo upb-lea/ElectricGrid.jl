@@ -480,7 +480,7 @@ end
 
                                 Dict{Any, Any}("pwr" => 200e3, 
                                                 "mode" => "PQ", 
-                                                "p_set" => -54.68e3, # making this slightly less/more, means that the voltage control loop recovers
+                                                "p_set" => -54.5e3, # making this slightly less/more, means that the voltage control loop recovers
                                                 "q_set" => 100e3),
                                 ],
                 "cable"   => Any[

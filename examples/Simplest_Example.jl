@@ -55,12 +55,12 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [1 2], 
-                collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2],
-                collect_freq     = [1 2],
-                collect_sources  = [1 2],
-                collect_θ        = [1 2])
+hook = DataHook(collect_sources  = [1 2],
+                vrms             = [1 2], 
+                irms             = [1 2], 
+                power_pq         = [1 2],
+                freq             = [1 2],
+                angles           = [1 2])
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -74,15 +74,11 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
-                    p_to_plot       = [1 2], 
-                    q_to_plot       = [], 
-                    vrms_to_plot    = [1 2], 
-                    irms_to_plot    = [],
-                    freq_to_plot    = [1 2],
-                    θ_to_plot       = [1 2])
+                    power_p         = [1 2], 
+                    power_q         = [], 
+                    vrms            = [1 2], 
+                    irms            = [],
+                    freq            = [1 2],
+                    angles          = [1 2])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
-
-
-# Time domain : p, q
-# Freq domain : P, Q

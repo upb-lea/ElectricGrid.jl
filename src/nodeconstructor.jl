@@ -493,11 +493,11 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "p_set")
-                source["p_set"] = source["pwr"]*source["pf"]
+                source["p_set"] = 0#source["pwr"]*source["pf"]
             end
 
             if !haskey(source, "q_set")
-                source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+                source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
             end
 
             if !haskey(source, "v_pu_set")
@@ -509,7 +509,7 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "mode")
-                source["mode"] = "Droop"
+                source["mode"] = "Synchronverter"
             end
 
             if !haskey(source, "control_type")
@@ -599,16 +599,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
             # Validierung ob LC vorhanden ist?
             if num_LC_defined == 0 && num_fltr_LC_undef == 0 # What is this? What if the user defined an L or LCL filter
-                #@warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
+                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         else
 
             if num_LC_defined == 0 
-                #@warn "Bla Bla Bla Bla Bla Bla .... My name is Plop. No LC filter defined/set random, if wanted please set in parameter dict!"
+                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         end
 
-        #source_type_fixed > 0 && @warn "Wagga Wagga. Poopy-di scoop. Scoop-diddy-whoop. Whoop-di-scoop-di-poop. $source_type_fixed sourceType not defined! set to ideal! Why do I care??"
+        source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined!"
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
     
@@ -2788,7 +2788,7 @@ function MG_Setup(num_sources, num_cables; random = nothing, avg_pwr = 200e3, Vr
 
             # Grid Forming sources
 
-            source["mode"]     = 6
+            source["mode"]     = "Synchronverter"
 
             source["fltr"]     = "LCL"  # Filter type
 
@@ -2806,7 +2806,7 @@ function MG_Setup(num_sources, num_cables; random = nothing, avg_pwr = 200e3, Vr
 
         else
 
-            source["mode"]     = 6
+            source["mode"]     = "Synchronverter"
 
             source["fltr"]     = "LCL"  # Filter type
 
