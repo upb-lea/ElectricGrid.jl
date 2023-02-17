@@ -57,3 +57,6 @@ db/*.sqlite
 
 # pre_investigations
 pre_investigations/*
+
+# .github files
+*.github

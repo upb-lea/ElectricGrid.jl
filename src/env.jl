@@ -43,6 +43,37 @@ mutable struct SimEnv <: AbstractEnv
     action_ids_RL
 end
 
+
+"""
+    SimEnv(...)
+
+# Description
+Returns an environment consisting of an electrical power grid as control plant, 
+which can interact via this interface with a reinforcement learing agent from 
+https://juliareinforcementlearning.org/ 
+
+# Arguments
+
+# Keyword Arguments
+- `maxsteps::Int`: the number of time steps that the simulation is run.
+- `ts::Float`: Sampling time by which the environment is evolved per step.
+- `action_space::Space`: Defines the valide space per action.
+- `state_space::Space`: Defines the valide space per state. Default is [-1, 1] since the states of the env will be normalized.
+- `prepare_action::function(env::SimEnv)`: Function to adjust, change, prepare the actions before they are applied to the env during a step(). 
+                                           Per default it returns the action without changes.
+- `featurize::function(x:Vector, t:Float; env::SimEnv, name::String)`: Function to adjust the state before it is returned by the env. For example here 
+reference values can be added to provide the to an RL agent or other feature engineering to improve the learning.  
+- `reward_function::function(env::SimEnv, name::String) )`: Function to define the reward for a (named) policy. Return 0 per default.
+- `CM::Vactor`: Conectivity matrix to define the structure of the electric power grid (for more details see NodeConstructor)
+- `num_sources::Int`: Number of sources in the electric power grid 
+- `num_loads::Int`: Number of loads in the electric power grid 
+- `parameter::Dict`: Dictonary to define the parameterof the grid. Entries can be "grid", "source", "load", "cable". Here, e.g. the electric components are defined.
+- `x0::Vactor`: Co
+
+# Return Values
+- `Multi_Agent::MultiAgentGridController`: (optional)
+
+"""
 function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_space = nothing, prepare_action = nothing, featurize = nothing, reward_function = nothing, CM = nothing, num_sources = nothing, num_loads = nothing, parameters = nothing, x0 = nothing, t0 = 0.0, state_ids = nothing, convert_state_to_cpu = true, use_gpu = false, reward = nothing, action = nothing, action_ids = nothing, action_delay = 1, t_end = nothing, verbosity = 0, state_ids_RL = nothing, action_ids_RL = nothing)
 
     if !(isnothing(t_end))
@@ -50,45 +81,41 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
 
     if isnothing(num_sources) && isnothing(num_loads) 
-        if haskey(parameters, "source") && haskey(parameters, "load")
-
-            num_sources = length(parameters["source"])
-            num_loads = length(parameters["load"])
-        elseif haskey(parameters, "source") 
-            num_sources = length(parameters["source"])
-            num_loads = 0
-        end
+        
     end
 
 
 
-    if haskey(parameters, "grid") 
-
-        if !haskey(parameters["grid"], "fs")
-            parameters["grid"]["fs"] = 1/ts
-        end
-    else
-
-        parameters["grid"] = Dict()
-        parameters["grid"]["fs"] = 1/ts
-    end
-
+    
     
     if !(isnothing(num_sources) || isnothing(num_loads)) 
 
-        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, verbosity = verbosity)
+        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, ts = ts, verbosity = verbosity)
 
     else
-        # Construct standard env with 2 sources, 1 load
-        @info "Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)" #TODO: Clarify what there problem is
-        CM = [ 0. 0. 1.
-               0. 0. 2
-              -1. -2. 0.]
+        
 
         if isnothing(parameters)
+            # Construct standard env with 2 sources, 1 load
+            @info "Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)" #TODO: Clarify what there problem is
+            CM = [ 0. 0. 1.
+                0. 0. 2
+                -1. -2. 0.]
             nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, verbosity = verbosity)
         else
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, verbosity = verbosity)
+            if haskey(parameters, "source") && haskey(parameters, "load")
+
+                num_sources = length(parameters["source"])
+                num_loads = length(parameters["load"])
+            elseif haskey(parameters, "source") 
+                num_sources = length(parameters["source"])
+                num_loads = 0
+            else
+                @info "Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)"
+                num_sources = 2
+                num_loads = 1
+            end 
+            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, ts = ts, verbosity = verbosity)
         end
 
     end
@@ -305,8 +332,8 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         end
     end
 
-    i_limit_fixed > 0 && @info "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit!"
-    v_limit_fixed > 0 && @info "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit!"   
+    #i_limit_fixed > 0 && @info "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit! What???"
+    #v_limit_fixed > 0 && @info "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit! Whatt???"   
 
     if isnothing(reward)
         reward = 0.0
@@ -425,11 +452,9 @@ function (env::SimEnv)(action)
     # Power constraint
     env.reward = env.reward_function(env)
 
-    if env.t > env.nc.parameters["grid"]["ramp_end"] + 5*0.02
-        env.done = env.steps >= env.maxsteps# || any(abs.(env.x./env.norm_array) .> 1)
-    else
-        env.done = env.steps >= env.maxsteps
-    end
+ 
+
+    env.done = (env.steps >= env.maxsteps) || (any(abs.(env.x./env.norm_array) .> 1))
 
     # TODO define info on verbose
     if env.done
