@@ -332,8 +332,8 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         end
     end
 
-    i_limit_fixed > 0 && @info "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit! What???"
-    v_limit_fixed > 0 && @info "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit! Whatt???"   
+    #i_limit_fixed > 0 && @info "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit! What???"
+    #v_limit_fixed > 0 && @info "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit! Whatt???"   
 
     if isnothing(reward)
         reward = 0.0
