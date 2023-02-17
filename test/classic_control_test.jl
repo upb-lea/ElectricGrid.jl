@@ -406,7 +406,7 @@ end
         #_______________________________________________________________________________
         # Plotting
 
-        #= for eps in 1:num_eps
+        for eps in 1:num_eps
 
                 plot_hook_results(hook = hook, 
                                         episode = eps,
@@ -418,7 +418,7 @@ end
                                         irms            = [],
                                         freq            = [3],
                                         angles          = [1 2 3])
-        end =#
+        end
 
         #_______________________________________________________________________________
         # Tests 
@@ -480,7 +480,7 @@ end
 
                                 Dict{Any, Any}("pwr" => 200e3, 
                                                 "mode" => "PQ", 
-                                                "p_set" => -54.5e3, # making this slightly less/more, means that the voltage control loop recovers
+                                                "p_set" => -51.1e3, # making this slightly less/more, means that the voltage control loop recovers
                                                 "q_set" => 100e3),
                                 ],
                 "cable"   => Any[
