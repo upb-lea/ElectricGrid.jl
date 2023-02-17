@@ -103,6 +103,7 @@ source["fltr"]     = "L"   # Filter type
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
 source["q_set"]    = 10e3   # Imaginary Power Set Point, VAi
+#source["i_limit"]  = 10e6
 
 source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
 source["v_δ_set"]  = 0      # Voltage Angle, degrees

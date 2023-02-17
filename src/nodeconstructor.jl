@@ -402,13 +402,16 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
             end
 
             if !haskey(source, "v_limit")
-                if source["fltr"] == "L"
+                #= if source["fltr"] == "L"
                     source["v_limit"] = 1.1 * parameters["grid"]["v_rms"] * sqrt(2)
                 else
                     v_lim_r = 1.5
 
                     source["v_limit"] = v_lim_r * source["vdc"] * (1 + source["v_rip"] / 2)
-                end
+                end =#
+                v_lim_r = 1.5
+
+                source["v_limit"] = v_lim_r * source["vdc"] * (1 + source["v_rip"] / 2)
             end
 
             if source["fltr"] == "LCL" && !haskey(source, "L2")
