@@ -22,7 +22,7 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
-num_eps  = 4       # number of episodes to run
+num_eps  = 10       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -103,7 +103,6 @@ source["fltr"]     = "L"   # Filter type
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
 source["q_set"]    = 10e3   # Imaginary Power Set Point, VAi
-#source["i_limit"]  = 10e6
 
 source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
 source["v_δ_set"]  = 0      # Voltage Angle, degrees
@@ -112,7 +111,7 @@ source["std_asy"]  = 50e3   # Asymptotic Standard Deviation
 source["σ"]        = 50e3   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"]       = 0.01   # Time Step, seconds
 source["X₀"]       = 0      # Initial Process Values, Watt
-source["k"]        = 1      # Interpolation degree
+source["k"]        = 0      # Interpolation degree
 
 source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
 source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
