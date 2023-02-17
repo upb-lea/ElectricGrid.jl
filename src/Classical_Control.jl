@@ -2280,7 +2280,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
 
         Gi_cl = minreal(Gsc_ol*Gpi_i/(1 + Gsc_ol*Gpi_i)) # closed loop transfer function
 
-        if any(real(ControlSystems.poles(Gi_cl)) .> 0) == false
+        if any(real(ControlSystemsBase.poles(Gi_cl)) .> 0) == false
 
             # all the poles are on the left side
             ωp = 2π/((i)*Ts) # gain cross-over frequency
@@ -2372,7 +2372,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
 
         Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v)) # closed loop transfer function
 
-        if any(real(ControlSystems.poles(Gv_cl)) .> 0) == false
+        if any(real(ControlSystemsBase.poles(Gv_cl)) .> 0) == false
 
             # all the poles are on the left side
             ωp = 2π/((i)*Ts) # gain cross-over frequency

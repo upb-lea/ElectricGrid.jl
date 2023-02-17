@@ -2,10 +2,10 @@ module Dare
 
 using ArnoldiMethod #*
 using Combinatorics
-using ControlSystems
 using CSV
 using CUDA
 using DataStructures
+using ControlSystemsBase
 using DifferentialEquations
 using Distributions
 using DSP
