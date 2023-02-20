@@ -38,9 +38,9 @@ CM = [ 0. 1.
 source_pwr  =   200e3 
 
 # Toggle theses lines to see the optimizer behaviour
-# load_pwr    =   170e3 
+load_pwr    =   170e3 
 # load_pwr    =   190e3
-load_pwr    =   210e3       # Somehow the optimizer doesn't fail for this value : [warning: The apparent power drawn from the loads exceeds the apparent power ...]
+# load_pwr    =   210e3       # Somehow the optimizer doesn't fail for this value : [warning: The apparent power drawn from the loads exceeds the apparent power ...]
 # load_pwr    =   220e3       # The optimizer fails for this value
 
 
@@ -68,11 +68,12 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [1 ], 
-                collect_irms_ids = [1 ], 
-                collect_pq_ids   = [1 ], #collecting p and q for sources 1, 2
-                collect_freq     = [1 ],
-                collect_sources  = [1 ])
+hook = DataHook(collect_sources  = [1 ],
+                vrms             = [1 ], 
+                irms             = [1 ], 
+                power_pq         = [1 ],
+                freq             = [1 ],
+                angles           = [1 ])
 #_______________________________________________________________________________
 # Running the Time Simulation
 
@@ -82,13 +83,14 @@ Power_System_Dynamics(env, hook)
 # Plotting
 
 plot_hook_results(hook = hook, 
-                    states_to_plot  = [], 
+                    states_to_plot  = ["cable1_i_L_a"], 
                     actions_to_plot = [],  
-                    p_to_plot       = [1], 
-                    q_to_plot       = [1], 
-                    vrms_to_plot    = [1], 
-                    irms_to_plot    = [],
-                    freq_to_plot    = [])
+                    power_p         = [1 ], 
+                    power_q         = [], 
+                    vrms            = [1 ], 
+                    irms            = [],
+                    freq            = [1 ],
+                    angles          = [1 ])
 
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
