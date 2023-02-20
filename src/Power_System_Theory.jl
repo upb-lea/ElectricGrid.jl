@@ -785,11 +785,11 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
 
     for i=1:num_cables
 
-
-        set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m
+        radius_max = 60*(4.1148e-3)/2
+        set_bounds(cables[i, "radius"], 25*(3e-3)/2, (2.05232e-3)/2, radius_max) #m
         # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m
         # assumption: min value of D-to-neutral : 3 * max radius
-        set_bounds(cables[i, "D-to-neutral"], 3*(4.1148e-3/2), 3*(4.1148e-3/2), 1.00 ) #m
+        set_bounds(cables[i, "D-to-neutral"], 2* 0.7788 * radius_max, 0.7788 * radius_max, 2.00 ) #m
         # assumption to line to line(neutral) --  for low voltages
         #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
@@ -904,15 +904,18 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     optimize!(model)
 
     # TODO: put these warning/messages with logger // verbosity
-    #= println("""
+    println("""
     termination_status = $(termination_status(model))
     primal_status      = $(primal_status(model))
     objective_value    = $(objective_value(model))
-    """) =#
+    """)
 
-    #= println()
     println()
-    println(value.(nodes)) =#
+    println()
+    println(value.(nodes))
+    println("asdasdasd")
+    println()
+    println(value.(cables))
 
     for (index, cable) in enumerate(parameters["cable"])
 
@@ -977,6 +980,18 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
         P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
         #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
         #Q = value.(nodes[j, "Q"])
+
+        println(Zₘ)
+        println(P)
+        println(value.(C_cable))
+        println(value.(L_cable))
+        println(Aₘ)
+        println(vᵣ)
+        println(θᵧ)
+        println(θₐ)
+        println(vₛ)
+
+
         δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
 
         Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
