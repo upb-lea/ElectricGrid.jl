@@ -420,7 +420,7 @@ function check_parameters(
                 end
             end
 
-            if source["fltr"] == ("LC" &&
+            if (source["fltr"] == "LC" &&
                 1 / sqrt(source["L1"] * source["C"]) > parameters["grid"]["fs"] / 2)
                 if verbosity > 0
                     @warn ("The LC filter parameters have been poorly chosen.

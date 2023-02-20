@@ -406,7 +406,7 @@ end
         #_______________________________________________________________________________
         # Plotting
 
-        for eps in 1:num_eps
+        #= for eps in 1:num_eps
 
                 plot_hook_results(hook = hook, 
                                         episode = eps,
@@ -418,7 +418,7 @@ end
                                         irms            = [],
                                         freq            = [3],
                                         angles          = [1 2 3])
-        end
+        end =#
 
         #_______________________________________________________________________________
         # Tests 
