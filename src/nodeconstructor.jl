@@ -82,9 +82,9 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             "Expect parameters to have the four entries 'cable', 'load', 'grid' and
             'source' but got $(keys(parameters))")
 
-        @assert(length(keys(parameters["grid"])) == 9,
-            "Expect parameters['grid'] to have the 8 entries 'fs', 'v_rms', 'phase' and
-            'f_grid' but got $(keys(parameters["grid"]))")
+        # @assert(length(keys(parameters["grid"])) == 9,
+        #     "Expect parameters['grid'] to have the 8 entries 'fs', 'v_rms', 'phase' and
+        #     'f_grid' but got $(keys(parameters["grid"]))")
 
         @assert(length(parameters["source"]) == num_sources,
             "Expect the number of sources to match the number of sources in the parameters,
@@ -420,8 +420,8 @@ function check_parameters(
                 end
             end
 
-            if source["fltr"] == ("LC" &&
-                1 / sqrt(source["L1"] * source["C"]) > parameters["grid"]["fs"] / 2)
+            if (source["fltr"] == "LC" &&
+                (1 / sqrt(source["L1"] * source["C"]) > parameters["grid"]["fs"] / 2))
                 if verbosity > 0
                     @warn ("The LC filter parameters have been poorly chosen.
                         The filtering capacitors should be chosen such that the resonant
@@ -438,7 +438,7 @@ function check_parameters(
                     v_lim_r = 1.5
 
                     source["v_limit"] = v_lim_r * source["vdc"] * (1 + source["v_rip"] / 2)
-                end =# 
+                end =#
                 v_lim_r = 1.5
 
                 source["v_limit"] = v_lim_r * source["vdc"] * (1 + source["v_rip"] / 2)
@@ -637,7 +637,7 @@ function check_parameters(
 
         else
 
-            if num_LC_defined == 0 
+            if num_LC_defined == 0
                 @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
             end
         end
@@ -1294,9 +1294,25 @@ end
 
 
 """
-    CM_generate(num_sources, num_loads, S2L_p, S2S_p)
+    CM_generate(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
 
-Returns the constructed CM and the total number of connections.
+Returns the constructed `CM` and the total number of connections.
+
+Gets `num_sources` and `num_loads` to calculate the total number of elements. Depending on
+the probabilities `S2L_p`, `S2S_p` and `L2L_p`, the entries are then set in the CM matrix.
+After the entries have been set randomly, it is checked that all elements have at least one
+connection and that no subnets have been created.
+
+# Arguments
+- `num_sources::Int`: number of sources
+- `num_loads::Int`: number of loads
+- `S2L_p::Int`: probability that a source is connected to a load
+- `S2S_p::Int`: probability that a source is connected to a source
+- `L2L_p::Int`: probability that a load is connected to a load
+
+# Return Values
+- `cntr::Int`: number of connections
+- `CM::Matrix`: connectivity matrix describing the connections in the grid
 """
 function CM_generate(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
     # counting the connections
@@ -1461,7 +1477,6 @@ function get_A_src(self::NodeConstructor, source_i)
     end
 
     return A_src
-
 end
 
 
