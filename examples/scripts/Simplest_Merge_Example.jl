@@ -13,7 +13,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 1e-4  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.1   # total run time, seconds
-num_eps  = 100      # number of episodes to run
+num_eps  = 100     # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -43,14 +43,14 @@ C_1 = 1e-5;
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "L", "L1" => L_1, "R1" => R_1, "i_limit"=>50),
+                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "L", "L1" => L_1, "R1" => R_1, "i_limit"=>50, "v_limit"=>1000, ),
                         #Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1, "R1"=>R_1, "L1"=>L_1, "C"=>C_1, "R_C"=>R_c, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10e8),
                         ],
          "load"   => Any[
                         Dict{Any, Any}("impedance" => "R", "R" => 50, "L" => 0.006, "v_limit"=>10000, "i_limit"=>10e8),
                         ],
         "cable"   => Any[
-                        Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-8, "i_limit" => 10e8,),
+                        Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-8, "i_limit" => 10e8,"v_limit"=>1000, ),
                         ],
         "grid" => Dict{Any, Any}("ramp_end" => 0.0, "phase" => 1 )
     )
@@ -137,7 +137,7 @@ end
 
 ma = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
 
-RLBase.run(ma, env, StopAfterEpisode(num_eps), hook); 
+#RLBase.run(ma, env, StopAfterEpisode(num_eps), hook); 
 #_______________________________________________________________________________
 # Plotting
 

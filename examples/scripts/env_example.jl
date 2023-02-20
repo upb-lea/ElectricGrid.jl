@@ -12,10 +12,10 @@ R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => S_source, "control_type" => "classic", "mode" => "Swing", "fltr" => "LC", "i_limit" => 1e4, "v_limit" => 1e4,),
+                        Dict{Any, Any}("pwr" => S_source, "control_type" => "classic", "mode" => "Step", "fltr" => "LC", "i_limit" => 1e4, "v_limit" => 1e4,),
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "R", "R" => R1_load)
+                        Dict{Any, Any}("impedance" => "R", "R" => R_load)
                         ],
         "cable"   => Any[
                         Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4),

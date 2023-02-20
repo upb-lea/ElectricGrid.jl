@@ -22,7 +22,7 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
-num_eps  = 4       # number of episodes to run
+num_eps  = 10       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -213,10 +213,11 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [1 2], 
-                collect_irms_ids = [1 2], 
-                collect_pq_ids   = [1 2],
-                collect_freq     = [1 2])
+hook = DataHook(vrms     = [1 2], 
+                irms     = [1 2], 
+                power_pq = [1 2],
+                freq     = [1 2],
+                angles   = [1 2])
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -233,11 +234,12 @@ for eps in 1:num_eps
                       episode = eps,
                       states_to_plot  = [], 
                       actions_to_plot = [],  
-                      p_to_plot       = [1 2], 
-                      q_to_plot       = [], 
-                      vrms_to_plot    = [1 2], 
-                      irms_to_plot    = [1 2],
-                      freq_to_plot    = [1 2])
+                      power_p         = [1 2], 
+                      power_q         = [], 
+                      vrms            = [1 2], 
+                      irms            = [],
+                      freq            = [1 2],
+                      angles          = [1 2])
 end
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

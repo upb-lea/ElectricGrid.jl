@@ -3,8 +3,9 @@ using Test
 using Logging
 using CSV
 using DataFrames
+using Distributions
 
-@testset "ClassicalController" begin
+@testset "Classical_Controllers" begin
 
         #_______________________________________________________________________________
         # Network Parameters 
@@ -40,11 +41,18 @@ using DataFrames
         #-------------------------------------------------------------------------------
         # Sources
 
+        #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+        =#
+
         source_list = []
 
         source = Dict()
 
-        source["mode"]         = 2
+        source["mode"]         = "PQ"
         source["control_type"] = "classic"
 
         source["fltr"]         = "LCL"  # Filter type
@@ -79,7 +87,7 @@ using DataFrames
 
         source = Dict()
 
-        source["mode"]         = 3
+        source["mode"]         = "Droop"
         source["control_type"] = "classic"
 
         source["fltr"]         = "LC"   # Filter type
@@ -112,7 +120,7 @@ using DataFrames
 
         source = Dict()
 
-        source["mode"]         = 4
+        source["mode"]         = "Synchronverter"
         source["control_type"] = "classic"
 
         source["fltr"]         = "LCL"  # Filter type
@@ -167,11 +175,11 @@ using DataFrames
         grid = Dict()
 
         grid["v_rms"] = 230
-        load["ramp_end"] = 0.04
-        load["process_start"] = 0.04
-        load["f_grid"] = 50 
-        load["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
-        load["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
+        grid["ramp_end"] = 0.04
+        grid["process_start"] = 0.04
+        grid["f_grid"] = 50 
+        grid["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
+        grid["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
         #-------------------------------------------------------------------------------
         # Amalgamation
@@ -192,10 +200,10 @@ using DataFrames
         # Setting up data hooks
 
         hook = DataHook(collect_sources  = [1 2 3],
-                        collect_vrms_ids = [1 2 3], 
-                        collect_irms_ids = [1 2 3], 
-                        collect_pq_ids   = [1 2 3],
-                        collect_freq     = [1 2 3],
+                        vrms             = [1 2 3], 
+                        irms             = [1 2 3], 
+                        power_pq         = [1 2 3],
+                        freq             = [1 2 3],
                         )
 
         #_______________________________________________________________________________
@@ -213,11 +221,11 @@ using DataFrames
                                         episode = eps,
                                         states_to_plot  = ["source1_v_C_filt_a"], 
                                         actions_to_plot = [],  
-                                        p_to_plot       = [1 2 3], 
-                                        q_to_plot       = [], 
-                                        vrms_to_plot    = [1 2 3], 
-                                        irms_to_plot    = [1 2 3],
-                                        freq_to_plot    = [1 2 3])
+                                        power_p         = [1 2 3], 
+                                        power_q         = [1 2 3], 
+                                        vrms            = [1 2 3], 
+                                        irms            = [1 2 3],
+                                        freq            = [1 2 3])
         end =#
 
         #_______________________________________________________________________________
@@ -244,4 +252,293 @@ using DataFrames
         @test new_data ≈ old_data atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[total_steps + 1:2*total_steps, 2:end] atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[2*total_steps + 1:end, 2:end] atol = 0.001
+end
+
+@testset "Ornstein_Uhlenbeck" begin
+
+        #_______________________________________________________________________________
+        # Network Parameters 
+
+        #-------------------------------------------------------------------------------
+        # Time simulation
+
+        Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+        t_end    = 10     # total run time, seconds
+        num_eps  = 1       # number of episodes to run
+
+        #-------------------------------------------------------------------------------
+        # Connectivity Matrix
+
+        CM = [ 0. 0. 0. 1.
+                0. 0. 0. 2.
+                0. 0. 0. 3.
+                -1. -2. -3. 0.]
+
+        #-------------------------------------------------------------------------------
+        # Cable Impedances
+
+        cable_list = []
+
+        cable = Dict()
+        cable["R"]       = 0.208   # Ω, line resistance
+        cable["L"]       = 0.00025 # H, line inductance
+        cable["C"]       = 0.4e-3  # F, line capacitance
+        cable["i_limit"] = 10e12   # A, line current limit
+
+        push!(cable_list, cable, cable, cable)
+
+        #-------------------------------------------------------------------------------
+        # Sources
+
+        source_list = []
+
+        source = Dict()
+
+        source["mode"]         = "Swing"
+        source["control_type"] = "classic"
+
+        source["fltr"]         = "LCL"  # Filter type
+
+        source["pwr"]          = 100e3  # Rated Apparent Power, VA
+
+        source["v_pu_set"]     = 1.00   # Voltage Set Point, p.u.
+        source["v_δ_set"]      = -1.0      # Voltage Angle, degrees
+        source["vdc"]          = 800    # V
+
+        push!(source_list, source)
+
+        source = Dict()
+
+        source["mode"]         = "Voltage"
+        source["control_type"] = "classic"
+
+        source["fltr"]         = "LC"   # Filter type
+
+        source["pwr"]          = 150e3  # Rated Apparent Power, VA
+
+        source["v_pu_set"]     = 1.00   # Voltage Set Point, p.u.
+        source["v_δ_set"]      = 3.5      # Voltage Angle, degrees
+        source["vdc"]          = 800    # V
+
+        push!(source_list, source)
+
+        source = Dict()
+
+        source["mode"]         = "PQ"
+        source["control_type"] = "classic"
+
+        source["fltr"]         = "L"    # Filter type
+
+        source["pwr"]          = 100e3  # Rated Apparent Power, VA
+        source["p_set"]        = 50e3   # Real Power Set Point, Watt
+        source["q_set"]        = -10e3   # Imaginary Power Set Point, VAi
+
+        source["v_pu_set"]     = 1.00   # Voltage Set Point, p.u.
+        source["vdc"]          = 800    # V
+
+        source["std_asy"]      = 5e3   # Asymptotic Standard Deviation
+        source["σ"]            = 25e3    # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+        source["Δt"]           = 0.02   # Time Step, seconds
+        source["X₀"]           = 30e3   # Initial Process Values, Watt
+        source["k"]            = 1      # Interpolation degree
+        source["γ"]            = 50e3   # Asymptotoic Mean
+
+        push!(source_list, source)
+
+        #-------------------------------------------------------------------------------
+        # Loads
+
+        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.95, 230)
+
+        load_list = []
+        load = Dict()
+
+        load["impedance"] = "RL"
+        load["R"] = R_load
+        load["L"] = L_load
+        load["i_limit"] = 10e12
+        load["v_limit"] = 10e12
+
+        push!(load_list, load)
+
+        #-------------------------------------------------------------------------------
+        # Network
+
+        grid = Dict()
+
+        grid["v_rms"] = 230
+        grid["ramp_end"] = 0.03
+        grid["process_start"] = 0.04
+        grid["f_grid"] = 50 
+
+        #-------------------------------------------------------------------------------
+        # Amalgamation
+
+        parameters = Dict()
+
+        parameters["source"] = source_list
+        parameters["cable"] = cable_list
+        parameters["load"] = load_list
+        parameters["grid"] = grid
+
+        #_______________________________________________________________________________
+        # Defining the environment
+
+        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+
+        #_______________________________________________________________________________
+        # Setting up data hooks
+
+        hook = DataHook(collect_sources  = [1 2 3],
+                        vrms             = [1 2 3], 
+                        irms             = [1 2 3], 
+                        power_pq         = [1 2 3],
+                        freq             = [1 2 3],
+                        angles           = [1 2 3],
+                        )
+
+        #_______________________________________________________________________________
+        # Running the Time Simulation
+
+        Multi_Agent = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
+        Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+        #_______________________________________________________________________________
+        # Plotting
+
+        #= for eps in 1:num_eps
+
+                plot_hook_results(hook = hook, 
+                                        episode = eps,
+                                        states_to_plot  = [], 
+                                        actions_to_plot = [],  
+                                        power_p         = [3], 
+                                        power_q         = [3], 
+                                        vrms            = [], 
+                                        irms            = [],
+                                        freq            = [3],
+                                        angles          = [1 2 3])
+        end =#
+
+        #_______________________________________________________________________________
+        # Tests 
+
+        step = Int(parameters["source"][3]["Δt"]/Timestep)
+        start = Int(parameters["grid"]["process_start"]/Timestep) + 1 + step
+
+        new_data = convert.(Float64, Matrix(hook.df)[start:step:end, 7])
+        new_angles = convert.(Float64, Matrix(hook.df)[:, 18:19])
+
+        angles_eval = ones(size(new_angles, 1), 2)
+        angles_eval[:,1] = parameters["source"][1]["v_δ_set"].*angles_eval[:,1]
+        angles_eval[:,2] = parameters["source"][2]["v_δ_set"].*angles_eval[:,2]
+
+        stats = fit(Normal{Float32}, new_data)
+
+        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.01
+        @test 1 ≈ stats.σ/parameters["source"][3]["std_asy"] atol = 0.1
+        @test new_angles ≈ angles_eval atol = 0.001
+
+        return nothing
+end
+
+@testset "Saturation" begin
+
+        #_______________________________________________________________________________
+        # Network Configuration 
+
+        #-------------------------------------------------------------------------------
+        # Time simulation
+
+        Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+        t_end    = 0.1     # total run time, seconds
+
+        #-------------------------------------------------------------------------------
+        # Connectivity Matrix
+
+        CM = [ 0. 1.
+                -1. 0.]
+
+        #-------------------------------------------------------------------------------
+        # Parameters
+
+        #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+        =#
+
+        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+
+        length = 1
+        parameters = Dict{Any, Any}(
+                "source" => Any[
+                                Dict{Any, Any}("pwr" => 200e3, 
+                                                "mode" => "Semi-Synchronverter", 
+                                                "v_pu_set" => 1.05),
+
+                                Dict{Any, Any}("pwr" => 200e3, 
+                                                "mode" => "PQ", 
+                                                "p_set" => -51.1e3, # making this slightly less/more, means that the voltage control loop recovers
+                                                "q_set" => 100e3),
+                                ],
+                "cable"   => Any[
+                                Dict{Any, Any}("R" => length*0.208, 
+                                                "L" => length*0.00025, 
+                                                "C" => length*0.4e-3, 
+                                                "i_limit" => 10e4,),
+                                ],
+                "grid" => Dict{Any, Any}("ramp_end" => 0.04, "process_start"=> 0.06)
+        )
+        #_______________________________________________________________________________
+        # Defining the environment
+
+        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+
+        #_______________________________________________________________________________
+        # Setting up data hooks
+
+        hook = DataHook(collect_sources  = [1 2],
+                        vrms             = [1 2], 
+                        irms             = [1 2], 
+                        power_pq         = [1 2],
+                        freq             = [1 2],
+                        angles           = [1 2],
+                        i_sat            = [1 2],
+                        v_sat            = [1],
+                        i_err_t          = [1 2],
+                        v_err_t          = [1])
+
+        #_______________________________________________________________________________
+        # Running the Time Simulation
+
+        Multi_Agent = Power_System_Dynamics(env, hook; return_Agents = true)
+        Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+        #_______________________________________________________________________________
+        # Plotting
+
+        #= plot_hook_results(hook = hook, 
+                        states_to_plot  = [], 
+                        actions_to_plot = [],  
+                        power_p         = [], 
+                        power_q         = [], 
+                        vrms            = [1 2], 
+                        irms            = [1 2],
+                        i_sat           = [1 2],
+                        v_sat           = [1],
+                        i_err_t         = [1 2],
+                        v_err_t         = [1],
+                        freq            = [],
+                        angles          = []) =#
+
+        #CSV.write("Control_Saturation_Unit_test.csv", hook.df[end-100:end,:])
+        old_data = convert.(Float64, Matrix(CSV.read("./test/Control_Saturation_Unit_test.csv", DataFrame))[1:end, 1:17])
+
+        new_data = convert.(Float64, Matrix(hook.df)[end-100:end, 1:17])
+
+        @test new_data ≈ old_data atol = 0.001
+
+        return nothing
 end
