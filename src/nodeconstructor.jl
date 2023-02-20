@@ -319,8 +319,8 @@ function check_parameters(parameters, num_sources, num_loads, num_connections, C
                 source["fltr"] = "LCL"
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
-                source["fltr"] = "L"
-                @warn "filterType not known! set to L filter, please choose L, LC, or LCL!"
+                source["fltr"] = "LCL"
+                @warn "filterType not known! set to LCL filter, please choose L, LC, or LCL!"
             end
 
             if !haskey(source, "i_limit")
@@ -988,7 +988,7 @@ Sample parameters for the LCL filter.
 """
 function _sample_fltr_LCL(grid_properties)
 
-    source = Dict()
+    #= source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = "LCL"
 
@@ -1000,12 +1000,12 @@ function _sample_fltr_LCL(grid_properties)
 
     source["τv"] = 0.002 # time constant of the voltage loop # 0.02
     source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.8 # power factor
-    source["p_set"] = source["pwr"] * source["pf"]
-    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["pf"] = 0.95 # power factor
+    source["p_set"] = 0#source["pwr"] * source["pf"]
+    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
     source["v_pu_set"] = 1.0
     source["v_δ_set"] = 0.0
-    source["mode"] = "Droop"
+    source["mode"] = "Synchronverter"
     source["control_type"] = "classic"
     source["γ"] = source["p_set"]
     source["std_asy"] = source["pwr"] / 4
@@ -1013,8 +1013,15 @@ function _sample_fltr_LCL(grid_properties)
     source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
     source["X₀"] = source["p_set"]
     source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
-    source["k"] = 0
+    source["k"] = 0 =#
 
+    source = _sample_source(grid_properties, "LCL")
+
+    println(source["pwr"])
+    println(source["fltr"])
+    println(source["vdc"])
+    println(source["i_rip"])
+    println(source["v_rip"])
 
     Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = Filter_Design(
         source["pwr"],
@@ -1046,7 +1053,7 @@ Sample parameters for the LC filter.
 """
 function _sample_fltr_LC(grid_properties)
 
-    source = Dict()
+    #= source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = "LC"
 
@@ -1057,12 +1064,12 @@ function _sample_fltr_LC(grid_properties)
 
     source["τv"] = 0.002 # time constant of the voltage loop # 0.02
     source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.8 # power factor
-    source["p_set"] = source["pwr"] * source["pf"]
-    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["pf"] = 0.95 # power factor
+    source["p_set"] = 0#source["pwr"] * source["pf"]
+    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
     source["v_pu_set"] = 1.0
     source["v_δ_set"] = 0.0
-    source["mode"] = "Droop"
+    source["mode"] = "Synchronverter"
     source["control_type"] = "classic"
     source["γ"] = source["p_set"]
     source["std_asy"] = source["pwr"] / 4
@@ -1070,7 +1077,9 @@ function _sample_fltr_LC(grid_properties)
     source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
     source["X₀"] = source["p_set"]
     source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
-    source["k"] = 0
+    source["k"] = 0 =#
+
+    source = _sample_source(grid_properties, "LC")
 
     Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = Filter_Design(
         source["pwr"],
@@ -1100,7 +1109,7 @@ Sample parameters for the L filter.
 """
 function _sample_fltr_L(grid_properties)
 
-    source = Dict()
+    #= source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = "L"
 
@@ -1111,12 +1120,12 @@ function _sample_fltr_L(grid_properties)
 
     source["τv"] = 0.002 # time constant of the voltage loop # 0.02
     source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.8 # power factor
-    source["p_set"] = source["pwr"] * source["pf"]
-    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["pf"] = 0.95 # power factor
+    source["p_set"] = 0#source["pwr"] * source["pf"]
+    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
     source["v_pu_set"] = 1.0
     source["v_δ_set"] = 0.0
-    source["mode"] = "Droop"
+    source["mode"] = "Synchronverter"
     source["control_type"] = "classic"
     source["γ"] = source["p_set"]
     source["std_asy"] = source["pwr"] / 4
@@ -1124,7 +1133,9 @@ function _sample_fltr_L(grid_properties)
     source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
     source["X₀"] = source["p_set"]
     source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
-    source["k"] = 0
+    source["k"] = 0 =#
+
+    source = _sample_source(grid_properties, "L")
 
     Lf_1, R_1, i_limit = Filter_Design(
         source["pwr"],
@@ -2912,4 +2923,35 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
     parameters["cable"] = cable_list
 
     return parameters
+end
+
+function _sample_source(grid_properties, fltr)
+
+    source = Dict()
+    source["source_type"] = "ideal"
+    source["fltr"] = fltr
+
+    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
+
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.95 # power factor
+    source["p_set"] = 0#source["pwr"] * source["pf"]
+    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Synchronverter"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"] / 4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
+    source["k"] = 0
+
+    return source
 end
