@@ -994,6 +994,18 @@ function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosi
         P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
         #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
         #Q = value.(nodes[j, "Q"])
+
+        println(Zₘ)
+        println(P)
+        println(value.(C_cable))
+        println(value.(L_cable))
+        println(Aₘ)
+        println(vᵣ)
+        println(θᵧ)
+        println(θₐ)
+        println(vₛ)
+
+
         δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
 
         Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
