@@ -77,7 +77,8 @@ hook = DataHook(collect_sources  = [1 ],
 #_______________________________________________________________________________
 # Running the Time Simulation
 
-Power_System_Dynamics(env, hook)
+Multi_Agent = Power_System_Dynamics(env, hook; return_Agents = true)
+Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # Plotting
