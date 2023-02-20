@@ -50,7 +50,7 @@ end
 
 function DQ_RMS(i_abc)
 
-    return i_rms = sqrt(1/3)*norm(DQ0_transform(i_abc, 0)[1:2])
+    return i_rms = sqrt(1/3)*norm(DQ0_transform(i_abc, 0)[1:3])
 end
 
 function Clarke_Transform(v_abc)
