@@ -22,7 +22,7 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
-num_eps  = 10       # number of episodes to run
+num_eps  = 4       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -170,7 +170,7 @@ push!(source_list, source) =#
 #-------------------------------------------------------------------------------
 # Loads
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.6, 230)
+R_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.95, 230)
 
 load_list = []
 load = Dict()

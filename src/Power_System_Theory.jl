@@ -347,6 +347,27 @@ function Series_Load_Impedance(S, pf, vrms; fsys = 50)
     return R, L_C, X, Z
 end
 
+"""
+R, L_C, X, Z = Series_Load_Impedance(S, pf, vrms; fsys = 50)
+
+# Arguments
+- `S::Float`: 3 phase Apparent Power [VA]
+- `pf::Float`: power factor. pf > 0 -> inductive load, pf < 0 -> capacitive load
+- `Vrms::Float`: Line to Neutral rms voltage of external network [V]
+
+# Keyword Arguments
+- `fsys::Float`: system frequency [Hz]
+
+# Return Values
+- `R::Float`: resistance [Ω]
+- `L_C::Float`: inductance [H] or capacitance [F]
+- `X::Float`: reactance [Ω]
+- `Z::Complex`: impedance [Ω]
+
+# Theory
+Converts a Resistance-Inductance Load, or a Resistance-Capacitance Load
+from power to circuit values, where the components are placed in parallel.
+"""
 function Parallel_Load_Impedance(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
