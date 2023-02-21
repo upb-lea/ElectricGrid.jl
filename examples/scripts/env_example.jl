@@ -5,7 +5,7 @@ CM = [0. 1.
 
 S_source = 2e6
 
-S_load = 1e6
+S_load = 3e6
 pf_load = 1
 v_rms = 230
 R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
@@ -24,11 +24,13 @@ parameters = Dict{Any, Any}(
     )
 
 
-env = SimEnv(CM = CM, parameters = parameters)
+env = SimEnv(CM = CM, parameters = parameters, verbosity = 2)
 
 env.nc.parameters["cable"][1]["i_limit"] = 10e3
 
-env.state_ids
+
+
+#env.state_ids
 
 #env = SimEnv(num_sources = 1, num_loads = 1)
 
@@ -43,11 +45,14 @@ env.state_ids
 hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids
                 #collect_sources  = [1]  # alternative
-                )
+                );
 
+println(env.nc.parameters["cable"][1])
+#=
 Power_System_Dynamics(env, hook, num_episodes = 1)
 
-plot_hook_results(hook = hook, 
+plot_hook_results(hook = hook,
                     episode = 1,
-                    states_to_plot  = env.state_ids,  
+                    states_to_plot  = env.state_ids,
                     actions_to_plot = env.action_ids)
+=#

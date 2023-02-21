@@ -799,7 +799,7 @@ function check_parameters(
         end
 
         # invoke PFE
-        parameters = layout_cabels(CM, num_sources, num_loads, parameters)
+        parameters = layout_cabels(CM, num_sources, num_loads, parameters, verbosity)
 
     else
         num_def_cables = length(parameters["cable"])
@@ -836,7 +836,7 @@ function check_parameters(
         # Solve PFE for all cables which do not have complete parameters
         if !isempty(cable_from_pfe_idx)
             println("START PFE")
-            parameters = layout_cabels(CM, num_sources, num_loads, parameters)
+            parameters = layout_cabels(CM, num_sources, num_loads, parameters, verbosity)
         end
 
         if num_undef_cables > 0
