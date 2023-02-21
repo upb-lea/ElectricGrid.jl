@@ -645,7 +645,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 end
 
 
-function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
+function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
@@ -921,132 +921,153 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
                             #D-to-neutral to be minimized
                             )
 
-
+    set_silent(model)    # turns off output of the solver #TODO put to verbosity?
     optimize!(model)
 
     # TODO: put these warning/messages with logger // verbosity
-    println("""
-    termination_status = $(termination_status(model))
-    primal_status      = $(primal_status(model))
-    objective_value    = $(objective_value(model))
-    """)
+    if verbosity > 1
+        println("CABLE LAYOUT BASED ON POWER FLOW EQUATIONS:")
+        println("""
+        termination_status = $(termination_status(model))
+        primal_status      = $(primal_status(model))
+        objective_value    = $(objective_value(model))
+        """)
 
-    println()
-    println()
-    println(value.(nodes))
-    println("asdasdasd")
-    println()
-    println(value.(cables))
-
-    for (index, cable) in enumerate(parameters["cable"])
-
-        cable["L"] = value.(L_cable)[index]
-        cable["Lb"] = cable["L"]/cable["len"]
-
-        cable["R"] = value.(R_cable)[index]
-        cable["Rb"] = cable["R"]/cable["len"]
-
-        cable["C"] = value.(C_cable)[index]
-        cable["Cb"] = cable["C"]/cable["len"]
+        println()
+        println()
+        println(value.(nodes))
+        println("asdasdasd")
+        println()
+        println(value.(cables))
     end
+    #= OPTIMAL, LOCALLY_SOLVED, INFEASIBLE, DUAL_INFEASIBLE, and TIME_LIMIT.
+    if termination_status(model) == OPTIMAL
+        println("Solution is optimal")
+    elseif termination_status(model) == TIME_LIMIT && has_values(model)
+        println("Solution is suboptimal due to a time limit, but a primal solution is available")
+    else
+        error("The model was not solved correctly.")
+    end
+    =#
+    if termination_status(model) in [OPTIMAL, LOCALLY_SOLVED]
+        # if solver was successful, we use the values
+        for (index, cable) in enumerate(parameters["cable"])
 
-    for i in 1:num_cables
+            cable["L"] = value.(L_cable)[index]
+            cable["Lb"] = cable["L"]/cable["len"]
 
-        j, k = Tuple(findfirst(x -> x == i, CM))
+            cable["R"] = value.(R_cable)[index]
+            cable["Rb"] = cable["R"]/cable["len"]
 
-        #= Legacy code
-            a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-            #println(omega*value.(L_cable)[i])
-            println()
-            println()
-            println(value.(B)[j,j])
-            println(value.(G)[j,j])
-            println()
-            println()
-
-            Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i])
-            V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-            V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-            println()
-            println("Aparent power:")
-            println(conj(Y)*conj(V1-V2)*V1)
-
-            println()
-            println()
-
-            println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
-
-            println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
-            println()
-            println()
-
-            dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
-
-            I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
-            println(I)
-        =#
-
-        Z = value.(R_cable)[i] + 1im*omega*value.(L_cable)[i]
-        Zₘ = abs(Z)
-        θᵧ = angle(Z)
-
-        Y = 1im*omega*value.(C_cable)[i] # C is the total capacitance of the line, not the halved capacitance
-        A = 1 + Y*Z/2
-        Aₘ = abs(A)
-        θₐ = angle(A)
-
-        vᵣ = value.(nodes[k, "v"]) # magnitude of receiving end voltage
-        vₛ = value.(nodes[j, "v"]) # magnitude of sending end voltage
-
-        P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-        #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
-        #Q = value.(nodes[j, "Q"])
-
-        println(Zₘ)
-        println(P)
-        println(value.(C_cable))
-        println(value.(L_cable))
-        println(Aₘ)
-        println(vᵣ)
-        println(θᵧ)
-        println(θₐ)
-        println(vₛ)
-
-
-        δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
-
-        Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
-        Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
-
-        Yₗ = 1/Z # for debugging
-        Iₗ = (conj(Yₗ)*(Vr - Vs)) # this is almost our answer - the limit through the inductor
-
-        I₂ = ((Vs - A*Vr)/Z)
-
-        #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
-
-        if !haskey(parameters["cable"][i], "i_limit")
-            parameters["cable"][i]["i_limit"] = abs(Iₗ)
+            cable["C"] = value.(C_cable)[index]
+            cable["Cb"] = cable["C"]/cable["len"]
         end
 
-        #=
-        S = sqrt(P^2 + Q^2)
-        println("\nDebugging\n")
-        println("1. Cable = ", i)
-        println("2. δ = ", δ, " ?= ", value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))
-        println("3. S = ", S, " S₁ ?= ", abs(Vs*conj(Yₗ)*(Vr - Vs)), " ?= ", abs(Vr*conj(Yₗ)*(Vs - Vr)))
-        println("4. S = ", S, " S₂ ?= ", abs(Vs*Iₗ), " ?= ", abs(Vs*I₂), " ?= ", abs(Vr*Iₗ), " ?= ", abs(Vr*I₂))
-        println("5. |Iₗ| = ", abs(Iₗ), " angle = ", angle(Iₗ)*180/pi, " Iₗ = ", Iₗ, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)), " this is probably the right one")
-        println("6. |I₂| = ", abs(I₂), " angle = ", angle(I₂)*180/pi, " I₂ = ", I₂, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
-        println("7. vᵣ = ", value.(nodes[j, "v"]))
-        println("8. vₛ = ", value.(nodes[k, "v"]))
-        println("9. P = ", P, " ?= ", vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ), " ?= ", real(Vs*I₂), " ?= ", real(Vr*I₂), " ?= ", real(Vs*Iₗ), " ?= ", real(Vr*Iₗ))
-        println("10. Q = ", Q, " ?= ", vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ)/(Zₘ), " ?= ", imag(Vs*I₂), " ?= ", imag(Vr*I₂), " ?= ", imag(Vs*Iₗ), " ?= ", imag(Vr*Iₗ))
-        println("11. R = ", value.(R_cable)[i] , " L = ", value.(L_cable)[i], " C = ", value.(C_cable)[i])
-        println("12. Vs = ", Vs , " Vr = ", Vr)
-        println()
-        =#
+        for i in 1:num_cables
 
+            j, k = Tuple(findfirst(x -> x == i, CM))
+
+            #= Legacy code
+                a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+                #println(omega*value.(L_cable)[i])
+                println()
+                println()
+                println(value.(B)[j,j])
+                println(value.(G)[j,j])
+                println()
+                println()
+
+                Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i])
+                V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
+                V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
+                println()
+                println("Aparent power:")
+                println(conj(Y)*conj(V1-V2)*V1)
+
+                println()
+                println()
+
+                println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
+
+                println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
+                println()
+                println()
+
+                dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
+
+                I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
+                println(I)
+            =#
+
+            Z = value.(R_cable)[i] + 1im*omega*value.(L_cable)[i]
+            Zₘ = abs(Z)
+            θᵧ = angle(Z)
+
+            Y = 1im*omega*value.(C_cable)[i] # C is the total capacitance of the line, not the halved capacitance
+            A = 1 + Y*Z/2
+            Aₘ = abs(A)
+            θₐ = angle(A)
+
+            vᵣ = value.(nodes[k, "v"]) # magnitude of receiving end voltage
+            vₛ = value.(nodes[j, "v"]) # magnitude of sending end voltage
+
+            P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+            #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
+            #Q = value.(nodes[j, "Q"])
+
+            println(Zₘ)
+            println(P)
+            println(value.(C_cable))
+            println(value.(L_cable))
+            println(Aₘ)
+            println(vᵣ)
+            println(θᵧ)
+            println(θₐ)
+            println(vₛ)
+
+
+            δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
+
+            Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
+            Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
+
+            Yₗ = 1/Z # for debugging
+            Iₗ = (conj(Yₗ)*(Vr - Vs)) # this is almost our answer - the limit through the inductor
+
+            I₂ = ((Vs - A*Vr)/Z)
+
+            #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
+
+            if !haskey(parameters["cable"][i], "i_limit")
+                parameters["cable"][i]["i_limit"] = abs(Iₗ)
+            end
+
+            #=
+            S = sqrt(P^2 + Q^2)
+            println("\nDebugging\n")
+            println("1. Cable = ", i)
+            println("2. δ = ", δ, " ?= ", value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))
+            println("3. S = ", S, " S₁ ?= ", abs(Vs*conj(Yₗ)*(Vr - Vs)), " ?= ", abs(Vr*conj(Yₗ)*(Vs - Vr)))
+            println("4. S = ", S, " S₂ ?= ", abs(Vs*Iₗ), " ?= ", abs(Vs*I₂), " ?= ", abs(Vr*Iₗ), " ?= ", abs(Vr*I₂))
+            println("5. |Iₗ| = ", abs(Iₗ), " angle = ", angle(Iₗ)*180/pi, " Iₗ = ", Iₗ, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)), " this is probably the right one")
+            println("6. |I₂| = ", abs(I₂), " angle = ", angle(I₂)*180/pi, " I₂ = ", I₂, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
+            println("7. vᵣ = ", value.(nodes[j, "v"]))
+            println("8. vₛ = ", value.(nodes[k, "v"]))
+            println("9. P = ", P, " ?= ", vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ), " ?= ", real(Vs*I₂), " ?= ", real(Vr*I₂), " ?= ", real(Vs*Iₗ), " ?= ", real(Vr*Iₗ))
+            println("10. Q = ", Q, " ?= ", vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ)/(Zₘ), " ?= ", imag(Vs*I₂), " ?= ", imag(Vr*I₂), " ?= ", imag(Vs*Iₗ), " ?= ", imag(Vr*Iₗ))
+            println("11. R = ", value.(R_cable)[i] , " L = ", value.(L_cable)[i], " C = ", value.(C_cable)[i])
+            println("12. Vs = ", Vs , " Vr = ", Vr)
+            println()
+            =#
+
+        end
+    else
+        println("NOT SOLVED!")
+        println(verbosity)
+        if verbosity > 0
+            @warn("Power flow equation not solveable! Maybe parameter setting invalid.
+                  Default values are used for cable parameters")
+        end
     end
 
     return parameters
