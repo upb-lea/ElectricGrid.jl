@@ -811,9 +811,11 @@ function check_parameters(
             cables is $num_cables.")
 
         if num_undef_cables > 0
-            @warn("The number of defined cables $num_def_cables is smaller than the number
-                specified cables in the environment $num_connections, therefore the
-                remaining $num_undef_cables cables are selected randomly!")
+            if verbosity > 0
+                @warn("The number of defined cables $num_def_cables is smaller than the
+                    number specified cables in the environment $num_connections, therefore
+                    the remaining $num_undef_cables cables are selected randomly!")
+            end
         end
 
         cable_from_pfe_idx = []
@@ -1231,13 +1233,14 @@ function _sample_cable()
     cable = Dict()
     cable["len"] = 1.0#rand(Uniform(1e-3, 1e1))
 
-    cable["Rb"] = 0.722
-    cable["Cb"] = 0.4e-6
-    cable["Lb"] = 0.264e-3
+    cable["R"] = 0.208   # Ω, line resistance
+    cable["L"] = 0.00025 # H, line inductance
+    cable["C"] = 0.4e-3  # F, line capacitance
+    cable["i_limit"] = 10e12   # A, line current limit
 
-    cable["R"] = cable["len"] * cable["Rb"]
-    cable["L"] = cable["len"] * cable["Lb"]
-    cable["C"] = cable["len"] * cable["Cb"]
+    cable["Rb"] = 0.722 / cable["len"]
+    cable["Cb"] = 0.4e-6 / cable["len"]
+    cable["Lb"] = 0.264e-3 / cable["len"]
 
     return cable
 end
