@@ -255,24 +255,31 @@ function check_parameters(
         if !haskey(parameters["grid"], "fs")
             parameters["grid"]["fs"] = 1 / ts
         end
+
         if !haskey(parameters["grid"], "v_rms")
             parameters["grid"]["v_rms"] = 230
         end
+
         if !haskey(parameters["grid"], "phase")
             parameters["grid"]["phase"] = 3
         end
+
         if !haskey(parameters["grid"], "f_grid")
             parameters["grid"]["f_grid"] = 50.0
         end
+
         if !haskey(parameters["grid"], "Δfmax")
             parameters["grid"]["Δfmax"] = 0.005
         end
+
         if !haskey(parameters["grid"], "ΔEmax")
             parameters["grid"]["ΔEmax"] = 5 / 100
         end
+
         if !haskey(parameters["grid"], "ramp_end")
             parameters["grid"]["ramp_end"] = 2 / parameters["grid"]["f_grid"]
         end
+
         if !haskey(parameters["grid"], "process_start")
             parameters["grid"]["process_start"] = 2 / parameters["grid"]["f_grid"]
         end
@@ -306,9 +313,11 @@ function check_parameters(
             dict is $num_def_sources and the number of env sources is $num_sources.")
 
         if num_undef_sources > 0
-            @warn("The number of defined sources $num_def_sources is smaller than the number
-                specified sources in the environment $num_sources, therefore the remaining
-                $num_undef_sources sources are selected randomly!")
+            if verbosity > 0
+                @warn("The number of defined sources $num_def_sources is smaller than the
+                    number specified sources in the environment $num_sources, therefore the
+                    remaining $num_undef_sources sources are selected randomly!")
+            end
         end
 
         num_LC_defined = 0
@@ -435,7 +444,6 @@ function check_parameters(
                 if !haskey(source, "R_C")
                     source["R_C"] = 1 / (3 * omega_c * source["C"]) #*** filter layout
                 end
-
             end
 
             if source["fltr"] == "LCL"
@@ -585,8 +593,10 @@ function check_parameters(
 
             # What is this? What if the user defined an L or LCL filter
             if num_LC_defined == 0 && num_fltr_LC_undef == 0
-                @warn("No LC filter defined/set random, if wanted please set in parameter
-                    dict!")
+                if verbosity > 0
+                    @warn("No LC filter defined/set random, if wanted please set in parameter
+                        dict!")
+                end
             end
         else
             if num_LC_defined == 0
@@ -786,16 +796,16 @@ function check_parameters(
         if parameters["grid"]["pwr"] > 1e6
             @warn("Power of the network is greater than 1e6, therefore it may happen that
                 the automatic cable parameterization cannot be solved.")
+        end
 
         # invoke PFE
         parameters = layout_cabels(CM, num_sources, num_loads, parameters)
 
     else
         num_def_cables = length(parameters["cable"])
-
         num_undef_cables = num_connections - num_def_cables
 
-        @assert(num_undef_cables >= 0 "Expect the number of defined cables within the
+        @assert(num_undef_cables >= 0, "Expect the number of defined cables within the
             parameter dict to be less or equal to the number of sources in the env, but the
             entries within the parameter dict is $num_def_cables and the number of env
             cables is $num_cables.")
@@ -815,8 +825,8 @@ function check_parameters(
 
             if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
                 @info("Parameters from cable $(idx) missing. All cable parameters are
-                calculate based on power flow equation. Create a counter - we don't want to
-                see this every time.")
+                    calculate based on power flow equation. Create a counter - we don't want
+                    to see this every time.")
                 push!(cable_from_pfe_idx, idx)
             end
         end
