@@ -1,23 +1,21 @@
 
 """
-    Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
+    setup_agents(env, hook; num_episodes = 1, return_Agents = false)
 
 # Description
 Runs the simulation with the specified parameters.
 
 # Arguments
 - `env::SimEnv`: mutable struct containing the environment.
-- `hook::DataHook`: mutable struct definining the signals to be saved.
 
 # Keyword Arguments
-- `num_episodes::Int`: the number of times that the simulation is run.
 - `return_Agents::Float`: returns the mutable struct containing the agents.
 
 # Return Values
-- `Multi_Agent::MultiAgentGridController`: (optional)
+- `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
 
 """
-function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
+function setup_agents(env)
 
 
     #_______________________________________________________________________________
@@ -132,21 +130,13 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     if env.verbosity > 1
 
         @info "Time simulation run time: $((env.maxsteps - 1)*env.ts) [s] ~ $(Int(env.maxsteps)) steps"
-        @info "Number of episodes: $(num_episodes)"
     end
-    
+
     #_______________________________________________________________________________
-    # Running the time simulation
+    # returns
+
+    return Multi_Agent
     
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook);    
-
-    if return_Agents
-
-        return Multi_Agent
-    else
-        
-        return nothing
-    end
 end
 
 

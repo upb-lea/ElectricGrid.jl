@@ -207,10 +207,15 @@ using Distributions
                         )
 
         #_______________________________________________________________________________
-        # Running the Time Simulation
+        # initialising the agents 
 
-        Multi_Agent = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
+        Multi_Agent = setup_agents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+        #_______________________________________________________________________________
+        # running the time simulation 
+
+        RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
 
         #_______________________________________________________________________________
         # Plotting
@@ -398,10 +403,15 @@ end
                         )
 
         #_______________________________________________________________________________
-        # Running the Time Simulation
+        # initialising the agents 
 
-        Multi_Agent = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
+        Multi_Agent = setup_agents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+        #_______________________________________________________________________________
+        # running the time simulation 
+
+        RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
 
         #_______________________________________________________________________________
         # Plotting
@@ -511,10 +521,15 @@ end
                         v_err_t          = [1])
 
         #_______________________________________________________________________________
-        # Running the Time Simulation
+        # initialising the agents 
 
-        Multi_Agent = Power_System_Dynamics(env, hook; return_Agents = true)
+        Multi_Agent = setup_agents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+        #_______________________________________________________________________________
+        # running the time simulation 
+
+        RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
 
         #_______________________________________________________________________________
         # Plotting

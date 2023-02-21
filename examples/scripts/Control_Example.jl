@@ -220,10 +220,15 @@ hook = DataHook(vrms     = [1 2],
                 angles   = [1 2])
 
 #_______________________________________________________________________________
-# Running the Time Simulation
+# initialising the agents 
 
-Multi_Agent = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
+Multi_Agent = setup_agents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+#_______________________________________________________________________________
+# running the time simulation 
+
+RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
 
 #_______________________________________________________________________________
 # Plotting
