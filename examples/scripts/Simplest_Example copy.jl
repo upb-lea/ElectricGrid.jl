@@ -53,12 +53,12 @@ parameters = Dict{Any, Any}(
                         ],
         # No load
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => R, "L" => L_C),
+                        Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 1e-3),
                         ], 
         # "cable"   => Any[
         #                 Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 10e4,),
         #                 ],
-        "grid" => Dict{Any, Any}("ramp_end" => 0.02) #, "vrms" => 230.0) #, "f" => 50.0, "L" => 1e-6, "R" => 1e-3, "C" => 1e-4, "i_limit" => 10e4,)
+        "grid" => Dict{Any, Any}("ramp_end" => 0.0) #, "vrms" => 230.0) #, "f" => 50.0, "L" => 1e-6, "R" => 1e-3, "C" => 1e-4, "i_limit" => 10e4,)
     )
 #_______________________________________________________________________________
 # Defining the environment
