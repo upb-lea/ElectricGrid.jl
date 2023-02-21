@@ -534,7 +534,7 @@ end
         #_______________________________________________________________________________
         # running the time simulation 
 
-        RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
+        RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
 
         #_______________________________________________________________________________
         # Plotting
