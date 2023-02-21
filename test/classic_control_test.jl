@@ -5,7 +5,7 @@ using CSV
 using DataFrames
 using Distributions
 
-#= @testset "Classical_Controllers" begin
+@testset "Classical_Controllers" begin
 
         #_______________________________________________________________________________
         # Network Parameters 
@@ -252,7 +252,7 @@ using Distributions
         @test new_data ≈ old_data atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[total_steps + 1:2*total_steps, 2:end] atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[2*total_steps + 1:end, 2:end] atol = 0.001
-end =#
+end
 
 @testset "Ornstein_Uhlenbeck" begin
 
