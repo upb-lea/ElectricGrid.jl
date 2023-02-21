@@ -37,7 +37,17 @@ using ReinforcementLearning
     plt_action_ids = ["source1_u_a"]
     hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
-    Power_System_Dynamics(env, hook)
+    #_______________________________________________________________________________
+    # initialising the agents 
+
+    Multi_Agent = setup_agents(env)
+    Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+    #_______________________________________________________________________________
+    # running the time simulation 
+
+    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+
 
     idx_end = 300
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]  
@@ -81,7 +91,17 @@ end
 
     hook = DataHook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
 
-    Power_System_Dynamics(env, hook)
+    #_______________________________________________________________________________
+    # initialising the agents 
+
+    Multi_Agent = setup_agents(env)
+    Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+    #_______________________________________________________________________________
+    # running the time simulation 
+
+    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+
 
     idx_end = 300
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_source2_v_C_filt_a", "next_state_source2_i_L2_a","next_state_source2_v_C_cables_a", "next_state_cable2_i_L_a",]  
@@ -111,7 +131,17 @@ end
     hook = DataHook(collect_sources  = [1 2],
                     collect_cables = [1])
     
-    Power_System_Dynamics(env, hook)
+    #_______________________________________________________________________________
+    # initialising the agents 
+
+    Multi_Agent = setup_agents(env)
+    Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+    #_______________________________________________________________________________
+    # running the time simulation 
+
+    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+
 
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source2_i_L1_a",   "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_source2_v_C_cables_a"]
     idx_end = 300
@@ -176,9 +206,15 @@ end;
                     collect_cables = [1, 5])
 
     #_______________________________________________________________________________
-    # Running the Time Simulation
+    # initialising the agents 
 
-    Power_System_Dynamics(env, hook)
+    Multi_Agent = setup_agents(env)
+    Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+    #_______________________________________________________________________________
+    # running the time simulation 
+
+    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
 
     #_______________________________________________________________________________
     # Plotting

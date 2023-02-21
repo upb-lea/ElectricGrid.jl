@@ -43,7 +43,7 @@ function RMS(θ, t_signals)
             rms[ph,3] = d
         end
     end
-    
+
 
     return rms
 end
@@ -368,36 +368,36 @@ R, L_C, X, Z = Series_Load_Impedance(S, pf, vrms; fsys = 50)
 Converts a Resistance-Inductance Load, or a Resistance-Capacitance Load
 from power to circuit values, where the components are placed in parallel.
 """
-function Parallel_Load_Impedance(S, pf, vrms; fsys = 50)
+function Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
 
     ω = 2*π*fsys
 
-    if pf > 0
+    if sign(pf) == 1 || type_sign == "L"
 
-        P = pf*S #W, Active Power
+        P = pf * S #W, Active Power
         Q = sqrt(S^2 - P^2) #VAr, Reactive Power
 
-        Z = conj(3*vrms^2/(P + 1im*Q)) #Load Impedance
+        Z = conj(3 * vrms^2 / (P + 1im * Q)) #Load Impedance
 
         Y = 1/Z # Impedance in parallel
 
         R = real(Y)^-1
         X = -imag(Y)^-1
 
-        L_C = X/ω
+        L_C = X / ω
 
-    else
-        P = -pf*S #W, Active Power - average instance power
+    elseif sign(pf) == -1 || type_sign == "C"
+        P = -pf * S #W, Active Power - average instance power
         Q = -sqrt(S^2 - P^2) #VAr, Reactive Power
 
-        Z = conj(3*vrms^2/(P + 1im*Q))
+        Z = conj(3 * vrms^2 / (P + 1im * Q))
 
         Y = 1/Z # Impedance in parallel
 
         R = real(Y)^-1
         X = imag(Y)^-1
 
-        L_C = 1/(X*ω)
+        L_C = 1 / (X * ω)
 
     end
 
@@ -411,40 +411,40 @@ function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, Δ
         1/sqrt(Ls*C) is approximately sqrt(ωn * ωs), where the ωn is the angular
         frequency of the gird voltage, and ωs is the angular switching frequency
         used to turn on/off the switches)
-        
-        The attenuation of the LCL-filter is 60db/decade for frequencies above the 
-        resonant frequency, therefore lower switching frequency for the converter 
-        can be used. It also provides better decoupling between the filter and the 
-        grid impedance and lower current ripple accross the grid inductor. 
 
-        The LCL filter has good current ripple attenuattion even with small inductance 
-        values. However it can bring also resonances and unstable states into the system. 
-        Therefore the filter must be designed precisely accoring to the parameters of the 
-        specific converter. 
+        The attenuation of the LCL-filter is 60db/decade for frequencies above the
+        resonant frequency, therefore lower switching frequency for the converter
+        can be used. It also provides better decoupling between the filter and the
+        grid impedance and lower current ripple accross the grid inductor.
 
-        The importatnt parameter of the filter is its cut-off frequency. The cut-off 
-        frequency of the filter must be minimally one half of the switching frequency of 
-        the converter, because the filter must have enough attenuation in the range of the 
+        The LCL filter has good current ripple attenuattion even with small inductance
+        values. However it can bring also resonances and unstable states into the system.
+        Therefore the filter must be designed precisely accoring to the parameters of the
+        specific converter.
+
+        The importatnt parameter of the filter is its cut-off frequency. The cut-off
+        frequency of the filter must be minimally one half of the switching frequency of
+        the converter, because the filter must have enough attenuation in the range of the
         converter's switching frequency.
 
-        The LCL filter will be vulnerable to oscillation too and it will magnify frequencies 
-        around its cut-off frequency. Therefore the filter is added with damping. The simplest 
-        way is to add damping resistor. In general there are four possible places where the 
-        resistor can be placed series/parallel to the inverter side inductor or series/parallel 
+        The LCL filter will be vulnerable to oscillation too and it will magnify frequencies
+        around its cut-off frequency. Therefore the filter is added with damping. The simplest
+        way is to add damping resistor. In general there are four possible places where the
+        resistor can be placed series/parallel to the inverter side inductor or series/parallel
         to the filter capacitor.
 
-        The variant with the resistor connected in series with the filter capacitor has been 
-        chosen. The peak near the resonant frequency can be significantly attenuated. This is 
-        a simple and reliable solution, but it increases the heat losses in the system and it 
-        greatly decreases the efficiency of the filter. This problem can be solved by active 
-        damping. Such a resistor reduces the voltage across the capacitor by a voltage proportional 
-        to the current that flows through it. This can be also done in the control loop. The 
-        current through the filter capacitor is measured and differentiatbed by the term 
-        (s*Cf*R_C). A real resistor is not used and the calculated value is subtracted from the 
-        demanded current. In this way the filter is actively damped with a virtual resistor 
-        without any losses. The disadvantage of this method is that an additional current sensor 
-        is required and the differentiator may bring noise problems because it amplifies high 
-        frequency signals.          
+        The variant with the resistor connected in series with the filter capacitor has been
+        chosen. The peak near the resonant frequency can be significantly attenuated. This is
+        a simple and reliable solution, but it increases the heat losses in the system and it
+        greatly decreases the efficiency of the filter. This problem can be solved by active
+        damping. Such a resistor reduces the voltage across the capacitor by a voltage proportional
+        to the current that flows through it. This can be also done in the control loop. The
+        current through the filter capacitor is measured and differentiatbed by the term
+        (s*Cf*R_C). A real resistor is not used and the calculated value is subtracted from the
+        demanded current. In this way the filter is actively damped with a virtual resistor
+        without any losses. The disadvantage of this method is that an additional current sensor
+        is required and the differentiator may bring noise problems because it amplifies high
+        frequency signals.
     =#
 
     #= Practical Example:
@@ -587,8 +587,8 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
     p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
 
     # Description
-    Determines based on the parameters of the grid the total power (active and reactive) drawn from all load 
-    and the total power provided by the sources. 
+    Determines based on the parameters of the grid the total power (active and reactive) drawn from all load
+    and the total power provided by the sources.
     Thereby, steady state is assumed.
 
     # Arguments
@@ -609,8 +609,8 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
     num_cables = Int(maximum(CM))
 
     p_load_total = 0
-    q_load_total = 0 
-    s_source_total = 0 
+    q_load_total = 0
+    s_source_total = 0
 
     for i = 1:num_nodes
 
@@ -638,7 +638,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 
             p_load_total = p_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             q_load_total = q_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
-        end   
+        end
     end
     s_load_total = sqrt(p_load_total^2 + q_load_total^2)
     return p_load_total, q_load_total, s_load_total, s_source_total
@@ -655,22 +655,22 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     # Constant values
     omega = 2π*parameters["grid"]["fs"]
 
-    # for every Source: v is fixed 230 
+    # for every Source: v is fixed 230
     # for one Source: theta is fixed 0
 
     num_nodes = num_source + num_load
     num_cables = Int(maximum(CM))
 
     @variable(model, nodes[1 : num_nodes, ["v", "theta", "P", "Q"]])
-   
+
     # cal total load[pwr]
     total_P_load, total_Q_load, s_load_total, total_S_source = CheckPowerBalance(parameters, num_source, num_load, CM)
 
     #=
     total_P_load = 0
-    total_Q_load = 0 
-    total_S_source = 0 
-    
+    total_Q_load = 0
+    total_S_source = 0
+
 
     for i = 1:num_nodes
 
@@ -698,7 +698,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
 
             total_P_load = total_P_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             total_Q_load = total_Q_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
-        end   
+        end
     end
     =#
 
@@ -708,27 +708,27 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     for i = 1:num_nodes
         if i <= num_source
 
-            if parameters["source"][i]["control_type"] == "classic" 
-                
-                if parameters["source"][i]["mode"] in ["Swing", "Voltage", 1, 7] 
+            if parameters["source"][i]["control_type"] == "classic"
+
+                if parameters["source"][i]["mode"] in ["Swing", "Voltage", 1, 7]
 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
-                    fix(nodes[i, "theta"], (π/180)*parameters["source"][i]["v_δ_set"]) 
-                    
+                    fix(nodes[i, "theta"], (π/180)*parameters["source"][i]["v_δ_set"])
+
                     set_bounds(nodes[i, "P"], (total_P_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # come from parameter dict/user?
                     set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_p_mean_cal, i)
                     push!(idx_q_mean_cal, i)
 
-                elseif parameters["source"][i]["mode"] in ["PQ", 2] 
+                elseif parameters["source"][i]["mode"] in ["PQ", 2]
 
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "Q"], parameters["source"][i]["q_set"]/parameters["grid"]["phase"])
-            
+
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
                     set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
 
-                elseif parameters["source"][i]["mode"] in ["PV", 9] 
+                elseif parameters["source"][i]["mode"] in ["PV", 9]
 
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
@@ -736,7 +736,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
                     set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_q_mean_cal, i)
 
-                elseif parameters["source"][i]["mode"] in ["Semi-Synchronverter", 6] 
+                elseif parameters["source"][i]["mode"] in ["Semi-Synchronverter", 6]
 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
@@ -744,11 +744,11 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
                     set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_p_mean_cal, i)
                     push!(idx_q_mean_cal, i)
-                    
+
                 else
 
-                    # all variable - 
-                    set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) 
+                    # all variable -
+                    set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
                     set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
                     set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
@@ -757,8 +757,8 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
                 end
 
             else
-                # all variable - 
-                set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) 
+                # all variable -
+                set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
                 set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                 set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
                 set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
@@ -780,7 +780,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     end
 
     cable_cons = get_cable_connections(CM)
-    node_cons = get_node_connections(CM) 
+    node_cons = get_node_connections(CM)
 
     G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
     B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
@@ -789,7 +789,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     Q_node = Array{NonlinearConstraintRef, 1}(undef, num_nodes)
 
     # As radius goes down resistance goes up, inductance goes up, capacitance goes down. Put in formulas for this.
-    #@variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]]) 
+    #@variable(model, cables[1 : num_cables, ["L", "X_R", "C_L"]])
     @variable(model, cables[1 : num_cables, ["radius", "D-to-neutral"]])
 
     L_cable = Array{NonlinearExpression, 1}(undef, num_cables)
@@ -805,17 +805,17 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     D = 0.5 #m
 
     for i=1:num_cables
-        
 
-        set_bounds(cables[i, "radius"], (3e-3)/2, (2.05232e-3)/2, (4.1148e-3)/2) #m 
-        # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
+        radius_max = 60*(4.1148e-3)/2
+        set_bounds(cables[i, "radius"], 25*(3e-3)/2, (2.05232e-3)/2, radius_max) #m
+        # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m
         # assumption: min value of D-to-neutral : 3 * max radius
-        set_bounds(cables[i, "D-to-neutral"], 3*(4.1148e-3/2), 3*(4.1148e-3/2), 1.00 ) #m
+        set_bounds(cables[i, "D-to-neutral"], 2* 0.7788 * radius_max, 0.7788 * radius_max, 2.00 ) #m
         # assumption to line to line(neutral) --  for low voltages
         #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
 
-        # resistivity remains constant ρ_(T=50) = 1.973e-8 
+        # resistivity remains constant ρ_(T=50) = 1.973e-8
         R_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 1.973e-8 / (π * cables[i, "radius"]^2)) # m * Ω/m
 
         # X_R = 0.38 # ratio of omega*L/R
@@ -823,7 +823,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
 
         # line to neutral
         C_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 2π * 8.854e-12 / (log(cables[i, "D-to-neutral"]/cables[i, "radius"]))) #m * F/m
-    
+
         cable_conductance[i] = @NLexpression(model, (R_cable[i] / ((R_cable[i])^2 + (omega * L_cable[i])^2)))
         cable_susceptance_1[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2))))
         cable_susceptance_0[i] = @NLexpression(model, (-omega * L_cable[i] / (((R_cable[i])^2 + (omega * L_cable[i])^2)) + omega*C_cable[i]/2))
@@ -846,7 +846,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
                 B[i, k] = @NLexpression(model, -1*cable_susceptance_1[cable_num])
                 G[k, i] = G[i, k]
                 B[k, i] = B[i, k]
-                
+
             else
 
                 G[i, k] = zero_expression # a formula which returns 0.0
@@ -863,7 +863,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
         P_node[i] = @NLconstraint(model,
 
         nodes[i, "P"] == nodes[i,"v"] * sum( nodes[j,"v"] * ((G[i, j] * cos(nodes[i,"theta"] - nodes[j,"theta"]) + B[i, j] * sin(nodes[i,"theta"] - nodes[j,"theta"]))) for j in node_cons[i])
-        
+
         )
 
         Q_node[i] = @NLconstraint(model,
@@ -875,7 +875,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     end
 
     cable_constraints = Array{NonlinearConstraintRef, 1}(undef, num_cables)
-    
+
     for i in 1:num_cables
 
         j, k = Tuple(findfirst(x -> x == i, CM))
@@ -886,8 +886,8 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
         )
 
     end
-    
-    # non-linear objectives 
+
+    # non-linear objectives
     @NLexpression(model, P_source_mean, sum(nodes[Int(j),"P"] for j in idx_p_mean_cal) / convert.(Int64,length(idx_p_mean_cal)))
     @NLexpression(model, Q_source_mean, sum(nodes[Int(j),"Q"] for j in idx_q_mean_cal) / convert.(Int64,length(idx_q_mean_cal)))
 
@@ -915,25 +915,28 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
     @NLobjective(model, Min, λ₁ *  Power_apparent / total_S_source
                             + abs((v_mean - parameters["grid"]["v_rms"]) / parameters["grid"]["v_rms"])
                             #+ abs(sum(nodes[i,"theta"] for i in 2:num_nodes))/π    # maybe helpfull?
-                            + sum( ((nodes[i,"P"] - P_source_mean)^2 )/ norm_P for i in idx_p_mean_cal) 
+                            + sum( ((nodes[i,"P"] - P_source_mean)^2 )/ norm_P for i in idx_p_mean_cal)
                             + sum( ((nodes[i,"Q"] - Q_source_mean)^2) / norm_Q for i in idx_q_mean_cal) # the variance - not exactly right (but good enough)
                             + λ₂ * sum( (cables[i, "radius"]  for i in 1:num_cables)) / (num_cables * (radius_upper_bound - radius_lower_bound) )
                             #D-to-neutral to be minimized
                             )
-                            
+
 
     optimize!(model)
 
-    # TODO: put these warning/messages with logger // verbosity 
-    #= println("""
+    # TODO: put these warning/messages with logger // verbosity
+    println("""
     termination_status = $(termination_status(model))
     primal_status      = $(primal_status(model))
     objective_value    = $(objective_value(model))
-    """) =#
+    """)
 
-    #= println()
     println()
-    println(value.(nodes)) =#
+    println()
+    println(value.(nodes))
+    println("asdasdasd")
+    println()
+    println(value.(cables))
 
     for (index, cable) in enumerate(parameters["cable"])
 
@@ -961,12 +964,12 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
             println()
             println()
 
-            Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i]) 
+            Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i])
             V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
             V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
             println()
             println("Aparent power:")
-            println(conj(Y)*conj(V1-V2)*V1) 
+            println(conj(Y)*conj(V1-V2)*V1)
 
             println()
             println()
@@ -976,7 +979,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
             println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
             println()
             println()
-            
+
             dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
 
             I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
@@ -998,6 +1001,18 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
         P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
         #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
         #Q = value.(nodes[j, "Q"])
+
+        println(Zₘ)
+        println(P)
+        println(value.(C_cable))
+        println(value.(L_cable))
+        println(Aₘ)
+        println(vᵣ)
+        println(θᵧ)
+        println(θₐ)
+        println(vₛ)
+
+
         δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
 
         Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
@@ -1006,15 +1021,15 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
         Yₗ = 1/Z # for debugging
         Iₗ = (conj(Yₗ)*(Vr - Vs)) # this is almost our answer - the limit through the inductor
 
-        I₂ = ((Vs - A*Vr)/Z) 
+        I₂ = ((Vs - A*Vr)/Z)
 
         #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
-        
+
         if !haskey(parameters["cable"][i], "i_limit")
             parameters["cable"][i]["i_limit"] = abs(Iₗ)
         end
 
-        #= 
+        #=
         S = sqrt(P^2 + Q^2)
         println("\nDebugging\n")
         println("1. Cable = ", i)
@@ -1029,7 +1044,7 @@ function layout_cabels(CM, num_source, num_load, parameters; verbosity = 0)
         println("10. Q = ", Q, " ?= ", vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ)/(Zₘ), " ?= ", imag(Vs*I₂), " ?= ", imag(Vr*I₂), " ?= ", imag(Vs*Iₗ), " ?= ", imag(Vr*Iₗ))
         println("11. R = ", value.(R_cable)[i] , " L = ", value.(L_cable)[i], " C = ", value.(C_cable)[i])
         println("12. Vs = ", Vs , " Vr = ", Vr)
-        println() 
+        println()
         =#
 
     end
@@ -1053,10 +1068,10 @@ end
 - `L::Float`: effective inductance [H]
 
 # Theory
-An external network is often characterised by its Fault level and its X/R ratio. In particular the 
-Fault Level is a measure of the strength of a network. It is the amount of apparent power that the 
+An external network is often characterised by its Fault level and its X/R ratio. In particular the
+Fault Level is a measure of the strength of a network. It is the amount of apparent power that the
 network can supply when a three-phase bolted to ground fault is applied at the point of connection.
-From these values an effective resistance and inductance can be calculated. Typical values of X/R 
+From these values an effective resistance and inductance can be calculated. Typical values of X/R
 ratios are in the range of 0.5 to 1.5, for distribution networks. Transmission networks operating
 at higher voltages tend to have higher X/R ratios.
 
