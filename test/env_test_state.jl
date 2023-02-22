@@ -15,14 +15,14 @@ using ReinforcementLearning
     fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
 
     CM = [0. 1.
-    -1. 0.] 
+    -1. 0.]
 
     parameters = Dict{Any, Any}(
         "source" => Any[
                         Dict{Any, Any}("fltr"=>"LC", "pwr"=>10000e3, "control_type" =>"classic", "source_type"=>"ideal", "mode" => 8,  "R1"=>1.1e-3, "L1"=>1e-3, "C"=>1e-3, "R_C"=>7e-3, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10000)
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance"=>"RLC", "R"=>100, "L"=>1e-2, "C"=>1e-2, "pf"=>0.8, "v_limit"=>10000, "i_limit"=>10000) 
+                        Dict{Any, Any}("impedance"=>"RLC", "R"=>100, "L"=>1e-2, "C"=>1e-2, "pf"=>0.8, "v_limit"=>10000, "i_limit"=>10000)
                         ],
         "cable" => Any[
                         Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
@@ -33,27 +33,27 @@ using ReinforcementLearning
 
     env = SimEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
 
-    plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
+    plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
     plt_action_ids = ["source1_u_a"]
     hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
     #_______________________________________________________________________________
-    # initialising the agents 
+    # initialising the agents
 
     Multi_Agent = setup_agents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
-    # running the time simulation 
+    # running the time simulation
 
-    hook = simulate(Multi_Agent, env, 1, hook = hook)  
+    hook = simulate(Multi_Agent, env, hook = hook)
 
 
     idx_end = 300
-    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]  
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]
     X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
-        
+
     #=println("MATLAB:")
     display(X_malab["X_matlab"][1:idx_end,:])
     println()
@@ -78,13 +78,13 @@ end
                     Dict{Any, Any}("fltr"=>"LCL", "pwr"=>10000e3, "control_type" =>"classic", "source_type"=>"ideal", "mode" => 8,  "R1"=>1.1e-3, "L1"=>1e-3, "C"=>1e-3, "R_C"=>7e-3, "L2"=>1e-3, "R2"=>1.1e-3,  "vdc"=>800, "v_limit"=>10000, "i_limit"=>10000)
                     ],
     "load"   => Any[
-                    Dict{Any, Any}("impedance"=>"RLC", "R"=>100, "L"=>1e-2, "C"=>1e-2, "pf"=>0.8, "v_limit"=>10000, "i_limit"=>10000) 
+                    Dict{Any, Any}("impedance"=>"RLC", "R"=>100, "L"=>1e-2, "C"=>1e-2, "pf"=>0.8, "v_limit"=>10000, "i_limit"=>10000)
                     ],
     "cable" => Any[
                     Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
                     Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
                     ],
-    "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)      
+    "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
     )
 
     env = SimEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1, verbosity = 0)
@@ -92,19 +92,19 @@ end
     hook = DataHook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
 
     #_______________________________________________________________________________
-    # initialising the agents 
+    # initialising the agents
 
     Multi_Agent = setup_agents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
-    # running the time simulation 
+    # running the time simulation
 
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);
 
 
     idx_end = 300
-    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_source2_v_C_filt_a", "next_state_source2_i_L2_a","next_state_source2_v_C_cables_a", "next_state_cable2_i_L_a",]  
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_source2_v_C_filt_a", "next_state_source2_i_L2_a","next_state_source2_v_C_cables_a", "next_state_cable2_i_L_a",]
     X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_2source_1load1e6.mat")
 
@@ -130,17 +130,17 @@ end
 
     hook = DataHook(collect_sources  = [1 2],
                     collect_cables = [1])
-    
+
     #_______________________________________________________________________________
-    # initialising the agents 
+    # initialising the agents
 
     Multi_Agent = setup_agents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
-    # running the time simulation 
+    # running the time simulation
 
-    hook = simulate(Multi_Agent, env, 1, hook = hook)  
+    hook = simulate(Multi_Agent, env, hook = hook)
 
 
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source2_i_L1_a",   "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_source2_v_C_cables_a"]
@@ -171,7 +171,7 @@ end;
     R_l = 1e6;
     C_l = 1e-4;
     L_l = 1e-5;
-       
+
 
     parameters = Dict{Any, Any}(
                                 "source" => Any[
@@ -180,8 +180,8 @@ end;
                                                 Dict{Any, Any}("pwr" => 10000e3, "mode" => 8, "fltr" => "L", "L1" => L_1, "R1" => R_1, "i_limit"=>10e8),
                                                 ],
                                 "load"   => Any[
-                                                Dict{Any, Any}("impedance"=>"RLC", "R"=>R_l, "L"=>L_l, "C"=>C_l, "pf"=>0.8, "v_limit"=>10e8, "i_limit"=>10e8), 
-                                                Dict{Any, Any}("impedance"=>"R", "R"=>R_l, "v_limit"=>10e4, "i_limit"=>10e4) 
+                                                Dict{Any, Any}("impedance"=>"RLC", "R"=>R_l, "L"=>L_l, "C"=>C_l, "pf"=>0.8, "v_limit"=>10e8, "i_limit"=>10e8),
+                                                Dict{Any, Any}("impedance"=>"R", "R"=>R_l, "v_limit"=>10e4, "i_limit"=>10e4)
                                                 ],
                                 "cable" => Any[
                                                 Dict{Any, Any}("len"=>1, "R"=>R_b, "L"=>L_b, "C"=>C_b, "i_limit"=>10e8),
@@ -191,7 +191,7 @@ end;
                                                 Dict{Any, Any}("len"=>1, "R"=>R_b, "L"=>L_b, "C"=>C_b, "i_limit"=>10e8),
                                                 Dict{Any, Any}("len"=>1, "R"=>R_b, "L"=>L_b, "C"=>C_b, "i_limit"=>10e8),
                                                 ],
-                                "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)      
+                                "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
                                 )
     #__________________________________________________________________
     # Defining the environment
@@ -202,28 +202,28 @@ end;
     # Setting up data hooks
 
     hook = DataHook(collect_sources  = [1 2 3],
-                    collect_loads = [1], 
+                    collect_loads = [1],
                     collect_cables = [1, 5])
 
     #_______________________________________________________________________________
-    # initialising the agents 
+    # initialising the agents
 
     Multi_Agent = setup_agents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
-    # running the time simulation 
+    # running the time simulation
 
-    hook = simulate(Multi_Agent, env, 1, hook = hook)  
+    hook = simulate(Multi_Agent, env, hook = hook)
 
     #_______________________________________________________________________________
     # Plotting
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source2_v_C_cables_a", "next_state_source3_i_L1_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_cable1_i_L_a", "load1_v_C_total_a",   "next_state_cable5_i_L_a"]
-    
+
     idx_end = 300
     X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_3source_2load1e6.mat")
-    
+
     #=
     println("MATLAB:")
     display(X_malab["X_matlab"][1:idx_end,:])
@@ -232,8 +232,6 @@ end;
     display(X_dare)
     println()
     =#
-    
+
     @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=14 # such high, since the steady state current is very high, so talking about a toleranz below 1 % of max values
 end
-
-

@@ -8,7 +8,7 @@ using Distributions
 @testset "Classical_Controllers" begin
 
         #_______________________________________________________________________________
-        # Network Parameters 
+        # Network Parameters
 
         #-------------------------------------------------------------------------------
         # Time simulation
@@ -78,7 +78,7 @@ using Distributions
 
         source["L1"]           = 0.0003415325753131024
         source["R1"]           = 0.06830651506262048
-        source["L2"]           = 4.670680436888136e-5 
+        source["L2"]           = 4.670680436888136e-5
         source["R2"]           = 0.009341360873776272
         source["R_C"]          = 0.17210810076926025
         source["C"]            = 0.00015412304086843381
@@ -177,7 +177,7 @@ using Distributions
         grid["v_rms"] = 230
         grid["ramp_end"] = 0.04
         grid["process_start"] = 0.04
-        grid["f_grid"] = 50 
+        grid["f_grid"] = 50
         grid["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
         grid["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
@@ -200,41 +200,41 @@ using Distributions
         # Setting up data hooks
 
         hook = DataHook(collect_sources  = [1 2 3],
-                        vrms             = [1 2 3], 
-                        irms             = [1 2 3], 
+                        vrms             = [1 2 3],
+                        irms             = [1 2 3],
                         power_pq         = [1 2 3],
                         freq             = [1 2 3],
                         )
 
         #_______________________________________________________________________________
-        # initialising the agents 
+        # initialising the agents
 
         Multi_Agent = setup_agents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
-        # running the time simulation 
+        # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_eps, hook = hook)
+        hook = simulate(Multi_Agent, env, num_episodes=num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
 
         #= for eps in 1:num_eps
 
-                plot_hook_results(hook = hook, 
+                plot_hook_results(hook = hook,
                                         episode = eps,
-                                        states_to_plot  = ["source1_v_C_filt_a"], 
-                                        actions_to_plot = [],  
-                                        power_p         = [1 2 3], 
-                                        power_q         = [1 2 3], 
-                                        vrms            = [1 2 3], 
+                                        states_to_plot  = ["source1_v_C_filt_a"],
+                                        actions_to_plot = [],
+                                        power_p         = [1 2 3],
+                                        power_q         = [1 2 3],
+                                        vrms            = [1 2 3],
                                         irms            = [1 2 3],
                                         freq            = [1 2 3])
         end =#
 
         #_______________________________________________________________________________
-        # Tests 
+        # Tests
 
         D = [6.710040724346115e-5 0.0003909248293754465; 202.64236728467552 6148.754619013457]
         I_kp = [0.003212489119409699; 0.0021416594129397997; 0.003212489119409699]
@@ -262,7 +262,7 @@ end
 @testset "Ornstein_Uhlenbeck" begin
 
         #_______________________________________________________________________________
-        # Network Parameters 
+        # Network Parameters
 
         #-------------------------------------------------------------------------------
         # Time simulation
@@ -374,7 +374,7 @@ end
         grid["v_rms"] = 230
         grid["ramp_end"] = 0.03
         grid["process_start"] = 0.04
-        grid["f_grid"] = 50 
+        grid["f_grid"] = 50
 
         #-------------------------------------------------------------------------------
         # Amalgamation
@@ -395,43 +395,43 @@ end
         # Setting up data hooks
 
         hook = DataHook(collect_sources  = [1 2 3],
-                        vrms             = [1 2 3], 
-                        irms             = [1 2 3], 
+                        vrms             = [1 2 3],
+                        irms             = [1 2 3],
                         power_pq         = [1 2 3],
                         freq             = [1 2 3],
                         angles           = [1 2 3],
                         )
 
         #_______________________________________________________________________________
-        # initialising the agents 
+        # initialising the agents
 
         Multi_Agent = setup_agents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
-        # running the time simulation 
+        # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_eps, hook = hook)
+        hook = simulate(Multi_Agent, env, num_episodes=num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
 
         #= for eps in 1:num_eps
 
-                plot_hook_results(hook = hook, 
+                plot_hook_results(hook = hook,
                                         episode = eps,
-                                        states_to_plot  = [], 
-                                        actions_to_plot = [],  
-                                        power_p         = [3], 
-                                        power_q         = [3], 
-                                        vrms            = [], 
+                                        states_to_plot  = [],
+                                        actions_to_plot = [],
+                                        power_p         = [3],
+                                        power_q         = [3],
+                                        vrms            = [],
                                         irms            = [],
                                         freq            = [3],
                                         angles          = [1 2 3])
         end =#
 
         #_______________________________________________________________________________
-        # Tests 
+        # Tests
 
         step = Int(parameters["source"][3]["Δt"]/Timestep)
         start = Int(parameters["grid"]["process_start"]/Timestep) + 1 + step
@@ -460,7 +460,7 @@ end
 @testset "Saturation" begin
 
         #_______________________________________________________________________________
-        # Network Configuration 
+        # Network Configuration
 
         #-------------------------------------------------------------------------------
         # Time simulation
@@ -489,19 +489,19 @@ end
         length = 1
         parameters = Dict{Any, Any}(
                 "source" => Any[
-                                Dict{Any, Any}("pwr" => 200e3, 
-                                                "mode" => "Semi-Synchronverter", 
+                                Dict{Any, Any}("pwr" => 200e3,
+                                                "mode" => "Semi-Synchronverter",
                                                 "v_pu_set" => 1.05),
 
-                                Dict{Any, Any}("pwr" => 200e3, 
-                                                "mode" => "PQ", 
+                                Dict{Any, Any}("pwr" => 200e3,
+                                                "mode" => "PQ",
                                                 "p_set" => -51.1e3, # making this slightly less/more, means that the voltage control loop recovers
                                                 "q_set" => 100e3),
                                 ],
                 "cable"   => Any[
-                                Dict{Any, Any}("R" => length*0.208, 
-                                                "L" => length*0.00025, 
-                                                "C" => length*0.4e-3, 
+                                Dict{Any, Any}("R" => length*0.208,
+                                                "L" => length*0.00025,
+                                                "C" => length*0.4e-3,
                                                 "i_limit" => 10e4,),
                                 ],
                 "grid" => Dict{Any, Any}("ramp_end" => 0.04, "process_start"=> 0.06)
@@ -515,8 +515,8 @@ end
         # Setting up data hooks
 
         hook = DataHook(collect_sources  = [1 2],
-                        vrms             = [1 2], 
-                        irms             = [1 2], 
+                        vrms             = [1 2],
+                        irms             = [1 2],
                         power_pq         = [1 2],
                         freq             = [1 2],
                         angles           = [1 2],
@@ -526,25 +526,25 @@ end
                         v_err_t          = [1])
 
         #_______________________________________________________________________________
-        # initialising the agents 
+        # initialising the agents
 
         Multi_Agent = setup_agents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
-        # running the time simulation 
+        # running the time simulation
 
-        hook = simulate(Multi_Agent, env, 1, hook = hook) 
+        hook = simulate(Multi_Agent, env, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
 
-        #= plot_hook_results(hook = hook, 
-                        states_to_plot  = [], 
-                        actions_to_plot = [],  
-                        power_p         = [], 
-                        power_q         = [], 
-                        vrms            = [1 2], 
+        #= plot_hook_results(hook = hook,
+                        states_to_plot  = [],
+                        actions_to_plot = [],
+                        power_p         = [],
+                        power_q         = [],
+                        vrms            = [1 2],
                         irms            = [1 2],
                         i_sat           = [1 2],
                         v_sat           = [1],
