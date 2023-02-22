@@ -143,18 +143,19 @@ function run(Multi_Agent, env, num_episodes; hook = nothing)
 
     if isnothing(hook) # default hook
 
-        Source_Indices = Multi_Agent.agents["classic"]["policy"].policy.Source_Indices
+        Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+        all_class = [1:Source.num_sources]
 
-        hook = DataHook(collect_sources  = Source_Indices,
-                        vrms             = Source_Indices, 
-                        irms             = Source_Indices, 
-                        power_pq         = Source_Indices,
-                        freq             = Source_Indices,
-                        angles           = Source_Indices,
-                        i_sat            = Source_Indices,
-                        v_sat            = Source_Indices,
-                        i_err_t          = Source_Indices,
-                        v_err_t          = Source_Indices)
+        hook = DataHook(collect_sources  = [],
+                        vrms             = all_class, 
+                        irms             = all_class, 
+                        power_pq         = all_class,
+                        freq             = all_class,
+                        angles           = all_class,
+                        i_sat            = all_class,
+                        v_sat            = Source.grid_forming,
+                        i_err_t          = all_class,
+                        v_err_t          = Source.grid_forming)
     end
 
     RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)

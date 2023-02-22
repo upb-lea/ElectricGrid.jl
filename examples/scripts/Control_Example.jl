@@ -72,7 +72,7 @@ source = Dict()
 
 source["mode"]     = 4
 
-source["fltr"]     = "LC"  # Filter type
+source["fltr"]     = "LCL"  # Filter type
 
 source["pwr"]      = 200e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
@@ -208,7 +208,7 @@ parameters["grid"] = grid
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
 
 #_______________________________________________________________________________
 # Setting up data hooks
