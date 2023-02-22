@@ -12,7 +12,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     extra_state_paras= []
     extra_state_ids= []
     extra_state_names = []
-    
+
     collect_sources = []
     collect_cables = []
     collect_loads = []
@@ -64,7 +64,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env)
     #hook.df = DataFrame()
     #hook.ep = 1
 
-    # add states of chosen sources to the state and action plotting list 
+    # add states of chosen sources to the state and action plotting list
     # with this method, in addition to the states at L and C, one also obtains the states of R
 
 
@@ -186,8 +186,8 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         Classical_Policy = agent.agents["classic"]["policy"].policy
 
         for idx in hook.debug
-    
-            insertcols!(hook.tmp, "debug_$(idx)" => Classical_Policy.Source.debug[idx])           
+
+            insertcols!(hook.tmp, "debug_$(idx)" => Classical_Policy.Source.debug[idx])
         end
 
         for idx in hook.vdq
@@ -247,7 +247,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
         for idx in hook.angles
 
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
-            
+
             if s_idx !== nothing
 
                 θpll = (Classical_Policy.Source.θpll[s_idx, 1, end] - θ_ref
@@ -332,7 +332,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
     # saving all states given in the collect_state_ids list + possible R States
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
-        
+
         insertcols!(hook.tmp, state_id => (env.x[state_index]))
         insertcols!(hook.tmp, replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
 
@@ -359,12 +359,12 @@ function (hook::DataHook)(::PreActStage, agent, env, action)
             end
         extra_state_cntr+=1
         end
-    end 
+    end
 
-    
-    
+
+
     insertcols!(hook.tmp, :action => Ref(action))
-    
+
 end
 
 function (hook::DataHook)(::PostActStage, agent, env)
@@ -374,7 +374,7 @@ function (hook::DataHook)(::PostActStage, agent, env)
     extra_state_cntr= 1
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
-        
+
         insertcols!(hook.tmp, "next_state_"*state_id => (env.x[state_index]))
         insertcols!(hook.tmp, "next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
 
@@ -414,7 +414,7 @@ function (hook::DataHook)(::PostActStage, agent, env)
 
     append!(hook.df, hook.tmp)
     hook.tmp = DataFrame()
-    
+
     if isa(agent, MultiAgentGridController)
 
         if length(hook.reward) != length(agent.agents)
@@ -423,7 +423,7 @@ function (hook::DataHook)(::PostActStage, agent, env)
         if length(hook.policy_names) != length(agent.agents)
             hook.policy_names = [s for s in keys(agent.agents)]
         end
-    
+
         i = 1
         for name in hook.policy_names
             hook.reward[i] += reward(env, name)
@@ -498,7 +498,7 @@ function (hook::DataHook)(::PostExperimentStage, agent, env)
         for i in 2:length(hook.rewards[1])
             lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
         end
-        println(p)
+        # println(p)
     end
 
 end
