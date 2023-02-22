@@ -1062,7 +1062,6 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 
         end
     else
-        println("NOT SOLVED!")
         println(verbosity)
         if verbosity > 0
             @warn("Power flow equation not solveable! Maybe parameter setting invalid.
