@@ -32,7 +32,7 @@ end
 
 
 # 3 Sources (LCl, LC and L) 1 Load (RLC)
-@testset "matrices" begin
+@testset "matrices_S3_L1" begin
 
     file = matread("./test/nc_test_2.mat")
 
@@ -121,7 +121,7 @@ end
 
 
 # 3 Sources (LCl, LC and L) 1 Load (RLC)
-@testset "matrices" begin
+@testset "matrices_S1_L3" begin
 
     file = matread("./test/nc_test_3.mat")
 
