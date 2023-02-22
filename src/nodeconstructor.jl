@@ -861,7 +861,6 @@ function cntr_fltrs(source_list)
     cntr_L = 0
 
     for (i, source) in enumerate(source_list)
-        # println(source)
         if source["fltr"] == "LCL"
             cntr_LCL += 1
         elseif source["fltr"] == "LC"
@@ -1533,8 +1532,9 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
         indizes_ = indizes .* signs # delet signs from indices
         C_sum = parameter_i["C"]
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1550,8 +1550,9 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
         indizes_ = indizes .* signs # delet signs from indices
         C_sum = 0
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1567,8 +1568,9 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
         indizes_ = indizes .* signs # delet signs from indices
         C_sum = parameter_i["C"]
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1584,8 +1586,9 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
         indizes_ = indizes .* signs # delet signs from indices
         C_sum = 0
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
