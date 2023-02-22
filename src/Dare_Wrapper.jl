@@ -1,4 +1,3 @@
-
 """
     setup_agents(env, hook; num_episodes = 1, return_Agents = false)
 
@@ -139,28 +138,11 @@ function setup_agents(env)
     
 end
 
-function evolve(Multi_Agent, env, num_episodes; hook = nothing)
+function simulate(Multi_Agent, env, num_episodes; hook = nothing)
 
     if isnothing(hook) # default hook
 
-        Source = Multi_Agent.agents["classic"]["policy"].policy.Source
-        all_class = collect(1:Source.num_sources)
-        all_sources = collect(1:env.nc.num_sources)
-        all_loads = collect(1:env.nc.num_loads)
-        all_cables = collect(1:env.nc.num_connections)
-
-        hook = DataHook(collect_sources  = all_sources,
-                        collect_cables   = all_cables,
-                        #collect_loads    = all_loads,
-                        vrms             = all_class, 
-                        irms             = all_class, 
-                        power_pq         = all_class,
-                        freq             = all_class,
-                        angles           = all_class,
-                        i_sat            = all_class,
-                        v_sat            = Source.grid_forming,
-                        i_err_t          = all_class,
-                        v_err_t          = Source.grid_forming)
+        hook = default_data_hook(Multi_Agent, env)
     
     end
 
@@ -168,3 +150,40 @@ function evolve(Multi_Agent, env, num_episodes; hook = nothing)
 
     return hook
 end 
+
+function learn(Multi_Agent, env, num_episodes; hook = nothing)
+
+    if isnothing(hook) # default hook
+
+        hook = default_data_hook(Multi_Agent, env)
+    
+    end
+
+    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
+
+    return hook
+end 
+
+function default_data_hook(Multi_Agent, env)
+
+    Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+    all_class = collect(1:Source.num_sources)
+    all_sources = collect(1:env.nc.num_sources)
+    all_loads = collect(1:env.nc.num_loads)
+    all_cables = collect(1:env.nc.num_connections)
+
+    hook = DataHook(collect_sources  = all_sources,
+                    collect_cables   = all_cables,
+                    #collect_loads    = all_loads,
+                    vrms             = all_class, 
+                    irms             = all_class, 
+                    power_pq         = all_class,
+                    freq             = all_class,
+                    angles           = all_class,
+                    i_sat            = all_class,
+                    v_sat            = Source.grid_forming,
+                    i_err_t          = all_class,
+                    v_err_t          = Source.grid_forming)
+
+    return hook
+end

@@ -59,7 +59,7 @@ Multi_Agent = setup_agents(env)
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = evolve(Multi_Agent, env, 1, hook = hook)   
+hook = simulate(Multi_Agent, env, 1, hook = hook)   
 
 #_______________________________________________________________________________
 # Plotting
