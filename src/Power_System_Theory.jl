@@ -1015,15 +1015,15 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
             #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
             #Q = value.(nodes[j, "Q"])
 
-            println(Zₘ)
-            println(P)
-            println(value.(C_cable))
-            println(value.(L_cable))
-            println(Aₘ)
-            println(vᵣ)
-            println(θᵧ)
-            println(θₐ)
-            println(vₛ)
+            # println(Zₘ)
+            # println(P)
+            # println(value.(C_cable))
+            # println(value.(L_cable))
+            # println(Aₘ)
+            # println(vᵣ)
+            # println(θᵧ)
+            # println(θₐ)
+            # println(vₛ)
 
 
             δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
@@ -1062,8 +1062,6 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 
         end
     else
-        println("NOT SOLVED!")
-        println(verbosity)
         if verbosity > 0
             @warn("Power flow equation not solveable! Maybe parameter setting invalid.
                   Default values are used for cable parameters")

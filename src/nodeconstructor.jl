@@ -447,8 +447,8 @@ function check_parameters(
             end
 
             if source["fltr"] == "LCL"
-                #TODO: Check if 1/2 * pi or 1/(2pi)
-                fc = (1 / 2 * pi) * sqrt((source["L1"] + source["L2"]) /
+
+                fc = (1 / (2 * pi)) * sqrt((source["L1"] + source["L2"]) /
                 (source["L1"] * source["L2"] * source["C"]))
 
                 if fc > parameters["grid"]["fs"] / 2
@@ -917,43 +917,7 @@ end
 Sample parameters for the LCL filter.
 """
 function _sample_fltr_LCL(grid_properties)
-    source = Dict()
-
-    #= source = Dict()
-    source["source_type"] = "ideal"
-    source["fltr"] = "LCL"
-    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
-    source["vdc"] = 800
-    source["i_rip"] = 0.15
-    source["v_rip"] = 0.01537
-    source["source_type"] = "ideal"
-    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
-    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.95 # power factor
-    source["p_set"] = 0#source["pwr"] * source["pf"]
-    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
-    source["v_pu_set"] = 1.0
-    source["v_δ_set"] = 0.0
-    source["mode"] = "Synchronverter"
-    source["control_type"] = "classic"
-    source["γ"] = source["p_set"]
-    source["std_asy"] = source["pwr"] / 4
-    source["σ"] = 0.0
-    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
-    source["X₀"] = source["p_set"]
-    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) /
-        grid_properties["fs"]
-    source["k"] = 0
-    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
-    source["k"] = 0 =#
-
     source = _sample_source(grid_properties, "LCL")
-
-    println(source["pwr"])
-    println(source["fltr"])
-    println(source["vdc"])
-    println(source["i_rip"])
-    println(source["v_rip"])
 
     Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = Filter_Design(
         source["pwr"],
@@ -984,31 +948,6 @@ end
 Sample parameters for the LC filter.
 """
 function _sample_fltr_LC(grid_properties)
-
-    #= source = Dict()
-    source["source_type"] = "ideal"
-    source["fltr"] = "LC"
-    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
-    source["vdc"] = 800
-    source["i_rip"] = 0.15
-    source["v_rip"] = 0.01537
-    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
-    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.95 # power factor
-    source["p_set"] = 0#source["pwr"] * source["pf"]
-    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
-    source["v_pu_set"] = 1.0
-    source["v_δ_set"] = 0.0
-    source["mode"] = "Synchronverter"
-    source["control_type"] = "classic"
-    source["γ"] = source["p_set"]
-    source["std_asy"] = source["pwr"] / 4
-    source["σ"] = 0.0
-    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
-    source["X₀"] = source["p_set"]
-    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
-    source["k"] = 0 =#
-
     source = _sample_source(grid_properties, "LC")
 
     Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = Filter_Design(
@@ -1038,31 +977,6 @@ end
 Sample parameters for the L filter.
 """
 function _sample_fltr_L(grid_properties)
-
-    #= source = Dict()
-    source["source_type"] = "ideal"
-    source["fltr"] = "L"
-    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
-    source["vdc"] = 800
-    source["i_rip"] = 0.15
-    source["v_rip"] = 0.01537
-    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
-    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.95 # power factor
-    source["p_set"] = 0#source["pwr"] * source["pf"]
-    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
-    source["v_pu_set"] = 1.0
-    source["v_δ_set"] = 0.0
-    source["mode"] = "Synchronverter"
-    source["control_type"] = "classic"
-    source["γ"] = source["p_set"]
-    source["std_asy"] = source["pwr"] / 4
-    source["σ"] = 0.0
-    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
-    source["X₀"] = source["p_set"]
-    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
-    source["k"] = 0 =#
-
     source = _sample_source(grid_properties, "L")
 
     Lf_1, R_1, i_limit = Filter_Design(
@@ -2675,10 +2589,8 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
             source["Observer"] = true   # Discrete Luenberger Observer
             source["τv"] = 0.002  # Time constant of the voltage loop, seconds
             source["τf"] = 0.002  # Time constant of the frequency loop, seconds
-
         else
-
-            source["mode"]     = "Synchronverter"
+            source["mode"] = "Synchronverter"
             source["fltr"] = "LCL"  # Filter type
             pwr = pwrs[i]
             source["pwr"] = pwr # Rated Apparent Power, VA
@@ -2688,11 +2600,9 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
             source["τf"] = 0.002 # Time constant of the frequency loop, seconds
             source["Observer"] = true # Discrete Luenberger Observer
             source["v_pu_set"] = 1.00 # Voltage Set Point, p.u.
-
         end
 
         total_gen += pwr
-
         push!(source_list, source)
     end
 
@@ -2712,8 +2622,6 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
     end
 
     # Cables
-
-    #MG_cables = 2*num_sources
     MG_cables = num_sources
     inter_cables = num_cables - MG_cables
 
@@ -2749,7 +2657,6 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
 end
 
 function _sample_source(grid_properties, fltr)
-
     source = Dict()
     source["source_type"] = "ideal"
     source["fltr"] = fltr
