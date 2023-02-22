@@ -62,7 +62,7 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env, num_eps)
+hook = simulate(Multi_Agent, env, num_episodes = num_eps)
 
 #_______________________________________________________________________________
 # Plotting

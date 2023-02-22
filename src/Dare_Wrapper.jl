@@ -138,7 +138,7 @@ function setup_agents(env)
 
 end
 
-function simulate(Multi_Agent, env, num_episodes = 1, hook = nothing)
+function simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
@@ -151,7 +151,7 @@ function simulate(Multi_Agent, env, num_episodes = 1, hook = nothing)
     return hook
 end
 
-function learn(Multi_Agent, env, num_episodes = 1,  hook = nothing)
+function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
