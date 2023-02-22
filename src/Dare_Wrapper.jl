@@ -54,7 +54,7 @@ function setup_agents(env)
 
             Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
             Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
-        
+
         elseif Source.filter_type[s] == "L"
 
             Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_cable"), state_ids)   # TODO check _v_C_??
@@ -63,7 +63,7 @@ function setup_agents(env)
 
     letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
 
-    Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
+    Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)),
     Source_Indices), letterdict[split(x, "_")[3]]] for x in action_ids_classic] =#
 
     RL_Source_Indices = Array{Int64, 1}(undef, 0)
@@ -75,7 +75,7 @@ function setup_agents(env)
     end
 
     ssa = "source".*string.(RL_Source_Indices)
-    env.state_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.state_ids)     
+    env.state_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.state_ids)
     env.action_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.action_ids)
 
     if num_RL_sources > 0
@@ -104,7 +104,7 @@ function setup_agents(env)
 
         Agents[nameof(agent)] = RL_policy
     end
-    
+
     #-------------------------------------------------------------------------------
     # Finalising the Control
 
@@ -120,7 +120,7 @@ function setup_agents(env)
 
         Agents[nameof(Animo)] = polc
     end
-    
+
     Multi_Agent = MultiAgentGridController(Agents, env.action_ids)
 
     #_______________________________________________________________________________
@@ -135,34 +135,34 @@ function setup_agents(env)
     # returns
 
     return Multi_Agent
-    
+
 end
 
-function simulate(Multi_Agent, env, num_episodes; hook = nothing)
+function simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
         hook = default_data_hook(Multi_Agent, env)
-    
+
     end
 
     RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
 
     return hook
-end 
+end
 
-function learn(Multi_Agent, env, num_episodes; hook = nothing)
+function learn(Multi_Agent, env; num_episodes = 1,  hook = nothing)
 
     if isnothing(hook) # default hook
 
         hook = default_data_hook(Multi_Agent, env)
-    
+
     end
 
     RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
 
     return hook
-end 
+end
 
 function default_data_hook(Multi_Agent, env)
 
@@ -175,8 +175,8 @@ function default_data_hook(Multi_Agent, env)
     hook = DataHook(collect_sources  = all_sources,
                     collect_cables   = all_cables,
                     #collect_loads    = all_loads,
-                    vrms             = all_class, 
-                    irms             = all_class, 
+                    vrms             = all_class,
+                    irms             = all_class,
                     power_pq         = all_class,
                     freq             = all_class,
                     angles           = all_class,
