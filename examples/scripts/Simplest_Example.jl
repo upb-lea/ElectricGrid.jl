@@ -9,7 +9,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 # Time simulation
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_end    = 1.0     # total run time, seconds
+t_end    = 0.8     # total run time, seconds
 num_eps  = 1       # number of episodes to run
 
 #-------------------------------------------------------------------------------
@@ -40,7 +40,7 @@ parameters = Dict{Any, Any}(
                         Dict{Any, Any}("pwr" => 100e3, "mode" => 4),
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => 2.64, "L" => 0.006),
+                        Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load),
                         ],
         "cable"   => Any[
                         Dict{Any, Any}("R" => 0.208, "L" => 0.00025, "C" => 0.4e-3, "i_limit" => 10e4,),
@@ -51,7 +51,7 @@ parameters = Dict{Any, Any}(
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 1, action_delay = 1)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
 
 #_______________________________________________________________________________
 # initialising the agents 
@@ -62,7 +62,8 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = evolve(Multi_Agent, env, num_eps)
+hook = simulate(Multi_Agent, env, num_eps)
+
 #_______________________________________________________________________________
 # Plotting
 
