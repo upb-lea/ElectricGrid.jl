@@ -447,8 +447,8 @@ function check_parameters(
             end
 
             if source["fltr"] == "LCL"
-                #TODO: Check if 1/2 * pi or 1/(2pi)
-                fc = (1 / 2 * pi) * sqrt((source["L1"] + source["L2"]) /
+
+                fc = (1 / (2 * pi)) * sqrt((source["L1"] + source["L2"]) /
                 (source["L1"] * source["L2"] * source["C"]))
 
                 if fc > parameters["grid"]["fs"] / 2

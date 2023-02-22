@@ -10,6 +10,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 1.0     # total run time, seconds
+num_eps  = 1       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -50,17 +51,7 @@ parameters = Dict{Any, Any}(
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
-
-#_______________________________________________________________________________
-# Setting up data hooks
-
-hook = DataHook(collect_sources  = [1 2],
-                vrms             = [1 2], 
-                irms             = [1 2], 
-                power_pq         = [1 2],
-                freq             = [1 2],
-                angles           = [1 2])
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 1, action_delay = 1)
 
 #_______________________________________________________________________________
 # initialising the agents 
@@ -71,7 +62,8 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 #_______________________________________________________________________________
 # running the time simulation 
 
-RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
+hook = evolve(Multi_Agent, env, num_eps)
+
 #_______________________________________________________________________________
 # Plotting
 
@@ -83,6 +75,10 @@ plot_hook_results(hook = hook,
                     vrms            = [1 2], 
                     irms            = [],
                     freq            = [1 2],
-                    angles          = [1 2])
+                    angles          = [1 2],
+                    i_sat           = [],
+                    v_sat           = [],
+                    i_err_t         = [],
+                    v_err_t         = [])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

@@ -215,7 +215,7 @@ using Distributions
         #_______________________________________________________________________________
         # running the time simulation 
 
-        RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
+        hook = evolve(Multi_Agent, env, num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
@@ -411,7 +411,7 @@ end
         #_______________________________________________________________________________
         # running the time simulation 
 
-        RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
+        hook = evolve(Multi_Agent, env, num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
@@ -534,7 +534,7 @@ end
         #_______________________________________________________________________________
         # running the time simulation 
 
-        RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+        hook = evolve(Multi_Agent, env, 1, hook = hook) 
 
         #_______________________________________________________________________________
         # Plotting
