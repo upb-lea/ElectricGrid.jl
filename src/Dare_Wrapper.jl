@@ -139,14 +139,19 @@ function setup_agents(env)
     
 end
 
-function run(Multi_Agent, env, num_episodes; hook = nothing)
+function evolve(Multi_Agent, env, num_episodes; hook = nothing)
 
     if isnothing(hook) # default hook
 
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
-        all_class = [1:Source.num_sources]
+        all_class = collect(1:Source.num_sources)
+        all_sources = collect(1:env.nc.num_sources)
+        all_loads = collect(1:env.nc.num_loads)
+        all_cables = collect(1:env.nc.num_connections)
 
-        hook = DataHook(collect_sources  = [],
+        hook = DataHook(collect_sources  = all_sources,
+                        collect_cables   = all_cables,
+                        #collect_loads    = all_loads,
                         vrms             = all_class, 
                         irms             = all_class, 
                         power_pq         = all_class,
@@ -156,9 +161,10 @@ function run(Multi_Agent, env, num_episodes; hook = nothing)
                         v_sat            = Source.grid_forming,
                         i_err_t          = all_class,
                         v_err_t          = Source.grid_forming)
+    
     end
 
     RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
 
-    return nothing
+    return hook
 end 

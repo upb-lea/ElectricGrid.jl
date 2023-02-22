@@ -59,7 +59,7 @@ Multi_Agent = setup_agents(env)
 #_______________________________________________________________________________
 # running the time simulation 
 
-RLBase.run(Multi_Agent, env, StopAfterEpisode(num_eps), hook);  
+hook = evolve(Multi_Agent, env, 1, hook = hook)   
 
 #_______________________________________________________________________________
 # Plotting

@@ -46,7 +46,7 @@ using ReinforcementLearning
     #_______________________________________________________________________________
     # running the time simulation 
 
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+    hook = evolve(Multi_Agent, env, 1, hook = hook)  
 
 
     idx_end = 300
@@ -140,7 +140,7 @@ end
     #_______________________________________________________________________________
     # running the time simulation 
 
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+    hook = evolve(Multi_Agent, env, 1, hook = hook)  
 
 
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source2_i_L1_a",   "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_source2_v_C_cables_a"]
@@ -214,7 +214,7 @@ end;
     #_______________________________________________________________________________
     # running the time simulation 
 
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(1), hook);  
+    hook = evolve(Multi_Agent, env, 1, hook = hook)  
 
     #_______________________________________________________________________________
     # Plotting
