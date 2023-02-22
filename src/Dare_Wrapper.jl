@@ -95,7 +95,7 @@ function setup_agents(env)
             agent.policy.target_actor.model.layers[i].bias ./= 100
         end
 
-        agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
+        agent = DareAgent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
 
         RL_policy = Dict()
         RL_policy["policy"] = agent
@@ -138,7 +138,7 @@ function setup_agents(env)
 
 end
 
-function simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
+function simulate(Multi_Agent, env, num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
@@ -146,12 +146,12 @@ function simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     end
 
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
+    dare_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
 
     return hook
 end
 
-function learn(Multi_Agent, env; num_episodes = 1,  hook = nothing)
+function learn(Multi_Agent, env, num_episodes = 1,  hook = nothing)
 
     if isnothing(hook) # default hook
 
@@ -159,7 +159,7 @@ function learn(Multi_Agent, env; num_episodes = 1,  hook = nothing)
 
     end
 
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
+    dare_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
 
     return hook
 end
@@ -186,4 +186,40 @@ function default_data_hook(Multi_Agent, env)
                     v_err_t          = Source.grid_forming)
 
     return hook
+end
+
+function dare_run(policy, env, stop_condition, hook, training = false)
+
+    hook(PRE_EXPERIMENT_STAGE, policy, env, training)
+    policy(PRE_EXPERIMENT_STAGE, env, training)
+    is_stop = false
+    while !is_stop
+        RLBase.reset!(env)
+        policy(PRE_EPISODE_STAGE, env, training)
+        hook(PRE_EPISODE_STAGE, policy, env, training)
+
+        while !is_terminated(env) # one episode
+            action = policy(env, training)
+
+            policy(PRE_ACT_STAGE, env, action, training)
+            hook(PRE_ACT_STAGE, policy, env, action, training)
+
+            env(action)
+
+            policy(POST_ACT_STAGE, env, training)
+            hook(POST_ACT_STAGE, policy, env, training)
+
+            if stop_condition(policy, env)
+                is_stop = true
+                break
+            end
+        end # end of an episode
+
+        if is_terminated(env)
+            policy(POST_EPISODE_STAGE, env, training)  # let the policy see the last observation
+            hook(POST_EPISODE_STAGE, policy, env, training)
+        end
+    end
+    hook(POST_EXPERIMENT_STAGE, policy, env, training)
+    hook
 end
