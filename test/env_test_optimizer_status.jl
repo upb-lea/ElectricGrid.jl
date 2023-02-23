@@ -22,7 +22,7 @@ using JuMP
             "grid" => Dict{Any, Any}("ramp_end" => 0.04)
         )
 
-    env = SimEnv(ts = 0.0001, CM = CM, parameters = parameters, t_end = 0.1, verbosity = 0, action_delay = 1)
+    env = SimEnv(ts = 0.0001, CM = CM, parameters = parameters, t_end = 0.1, verbosity = 2, action_delay = 1)
     Dare.optimizer_status
 
     @test Dare.optimizer_status["termination_status"] == LOCALLY_SOLVED  #add other feasible enums from https://jump.dev/JuMP.jl/stable/moi/reference/models/#MathOptInterface.TerminationStatusCode
