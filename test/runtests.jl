@@ -45,6 +45,10 @@ end
 
 end
 
+# Need to define where this should go
+@testset "Optimizer" begin
+    include("./env_test_optimizer_status.jl")
+end
 
 #@testset "env_run_1" begin
 #    @test 1==1
