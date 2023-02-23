@@ -136,9 +136,8 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
 
     if s_load_total > s_source_total
         if verbosity > 0
-            @warn("The aparent power drawn from the loads exceeds the aparent power provided
-                by all loads in steady state! Stable grid operation maybe not possible!
-                Please reconfigure the parameters!")
+            @warn("The apparent power drawn from the loads exceeds the apparent power provided
+                by all sources in steady state. Stable grid operation maybe not possible.")
         end
     end
 
@@ -2404,9 +2403,7 @@ end
 
 
 """
-    Source_Setup(num_sources; random=nothing, awg_pwr=200e3, mode=3)
-
-Returns lala. TODO: Add documentation
+under development
 """
 function Source_Setup(num_sources; random=nothing, awg_pwr=200e3, mode=3)
     #= Modes:
@@ -2473,7 +2470,7 @@ end
 """
     Load_Setup(num_loads, total_gen; gen_load_ratio=6, random=nothing, Vrms=230)
 
-Returns lala. TODO: Add documentation
+    under development
 """
 function Load_Setup(num_loads, total_gen; gen_load_ratio=6, random=nothing, Vrms=230)
     load_list = []
@@ -2513,7 +2510,7 @@ end
 """
     Cable_Length_Setup(num_cables; random=0, length_bounds=[0.5; 1.5])
 
-Returns lala. TODO: Add documentation
+    under development
 """
 function Cable_Length_Setup(num_cables; random=0, length_bounds=[0.5; 1.5])
     cable_list = []
@@ -2546,7 +2543,7 @@ end
 """
     MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=230)
 
-Returns lala. TODO: Add documentation
+under development
 """
 function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=230)
 
@@ -2659,6 +2656,9 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
     return parameters
 end
 
+"""
+default source settings
+"""
 function _sample_source(grid_properties, fltr)
     source = Dict()
     source["source_type"] = "ideal"

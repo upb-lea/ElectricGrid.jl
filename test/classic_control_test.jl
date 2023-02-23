@@ -215,7 +215,7 @@ using Distributions
         #_______________________________________________________________________________
         # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_episodes=num_eps, hook = hook)
+        hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
@@ -411,7 +411,7 @@ end
         #_______________________________________________________________________________
         # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_episodes=num_eps, hook = hook)
+        hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
