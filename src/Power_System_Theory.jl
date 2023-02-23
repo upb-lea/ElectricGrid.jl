@@ -1097,7 +1097,7 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 end
 
 """
-    R, L = Fault_Level(S, X_R, Vrms; fsys = 50)
+    R, L = Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
 
 # Arguments
 - `S::Float`: 3 phase Fault Level [VA]
@@ -1106,6 +1106,7 @@ end
 
 # Keyword Arguments
 - `fsys::Float`: system frequency [Hz]
+- `phase::Int`: single or 3 phase system, i.e. phase = 1, or phase = 3
 
 # Return Values
 - `R::Float`: effective resistance [Ω]
@@ -1120,11 +1121,11 @@ ratios are in the range of 0.5 to 1.5, for distribution networks. Transmission n
 at higher voltages tend to have higher X/R ratios.
 
 """
-function Fault_Level(S, X_R, Vrms; fsys = 50)
+function Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
 
     rad = atan(X_R)
 
-    I_fault = S/(3*Vrms)
+    I_fault = S/(phase*Vrms)
     Z = Vrms/I_fault
 
     R = Z*cos(rad)

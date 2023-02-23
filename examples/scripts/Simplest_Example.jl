@@ -36,8 +36,8 @@ R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "mode" => 4),
-                        Dict{Any, Any}("pwr" => 100e3, "mode" => 4),
+                        Dict{Any, Any}("pwr" => 200e3),
+                        Dict{Any, Any}("pwr" => 100e3),
                         ],
         "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load),
