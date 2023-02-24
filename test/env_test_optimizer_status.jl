@@ -36,6 +36,22 @@ end
 end
    
 
+@testset "Optimizer status: NEARLY_FEASIBLE" begin
+
+    parameters = populate_params(230e3, 0.95)
+    pop!(parameters, "load")
+    parameters["load"] = Any[
+                            Dict{Any, Any}("impedance" => "RL", "R" => 1.5, "L" => 1e-3),
+                        ]
+
+    env = SimEnv(ts=0.0001, CM=CM, parameters=parameters, t_end=0.1, verbosity=2, action_delay=1)
+    # Dare.optimizer_status
+
+    @test Dare.optimizer_status["termination_status"] == ALMOST_LOCALLY_SOLVED  
+    @test Dare.optimizer_status["primal_status"] == NEARLY_FEASIBLE_POINT  
+
+end
+
 
 
     
