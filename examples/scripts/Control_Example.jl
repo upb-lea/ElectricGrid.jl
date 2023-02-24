@@ -1,5 +1,5 @@
 using Dare
-using Distributions
+#using Distributions
 #= using DrWatson
 @quickactivate "dare"
 
@@ -232,7 +232,7 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env, num_eps, hook = hook)
+hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
 #_______________________________________________________________________________
 # Plotting
@@ -249,8 +249,8 @@ for eps in 1:num_eps
                       irms            = [],
                       freq            = [1 2],
                       angles          = [1 2],
-                      i_sat           = [1 2],
-                      v_sat           = [1],
+                      i_sat           = [],
+                      v_sat           = [],
                       i_err_t         = [1 2],
                       v_err_t         = [1])
 end

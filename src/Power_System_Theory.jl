@@ -1,3 +1,7 @@
+"""
+# Description
+Per phase least squares calculation of fundamental rms signal
+"""
 function RMS(θ, t_signals)
 
     # Calcutates the DC offset, RMS magnitude, and phase angle relative to the
@@ -48,6 +52,10 @@ function RMS(θ, t_signals)
     return rms
 end
 
+"""
+# Description
+Three phase DQ0 calculation of rms signals
+"""
 function DQ_RMS(i_abc)
 
     return i_rms = sqrt(1/3)*norm(DQ0_transform(i_abc, 0)[1:3])
@@ -348,7 +356,7 @@ function Series_Load_Impedance(S, pf, vrms; fsys = 50)
 end
 
 """
-R, L_C, X, Z = Series_Load_Impedance(S, pf, vrms; fsys = 50)
+R, L_C, X, Z = Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
 
 # Arguments
 - `S::Float`: 3 phase Apparent Power [VA]
@@ -357,6 +365,7 @@ R, L_C, X, Z = Series_Load_Impedance(S, pf, vrms; fsys = 50)
 
 # Keyword Arguments
 - `fsys::Float`: system frequency [Hz]
+- `type_sign::String`: "L" or "C" -> for purely capacitive or inductive loads
 
 # Return Values
 - `R::Float`: resistance [Ω]
@@ -404,6 +413,23 @@ function Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
     return R, L_C, X, Z
 end
 
+"""
+    Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+
+# Description
+Designs the filter inductances and capacitances for the sources
+
+# Arguments
+- `Sr::Float`: rated 3 phase Apparent Power [VA]
+- `fs::Float`:switching frequency
+- `fltr::String`: topology "LCL", "LC", "L"
+
+# Keyword Arguments
+- `Vrms::Float`: nominal AC rms voltage
+- `Vdc::Float`: nominal DC voltage
+- `ΔILf_ILf::Float`: current ripple ratio
+- `ΔVCf_VCf::Float`: voltage ripple ratio
+"""
 function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
 
     #= Theory:
@@ -581,29 +607,28 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
     return result
 end
 
-
-function CheckPowerBalance(parameters, num_source, num_load, CM)
-    """
+"""
     p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
 
-    # Description
-    Determines based on the parameters of the grid the total power (active and reactive) drawn from all load
-    and the total power provided by the sources.
-    Thereby, steady state is assumed.
+# Description
+Determines based on the parameters of the grid the total power (active and reactive) drawn from all load
+and the total power provided by the sources.
+Thereby, steady state is assumed.
 
-    # Arguments
-    - `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/nodeconstructor.
-    - `num_source::Int`: number of sources in the grid (todo: calulate based on parameter dict?)
-    - `num_load::Int`: number of num_load in the grid (todo: calulate based on parameter dict?)
-    - `CM::Matrix`: connectivity matrix describing the connections in the grid
+# Arguments
+- `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/nodeconstructor.
+- `num_source::Int`: number of sources in the grid (todo: calulate based on parameter dict?)
+- `num_load::Int`: number of num_load in the grid (todo: calulate based on parameter dict?)
+- `CM::Matrix`: connectivity matrix describing the connections in the grid
 
 
-    # Return Values
-    - `p_load_total::float`: total active power drawn by all loads (passive components as well as controlled with negative reference value)
-    - `q_load_total::float`: total reactive power drawn by all loads
-    -  s_load_total::float`: total aparent power drawn by all loads
-    - `s_source_total::float`: total aparent power provided by all sources in steady state
-    """
+# Return Values
+- `p_load_total::float`: total active power drawn by all loads (passive components as well as controlled with negative reference value)
+- `q_load_total::float`: total reactive power drawn by all loads
+-  s_load_total::float`: total apparent power drawn by all loads
+- `s_source_total::float`: total apparent power provided by all sources in steady state
+"""
+function CheckPowerBalance(parameters, num_source, num_load, CM)
 
     num_nodes = num_source + num_load
     num_cables = Int(maximum(CM))
@@ -618,7 +643,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 
             s_source_total = s_source_total + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
 
-            if parameters["source"][i]["mode"] in ["PQ Control", 3]
+            if parameters["source"][i]["mode"] in ["PQ", 3]
 
                 if parameters["source"][i]["p_set"] < 0
                     p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
@@ -628,7 +653,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
                     q_load_total = q_load_total + parameters["source"][i]["q_set"]/parameters["grid"]["phase"]
                 end
 
-            elseif parameters["source"][i]["mode"] in ["PV Control", 4]
+            elseif parameters["source"][i]["mode"] in ["PV", 4]
 
                 if parameters["source"][i]["p_set"] < 0
                     p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
@@ -644,6 +669,17 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
     return p_load_total, q_load_total, s_load_total, s_source_total
 end
 
+optimizer_status = Dict()
+function get_optimizer_status(model)
+    
+    status = Dict(
+                    "termination_status" => termination_status(model),
+                    "primal_status"      => (primal_status(model)),
+                    "objective_value"    => (objective_value(model))
+                )           
+
+    return status
+end
 
 function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 
@@ -932,6 +968,9 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
         primal_status      = $(primal_status(model))
         objective_value    = $(objective_value(model))
         """)
+        global optimizer_status = get_optimizer_status(model)
+        @show optimizer_status["termination_status"]
+
 
         println()
         println()
@@ -1072,7 +1111,7 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 end
 
 """
-    R, L = Fault_Level(S, X_R, Vrms; fsys = 50)
+    R, L = Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
 
 # Arguments
 - `S::Float`: 3 phase Fault Level [VA]
@@ -1081,6 +1120,7 @@ end
 
 # Keyword Arguments
 - `fsys::Float`: system frequency [Hz]
+- `phase::Int`: single or 3 phase system, i.e. phase = 1, or phase = 3
 
 # Return Values
 - `R::Float`: effective resistance [Ω]
@@ -1095,11 +1135,11 @@ ratios are in the range of 0.5 to 1.5, for distribution networks. Transmission n
 at higher voltages tend to have higher X/R ratios.
 
 """
-function Fault_Level(S, X_R, Vrms; fsys = 50)
+function Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
 
     rad = atan(X_R)
 
-    I_fault = S/(3*Vrms)
+    I_fault = S/(phase*Vrms)
     Z = Vrms/I_fault
 
     R = Z*cos(rad)

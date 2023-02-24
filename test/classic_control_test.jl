@@ -5,7 +5,7 @@ using CSV
 using DataFrames
 using Distributions
 
-@testset "Classical_Controllers" begin
+@testset "Classical_Controllers_Dynamics" begin
 
         #_______________________________________________________________________________
         # Network Parameters
@@ -215,7 +215,7 @@ using Distributions
         #_______________________________________________________________________________
         # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_episodes=num_eps, hook = hook)
+        hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
@@ -259,7 +259,7 @@ using Distributions
         @test new_data[1:total_steps, 2:end] ≈ new_data[2*total_steps + 1:end, 2:end] atol = 0.001
 end
 
-@testset "Ornstein_Uhlenbeck" begin
+@testset "Ornstein_Uhlenbeck_Filters_Angles" begin
 
         #_______________________________________________________________________________
         # Network Parameters
@@ -411,7 +411,7 @@ end
         #_______________________________________________________________________________
         # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_episodes=num_eps, hook = hook)
+        hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
@@ -433,6 +433,21 @@ end
         #_______________________________________________________________________________
         # Tests
 
+        s1_L1 = 0.0006830651506262048
+        s1_R1 = 0.13661303012524095
+        s1_L2 = 9.341360873776272e-5
+        s1_R2 = 0.018682721747552544
+        s1_C = 7.706152043421691e-5
+        s1_R_C = 0.3442162015385205
+
+        s2_L1 = 0.0004553767670841366
+        s2_R1 = 0.09107535341682732
+        s2_C = 0.00011559228065132534
+        s2_R_C = 0.22947746769234703
+
+        s3_L1 = 0.0006830651506262048
+        s3_R1 = 0.13661303012524095
+        
         step = Int(parameters["source"][3]["Δt"]/Timestep)
         start = Int(parameters["grid"]["process_start"]/Timestep) + 1 + step
 
@@ -445,14 +460,45 @@ end
 
         stats = fit(Normal{Float32}, new_data)
 
-        #= println("stats.μ = ", stats.μ)
-        println("γ = ", parameters["source"][3]["γ"])
-        println("stats.σ = ", stats.σ)
-        println("std_asy = ", parameters["source"][3]["std_asy"])  =#
-
         @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.015
         @test 1 ≈ stats.σ/parameters["source"][3]["std_asy"] atol = 0.1
         @test new_angles ≈ angles_eval atol = 0.001
+
+        @test s1_L1 ≈ env.nc.parameters["source"][1]["L1"] atol = 0.00001
+        @test s1_R1 ≈ env.nc.parameters["source"][1]["R1"] atol = 0.00001
+        @test s1_L2 ≈ env.nc.parameters["source"][1]["L2"] atol = 0.00001
+        @test s1_R2 ≈ env.nc.parameters["source"][1]["R2"] atol = 0.00001
+        @test s1_C ≈ env.nc.parameters["source"][1]["C"] atol = 0.00001
+        @test s1_R_C ≈ env.nc.parameters["source"][1]["R_C"] atol = 0.00001
+
+        @test s2_L1 ≈ env.nc.parameters["source"][2]["L1"] atol = 0.00001
+        @test s2_R1 ≈ env.nc.parameters["source"][2]["R1"] atol = 0.00001
+        @test s2_C ≈ env.nc.parameters["source"][2]["C"] atol = 0.00001
+        @test s2_R_C ≈ env.nc.parameters["source"][2]["R_C"] atol = 0.00001
+
+        @test s3_L1 ≈ env.nc.parameters["source"][3]["L1"] atol = 0.00001
+        @test s3_R1 ≈ env.nc.parameters["source"][3]["R1"] atol = 0.00001
+
+                #= 
+        println("stats.μ = ", stats.μ)
+        println("γ = ", parameters["source"][3]["γ"])
+        println("stats.σ = ", stats.σ)
+        println("std_asy = ", parameters["source"][3]["std_asy"])  
+        println()
+        println(env.nc.parameters["source"][1]["L1"])
+        println(env.nc.parameters["source"][1]["R1"])
+        println(env.nc.parameters["source"][1]["L2"])
+        println(env.nc.parameters["source"][1]["R2"])
+        println(env.nc.parameters["source"][1]["C"])
+        println(env.nc.parameters["source"][1]["R_C"])
+        println()
+        println(env.nc.parameters["source"][2]["L1"])
+        println(env.nc.parameters["source"][2]["R1"])
+        println(env.nc.parameters["source"][2]["C"])
+        println(env.nc.parameters["source"][2]["R_C"])
+        println()
+        println(env.nc.parameters["source"][3]["L1"])
+        println(env.nc.parameters["source"][3]["R1"])=#
 
         return nothing
 end
