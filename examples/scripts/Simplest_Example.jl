@@ -32,32 +32,50 @@ CM = [ 0. 0. 1.
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 100)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3),
-                        Dict{Any, Any}("pwr" => 100e3),
+                        Dict{Any, Any}("pwr" => 200e3, 
+                                        "mode" => "Synchronverter", 
+                                        "v_pu_set" => 1.05, 
+                                        "vdc" => 800, 
+                                        "Observer" => false),
+                        Dict{Any, Any}("pwr" => 100e3, 
+                                        "mode" => "PQ", 
+                                        "p_set" => 30e3, 
+                                        "q_set" => 30e3),
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load),
+                        Dict{Any, Any}("impedance" => "RL", 
+                                        "R" => R_load, 
+                                        "L" => L_load),
                         ],
         "cable"   => Any[
-                        Dict{Any, Any}("R" => 0.208, "L" => 0.00025, "C" => 0.4e-3, "i_limit" => 10e4,),
-                        Dict{Any, Any}("R" => 0.208, "L" => 0.00025, "C" => 0.4e-3, "i_limit" => 10e4,),
+                        Dict{Any, Any}("R" => 0.108, 
+                                        "L" => 0.00025, 
+                                        "C" => 0.4e-3, 
+                                        "i_limit" => 10e4),
+                        Dict{Any, Any}("R" => 0.108, 
+                                        "L" => 0.00025, 
+                                        "C" => 0.4e-3, 
+                                        "i_limit" => 20e4,),
                         ],
-        "grid" => Dict{Any, Any}("ramp_end" => 0.04)
+        "grid" => Dict{Any, Any}("ramp_end" => 0.04, 
+                                "f_grid" => 50, 
+                                "process_start" => 0.4, 
+                                "v_rms" => 230)
     )
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 0)
 
 #_______________________________________________________________________________
 # initialising the agents 
 
 Multi_Agent = setup_agents(env)
-Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+#Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # running the time simulation 
@@ -71,7 +89,7 @@ plot_hook_results(hook = hook,
                     states_to_plot  = [], 
                     actions_to_plot = [],  
                     power_p         = [1 2], 
-                    power_q         = [], 
+                    power_q         = [1 2], 
                     vrms            = [1 2], 
                     irms            = [],
                     freq            = [1 2],

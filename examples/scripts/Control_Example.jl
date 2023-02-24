@@ -111,7 +111,7 @@ source["std_asy"]  = 50e3   # Asymptotic Standard Deviation
 source["σ"]        = 50e3   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"]       = 0.01   # Time Step, seconds
 source["X₀"]       = 0      # Initial Process Values, Watt
-source["k"]        = 0      # Interpolation degree
+source["k"]        = 2      # Interpolation degree
 
 source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
 source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
@@ -191,7 +191,7 @@ grid = Dict()
 grid["v_rms"] = 230
 grid["ramp_end"] = 0.04
 grid["process_start"] = 0.04
-grid["f_grid"] = 50 
+grid["f_grid"] = 60 
 grid["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
 grid["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
@@ -215,13 +215,18 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 
 hook = DataHook(vrms     = [1 2], 
                 irms     = [1 2], 
+                vdq      = [1 2], 
+                idq      = [1 2], 
                 power_pq = [1 2],
                 freq     = [1 2],
                 angles   = [1 2],
                 i_sat    = [1 2],
                 v_sat    = [1],
                 i_err_t  = [1 2],
-                v_err_t  = [1])
+                v_err_t  = [1],
+                i_err    = [1 2],
+                v_err    = [1],
+                debug    = [])
 
 #_______________________________________________________________________________
 # initialising the agents 
@@ -243,6 +248,8 @@ for eps in 1:num_eps
                       episode = eps,
                       states_to_plot  = [], 
                       actions_to_plot = [],  
+                      vdq             = [], 
+                      idq             = [], 
                       power_p         = [1 2], 
                       power_q         = [], 
                       vrms            = [1 2], 
@@ -251,8 +258,10 @@ for eps in 1:num_eps
                       angles          = [1 2],
                       i_sat           = [],
                       v_sat           = [],
-                      i_err_t         = [1 2],
-                      v_err_t         = [1])
+                      i_err_t         = [],
+                      v_err_t         = [],
+                      i_err           = [],
+                      v_err           = [])
 end
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

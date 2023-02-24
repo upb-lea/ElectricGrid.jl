@@ -236,7 +236,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.freq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                freq = Classical_Policy.Source.fpll[s_idx, 1, end]
+                freq = Classical_Policy.Source.f_source[s_idx, 1, end]
                 insertcols!(hook.tmp, "source$(idx)_freq" => freq)
             end
         end
@@ -250,15 +250,15 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
 
             if s_idx !== nothing
 
-                θpll = (Classical_Policy.Source.θpll[s_idx, 1, end] - θ_ref
+                θ_source = (Classical_Policy.Source.θ_source[s_idx, 1, end] - θ_ref
                         + Classical_Policy.Source.ts*π*Classical_Policy.Source.fsys)*180/π
 
-                if θpll > 180
-                    θpll = θpll - 360
-                elseif θpll < -180
-                    θpll = θpll + 360
+                if θ_source > 180
+                    θ_source = θ_source - 360
+                elseif θ_source < -180
+                    θ_source = θ_source + 360
                 end
-                insertcols!(hook.tmp, "source$(idx)_θ" => θpll)
+                insertcols!(hook.tmp, "source$(idx)_θ" => θ_source)
             end
         end
 

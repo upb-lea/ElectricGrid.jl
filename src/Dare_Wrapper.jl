@@ -157,7 +157,8 @@ function default_data_hook(Multi_Agent, env)
                     i_sat            = all_class,
                     v_sat            = Source.grid_forming,
                     i_err_t          = all_class,
-                    v_err_t          = Source.grid_forming)
+                    v_err_t          = Source.grid_forming,
+                    debug            = [])
 
     return hook
 end
