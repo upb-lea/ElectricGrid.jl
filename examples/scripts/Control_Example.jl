@@ -45,9 +45,9 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 cable = Dict()
-cable["R"]       = 0.208   # Ω, line resistance
-cable["L"]       = 0.00025 # H, line inductance
-cable["C"]       = 0.4e-3  # F, line capacitance
+cable["R"]       = 0.1    # Ω, line resistance #0.208
+cable["L"]       = 0.25e-3 # H, line inductance
+cable["C"]       = 0.05e-4  # F, line capacitance
 cable["i_limit"] = 10e12   # A, line current limit
 
 #push!(cable_list, cable, cable, cable)
@@ -101,14 +101,14 @@ source["mode"]     = 2
 source["fltr"]     = "L"   # Filter type
 
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
-source["p_set"]    = 50e3   # Real Power Set Point, Watt
-source["q_set"]    = 10e3   # Imaginary Power Set Point, VAi
+source["p_set"]    = -30e3   # Real Power Set Point, Watt
+source["q_set"]    = -10e3   # Imaginary Power Set Point, VAi
 
 source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
 source["v_δ_set"]  = 0      # Voltage Angle, degrees
 
-source["std_asy"]  = 50e3   # Asymptotic Standard Deviation
-source["σ"]        = 50e3   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
+source["std_asy"]  = 2.5e3   # Asymptotic Standard Deviation
+source["σ"]        = 100e3   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"]       = 0.01   # Time Step, seconds
 source["X₀"]       = 0      # Initial Process Values, Watt
 source["k"]        = 2      # Interpolation degree
