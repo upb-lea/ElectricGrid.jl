@@ -2,16 +2,23 @@
 using Dare 
 using JuMP
 
+const DEFAULT_PARAMS = Dict{Any, Any}(
+                    "source"    => Any[
+                                    Dict{Any, Any}("pwr" => 200e3, "mode" => 1),
+                                    ],
+                    "grid"      => Dict{Any, Any}("ramp_end" => 0.04)
+                )
 
-function populate_params(params, Power, pf, Vrms=230)
+function populate_params(Power, pf, Vrms=230)
 
     R_load, L_load, _, _ = Parallel_Load_Impedance(Power, pf, Vrms)
 
-    if haskey(params, "load")
-        pop!(params, "load")
-    elseif haskey(params, "cable")
-        pop!(params, "cable")
-    end
+    # if haskey(params, "load")
+    #     pop!(params, "load")
+    # elseif haskey(params, "cable")
+    #     pop!(params, "cable")
+    # end
+    params = copy(DEFAULT_PARAMS)
 
     params["load"] = Any[
                             Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load),
