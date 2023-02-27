@@ -64,7 +64,7 @@ function setup_agents(env)
             agent.policy.target_actor.model.layers[i].bias ./= 100
         end
 
-        agent = DareAgent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
+        agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
 
         RL_policy = Dict()
         RL_policy["policy"] = agent
