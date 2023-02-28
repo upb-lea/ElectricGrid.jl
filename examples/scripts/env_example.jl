@@ -37,13 +37,24 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 #_______________________________________________________________________________
 # running the time simulation
 
-hook = simulate(Multi_Agent, env)
+#hook = simulate(Multi_Agent, env)
+
+#hook = DataHook(collect_state_ids = env.state_ids,
+#                collect_action_ids = env.action_ids
+#                #collect_sources  = [1]  # alternative
+#                );
+
+states_to_plot = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c"]
+
+hook = DataHook(collect_state_ids = states_to_plot)
+
+simulate(Multi_Agent, env, hook=hook)
 
 #_______________________________________________________________________________
 # Plotting
 
 plot_hook_results(hook = hook,
-                    states_to_plot  = env.state_ids,
+                    states_to_plot  = states_to_plot,
                     actions_to_plot = [])
 #env.state_ids
 

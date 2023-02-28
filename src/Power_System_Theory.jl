@@ -669,6 +669,17 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
     return p_load_total, q_load_total, s_load_total, s_source_total
 end
 
+optimizer_status = Dict()
+function get_optimizer_status(model)
+    
+    status = Dict(
+                    "termination_status" => termination_status(model),
+                    "primal_status"      => (primal_status(model)),
+                    "objective_value"    => (objective_value(model))
+                )           
+
+    return status
+end
 
 function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 
@@ -957,6 +968,9 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
         primal_status      = $(primal_status(model))
         objective_value    = $(objective_value(model))
         """)
+        global optimizer_status = get_optimizer_status(model)
+        @show optimizer_status["termination_status"]
+
 
         println()
         println()

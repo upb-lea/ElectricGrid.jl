@@ -1,8 +1,6 @@
 export MultiAgentGridController
 
 
-(p::NamedPolicy)(env::SimEnv, training::Bool = false) = p.policy(env, p.name, training)
-
 #= 
 Example for agents dict:
 
@@ -16,6 +14,17 @@ Dict(nameof(agent) => {"policy" => agent,
 mutable struct MultiAgentGridController <: AbstractPolicy
     agents::Dict{Any,Any}
     action_ids
+    hook
+end
+
+function MultiAgentGridController(agents, action_ids)
+    hook = DataHook(is_inner_hook_RL = true)
+
+    return MultiAgentGridController(
+        agents,
+        action_ids,
+        hook
+    )
 end
 
 Base.getindex(A::MultiAgentGridController, x) = getindex(A.agents, x)
@@ -31,12 +40,16 @@ function (A::MultiAgentGridController)(env::AbstractEnv, training::Bool = false)
 end
 
 function (A::MultiAgentGridController)(stage::AbstractStage, env::AbstractEnv, training::Bool = false)
+    A.hook(stage, A, env, training)
+
     for agent in values(A.agents)
         agent["policy"](stage, env, training)
     end
 end
 
 function (A::MultiAgentGridController)(stage::PreActStage, env::AbstractEnv, action, training::Bool = false)
+    A.hook(stage, A, env, action, training)
+
     for agent in values(A.agents)
         agent["policy"](stage, env, action[findall(x -> x in agent["action_ids"], A.action_ids)], training)
     end

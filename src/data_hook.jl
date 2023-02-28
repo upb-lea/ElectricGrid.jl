@@ -152,21 +152,42 @@ function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
     hook.collect_state_paras = get_state_paras(env.nc)
 
     if hook.is_inner_hook_RL
-        if isa(agent.policy, NamedPolicy)
-            hook.currentNNA === nothing && (hook.currentNNA = deepcopy(agent.policy.policy.behavior_actor))
-            hook.bestNNA === nothing && (hook.bestNNA = deepcopy(agent.policy.policy.behavior_actor))
-            if training
-                agent.policy.policy.behavior_actor = deepcopy(hook.currentNNA)
-            else
-                agent.policy.policy.behavior_actor = deepcopy(hook.bestNNA)
+
+        if length(hook.policy_names) != length(agent.agents)
+            hook.policy_names = [s for s in keys(agent.agents)]
+        end
+
+        if isnothing(hook.currentNNA)
+            hook.currentNNA = Dict()
+
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        end
+
+        if isnothing(hook.bestNNA)
+            hook.bestNNA = Dict()
+
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        end
+
+        if training
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    agent.agents[name]["policy"].policy.policy.behavior_actor = deepcopy(hook.currentNNA[name])
+                end
             end
         else
-            hook.currentNNA === nothing && (hook.currentNNA = deepcopy(agent.policy.behavior_actor))
-            hook.bestNNA === nothing && (hook.bestNNA = deepcopy(agent.policy.behavior_actor))
-            if training
-                agent.policy.behavior_actor = deepcopy(hook.currentNNA)
-            else
-                agent.policy.behavior_actor = deepcopy(hook.bestNNA)
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    agent.agents[name]["policy"].policy.policy.behavior_actor = deepcopy(hook.bestNNA[name])
+                end
             end
         end
     end
@@ -421,6 +442,7 @@ function (hook::DataHook)(::PostActStage, agent, env, training = false)
             if length(hook.reward) != length(agent.agents)
                 hook.reward = zeros(length(agent.agents))
             end
+            
             if length(hook.policy_names) != length(agent.agents)
                 hook.policy_names = [s for s in keys(agent.agents)]
             end
@@ -444,18 +466,18 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
     if training
         if isa(agent, MultiAgentGridController)
             if length(hook.rewards) >= 1 && sum(hook.reward) > maximum(sum.(hook.rewards))
+                if hook.is_inner_hook_RL
+                    for name in hook.policy_names
+                        if isa(agent.agents[name]["policy"], Agent)
+                            hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                        end
+                    end
+                end
                 hook.bestepisode = hook.ep
                 hook.bestreward = sum(hook.reward)
             end
         else
             if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards)
-                if hook.is_inner_hook_RL
-                    if isa(agent.policy, NamedPolicy)
-                        copyto!(hook.bestNNA, agent.policy.policy.behavior_actor)
-                    else
-                        copyto!(hook.bestNNA, agent.policy.behavior_actor)
-                    end
-                end
                 hook.bestepisode = hook.ep
                 hook.bestreward = hook.reward
             end
@@ -470,10 +492,10 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
         end
 
         if hook.is_inner_hook_RL
-            if isa(agent.policy, NamedPolicy)
-                copyto!(hook.currentNNA, agent.policy.policy.behavior_actor)
-            else
-                copyto!(hook.currentNNA, agent.policy.behavior_actor)
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
             end
         end
     end
@@ -500,10 +522,10 @@ function (hook::DataHook)(::PostExperimentStage, agent, env, training = false)
     end
 
     if hook.is_inner_hook_RL
-        if isa(agent.policy, NamedPolicy)
-            agent.policy.policy.behavior_actor = deepcopy(hook.currentNNA)
-        else
-            agent.policy.behavior_actor = deepcopy(hook.currentNNA)
+        for name in hook.policy_names
+            if isa(agent.agents[name]["policy"], Agent)
+                agent.agents[name]["policy"].policy.policy.behavior_actor = deepcopy(hook.currentNNA[name])
+            end
         end
     end
 

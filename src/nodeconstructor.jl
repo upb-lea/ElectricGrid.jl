@@ -618,9 +618,11 @@ function check_parameters(
                     dict!")
             end
         end
-
-        source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined!"
+        if verbosity > 0
+            source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined!"
+        end
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
+
     end
 
     # calculate grid power
