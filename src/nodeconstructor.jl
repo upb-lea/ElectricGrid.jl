@@ -352,7 +352,22 @@ function check_parameters(
             end
 
             if !haskey(source, "fltr")
-                source["fltr"] = "LCL"
+
+                if haskey(source, "mode")
+
+                    if (source["mode"] == "PQ" || 
+                        source["mode"] == "PV" || 
+                        source["mode"] == "Swing")
+
+                        source["fltr"] = "L"
+                    else
+                        
+                        source["fltr"] = "LCL"
+                    end
+                else
+                    source["fltr"] = "LCL"
+                end
+
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "LCL"
@@ -390,7 +405,7 @@ function check_parameters(
                 if !haskey(source, "C")
                     Vorms = parameters["grid"]["v_rms"] * 0.95
                     Vop = Vorms * sqrt(2)
-                    Zl = 3 * Vorms * Vorms / source["pwr"]
+                    Zl = 3 * Vorms * Vorms / source["pwr"] #TODO
                     Iorms = Vorms / Zl
                     Iop = Iorms * sqrt(2)
                     Ir_d = source["vdc"] /

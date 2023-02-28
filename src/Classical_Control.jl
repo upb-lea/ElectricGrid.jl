@@ -1039,10 +1039,25 @@ function Swing_Mode(Source::Classical_Controls, num_source; t_end = 0.04)
     
     θ = Source.θsys + Source.V_δ_set[num_source, 1] - 0.5*Source.ts*2π*Source.fsys
     θph = [θ; θ - 120π/180; θ + 120π/180]
-    
+
     Vrms = Ramp(Source.V_pu_set[num_source, 1]*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
     Source.V_ref[num_source, :] = sqrt(2)*(Vrms)*cos.(θph)
 
+    # debug for frequency step
+    if Source.steps*Source.ts >= 2.0 && 1 == 5
+
+        f = 60 + 0.0005*60
+        ω = 2π*f
+        Source.θ_source[num_source, 1, end] = (Source.θ_source[num_source, 1, end] + Source.ts*ω)%(2π)
+
+        θ = Source.θ_source[num_source, 1, end]
+        θph = [θ; θ - 120π/180; θ + 120π/180]
+
+        Vrms = Ramp(Source.V_pu_set[num_source, 1]*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
+        Source.V_ref[num_source, :] = sqrt(2)*(Vrms)*cos.(θph)
+    end
+
+    # debug for voltage step
     if Source.steps*Source.ts >= 0.1 && 1 == 5
 
         Vdc = 150
@@ -1370,7 +1385,7 @@ function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = Sou
     err_new = v_αβγ[2]*cos(θ) - v_αβγ[1]*sin(θ)
 
     f_new, err_t_new, err_int =
-    PI_Controller(err_new, err, err_t, Kp, Ki, Source.ts, bias = Source.fsys)#, max_t_err = 0.00015)
+    PI_Controller(err_new, err, err_t, Kp, Ki, Source.ts, bias = Source.fsys, max_t_err = 0.00015)
 
     θ = Third_Order_Integrator(θ, Source.ts, 2π*[f[2:end]; f_new])
 
@@ -2503,7 +2518,11 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
         if typeof(modes[e]) == Int64
             Source.Source_Modes[e] = Mode_Keys[modes[e]]
         else
-            Source.Source_Modes[e] = modes[e]
+            if modes[e] == "VSG"
+                Source.Source_Modes[e] = "Synchronverter"
+            else
+                Source.Source_Modes[e] = modes[e]
+            end
         end
 
         if haskey(env.nc.parameters["source"][ns], "R_C")
@@ -2542,7 +2561,7 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
         elseif Source.Source_Modes[e] == "Semi-Droop" || Source.Source_Modes[e] == "Droop"
             
             if !haskey(env.nc.parameters["source"][ns], "Dp")
-                Source.D[e, 1] = 2π*Source.fsys*2π*Source.Δfmax/Source.P[e]
+                Source.D[e, 1] = Source.fsys*2π*Source.Δfmax/Source.S[e]
                 count_Dp += 1
                 
             else
@@ -2553,7 +2572,7 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
                 if Source.Source_Modes[e] == "Semi-Droop"
                     Source.D[e, 2] = 0.0
                 else
-                    Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.Q[e]
+                    Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.S[e]
                 end
                 count_Dq += 1
             else
@@ -2730,9 +2749,9 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
         end
 
         if length(findall(Source.Observer)) == 1
-            @info "$(length(findall(Source.Observer))) source has been set up with a deadbeat Luenberger discrete Observer."
+            @info "$(length(findall(Source.Observer))) source has been set up with a Luenberger discrete Observer."
         elseif length(findall(Source.Observer)) > 1
-            @info "$(length(findall(Source.Observer))) sources have been set up with deadbeat Luenberger discrete Observers."
+            @info "$(length(findall(Source.Observer))) sources have been set up with Luenberger discrete Observers."
         end
 
         processes = length(findall(x->x > 0.0, convert.(Float64, Source.σ)))
@@ -2840,7 +2859,7 @@ function Observer_Initialiser(Source::Classical_Controls, ns)
         #------------------------------------------------------------------------------------------------
         # Solving (A - K*C)^4 = [0]
 
-        λ = [0.001; 0.001; 0.0; 0.0]
+        λ = [0.003; 0.003; 0.0; 0.0]
 
         p = [2.0 1.0 1.0 1.5;
              0.0 2.0 0.5 1.0]
