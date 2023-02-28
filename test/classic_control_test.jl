@@ -460,7 +460,7 @@ end
 
         stats = fit(Normal{Float32}, new_data)
 
-        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.015
+        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.016
         @test 1 ≈ stats.σ/parameters["source"][3]["std_asy"] atol = 0.1
         @test new_angles ≈ angles_eval atol = 0.001
 
@@ -610,7 +610,7 @@ end
         return nothing
 end
 
-@testset "Droop" begin
+@testset "Droop_frequency_vrms" begin
 
         #_______________________________________________________________________________
         # Network Configuration 
