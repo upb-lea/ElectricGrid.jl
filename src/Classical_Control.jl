@@ -1260,7 +1260,7 @@ end
 # Description
 Tuned 3 phase Phase Locked loop.
 """
-function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = Source.fsys+20, ξ = 0.35)
+function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = Source.fsys + 20, ξ = 0.35)
 
     #= A robost 3 phase phase locked loop
 
@@ -1508,7 +1508,7 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
 
     ωsys = Source.fsys*2π # nominal grid frequency
     Vn = sqrt(2)*Vrms # nominal peak POC voltage
-    Vg = sqrt(2)*DQ_RMS(Source.V_filt_cap[num_source, :, end]) # peak measured voltage
+    Vg = sqrt(2)*Clarke_mag(Source.V_filt_cap[num_source, :, end]) # peak measured voltage
 
     #---- Integrate eq_new to find Mfif_new
 
@@ -1731,7 +1731,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     (Source.Lf_1[num_source]*ω*I_dq0[1] + V_dq0[2])*2/Source.Vdc[num_source]
 
     # ---- Limiting Output (Saturation)
-    Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2)*DQ_RMS(Source.s_lim[num_source,:]) # peak set point
+    Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2)*Clarke_mag(Source.s_lim[num_source,:]) # peak set point
 
     if Vp_ref > Source.v_max[num_source]
         Source.s_dq0_avg[num_source, :]  = Source.s_lim[num_source, :]*Source.v_max[num_source]/Vp_ref
@@ -1800,7 +1800,7 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     + Source.Cf[num_source]*ω*V_dq0[1] 
 
     # ---- Limiting Output (Saturation)
-    Ip_ref = sqrt(2)*DQ_RMS(Source.I_lim[num_source,:]) # peak set point
+    Ip_ref = sqrt(2)*Clarke_mag(Source.I_lim[num_source,:]) # peak set point
 
     if Ip_ref > 0.98*Source.i_max[num_source]
         Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]*0.98*Source.i_max[num_source]/Ip_ref

@@ -18,7 +18,7 @@ mutable struct MultiAgentGridController <: AbstractPolicy
 end
 
 function MultiAgentGridController(agents, action_ids)
-    hook = DataHook(is_inner_hook_RL = true)
+    hook = data_hook(is_inner_hook_RL = true)
 
     return MultiAgentGridController(
         agents,

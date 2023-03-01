@@ -8,9 +8,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 #-------------------------------------------------------------------------------
 # Time simulation
 
-Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.8     # total run time, seconds
-num_eps  = 1       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -47,18 +45,16 @@ parameters = Dict{Any, Any}(
         "cable"   => Any[
                         Dict{Any, Any}("R" => 0.1, 
                                         "L" => 0.25e-3, 
-                                        "C" => 0.1e-4, 
-                                        "i_limit" => 10e4),
+                                        "C" => 0.1e-4),
                         Dict{Any, Any}("R" => 0.1, 
                                         "L" => 0.25e-3, 
-                                        "C" => 0.1e-4, 
-                                        "i_limit" => 10e4,),
+                                        "C" => 0.1e-4),
                         ],
     )
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = SimEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
 # initialising the agents 
@@ -69,7 +65,7 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env, num_episodes = num_eps)
+hook = simulate(Multi_Agent, env)
 
 #_______________________________________________________________________________
 # Plotting
@@ -79,8 +75,8 @@ plot_hook_results(hook = hook,
                     actions_to_plot = [],  
                     power_p         = [1 2], 
                     power_q         = [1 2], 
-                    vrms            = [1 2], 
-                    irms            = [],
+                    v_mag           = [1 2], 
+                    i_mag           = [],
                     freq            = [1 2],
                     angles          = [1 2])
 

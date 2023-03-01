@@ -119,7 +119,7 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [], 
+hook = data_hook(collect_vrms_ids = [], 
                 collect_irms_ids = [], 
                 collect_pq_ids   = [], 
                 collect_freq     = [],

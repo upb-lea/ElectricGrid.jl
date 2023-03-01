@@ -1,22 +1,10 @@
 using Dare
-#using Distributions
-#= using DrWatson
-@quickactivate "dare"
-
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
-include(srcdir("agent_ddpg.jl"))
-include(srcdir("data_hook.jl"))
-include(srcdir("Dare_Wrapper.jl"))
-include(srcdir("Classical_Control.jl"))
-include(srcdir("Power_System_Theory.jl"))
-include(srcdir("MultiAgentGridController.jl")) =#
 
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
 # Network Parameters 
-#a = rand(Uniform(1, 2))
+
 #-------------------------------------------------------------------------------
 # Time simulation
 
@@ -213,8 +201,8 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(vrms     = [1 2], 
-                irms     = [1 2], 
+hook = data_hook(v_mag    = [1 2], 
+                i_mag    = [1 2], 
                 vdq      = [1 2], 
                 idq      = [1 2], 
                 power_pq = [1 2],
@@ -250,10 +238,10 @@ for eps in 1:num_eps
                       actions_to_plot = [],  
                       vdq             = [], 
                       idq             = [], 
-                      power_p         = [1 2], 
-                      power_q         = [], 
-                      vrms            = [1 2], 
-                      irms            = [],
+                      power_p         = [2], 
+                      power_q         = [2], 
+                      v_mag           = [1 2], 
+                      i_mag           = [],
                       freq            = [1 2],
                       angles          = [1 2],
                       i_sat           = [],

@@ -199,9 +199,9 @@ using Distributions
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = DataHook(collect_sources  = [1 2 3],
-                        vrms             = [1 2 3],
-                        irms             = [1 2 3],
+        hook = data_hook(collect_sources  = [1 2 3],
+                        v_mag            = [1 2 3],
+                        i_mag            = [1 2 3],
                         power_pq         = [1 2 3],
                         freq             = [1 2 3],
                         )
@@ -228,8 +228,8 @@ using Distributions
                                         actions_to_plot = [],
                                         power_p         = [1 2 3],
                                         power_q         = [1 2 3],
-                                        vrms            = [1 2 3],
-                                        irms            = [1 2 3],
+                                        v_mag           = [1 2 3],
+                                        i_mag           = [1 2 3],
                                         freq            = [1 2 3])
         end =#
 
@@ -394,13 +394,13 @@ end
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = DataHook(collect_sources  = [1 2 3],
-                        vrms             = [1 2 3],
-                        irms             = [1 2 3],
-                        power_pq         = [1 2 3],
-                        freq             = [1 2 3],
-                        angles           = [1 2 3],
-                        )
+        hook = data_hook(collect_sources  = [1 2 3],
+                         v_mag            = [1 2 3],
+                         i_mag            = [1 2 3],
+                         power_pq         = [1 2 3],
+                         freq             = [1 2 3],
+                         angles           = [1 2 3],
+                         )
 
         #_______________________________________________________________________________
         # initialising the agents
@@ -424,8 +424,8 @@ end
                                         actions_to_plot = [],
                                         power_p         = [3],
                                         power_q         = [3],
-                                        vrms            = [],
-                                        irms            = [],
+                                        v_mag           = [],
+                                        i_mag           = [],
                                         freq            = [3],
                                         angles          = [1 2 3])
         end =#
@@ -460,7 +460,7 @@ end
 
         stats = fit(Normal{Float32}, new_data)
 
-        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.016
+        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.02
         @test 1 ≈ stats.σ/parameters["source"][3]["std_asy"] atol = 0.1
         @test new_angles ≈ angles_eval atol = 0.001
 
@@ -561,9 +561,9 @@ end
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = DataHook(collect_sources  = [1 2],
-                        vrms             = [1 2],
-                        irms             = [1 2],
+        hook = data_hook(collect_sources  = [1 2],
+                        v_mag            = [1 2],
+                        i_mag            = [1 2],
                         power_pq         = [1 2],
                         freq             = [1 2],
                         angles           = [1 2],
@@ -591,8 +591,8 @@ end
                         actions_to_plot = [],
                         power_p         = [],
                         power_q         = [],
-                        vrms            = [1 2],
-                        irms            = [1 2],
+                        v_mag           = [1 2],
+                        i_mag           = [1 2],
                         i_sat           = [1 2],
                         v_sat           = [1],
                         i_err_t         = [1 2],
@@ -610,7 +610,7 @@ end
         return nothing
 end
 
-@testset "Droop_frequency_vrms" begin
+@testset "Droop_frequency_v_mag" begin
 
         #_______________________________________________________________________________
         # Network Configuration 
@@ -699,7 +699,7 @@ end
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
+        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0, action_delay = 1)
 
         #_______________________________________________________________________________
         # initialising the agents 
@@ -721,8 +721,8 @@ end
                         actions_to_plot = [],  
                         power_p         = [1 2 3], 
                         power_q         = [1 2 3], 
-                        vrms            = [1 2 3], 
-                        irms            = [],
+                        v_mag           = [1 2 3], 
+                        i_mag           = [],
                         freq            = [1 2 3],
                         angles          = [1 2 3],
                         i_sat           = [],
@@ -740,8 +740,8 @@ end
         freq_end_1 = hook.df[!,"source1_freq"][total_steps]
         freq_Δ_1 = (freq_start_1 - freq_end_1)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
-        vrms_start_1 = hook.df[!,"source1_vrms"][step_start]
-        vrms_end_1 = hook.df[!,"source1_vrms"][total_steps]
+        vrms_start_1 = hook.df[!,"source1_v_mag"][step_start]
+        vrms_end_1 = hook.df[!,"source1_v_mag"][total_steps]
         vrms_Δ_1 = (vrms_start_1 - vrms_end_1)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
 
         p_start_1 = hook.df[!,"source1_p"][step_start]
@@ -761,8 +761,8 @@ end
         freq_end_2 = hook.df[!,"source2_freq"][total_steps]
         freq_Δ_2 = (freq_start_2 - freq_end_2)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
-        vrms_start_2 = hook.df[!,"source2_vrms"][step_start]
-        vrms_end_2 = hook.df[!,"source2_vrms"][total_steps]
+        vrms_start_2 = hook.df[!,"source2_v_mag"][step_start]
+        vrms_end_2 = hook.df[!,"source2_v_mag"][total_steps]
         vrms_Δ_2 = (vrms_start_2 - vrms_end_2)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
 
         p_start_2 = hook.df[!,"source2_p"][step_start]

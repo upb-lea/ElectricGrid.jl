@@ -2,7 +2,7 @@ using DataFrames
 using UnicodePlots
 
 
-Base.@kwdef mutable struct DataHook <: AbstractHook
+Base.@kwdef mutable struct data_hook <: AbstractHook
 
     save_data_to_hd = false
     dir = "episode_data/"
@@ -41,9 +41,9 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     collect_vdc_ids = []
 
     vdq = []
-    vrms = []
+    v_mag = []
     idq = []
-    irms = []
+    i_mag = []
     power_pq = []
     freq = []
     angles = []
@@ -58,7 +58,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
 
 end
 
-function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
+function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
 
     # rest
     #hook.df = DataFrame()
@@ -193,7 +193,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
     end
 end
 
-function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
+function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
 
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
@@ -236,20 +236,20 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
             end
         end
 
-        for idx in hook.vrms
+        for idx in hook.v_mag
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                vrms = DQ_RMS(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_vrms" => vrms)
+                v_mag = Clarke_mag(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
+                insertcols!(hook.tmp, "source$(idx)_v_mag" => v_mag)
                 #insertcols!(hook.tmp, "source$(idx)_vrms_a" => Classical_Policy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
-        for idx in hook.irms
+        for idx in hook.i_mag
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                irms = DQ_RMS(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_irms" => irms)
+                i_mag = Clarke_mag(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
+                insertcols!(hook.tmp, "source$(idx)_i_mag" => i_mag)
                 #insertcols!(hook.tmp, "source$(idx)_irms_a" => Classical_Policy.Source.I_ph[s_idx, 1, 2])
             end
         end
@@ -286,7 +286,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_sat
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*DQ_RMS(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
+                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*Clarke_mag(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
                 insertcols!(hook.tmp, "source$(idx)_i_sat" => i_sat)
             end
         end
@@ -294,7 +294,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_err = DQ_RMS(Classical_Policy.Source.I_err[s_idx, :, end])
+                i_err = Clarke_mag(Classical_Policy.Source.I_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_err" => i_err)
             end
         end
@@ -302,7 +302,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err_t
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_err_t = DQ_RMS(Classical_Policy.Source.I_err_t[s_idx, :])
+                i_err_t = Clarke_mag(Classical_Policy.Source.I_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_i_err_t" => i_err_t)
             end
         end
@@ -310,7 +310,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_sat
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_sat = sqrt(2)*DQ_RMS(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
+                v_sat = sqrt(2)*Clarke_mag(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
                 insertcols!(hook.tmp, "source$(idx)_v_sat" => v_sat)
             end
         end
@@ -318,7 +318,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_err = DQ_RMS(Classical_Policy.Source.V_err[s_idx, :, end])
+                v_err = Clarke_mag(Classical_Policy.Source.V_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_err" => v_err)
             end
         end
@@ -326,7 +326,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err_t
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_err_t = DQ_RMS(Classical_Policy.Source.V_err_t[s_idx, :])
+                v_err_t = Clarke_mag(Classical_Policy.Source.V_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_v_err_t" => v_err_t)
             end
         end
@@ -388,7 +388,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
 
 end
 
-function (hook::DataHook)(::PostActStage, agent, env, training = false)
+function (hook::data_hook)(::PostActStage, agent, env, training = false)
 
     states_x = Vector( env.x )
     opstates = (hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
@@ -460,7 +460,7 @@ function (hook::DataHook)(::PostActStage, agent, env, training = false)
     end
 end
 
-function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
+function (hook::data_hook)(::PostEpisodeStage, agent, env, training = false)
     hook.ep += 1
 
     if training
@@ -501,7 +501,7 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
     end
 end
 
-function (hook::DataHook)(::PostExperimentStage, agent, env, training = false)
+function (hook::data_hook)(::PostExperimentStage, agent, env, training = false)
 
     if hook.save_data_to_hd
         isdir(hook.dir) || mkdir(hook.dir)

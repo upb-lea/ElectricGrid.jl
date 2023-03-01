@@ -110,7 +110,7 @@ plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"]
 plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"]#, "i_2_a", "i_2_b", "i_2_c"] 
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]#, "u_v2_a", "u_v2_b", "u_v2_c"]
-hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
+hook = data_hook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
 
 policy = sin_policy(action_space = action_space(env), ts = ts)
 run(policy, env, StopAfterEpisode(1), hook)

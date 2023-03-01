@@ -355,9 +355,7 @@ function check_parameters(
 
                 if haskey(source, "mode")
 
-                    if (source["mode"] == "PQ" || 
-                        source["mode"] == "PV" || 
-                        source["mode"] == "Swing")
+                    if (source["mode"] == "Swing")
 
                         source["fltr"] = "L"
                     else

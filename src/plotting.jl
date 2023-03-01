@@ -53,7 +53,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
         end
     end
     
-    temphook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
+    temphook = data_hook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
     
     if isa(agent, MultiAgentGridController)
         ma2 = deepcopy(agent)
@@ -135,7 +135,7 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
     plot_reward = false, plot_reference = false, episode = 1, vdc_to_plot = [],
     vdq = [], idq = [], 
     power_p = [], power_q = [], 
-    vrms = [], irms = [], 
+    v_mag = [], i_mag = [], 
     freq = [], angles = [], 
     i_sat = [], i_err = [], i_err_t = [], 
     v_sat = [], v_err = [], v_err_t = [])
@@ -218,12 +218,12 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q"), mode="lines", name = "source$(idx)_q"))
         end
 
-        for idx in vrms #hook.collect_vrms_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vrms"), mode="lines", name = "source$(idx)_vrms"))
+        for idx in v_mag #hook.collect_vrms_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag"), mode="lines", name = "source$(idx)_v_mag"))
         end
 
-        for idx in irms #hook.collect_irms_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_irms"), mode="lines", name = "source$(idx)_irms"))
+        for idx in i_mag #hook.collect_irms_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_mag"), mode="lines", name = "source$(idx)_i_mag"))
         end
 
         for idx in freq
