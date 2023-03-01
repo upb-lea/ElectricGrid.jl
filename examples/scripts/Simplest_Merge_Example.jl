@@ -13,7 +13,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 1e-4  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.1   # total run time, seconds
-num_eps  = 50     # number of episodes to run
+num_eps  = 100    # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -41,18 +41,23 @@ L_1 = 2.3e-3;
 R_c = 7e-3;
 C_1 = 1e-5;
 
+S_load = 100e3
+pf_load = 0.98
+v_rms = 230
+R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
+
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "L", "L1" => L_1, "R1" => R_1, "i_limit"=>50, "v_limit"=>1000, ),
-                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1, "R1"=>R_1, "L1"=>L_1, "C"=>C_1, "R_C"=>R_c, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10e8),
+                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "L"),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1),
                         ],
          "load"   => Any[
-                        Dict{Any, Any}("impedance" => "R", "R" => 50, "v_limit"=>10000, "i_limit"=>10e8),
+                        Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load,"v_limit"=>1e4, "i_limit"=>10e4),
                         ],
-        "cable"   => Any[
-                        Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-8, "i_limit" => 10e8,"v_limit"=>1000, ),
-                        ],
-        "grid" => Dict{Any, Any}("ramp_end" => 0.0, "phase" => 3 )
+        #"cable"   => Any[
+        #                Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-8, "i_limit" => 10e8,"v_limit"=>1000, ),
+         #               ],
+        "grid" => Dict{Any, Any}("ramp_end" => 0.04, "phase" => 3 )
     )
 #_______________________________________________________________________________
 # Defining the environment
@@ -61,7 +66,7 @@ function reference(t)
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
     #i = [10 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
-    return [1, -2, 1]#, -1, -1]#[2, 2, 2]# * cos.(θph)
+    return [-10, -10, -10].* cos.(θph)#, -1, -1]#[2, 2, 2]# * cos.(θph)
 end
 
 function reward(env, name = nothing)
@@ -135,9 +140,11 @@ ma = setup_agents(env)
 
 learn(ma, env, num_episodes = num_eps)
 
-#hook = DataHook(collect_state_ids = states_to_plot)
+hook = DataHook(collect_state_ids = env.state_ids,
+                collect_action_ids = env.action_ids)
 
-simulate(ma, env, hook=hook)
+
+hook = simulate(ma, env, hook=hook)
 
 #RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 #_______________________________________________________________________________
@@ -147,8 +154,8 @@ simulate(ma, env, hook=hook)
 plot_hook_results(hook = hook,
                     #episode = hook.bestepisode,
                     #episode = num_eps,
-                    states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],
-                    #states_to_plot  = env.state_ids,
+                    #states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],
+                    states_to_plot  = env.state_ids,
                     actions_to_plot = env.action_ids,
                     plot_reward=true)
 
