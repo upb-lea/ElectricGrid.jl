@@ -58,10 +58,10 @@ function setup_agents(env)
         agent = create_agent_ddpg(na = na, ns = length(state(env,"agent")), use_gpu = false)
 
         for i in 1:3
-            agent.policy.behavior_actor.model.layers[i].weight ./= 100
-            agent.policy.behavior_actor.model.layers[i].bias ./= 100
-            agent.policy.target_actor.model.layers[i].weight ./= 100
-            agent.policy.target_actor.model.layers[i].bias ./= 100
+            agent.policy.behavior_actor.model.layers[i].weight ./= 3
+            agent.policy.behavior_actor.model.layers[i].bias ./= 3
+            agent.policy.target_actor.model.layers[i].weight ./= 3
+            agent.policy.target_actor.model.layers[i].bias ./= 3
         end
 
         agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
@@ -124,7 +124,7 @@ function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
-        hook = default_data_hook(Multi_Agent, env)
+        hook = DataHook()
 
     end
 
@@ -194,6 +194,8 @@ function dare_run(policy, env, stop_condition, hook, training = false)
             hook(POST_EPISODE_STAGE, policy, env, training)
         end
     end
+
+    policy(POST_EXPERIMENT_STAGE, env, training)
     hook(POST_EXPERIMENT_STAGE, policy, env, training)
-    hook
+    return hook
 end

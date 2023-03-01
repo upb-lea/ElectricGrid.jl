@@ -6,25 +6,25 @@ using Statistics
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
-# Network Configuration 
+# Network Configuration
 
 #-------------------------------------------------------------------------------
 # Time simulation
 
 Timestep = 1e-4  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.1   # total run time, seconds
-num_eps  = 100     # number of episodes to run
+num_eps  = 50     # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
-#=
+
 CM = [ 0. 0. 1.
         0. 0. 2.
         -1. -2. 0.]
-=#
 
-CM = [0. 1.
-      -1. 0.]
+
+#CM = [0. 1.
+#      -1. 0.]
 
 #-------------------------------------------------------------------------------
 # Parameters
@@ -44,15 +44,15 @@ C_1 = 1e-5;
 parameters = Dict{Any, Any}(
         "source" => Any[
                         Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "L", "L1" => L_1, "R1" => R_1, "i_limit"=>50, "v_limit"=>1000, ),
-                        #Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1, "R1"=>R_1, "L1"=>L_1, "C"=>C_1, "R_C"=>R_c, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10e8),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1, "R1"=>R_1, "L1"=>L_1, "C"=>C_1, "R_C"=>R_c, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10e8),
                         ],
          "load"   => Any[
-                        Dict{Any, Any}("impedance" => "R", "R" => 50, "L" => 0.006, "v_limit"=>10000, "i_limit"=>10e8),
+                        Dict{Any, Any}("impedance" => "R", "R" => 50, "v_limit"=>10000, "i_limit"=>10e8),
                         ],
         "cable"   => Any[
                         Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-8, "i_limit" => 10e8,"v_limit"=>1000, ),
                         ],
-        "grid" => Dict{Any, Any}("ramp_end" => 0.0, "phase" => 1 )
+        "grid" => Dict{Any, Any}("ramp_end" => 0.0, "phase" => 3 )
     )
 #_______________________________________________________________________________
 # Defining the environment
@@ -61,25 +61,25 @@ function reference(t)
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
     #i = [10 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
-    return [2]#, -1, -1]#[2, 2, 2]# * cos.(θph)
+    return [1, -2, 1]#, -1, -1]#[2, 2, 2]# * cos.(θph)
 end
 
 function reward(env, name = nothing)
-    
-    index_1 = findfirst(x -> x == "source1_i_L1", env.state_ids)
-    #index_2 = findfirst(x -> x == "source1_i_L1_b", env.state_ids)
-    #index_3 = findfirst(x -> x == "source1_i_L1_c", env.state_ids)
-    
+
+    index_1 = findfirst(x -> x == "source1_i_L1_a", env.state_ids)
+    index_2 = findfirst(x -> x == "source1_i_L1_b", env.state_ids)
+    index_3 = findfirst(x -> x == "source1_i_L1_c", env.state_ids)
+
     u_l1 = env.state[index_1]
-    #u_l2 = env.state[index_2]
-    #u_l3 = env.state[index_3]
+    u_l2 = env.state[index_2]
+    u_l3 = env.state[index_3]
 
     # better:
     #u = env.state[findall(x -> x in env.state_ids, env.state_ids_RL)]
     # problem, u_cable is state as well
 
-    u = [u_l1]#, u_l2, u_l3]
-  
+    u = [u_l1, u_l2, u_l3]
+
     if any(abs.(u).>1)
         return -1
     else
@@ -87,7 +87,7 @@ function reward(env, name = nothing)
         refs = reference(env.t)
         norm_ref = env.nc.parameters["source"][1]["i_limit"]
         #r = 1-(mean(abs.(refs/norm_ref - u)/2))                 # TODO: replace by correct entry of norm array
-        r = 1-(mean((abs.(refs/norm_ref - u)/2).^0.5)) 
+        r = 1-(mean((abs.(refs/norm_ref - u)/2).^0.5))
         return r #* (1-0.999f0)
     end
 end
@@ -119,12 +119,8 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_vrms_ids = [], 
-                collect_irms_ids = [], 
-                collect_pq_ids   = [], 
-                collect_freq     = [],
-                collect_sources  = [1],
-                plot_rewards = true)
+hook = DataHook(collect_sources  = [1],
+                plot_rewards = false)
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -135,23 +131,25 @@ function RLBase.action_space(env::SimEnv, name::String)
         end
 end
 
-ma = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
+ma = setup_agents(env)
 
-#RLBase.run(ma, env, StopAfterEpisode(num_eps), hook); 
+learn(ma, env, num_episodes = num_eps)
+
+#hook = DataHook(collect_state_ids = states_to_plot)
+
+simulate(ma, env, hook=hook)
+
+#RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(hook = hook, 
+
+plot_hook_results(hook = hook,
                     #episode = hook.bestepisode,
-                    episode = 100,
-                    #states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],
-                    states_to_plot  = env.state_ids,  
-                    actions_to_plot = env.action_ids,  
-                    p_to_plot       = [], 
-                    q_to_plot       = [], 
-                    vrms_to_plot    = [], 
-                    irms_to_plot    = [],
-                    freq_to_plot    = [],
+                    #episode = num_eps,
+                    states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],
+                    #states_to_plot  = env.state_ids,
+                    actions_to_plot = env.action_ids,
                     plot_reward=true)
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
