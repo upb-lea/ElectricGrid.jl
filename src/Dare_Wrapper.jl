@@ -2,13 +2,10 @@
     setup_agents(env, hook; num_episodes = 1, return_Agents = false)
 
 # Description
-Runs the simulation with the specified parameters.
+Initialises up the agents that will be controlling the electrical network.
 
 # Arguments
 - `env::SimEnv`: mutable struct containing the environment.
-
-# Keyword Arguments
-- `return_Agents::Float`: returns the mutable struct containing the agents.
 
 # Return Values
 - `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
@@ -37,34 +34,6 @@ function setup_agents(env)
     # Setting up the controls for the Reinforcement Learning Sources
 
     num_RL_sources = env.nc.num_sources - num_clas_sources # number of reinforcement learning controlled sources
-
-    #= for s in axes(Source_Indices, 1)
-
-        s_idx = string(Source_Indices[s])
-
-        Source.V_cable_loc[:, s]  = findall(contains(s_idx*"_v_C_cable"), state_ids_classic)
-        Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
-
-        if Source.filter_type[s] == "LC"
-
-            Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_filt"), state_ids)
-
-        elseif Source.filter_type[s] == "LCL"
-
-            Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
-
-        elseif Source.filter_type[s] == "L"
-
-            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_cable"), state_ids)   # TODO check _v_C_??
-        end
-    end
-
-    letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
-
-    Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)),
-    Source_Indices), letterdict[split(x, "_")[3]]] for x in action_ids_classic] =#
 
     RL_Source_Indices = Array{Int64, 1}(undef, 0)
     for ns in 1:env.nc.num_sources
@@ -164,6 +133,9 @@ function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
     return hook
 end
 
+"""
+which signals are the default ones if the user does not define a data hook for plotting
+"""
 function default_data_hook(Multi_Agent, env)
 
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
@@ -177,6 +149,8 @@ function default_data_hook(Multi_Agent, env)
                     #collect_loads    = all_loads,
                     vrms             = all_class,
                     irms             = all_class,
+                    vdq              = all_class,
+                    idq              = all_class,
                     power_pq         = all_class,
                     freq             = all_class,
                     angles           = all_class,
