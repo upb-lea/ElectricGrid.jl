@@ -8,7 +8,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 #-------------------------------------------------------------------------------
 # Time simulation
 
-t_end    = 0.8     # total run time, seconds
+t_end    = 0.5     # total run time, seconds
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -30,25 +30,33 @@ CM = [ 0. 0. 1.
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(200e3, 0.99, 230)
+R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3),
-                        Dict{Any, Any}("pwr" => 100e3),
+                        Dict{Any, Any}("pwr" => 200e3, 
+                                        "mode" => "VSG",
+                                        "v_δ_set" => 4),
+                        Dict{Any, Any}("pwr" => 100e3, 
+                                        "fltr" => "L",
+                                        "mode" => "PQ", 
+                                        "p_set" => 50e3, 
+                                        "q_set" => 10e3, 
+                                        "v_δ_set" => 1),
                         ],
         "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", 
                                         "R" => R_load, 
-                                        "L" => L_load),
+                                        "L" => L_load,
+                                        "v_limit" => 10e3),
                         ],
         "cable"   => Any[
-                        Dict{Any, Any}("R" => 0.1, 
-                                        "L" => 0.25e-3, 
-                                        "C" => 0.1e-4),
-                        Dict{Any, Any}("R" => 0.1, 
-                                        "L" => 0.25e-3, 
-                                        "C" => 0.1e-4),
+                        Dict{Any, Any}("R" => 0.01, 
+                                        "L" => 0.0025e-3, 
+                                        "C" => 0.001e-4),
+                        Dict{Any, Any}("R" => 0.01, 
+                                        "L" => 0.0025e-3, 
+                                        "C" => 0.001e-4),
                         ],
     )
 #_______________________________________________________________________________
@@ -73,11 +81,15 @@ hook = simulate(Multi_Agent, env)
 plot_hook_results(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
-                    power_p         = [1 2], 
-                    power_q         = [1 2], 
-                    v_mag           = [1 2], 
-                    i_mag           = [],
-                    freq            = [1 2],
+                    power_p_inv     = [2], 
+                    power_q_inv     = [2], 
+                    power_p_poc     = [2], 
+                    power_q_poc     = [2], 
+                    v_mag_inv       = [2], 
+                    v_mag_cap       = [2], 
+                    i_mag_inv       = [],
+                    i_mag_poc       = [],
+                    freq            = [],
                     angles          = [1 2])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

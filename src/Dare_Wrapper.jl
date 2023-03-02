@@ -95,10 +95,6 @@ function setup_agents(env)
     #_______________________________________________________________________________
     # Logging
 
-    if env.verbosity > 1
-
-        @info "Time simulation run time: $((env.maxsteps - 1)*env.ts) [s] ~ $(Int(env.maxsteps)) steps"
-    end
 
     #_______________________________________________________________________________
     # returns
@@ -147,11 +143,14 @@ function default_data_hook(Multi_Agent, env)
     hook = data_hook(collect_sources  = all_sources,
                     collect_cables   = all_cables,
                     #collect_loads    = all_loads,
-                    v_mag            = all_class,
-                    i_mag            = all_class,
-                    vdq              = all_class,
-                    idq              = all_class,
-                    power_pq         = all_class,
+                    v_mag_inv        = all_class,
+                    v_mag_cap        = all_class,
+                    i_mag_inv        = all_class,
+                    i_mag_poc        = all_class,
+                    #vdq              = all_class,
+                    #idq              = all_class,
+                    power_pq_inv     = all_class,
+                    power_pq_poc     = all_class,
                     freq             = all_class,
                     angles           = all_class,
                     i_sat            = all_class,

@@ -262,6 +262,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
     if verbosity > 1
         @info "Normalization is done based on the defined parameter limits."
+        @info "Time simulation run time: $((maxsteps - 1)*ts) [s] ~> $(Int(maxsteps)) steps"
     end
     states = get_state_ids(nc)
 

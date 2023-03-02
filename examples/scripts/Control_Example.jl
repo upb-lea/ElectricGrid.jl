@@ -111,8 +111,8 @@ source["Dp"]       = 202 # frequency droop coefficient
 source["Dq"]       = 6148 # voltage droop coefficient =#
 
 #= 
-source["I_kp"]     = 0.0032 # A/V
-source["I_ki"]     = 0.3497 # A/Vs
+source["I_kp"]     = 0.0032 # V/A
+source["I_ki"]     = 0.3497 # V/As
 
 source["V_kp"]     = 0.2964# A/V
 source["V_ki"]     = 5.856 # A/Vs =#
@@ -122,8 +122,8 @@ push!(source_list, source)
 #= 
 source["Dp"]           = 202 # frequency droop coefficient
 source["Dq"]           = 6148 # voltage droop coefficient
-source["I_kp"]         = 0.0032 # A/V
-source["I_ki"]         = 0.3497 # A/Vs
+source["I_kp"]         = 0.0032 # V/A
+source["I_ki"]         = 0.3497 # V/As
 source["V_kp"]         = 0.2964# A/V
 source["V_ki"]         = 5.856 # A/Vs
 source["fltr"]         = "LCL"
@@ -201,20 +201,21 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(v_mag    = [1 2], 
-                i_mag    = [1 2], 
-                vdq      = [1 2], 
-                idq      = [1 2], 
-                power_pq = [1 2],
-                freq     = [1 2],
-                angles   = [1 2],
-                i_sat    = [1 2],
-                v_sat    = [1],
-                i_err_t  = [1 2],
-                v_err_t  = [1],
-                i_err    = [1 2],
-                v_err    = [1],
-                debug    = [])
+hook = data_hook(v_mag_inv   = [1 2],
+                v_mag_cap    = [1 2], 
+                i_mag_inv    = [1 2], 
+                i_mag_poc    = [1 2], 
+                power_pq_inv = [1 2],
+                power_pq_poc = [1 2],
+                freq         = [1 2],
+                angles       = [1 2],
+                i_sat        = [1 2],
+                v_sat        = [1],
+                i_err_t      = [1 2],
+                v_err_t      = [1],
+                i_err        = [1 2],
+                v_err        = [1],
+                debug        = [])
 
 #_______________________________________________________________________________
 # initialising the agents 
@@ -236,12 +237,14 @@ for eps in 1:num_eps
                       episode = eps,
                       states_to_plot  = [], 
                       actions_to_plot = [],  
-                      vdq             = [], 
-                      idq             = [], 
-                      power_p         = [2], 
-                      power_q         = [2], 
-                      v_mag           = [1 2], 
-                      i_mag           = [],
+                      power_p_inv     = [2], 
+                      power_p_poc     = [2],
+                      power_q_inv     = [2], 
+                      power_q_poc     = [2],
+                      v_mag_inv       = [1 2], 
+                      v_mag_cap       = [1 2], 
+                      i_mag_inv       = [],
+                      i_mag_poc       = [],
                       freq            = [1 2],
                       angles          = [1 2],
                       i_sat           = [],
