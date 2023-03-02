@@ -64,7 +64,7 @@ function setup_agents(env)
             agent.policy.target_actor.model.layers[i].bias ./= 100
         end
 
-        agent = DareAgent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
+        agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
 
         RL_policy = Dict()
         RL_policy["policy"] = agent
@@ -144,11 +144,11 @@ function default_data_hook(Multi_Agent, env)
     all_loads = collect(1:env.nc.num_loads)
     all_cables = collect(1:env.nc.num_connections)
 
-    hook = DataHook(collect_sources  = all_sources,
+    hook = data_hook(collect_sources  = all_sources,
                     collect_cables   = all_cables,
                     #collect_loads    = all_loads,
-                    vrms             = all_class,
-                    irms             = all_class,
+                    v_mag            = all_class,
+                    i_mag            = all_class,
                     vdq              = all_class,
                     idq              = all_class,
                     power_pq         = all_class,
@@ -157,7 +157,8 @@ function default_data_hook(Multi_Agent, env)
                     i_sat            = all_class,
                     v_sat            = Source.grid_forming,
                     i_err_t          = all_class,
-                    v_err_t          = Source.grid_forming)
+                    v_err_t          = Source.grid_forming,
+                    debug            = [])
 
     return hook
 end

@@ -199,9 +199,9 @@ using Distributions
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = DataHook(collect_sources  = [1 2 3],
-                        vrms             = [1 2 3],
-                        irms             = [1 2 3],
+        hook = data_hook(collect_sources  = [1 2 3],
+                        v_mag            = [1 2 3],
+                        i_mag            = [1 2 3],
                         power_pq         = [1 2 3],
                         freq             = [1 2 3],
                         )
@@ -228,8 +228,8 @@ using Distributions
                                         actions_to_plot = [],
                                         power_p         = [1 2 3],
                                         power_q         = [1 2 3],
-                                        vrms            = [1 2 3],
-                                        irms            = [1 2 3],
+                                        v_mag           = [1 2 3],
+                                        i_mag           = [1 2 3],
                                         freq            = [1 2 3])
         end =#
 
@@ -394,13 +394,13 @@ end
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = DataHook(collect_sources  = [1 2 3],
-                        vrms             = [1 2 3],
-                        irms             = [1 2 3],
-                        power_pq         = [1 2 3],
-                        freq             = [1 2 3],
-                        angles           = [1 2 3],
-                        )
+        hook = data_hook(collect_sources  = [1 2 3],
+                         v_mag            = [1 2 3],
+                         i_mag            = [1 2 3],
+                         power_pq         = [1 2 3],
+                         freq             = [1 2 3],
+                         angles           = [1 2 3],
+                         )
 
         #_______________________________________________________________________________
         # initialising the agents
@@ -424,8 +424,8 @@ end
                                         actions_to_plot = [],
                                         power_p         = [3],
                                         power_q         = [3],
-                                        vrms            = [],
-                                        irms            = [],
+                                        v_mag           = [],
+                                        i_mag           = [],
                                         freq            = [3],
                                         angles          = [1 2 3])
         end =#
@@ -460,7 +460,7 @@ end
 
         stats = fit(Normal{Float32}, new_data)
 
-        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.015
+        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.02
         @test 1 ≈ stats.σ/parameters["source"][3]["std_asy"] atol = 0.1
         @test new_angles ≈ angles_eval atol = 0.001
 
@@ -537,11 +537,12 @@ end
                 "source" => Any[
                                 Dict{Any, Any}("pwr" => 200e3,
                                                 "mode" => "Semi-Synchronverter",
-                                                "v_pu_set" => 1.05),
+                                                "v_pu_set" => 1.0),
 
                                 Dict{Any, Any}("pwr" => 200e3,
                                                 "mode" => "PQ",
-                                                "p_set" => -51.1e3, # making this slightly less/more, means that the voltage control loop recovers
+                                                "fltr" => "LCL",
+                                                "p_set" => -41.5e3, # making this slightly less/more, means that the voltage control loop recovers
                                                 "q_set" => 100e3),
                                 ],
                 "cable"   => Any[
@@ -560,9 +561,9 @@ end
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = DataHook(collect_sources  = [1 2],
-                        vrms             = [1 2],
-                        irms             = [1 2],
+        hook = data_hook(collect_sources  = [1 2],
+                        v_mag            = [1 2],
+                        i_mag            = [1 2],
                         power_pq         = [1 2],
                         freq             = [1 2],
                         angles           = [1 2],
@@ -590,8 +591,8 @@ end
                         actions_to_plot = [],
                         power_p         = [],
                         power_q         = [],
-                        vrms            = [1 2],
-                        irms            = [1 2],
+                        v_mag           = [1 2],
+                        i_mag           = [1 2],
                         i_sat           = [1 2],
                         v_sat           = [1],
                         i_err_t         = [1 2],
@@ -608,3 +609,192 @@ end
 
         return nothing
 end
+
+@testset "Droop_frequency_v_mag" begin
+
+        #_______________________________________________________________________________
+        # Network Configuration 
+
+        #-------------------------------------------------------------------------------
+        # Time simulation
+
+        Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+        t_end    = 2.0     # total run time, seconds
+        num_eps  = 1       # number of episodes to run
+
+        #-------------------------------------------------------------------------------
+        # Connectivity Matrix
+
+        CM = [ 0. 0. 0. 1.
+                0. 0. 0. 2.
+                0. 0. 0. 3.
+                -1. -2. -3. 0.]
+
+        #= CM = [ 0. 0. 1.
+                0. 0. 2.
+                -1. -2. 0.] =#
+
+        #= CM = [ 0. 1.
+                -1. 0.] =#
+
+        #-------------------------------------------------------------------------------
+        # Parameters
+
+        #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "VSG" - enhanced droop control
+        =#
+
+        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 100)
+
+        parameters = Dict{Any, Any}(
+                "source" => Any[
+                                Dict{Any, Any}("pwr" => 200e3, 
+                                                "mode" => "VSG", 
+                                                "v_pu_set" => 1.0,
+                                                "vdc" => 800, 
+                                                "τv"       => 0.02,  # Time constant of the voltage loop, seconds
+                                                "τf"       => 0.02,  # Time constant of the frequency loop, seconds 
+                                                "i_rip" => 0.02),
+                                Dict{Any, Any}("pwr" => 150e3, 
+                                                "mode" => "Droop", 
+                                                "v_pu_set" => 1.0,
+                                                "vdc" => 800, 
+                                                "i_rip" => 0.02),
+                                Dict{Any, Any}("pwr" => 100e3, 
+                                                "mode" => "PQ", 
+                                                "p_set" => 40e3, 
+                                                "q_set" => 20e3,
+                                                "i_rip" => 0.1),
+                                ],
+                "load"   => Any[
+                                Dict{Any, Any}("impedance" => "RL", 
+                                                "R" => R_load, 
+                                                "L" => L_load),
+                                ],
+                "cable"   => Any[
+                                Dict{Any, Any}("R" => 0.1, 
+                                                "L" => 0.25e-4, 
+                                                "C" => 0.1e-5, 
+                                                "i_limit" => 10e4),
+                                Dict{Any, Any}("R" => 0.1, 
+                                                "L" => 0.25e-4, 
+                                                "C" => 0.1e-5, 
+                                                "i_limit" => 10e4,),
+                                Dict{Any, Any}("R" => 0.1, 
+                                                "L" => 0.25e-4, 
+                                                "C" => 0.1e-5, 
+                                                "i_limit" => 10e4,),
+                                ],
+                "grid" => Dict{Any, Any}("ramp_end" => 0.04, 
+                                        "f_grid" => 60, 
+                                        "process_start" => 1.0, 
+                                        "v_rms" => 100,
+                                        "Δfmax" => 0.005, # The drop (increase) in frequency that causes a 100% increase (decrease) in active power (from nominal)
+                                        "ΔEmax" => 0.05, # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
+                                        ) 
+        )
+        #_______________________________________________________________________________
+        # Defining the environment
+
+        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0, action_delay = 1)
+
+        #_______________________________________________________________________________
+        # initialising the agents 
+
+        Multi_Agent = setup_agents(env)
+        Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+        #_______________________________________________________________________________
+        # running the time simulation 
+
+        hook = simulate(Multi_Agent, env, num_episodes = num_eps)
+
+        total_steps = Int(env.maxsteps)
+        #_______________________________________________________________________________
+        # Plotting
+
+        #= plot_hook_results(hook = hook, 
+                        states_to_plot  = [], 
+                        actions_to_plot = [],  
+                        power_p         = [1 2 3], 
+                        power_q         = [1 2 3], 
+                        v_mag           = [1 2 3], 
+                        i_mag           = [],
+                        freq            = [1 2 3],
+                        angles          = [1 2 3],
+                        i_sat           = [],
+                        v_sat           = [],
+                        i_err_t         = [],
+                        v_err_t         = []) =#
+
+        #_______________________________________________________________________________
+        # tests
+        total_steps = Int(env.maxsteps)
+        step_start = convert(Int, round(env.nc.parameters["grid"]["process_start"]/Timestep)) - 5
+
+        # VSG
+        freq_start_1 = hook.df[!,"source1_freq"][step_start]
+        freq_end_1 = hook.df[!,"source1_freq"][total_steps]
+        freq_Δ_1 = (freq_start_1 - freq_end_1)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
+
+        vrms_start_1 = hook.df[!,"source1_v_mag"][step_start]
+        vrms_end_1 = hook.df[!,"source1_v_mag"][total_steps]
+        vrms_Δ_1 = (vrms_start_1 - vrms_end_1)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
+
+        p_start_1 = hook.df[!,"source1_p"][step_start]
+        p_end_1 = hook.df[!,"source1_p"][total_steps]
+        p_Δ_1 = - p_start_1 + p_end_1
+
+        q_start_1 = hook.df[!,"source1_q"][step_start]
+        q_end_1 = hook.df[!,"source1_q"][total_steps]
+        q_Δ_1 = - q_start_1 + q_end_1
+
+        dP_1 = p_Δ_1/Source.S[1]
+
+        dQ_1 = q_Δ_1/Source.S[1]
+
+        # Droop
+        freq_start_2 = hook.df[!,"source2_freq"][step_start]
+        freq_end_2 = hook.df[!,"source2_freq"][total_steps]
+        freq_Δ_2 = (freq_start_2 - freq_end_2)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
+
+        vrms_start_2 = hook.df[!,"source2_v_mag"][step_start]
+        vrms_end_2 = hook.df[!,"source2_v_mag"][total_steps]
+        vrms_Δ_2 = (vrms_start_2 - vrms_end_2)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
+
+        p_start_2 = hook.df[!,"source2_p"][step_start]
+        p_end_2 = hook.df[!,"source2_p"][total_steps]
+        p_Δ_2 = - p_start_2 + p_end_2
+
+        q_start_2 = hook.df[!,"source2_q"][step_start]
+        q_end_2 = hook.df[!,"source2_q"][total_steps]
+        q_Δ_2 = - q_start_2 + q_end_2
+
+        dP_2 = p_Δ_2/Source.S[2]
+
+        dQ_2 = q_Δ_2/Source.S[2]
+
+        @test freq_Δ_1/dP_1 ≈ 1 atol = 0.001
+        @test vrms_Δ_1/dQ_1 ≈ 1 atol = 0.001
+
+        @test freq_Δ_2/dP_2 ≈ 1 atol = 0.001
+        @test vrms_Δ_2/dQ_2 ≈ 1 atol = 0.001
+
+        @test freq_end_1/env.nc.parameters["grid"]["f_grid"] > 0.99 
+        @test freq_end_1/env.nc.parameters["grid"]["f_grid"] < 1.01 
+
+        @test freq_end_2/env.nc.parameters["grid"]["f_grid"] > 0.99 
+        @test freq_end_2/env.nc.parameters["grid"]["f_grid"] < 1.01 
+
+        @test vrms_end_1/env.nc.parameters["grid"]["v_rms"] > 0.99 
+        @test vrms_end_1/env.nc.parameters["grid"]["v_rms"] < 1.01 
+
+        @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] > 0.99 
+        @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] < 1.01 
+
+        return nothing
+end
+

@@ -190,7 +190,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     if isnothing(state_ids)
         if isnothing(nc)
             state_ids = []
-            @warn "No state_ids array specified - observing states with DataHook not possible"
+            @warn "No state_ids array specified - observing states with data_hook not possible"
         else
             state_ids = get_state_ids(nc)
         end
@@ -199,7 +199,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     if isnothing(action_ids)
         if isnothing(nc)
             action_ids = []
-            @warn "No state_ids array specified - observing states with DataHook not possible"
+            @warn "No state_ids array specified - observing states with data_hook not possible"
         else
             action_ids = get_action_ids(nc)
         end

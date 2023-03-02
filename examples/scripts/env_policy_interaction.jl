@@ -90,7 +90,7 @@ policy = sin_policy(action_space=action_space(env))
 
 #######################################################################################
 # Define data-logging hook
-hook = DataHook(state_ids = ["u_f1", "u_1", "u_l1", "i_f2"])
+hook = data_hook(state_ids = ["u_f1", "u_1", "u_l1", "i_f2"])
 
 #######################################################################################
 # GOAL: Use run function provided by ReinforcementLearning.jl to be able to interact 
