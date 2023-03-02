@@ -9,9 +9,9 @@ const DEFAULT_PARAMS = Dict{Any, Any}(
                     "grid"      => Dict{Any, Any}("ramp_end" => 0.04)
                 )
 
-function populate_params(Power, pf, Vrms=230)
+function PopulateParams(power, pf, Vrms=230)
 
-    R_load, L_load, _, _ = Parallel_Load_Impedance(Power, pf, Vrms)
+    R_load, L_load, _, _ = Parallel_Load_Impedance(power, pf, Vrms)
 
     # if haskey(params, "load")
     #     pop!(params, "load")
