@@ -11,6 +11,7 @@ print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
+num_eps = 1
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -51,9 +52,14 @@ hook = DataHook(collect_sources  = 1:num_sources,
                 )
 
 #_______________________________________________________________________________
-# Running the Time Simulation
+# initialising the agents 
 
-Power_System_Dynamics(env, hook)
+Multi_Agent = setup_agents(env)
+
+#_______________________________________________________________________________
+# running the time simulation 
+
+hook = simulate(Multi_Agent, env, 1, hook = hook)   
 
 #_______________________________________________________________________________
 # Plotting

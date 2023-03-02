@@ -1,7 +1,7 @@
 export MultiAgentGridController
 
 
-(p::NamedPolicy)(env::SimEnv) = p.policy(env, p.name)
+(p::NamedPolicy)(env::SimEnv, training::Bool = false) = p.policy(env, p.name, training)
 
 #= 
 Example for agents dict:
@@ -20,24 +20,24 @@ end
 
 Base.getindex(A::MultiAgentGridController, x) = getindex(A.agents, x)
 
-function (A::MultiAgentGridController)(env::AbstractEnv)
+function (A::MultiAgentGridController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
     for agent in values(A.agents)
-        action[findall(x -> x in agent["action_ids"], A.action_ids)] = agent["policy"](env)
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] = agent["policy"](env, training)
     end
 
     return action
 end
 
-function (A::MultiAgentGridController)(stage::AbstractStage, env::AbstractEnv)
+function (A::MultiAgentGridController)(stage::AbstractStage, env::AbstractEnv, training::Bool = false)
     for agent in values(A.agents)
-        agent["policy"](stage, env)
+        agent["policy"](stage, env, training)
     end
 end
 
-function (A::MultiAgentGridController)(stage::PreActStage, env::AbstractEnv, action)
+function (A::MultiAgentGridController)(stage::PreActStage, env::AbstractEnv, action, training::Bool = false)
     for agent in values(A.agents)
-        agent["policy"](stage, env, action[findall(x -> x in agent["action_ids"], A.action_ids)])
+        agent["policy"](stage, env, action[findall(x -> x in agent["action_ids"], A.action_ids)], training)
     end
 end

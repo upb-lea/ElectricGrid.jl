@@ -32,7 +32,7 @@ end
 
 
 # 3 Sources (LCl, LC and L) 1 Load (RLC)
-@testset "matrices" begin
+@testset "matrices_S3_L1" begin
 
     file = matread("./test/nc_test_2.mat")
 
@@ -113,6 +113,89 @@ end
     S3_L1.parameters["source"][1]
 
     A, B, C, D = get_sys(S3_L1);
+
+    @test file["A"] ≈ A atol=1e-9
+    @test file["B"] ≈ B atol=1e-9
+
+end
+
+
+# 3 Sources (LCl, LC and L) 1 Load (RLC)
+@testset "matrices_S1_L3" begin
+
+    file = matread("./test/nc_test_3.mat")
+
+    # Filter
+    R_1 = 1.1e-3;
+    L_1 = 70e-6;
+    R_c = 7e-3;
+    C_1 = 250e-6;
+
+    # Cable
+    C_b = 1e-4;
+    L_b = 1e-4;
+    R_b = 1e-3;
+
+    # Load
+    R_l = 100;
+    C_l = 1e-2;
+    L_l = 1e-2;
+
+    parameters = Dict()
+
+    grid_properties = Dict()
+    grid_properties["fs"] =  10e3
+    grid_properties["v_rms"] = 230
+    grid_properties["phase"] = 1;
+    parameters["grid"] = grid_properties
+
+    source = Dict()
+    source_list = []
+
+    source["fltr"] = "LCL"
+    source["R1"] = R_1
+    source["L1"] = L_1
+    source["C"] = C_1
+    source["R_C"] = R_c
+    source["R2"] = R_1
+    source["L2"] = L_1
+    push!(source_list, source)
+
+    parameters["source"] = source_list
+
+    cable = Dict()
+    cable["R"] = R_b
+    cable["L"] = L_b
+    cable["C"] = C_b
+    cable_list = []
+
+    push!(cable_list, cable, cable, cable);
+    parameters["cable"] = cable_list
+
+    load1 = Dict()
+    load2 = Dict()
+    load3 = Dict()
+    load_list = []
+
+    load1["impedance"] = "RLC"
+    load1["R"] = R_l;
+    load1["L"] = L_l;
+    load1["C"] = C_l;
+
+    load2["impedance"] = "L"
+    load2["L"] = L_l;
+
+    load3["impedance"] = "R"
+    load3["R"] = R_l;
+
+    push!(load_list, load1, load2, load3);
+    parameters["load"] = load_list;
+
+    S1_L3 = NodeConstructor(num_sources=1, num_loads=3, parameters=parameters, S2L_p =1, S2S_p=0.0, L2L_p=0.0);
+
+    S1_L3.parameters["source"][1]
+
+    A, B, C, D = get_sys(S1_L3);
 
     @test file["A"] ≈ A atol=1e-9
     @test file["B"] ≈ B atol=1e-9

@@ -49,9 +49,7 @@ another source and `S2L_p` is the probability that a source is connected to a lo
 """
 function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothing,
     S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, ts=10000, verbosity=0)
-
     tot_ele = num_sources + num_loads
-
     cntr = 0
     num_connections = 0
 
@@ -63,6 +61,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             throw("Expect the number of elements in the node to match the specified
                 structure in the CM, but got $tot_ele and $(size(CM)[1])")
         end
+
         num_connections = Int(maximum(CM))
     end
 
@@ -99,9 +98,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
         got $num_connections and $(length(parameters["cable"]))")
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
-
         loads = cntr_loads(parameters["load"])
-
         num_loads_RLC = loads[1]
         num_loads_LC = loads[2]
         num_loads_RL = loads[3]
@@ -139,9 +136,8 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
 
     if s_load_total > s_source_total
         if verbosity > 0
-            @warn("The aparent power drawn from the loads exceeds the aparent power provided
-                by all loads in steady state! Stable grid operation maybe not possible!
-                Please reconfigure the parameters!")
+            @warn("The apparent power drawn from the loads exceeds the apparent power provided
+                by all sources in steady state. Stable grid operation maybe not possible.")
         end
     end
 
@@ -184,14 +180,12 @@ Calculates the distribution of filters based on a Dirichlet distribution and the
 of filters.
 """
 function get_fltr_distr(num)
-
     # a = [.49 .02 .49] # probability for LC should be lower
     di_di = Dirichlet(ones(3))
     smpl = rand(di_di, 1) * num
     num_fltr_L = Int(floor(smpl[1]))
     num_fltr_LC = Int(ceil(clamp(smpl[2], 1, num - 1)))
     num_fltr_LCL = num - (num_fltr_LC + num_fltr_L)
-
     return num_fltr_L, num_fltr_LC, num_fltr_LCL
 end
 
@@ -205,7 +199,6 @@ of loads.
 function get_loads_distr(num)
     di_di = Dirichlet(ones(7)) # create dirichlet distribution
     smpl = rand(di_di, 1) * num
-
     num_loads_R = Int(floor(smpl[1]))
     num_loads_C = Int(floor(smpl[2]))
     num_loads_L = Int(floor(smpl[3]))
@@ -215,7 +208,6 @@ function get_loads_distr(num)
     num_loads_RLC = num -
         (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC +
         num_loads_LC)
-
     return (num_loads_R, num_loads_C, num_loads_L, num_loads_RL, num_loads_RC, num_loads_LC,
          num_loads_RLC)
 end
@@ -239,7 +231,6 @@ Gets `parameters` and controls the entries based on the given inputs `num_source
 function check_parameters(
     parameters, num_sources, num_loads, num_connections, CM, ts, verbosity
     )
-
     # Variable generation of the parameter dicts
 
     # check if parameters have been specified
@@ -259,29 +250,35 @@ function check_parameters(
         grid_properties["ramp_end"] = 2 / 50
         grid_properties["process_start"] = 2 / 50
         parameters["grid"] = grid_properties
-
     else
         if !haskey(parameters["grid"], "fs")
             parameters["grid"]["fs"] = 1 / ts
         end
+
         if !haskey(parameters["grid"], "v_rms")
             parameters["grid"]["v_rms"] = 230
         end
+
         if !haskey(parameters["grid"], "phase")
             parameters["grid"]["phase"] = 3
         end
+
         if !haskey(parameters["grid"], "f_grid")
             parameters["grid"]["f_grid"] = 50.0
         end
+
         if !haskey(parameters["grid"], "Δfmax")
             parameters["grid"]["Δfmax"] = 0.005
         end
+
         if !haskey(parameters["grid"], "ΔEmax")
             parameters["grid"]["ΔEmax"] = 5 / 100
         end
+
         if !haskey(parameters["grid"], "ramp_end")
             parameters["grid"]["ramp_end"] = 2 / parameters["grid"]["f_grid"]
         end
+
         if !haskey(parameters["grid"], "process_start")
             parameters["grid"]["process_start"] = 2 / parameters["grid"]["f_grid"]
         end
@@ -315,9 +312,11 @@ function check_parameters(
             dict is $num_def_sources and the number of env sources is $num_sources.")
 
         if num_undef_sources > 0
-            @warn("The number of defined sources $num_def_sources is smaller than the number
-                specified sources in the environment $num_sources, therefore the remaining
-                $num_undef_sources sources are selected randomly!")
+            if verbosity > 0
+                @warn("The number of defined sources $num_def_sources is smaller than the
+                    number specified sources in the environment $num_sources, therefore the
+                    remaining $num_undef_sources sources are selected randomly!")
+            end
         end
 
         num_LC_defined = 0
@@ -345,14 +344,10 @@ function check_parameters(
             if !haskey(source, "L1")
                 Vorms = parameters["grid"]["v_rms"] * 1.05
                 Vop = Vorms * sqrt(2)
-
                 Zl = 3 * Vorms^2 / source["pwr"]
-
                 Iorms = Vorms / Zl
                 Iop = Iorms * sqrt(2)
-
                 ΔIlfmax = source["i_rip"] * Iop
-
                 source["L1"] = (source["vdc"] * (4 * parameters["grid"]["fs"] * ΔIlfmax)^-1)
             end
 
@@ -360,17 +355,15 @@ function check_parameters(
                 source["fltr"] = "LCL"
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
-                source["fltr"] = "L"
-                @warn "Filter type not known! Set to L filter, please choose L, LC, or LCL!"
+                source["fltr"] = "LCL"
+                @warn "filterType not known! set to LCL filter, please choose L, LC, or LCL!"
             end
 
             if !haskey(source, "i_limit")
                 Vorms = parameters["grid"]["v_rms"] * 1.05
                 Vop = Vorms * sqrt(2)
                 i_lim_r = 1.5
-
                 Zl = 3 * Vorms^2 / source["pwr"]
-
                 Iorms = Vorms / Zl
                 Iop = Iorms * sqrt(2)
 
@@ -397,31 +390,26 @@ function check_parameters(
                 if !haskey(source, "C")
                     Vorms = parameters["grid"]["v_rms"] * 0.95
                     Vop = Vorms * sqrt(2)
-
                     Zl = 3 * Vorms * Vorms / source["pwr"]
-
                     Iorms = Vorms / Zl
                     Iop = Iorms * sqrt(2)
-
                     Ir_d = source["vdc"] /
                         (4 * parameters["grid"]["fs"] * source["L1"] * Iop)
-
                     ΔIlfmax = Ir_d * Iop
                     ΔVcfmax = source["v_rip"] * Vop
-
                     source["C"] = ΔIlfmax / (8 * parameters["grid"]["fs"] * ΔVcfmax)
                 end
 
                 if source["fltr"] == "LC" && !haskey(source, "R_C")
                     fc = parameters["grid"]["fs"] / 5
                     omega_c = 2 * pi * fc
-
                     source["R_C"] = 1 / (3 * omega_c * source["C"])
                 end
             end
 
             if (source["fltr"] == "LC" &&
                 (1 / sqrt(source["L1"] * source["C"]) > parameters["grid"]["fs"] / 2))
+
                 if verbosity > 0
                     @warn ("The LC filter parameters have been poorly chosen.
                         The filtering capacitors should be chosen such that the resonant
@@ -432,15 +420,7 @@ function check_parameters(
             end
 
             if !haskey(source, "v_limit")
-                #= if source["fltr"] == "L" # this is still not quite correct and causes controller instabilities
-                    source["v_limit"] = 1.1 * parameters["grid"]["v_rms"] * sqrt(2)
-                else
-                    v_lim_r = 1.5
-
-                    source["v_limit"] = v_lim_r * source["vdc"] * (1 + source["v_rip"] / 2)
-                end =#
                 v_lim_r = 1.5
-
                 source["v_limit"] = v_lim_r * source["vdc"] * (1 + source["v_rip"] / 2)
             end
 
@@ -453,25 +433,21 @@ function check_parameters(
                 omega_c = 2 * pi * fc
 
                 if !haskey(source, "L2")
-
                     source["L2"] = source["L1"] / (omega_c^2 * source["L1"] * source["C"] - 1)
                 end
 
                 if !haskey(source, "R2")
-
                     source["R2"] = 200 * source["L2"]
                 end
 
                 if !haskey(source, "R_C")
-
                     source["R_C"] = 1 / (3 * omega_c * source["C"]) #*** filter layout
                 end
-
             end
 
             if source["fltr"] == "LCL"
-                #TODO: Check if 1/2 * pi or 1/(2pi)
-                fc = (1 / 2 * pi) * sqrt((source["L1"] + source["L2"]) /
+
+                fc = (1 / (2 * pi)) * sqrt((source["L1"] + source["L2"]) /
                 (source["L1"] * source["L2"] * source["C"]))
 
                 if fc > parameters["grid"]["fs"] / 2
@@ -500,25 +476,16 @@ function check_parameters(
 
             if !haskey(source, "pf")
                 default_pf = 0.8
-
                 if !haskey(source, "p_set") && !haskey(source, "q_set")
-
                     source["pf"] = default_pf
-
                 elseif haskey(source, "q_set") && !haskey(source, "p_set")
-
                     p_set = sqrt(source["pwr"]^2 - source["q_set"]^2)
                     source["pf"] = p_set / source["pwr"]
-
                 elseif haskey(source, "p_set") && !haskey(source, "q_set")
-
                     source["pf"] = source["p_set"] / source["pwr"]
-
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
-
                     s_set = sqrt(source["p_set"]^2 + source["q_set"]^2) *
                         sign(source["p_set"] * source["q_set"])
-
                     if s_set == 0
                         source["pf"] = 1 / sqrt(2)
                     else
@@ -556,27 +523,19 @@ function check_parameters(
             end
 
             if !haskey(source, "std_asy") || haskey(source, "κ")# asymptotic standard deviation
-
-                #std_asy = sqrt(σ^2/(2*κ)) # asymptotic standard deviation
                 if !haskey(source, "σ")
-
                     source["std_asy"] = 0.0
                 elseif !haskey(source, "κ")
-
                     source["std_asy"] = source["pwr"] / 4
                 else
-
                     source["std_asy"] = source["σ"] / sqrt(2 * source["κ"])
                 end
             end
 
             if !haskey(source, "κ") # mean reversion parameter
-
                 if source["std_asy"] == 0.0
-
                     source["κ"] = 0.0
                 else
-
                     source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
                 end
             end
@@ -595,7 +554,6 @@ function check_parameters(
                     (parameters["grid"]["f_grid"])) / parameters["grid"]["fs"]
 
             elseif haskey(source, "Δt")
-
                 if typeof(source["Δt"]) == Int
                     steps = source["Δt"] # ... cycles for 1 step
                     source["Δt"] = round(steps * parameters["grid"]["fs"] / (parameters["grid"]["f_grid"])) / parameters["grid"]["fs"]
@@ -605,7 +563,6 @@ function check_parameters(
             end
 
             if !haskey(source, "k") # degree of polynomial
-
                 if source["σ"] == 0
                     source["k"] = 0
                 else
@@ -635,18 +592,20 @@ function check_parameters(
 
             # What is this? What if the user defined an L or LCL filter
             if num_LC_defined == 0 && num_fltr_LC_undef == 0
-                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
+                if verbosity > 0
+                    @warn("No LC filter defined/set random, if wanted please set in parameter
+                        dict!")
+                end
             end
-
         else
-
             if num_LC_defined == 0
-                @warn "No LC filter defined/set random, if wanted please set in parameter dict!"
+                @warn("No LC filter defined/set random, if wanted please set in parameter
+                    dict!")
             end
         end
-
-        source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined!"
-
+        if verbosity > 0
+            source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined!"
+        end
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
 
     end
@@ -666,7 +625,6 @@ function check_parameters(
         num_loads_RC = loads_distr[5]
         num_loads_LC = loads_distr[6]
         num_loads_RLC = loads_distr[7]
-
         load_list = []
 
         for l in 1:num_loads_RLC
@@ -696,11 +654,10 @@ function check_parameters(
         for l in 1:num_loads_R
             push!(load_list, _sample_load_R(parameters["grid"], num_loads)) # TODO: Sampling based on Grid_pwr
         end
-        parameters["load"] = load_list
 
+        parameters["load"] = load_list
     else
         num_def_loads = length(parameters["load"])
-
         num_undef_loads = num_loads - num_def_loads
 
         @assert(num_undef_loads >= 0, "Expect the number of defined loads within the
@@ -732,11 +689,13 @@ function check_parameters(
                         load["R"] = round(rand(Uniform(10, 1e5)), digits=3)
                     end
                 end
+
                 if value == "L"
                     if !haskey(load, "L")
                         load["L"] = rand(Uniform(1e-6, 1e-3))
                     end
                 end
+
                 if value == "C"
                     if !haskey(load, "C")
                         load["C"] = rand(Uniform(1e-9, 1e-4))
@@ -828,32 +787,36 @@ function check_parameters(
     if !haskey(parameters, "cable")
         # no cable params defined -- invoke PFE from here ??
         cable_list = []
+
         for c in 1:num_connections
             push!(cable_list, _sample_cable())
         end
+
         parameters["cable"] = cable_list
 
         if parameters["grid"]["pwr"] > 1e6
             @warn("Power of the network is greater than 1e6, therefore it may happen that
                 the automatic cable parameterization cannot be solved.")
+        end
 
         # invoke PFE
-        parameters = layout_cables(CM, num_sources, num_loads, parameters; verbosity=verbosity)
-        
+        parameters = layout_cabels(CM, num_sources, num_loads, parameters, verbosity)
+
     else
         num_def_cables = length(parameters["cable"])
-
         num_undef_cables = num_connections - num_def_cables
 
-        @assert(num_undef_cables >= 0 "Expect the number of defined cables within the
+        @assert(num_undef_cables >= 0, "Expect the number of defined cables within the
             parameter dict to be less or equal to the number of sources in the env, but the
             entries within the parameter dict is $num_def_cables and the number of env
             cables is $num_cables.")
 
         if num_undef_cables > 0
-            @warn("The number of defined cables $num_def_cables is smaller than the number
-                specified cables in the environment $num_connections, therefore the
-                remaining $num_undef_cables cables are selected randomly!")
+            if verbosity > 0
+                @warn("The number of defined cables $num_def_cables is smaller than the
+                    number specified cables in the environment $num_connections, therefore
+                    the remaining $num_undef_cables cables are selected randomly!")
+            end
         end
 
         cable_from_pfe_idx = []
@@ -865,8 +828,8 @@ function check_parameters(
 
             if !haskey(cable, "R") | !haskey(cable, "L") | !haskey(cable, "C")
                 @info("Parameters from cable $(idx) missing. All cable parameters are
-                calculate based on power flow equation. Create a counter - we don't want to
-                see this every time.")
+                    calculate based on power flow equation. Create a counter - we don't want
+                    to see this every time.")
                 push!(cable_from_pfe_idx, idx)
             end
         end
@@ -874,7 +837,7 @@ function check_parameters(
         # Solve PFE for all cables which do not have complete parameters
         if !isempty(cable_from_pfe_idx)
             println("START PFE")
-            parameters = layout_cables(CM, num_sources, num_loads, parameters; verbosity=verbosity)
+            parameters = layout_cabels(CM, num_sources, num_loads, parameters, verbosity)
         end
 
         if num_undef_cables > 0
@@ -899,7 +862,6 @@ function cntr_fltrs(source_list)
     cntr_L = 0
 
     for (i, source) in enumerate(source_list)
-        # println(source)
         if source["fltr"] == "LCL"
             cntr_LCL += 1
         elseif source["fltr"] == "LC"
@@ -955,35 +917,7 @@ end
 Sample parameters for the LCL filter.
 """
 function _sample_fltr_LCL(grid_properties)
-
-    source = Dict()
-    source["source_type"] = "ideal"
-    source["fltr"] = "LCL"
-
-    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
-    source["vdc"] = 800
-    source["i_rip"] = 0.15
-    source["v_rip"] = 0.01537
-    source["source_type"] = "ideal"
-
-    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
-    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.8 # power factor
-    source["p_set"] = source["pwr"] * source["pf"]
-    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
-    source["v_pu_set"] = 1.0
-    source["v_δ_set"] = 0.0
-    source["mode"] = "Droop"
-    source["control_type"] = "classic"
-    source["γ"] = source["p_set"]
-    source["std_asy"] = source["pwr"] / 4
-    source["σ"] = 0.0
-    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
-    source["X₀"] = source["p_set"]
-    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) /
-        grid_properties["fs"]
-    source["k"] = 0
-
+    source = _sample_source(grid_properties, "LCL")
 
     Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = Filter_Design(
         source["pwr"],
@@ -1014,33 +948,7 @@ end
 Sample parameters for the LC filter.
 """
 function _sample_fltr_LC(grid_properties)
-
-    source = Dict()
-    source["source_type"] = "ideal"
-    source["fltr"] = "LC"
-
-    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
-    source["vdc"] = 800
-    source["i_rip"] = 0.15
-    source["v_rip"] = 0.01537
-
-    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
-    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.8 # power factor
-    source["p_set"] = source["pwr"] * source["pf"]
-    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
-    source["v_pu_set"] = 1.0
-    source["v_δ_set"] = 0.0
-    source["mode"] = "Droop"
-    source["control_type"] = "classic"
-    source["γ"] = source["p_set"]
-    source["std_asy"] = source["pwr"] / 4
-    source["σ"] = 0.0
-    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
-    source["X₀"] = source["p_set"]
-    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) /
-        grid_properties["fs"]
-    source["k"] = 0
+    source = _sample_source(grid_properties, "LC")
 
     Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = Filter_Design(
         source["pwr"],
@@ -1069,33 +977,7 @@ end
 Sample parameters for the L filter.
 """
 function _sample_fltr_L(grid_properties)
-
-    source = Dict()
-    source["source_type"] = "ideal"
-    source["fltr"] = "L"
-
-    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
-    source["vdc"] = 800
-    source["i_rip"] = 0.15
-    source["v_rip"] = 0.01537
-
-    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
-    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
-    source["pf"] = 0.8 # power factor
-    source["p_set"] = source["pwr"] * source["pf"]
-    source["q_set"] = sqrt(source["pwr"]^2 - source["p_set"]^2)
-    source["v_pu_set"] = 1.0
-    source["v_δ_set"] = 0.0
-    source["mode"] = "Droop"
-    source["control_type"] = "classic"
-    source["γ"] = source["p_set"]
-    source["std_asy"] = source["pwr"] / 4
-    source["σ"] = 0.0
-    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
-    source["X₀"] = source["p_set"]
-    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) /
-        grid_properties["fs"]
-    source["k"] = 0
+    source = _sample_source(grid_properties, "L")
 
     Lf_1, R_1, i_limit = Filter_Design(
         source["pwr"],
@@ -1121,15 +1003,11 @@ end
 Sample parameters for the RLC load.
 """
 function _sample_load_RLC(grid_properties, num_loads)
-
     load = Dict()
-
     a = 0.3
     b = 1-a
-
-    S1 = grid_properties["pwr"] / num_loads * 0.95 * a
-    S2 = grid_properties["pwr"] / num_loads * 0.95 * b
-
+    S1 = grid_properties["pwr"] / num_loads * 0.7 * a
+    S2 = grid_properties["pwr"] / num_loads * 0.7 * b
     pf1 = round(rand(Uniform(.95, .99)), digits=3)
     pf2 = round(rand(Uniform(.95, .99)), digits=3)
 
@@ -1153,14 +1031,12 @@ end
 Sample parameters for the LC load.
 """
 function _sample_load_LC(grid_properties, num_loads)
-
     load = Dict()
-
     a = 0.3
     b = 1-a
 
-    S1 = grid_properties["pwr"] / num_loads * 0.95 * a
-    S2 = grid_properties["pwr"] / num_loads * 0.95 * b
+    S1 = grid_properties["pwr"] / num_loads * 0.7 * a
+    S2 = grid_properties["pwr"] / num_loads * 0.7 * b
 
     _, L, _, _= Parallel_Load_Impedance(S1, 0, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign="L")
@@ -1181,11 +1057,9 @@ end
 Sample parameters for the RL load.
 """
 function _sample_load_RL(grid_properties, num_loads)
-
     load = Dict()
-
     pf = round(rand(Uniform(.95, .99)), digits=3)
-    S = grid_properties["pwr"]/num_loads * 0.95
+    S = grid_properties["pwr"]/num_loads * 0.7
 
     R, L, _, _= Parallel_Load_Impedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
@@ -1204,11 +1078,9 @@ end
 Sample parameters for the RC load.
 """
 function _sample_load_RC(grid_properties, num_loads)
-
     load = Dict()
-
     pf = round(rand(Uniform(.9, .98)), digits=3)
-    S = grid_properties["pwr"] / num_loads * 0.95
+    S = grid_properties["pwr"] / num_loads * 0.7
 
     R, C, _, _= Parallel_Load_Impedance(S, -pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
@@ -1227,12 +1099,10 @@ end
 Sample parameters for the L load.
 """
 function _sample_load_L(grid_properties, num_loads)
-
     load = Dict()
     load["impedance"] = "L"
-
     pf = 0
-    S = grid_properties["pwr"]/num_loads * 0.95
+    S = grid_properties["pwr"] / num_loads * 0.7
 
     _, L, _, _= Parallel_Load_Impedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign=load["impedance"])
@@ -1249,16 +1119,13 @@ end
 Sample parameters for the C load.
 """
 function _sample_load_C(grid_properties, num_loads)
-
     load = Dict()
     load["impedance"] = "C"
-
     pf = 0
-    S = grid_properties["pwr"]/num_loads * 0.95
+    S = grid_properties["pwr"] / num_loads * 0.7
 
     _, C, _, _= Parallel_Load_Impedance(S, -pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign=load["impedance"])
-
 
     load["C"] = C
 
@@ -1272,10 +1139,9 @@ end
 Sample parameters for the R load.
 """
 function _sample_load_R(grid_properties, num_loads)
-
     load = Dict()
     pf = 1
-    S = grid_properties["pwr"]/num_loads * 0.95
+    S = grid_properties["pwr"] / num_loads * 0.7
 
     R, _, _, _= Parallel_Load_Impedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
@@ -1293,17 +1159,17 @@ end
 Sample parameters for the cable.
 """
 function _sample_cable()
-
     cable = Dict()
     cable["len"] = 1.0#rand(Uniform(1e-3, 1e1))
 
-    cable["Rb"] = 0.722
-    cable["Cb"] = 0.4e-6
-    cable["Lb"] = 0.264e-3
+    cable["R"] = 0.208   # Ω, line resistance
+    cable["L"] = 0.00025 # H, line inductance
+    cable["C"] = 0.4e-3  # F, line capacitance
+    cable["i_limit"] = 10e12   # A, line current limit
 
-    cable["R"] = cable["len"] * cable["Rb"]
-    cable["L"] = cable["len"] * cable["Lb"]
-    cable["C"] = cable["len"] * cable["Cb"]
+    cable["Rb"] = 0.722 / cable["len"]
+    cable["Cb"] = 0.4e-6 / cable["len"]
+    cable["Lb"] = 0.264e-3 / cable["len"]
 
     return cable
 end
@@ -1315,7 +1181,6 @@ end
 Sets x to zero or to the value of the counter as a function of p and increases it as well.
 """
 function tobe_or_n2b(cntr, x, p)
-
     if x < p
         cntr += 1
         return cntr, cntr
@@ -1383,28 +1248,22 @@ function CM_generate(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
 
     # make sure that no objects disappear or subnets are formed
     if S2L_p < 1
-
         for i in 1:tot_ele
             # save rows and columns entries
-
             Col = CM[1:i-1, i]
             Row = CM[i, i+1:tot_ele]
 
             # get one list in the form of: [column, row]-entries
             entries = vcat(Col, Row)
-
             non_zero = count(i -> (i != 0), entries) # number of non_zero entries
             zero = count(i -> (i == 0), entries) # number of zero entries
-
             val_to_set = min(2, zero) # minimum of connections is 2
 
             if non_zero <= 2 # we need to set values if there are less then 2 entries
                 idx_row_entries = findall(x -> x == 0, Col) # Get rows of the entries = 0
                 idx_col_entries = findall(x -> x == 0, Row) # Get col of the entries = 0
-
                 idx_list = vcat([(j, i) for j in idx_row_entries],
                     [(i, i + j) for j in idx_col_entries])
-
                 samples = min(val_to_set, length(idx_list))
 
                 # draw samples from the list
@@ -1432,7 +1291,6 @@ end
 Create the A_src entry for a source in the A matrix.
 """
 function get_A_src(self::NodeConstructor, source_i)
-
     parameter_i = self.parameters["source"][source_i]
 
     if parameter_i["fltr"] == "LCL"
@@ -1448,9 +1306,7 @@ function get_A_src(self::NodeConstructor, source_i)
         A_src[3, 4] = -1 / parameter_i["L2"]
 
         C_sum = 0
-
         CM_row = self.CM[source_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1461,9 +1317,7 @@ function get_A_src(self::NodeConstructor, source_i)
         end
 
         A_src[4, 3] = C_sum^(-1)
-
     elseif parameter_i["fltr"] == "LC"
-
         A_src = zeros(3, 3)
         A_src[1, 1] = -(parameter_i["R1"]) / parameter_i["L1"]
         A_src[1, 3] = -1 / parameter_i["L1"]
@@ -1471,9 +1325,7 @@ function get_A_src(self::NodeConstructor, source_i)
         A_src[2, 3] = 1 / (parameter_i["C"] * parameter_i["R_C"])
 
         C_sum = 0
-
         CM_row = self.CM[source_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1488,15 +1340,12 @@ function get_A_src(self::NodeConstructor, source_i)
         A_src[3, 3] = -1 / parameter_i["R_C"] * (C_sum)^(-1)
 
     elseif parameter_i["fltr"] == "L"
-
         A_src = zeros(2, 2)
         A_src[1, 1] = -parameter_i["R1"] / parameter_i["L1"]
         A_src[1, 2] = -1 / parameter_i["L1"]
 
         C_sum = 0
-
         CM_row = self.CM[source_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1521,17 +1370,14 @@ end
 Create the B_source entry for a source in the B matrix.
 """
 function get_B_source(self::NodeConstructor, source_i)
-
     parameter_i = self.parameters["source"][source_i]
 
     if parameter_i["fltr"] == "LCL"
         B_source = zeros(4, 1)
         B_source[1, 1] = 1 / parameter_i["L1"]
-
     elseif parameter_i["fltr"] == "LC"
         B_source = zeros(3, 1)
         B_source[1, 1] = 1 / parameter_i["L1"]
-
     elseif parameter_i["fltr"] == "L"
         B_source = zeros(2, 1)
         B_source[1, 1] = 1 / parameter_i["L1"]
@@ -1547,18 +1393,14 @@ end
 Create the A_src_trn_c entry in the A matrix.
 """
 function get_A_src_trn_c(self::NodeConstructor, source_i)
-
     parameter_i = self.parameters["source"][source_i]
 
     if parameter_i["fltr"] == "LCL"
         A_src_trn_c = zeros(4, self.num_connections)
-
         CM_row = self.CM[source_i, :]
-
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
-
         C_sum = 0
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1570,17 +1412,12 @@ function get_A_src_trn_c(self::NodeConstructor, source_i)
             idx = Int(idx)
             A_src_trn_c[4, idx] = sign * -(C_sum^(-1))
         end
-
     elseif parameter_i["fltr"] == "LC"
-
         A_src_trn_c = zeros(3, self.num_connections)
-
         CM_row = self.CM[source_i, :]
-
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
-
         C_sum = 0
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1592,17 +1429,12 @@ function get_A_src_trn_c(self::NodeConstructor, source_i)
             idx = Int(idx)
             A_src_trn_c[3, idx] = sign * -(C_sum^(-1))
         end
-
     elseif parameter_i["fltr"] == "L"
-
         A_src_trn_c = zeros(2, self.num_connections)
-
         CM_row = self.CM[source_i, :]
-
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
-
         C_sum = 0
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1626,13 +1458,11 @@ end
 Create the A_src_trn_l entry in the A matrix.
 """
 function get_A_src_trn_l(self::NodeConstructor, source_i)
-
     parameter_i = self.parameters["source"][source_i]
 
     if parameter_i["fltr"] == "LCL"
         A_src_trn_l = zeros(4, self.num_connections)
         CM_col = self.CM[source_i, :]
-
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1644,9 +1474,7 @@ function get_A_src_trn_l(self::NodeConstructor, source_i)
 
     elseif parameter_i["fltr"] == "LC"
         A_src_trn_l = zeros(3, self.num_connections)
-
         CM_col = self.CM[source_i, :]
-
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1658,9 +1486,7 @@ function get_A_src_trn_l(self::NodeConstructor, source_i)
 
     elseif parameter_i["fltr"] == "L"
         A_src_trn_l = zeros(2, self.num_connections)
-
         CM_col = self.CM[source_i, :]
-
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1681,14 +1507,12 @@ end
 Create the A_tran entry in the A matrix.
 """
 function generate_A_trn(self::NodeConstructor)
-    """Create A_trn"""
-
     vec = zeros(self.num_connections)
     for (i, ele) in enumerate(self.parameters["cable"])
         vec[i] = -ele["R"] / ele["L"]
     end
-    A_trn = Diagonal(vec)
 
+    A_trn = Diagonal(vec)
     return A_trn
 end
 
@@ -1699,23 +1523,19 @@ end
 Create the A_tran_load_c entry in the A matrix.
 """
 function get_A_tran_load_c(self::NodeConstructor, load_i)
-
     parameter_i = self.parameters["load"][load_i]
 
     if parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC"
         A_tran_load_c = zeros(2, self.num_connections)
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
-
         indizes_ = indizes .* signs # delet signs from indices
-
         C_sum = parameter_i["C"]
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1725,18 +1545,15 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
 
     elseif parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L"
         A_tran_load_c = zeros(2, self.num_connections)
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
-
         indizes_ = indizes .* signs # delet signs from indices
-
         C_sum = 0
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1746,18 +1563,15 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
 
     elseif parameter_i["impedance"] == "RC" || parameter_i["impedance"] == "C"
         A_tran_load_c = zeros(1, self.num_connections)
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
-
         indizes_ = indizes .* signs # delet signs from indices
-
         C_sum = parameter_i["C"]
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1767,18 +1581,15 @@ function get_A_tran_load_c(self::NodeConstructor, load_i)
 
     elseif parameter_i["impedance"] == "R"
         A_tran_load_c = zeros(1, self.num_connections)
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
-
         indizes_ = indizes .* signs # delet signs from indices
-
         C_sum = 0
 
-        for ele in self.parameters["cable"]
-            C_sum += ele["C"] * 0.5
+        for (idx, sign) in zip(indizes_, signs)
+            idx = Int(idx)
+            C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
         for (idx, sign) in zip(indizes_, signs)
@@ -1797,15 +1608,13 @@ end
 Create the A_tran_load_l entry in the A matrix.
 """
 function get_A_tran_load_l(self::NodeConstructor, load_i)
-
     parameter_i = self.parameters["load"][load_i]
 
     if (parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC" ||
         parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L")
+
         A_tran_load_l = zeros(self.num_connections, 2)
-
         CM_col = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1818,10 +1627,9 @@ function get_A_tran_load_l(self::NodeConstructor, load_i)
 
     elseif (parameter_i["impedance"] == "RC" || parameter_i["impedance"] == "C" ||
             parameter_i["impedance"] == "R")
+
         A_tran_load_l = zeros(self.num_connections, 1)
-
         CM_col = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
@@ -1848,14 +1656,10 @@ function get_A_load(self::NodeConstructor, load_i)
     if parameter_i["impedance"] == "RLC"
         A_load = zeros(2, 2)
         A_load[2, 1] = 1 / parameter_i["L"]
-
         C_sum = parameter_i["C"]
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes]
-
         indizes_ = indizes .* signs
 
         for idx in indizes_
@@ -1869,14 +1673,10 @@ function get_A_load(self::NodeConstructor, load_i)
     elseif parameter_i["impedance"] == "LC"
         A_load = zeros(2, 2)
         A_load[2, 1] = 1 / parameter_i["L"]
-
         C_sum = parameter_i["C"]
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes]
-
         indizes_ = indizes .* signs
 
         for idx in indizes_
@@ -1885,18 +1685,13 @@ function get_A_load(self::NodeConstructor, load_i)
         end
 
         A_load[1, 2] = -(C_sum)^(-1)
-
     elseif parameter_i["impedance"] == "RL"
         A_load = zeros(2, 2)
         A_load[2, 1] = 1 / parameter_i["L"]
-
         C_sum = 0
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes]
-
         indizes_ = indizes .* signs
 
         for idx in indizes_
@@ -1906,17 +1701,12 @@ function get_A_load(self::NodeConstructor, load_i)
 
         A_load[1, 1] = -((parameter_i["R"]) * C_sum)^(-1)
         A_load[1, 2] = -(C_sum)^(-1)
-
     elseif parameter_i["impedance"] == "RC"
         A_load = zeros(1, 1)
-
         C_sum = parameter_i["C"]
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes]
-
         indizes_ = indizes .* signs
 
         for idx in indizes_
@@ -1929,14 +1719,10 @@ function get_A_load(self::NodeConstructor, load_i)
     elseif parameter_i["impedance"] == "L"
         A_load = zeros(2, 2)
         A_load[2, 1] = 1 / parameter_i["L"]
-
         C_sum = 0
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes]
-
         indizes_ = indizes .* signs
 
         for idx in indizes_
@@ -1945,20 +1731,14 @@ function get_A_load(self::NodeConstructor, load_i)
         end
 
         A_load[1, 2] = -(C_sum)^(-1)
-
     elseif parameter_i["impedance"] == "C"
         A_load = zeros(1, 1)
-
     elseif parameter_i["impedance"] == "R"
         A_load = zeros(1, 1)
-
         C_sum = 0
-
         CM_row = self.CM[self.num_sources+load_i, :]
-
         indizes = CM_row[CM_row.!=0]
         signs = [sign(x) for x in indizes]
-
         indizes_ = indizes .* signs
 
         for idx in indizes_
@@ -1967,7 +1747,6 @@ function get_A_load(self::NodeConstructor, load_i)
         end
 
         A_load[1, 1] = -((parameter_i["R"]) * C_sum)^(-1)
-
     else
         throw("Expect Impedance to be \"RLC\", \"LC\", \"RL\", \"RC\", \"L\", \"C\" or
             \"R\", not $(parameter_i["impedance"]).")
@@ -1980,7 +1759,7 @@ end
 """
     generate_A(self::NodeConstructor)
 
-Generates the A matrix by joining the individual sub-matrices together.
+Returns the A matrix by joining the individual sub-matrices together.
 """
 function generate_A(self::NodeConstructor)
     """
@@ -2019,13 +1798,11 @@ function generate_A(self::NodeConstructor)
             stop = 4 + cntr
             cntr += 4
             A_src[start:stop, start:stop] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "LC"
             start = 1 + cntr
             stop = 3 + cntr
             cntr += 3
             A_src[start:stop, start:stop] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "L"
             start = 1 + cntr
             stop = 2 + cntr
@@ -2040,19 +1817,18 @@ function generate_A(self::NodeConstructor)
     # start at 1 bc Source 1
     A_src_trn_c_list = [get_A_src_trn_c(self, i) for i in 1:self.num_sources]
     cntr = 0
+
     for (i, ele) in enumerate(A_src_trn_c_list)
         if self.parameters["source"][i]["fltr"] == "LCL"
             start = 1 + cntr
             stop = 4 + cntr
             cntr += 4
             A_src_trn_c[start:stop, :] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "LC"
             start = 1 + cntr
             stop = 3 + cntr
             cntr += 3
             A_src_trn_c[start:stop, :] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "L"
             start = 1 + cntr
             stop = 2 + cntr
@@ -2074,13 +1850,11 @@ function generate_A(self::NodeConstructor)
             stop = 4 + cntr
             cntr += 4
             A_src_trn_l[:, start:stop] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "LC"
             start = 1 + cntr
             stop = 3 + cntr
             cntr += 3
             A_src_trn_l[:, start:stop] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "L"
             start = 1 + cntr
             stop = 2 + cntr
@@ -2093,17 +1867,19 @@ function generate_A(self::NodeConstructor)
 
     if self.num_loads > 0
         A_tran_load_l_list = []
+
         for i in 1:self.num_loads
             push!(A_tran_load_l_list, get_A_tran_load_l(self, i))
         end
-        A_tran_load_l = reduce(hcat, A_tran_load_l_list) # i-> idx // i+1 -> num of load
 
+        A_tran_load_l = reduce(hcat, A_tran_load_l_list) # i-> idx // i+1 -> num of load
         A_tran_load_c_list = []
+
         for i in 1:self.num_loads
             push!(A_tran_load_c_list, get_A_tran_load_c(self, i))
         end
-        A_tran_load_c = reduce(vcat, A_tran_load_c_list)
 
+        A_tran_load_c = reduce(vcat, A_tran_load_c_list)
         A_load_diag = zeros(self.num_impedance, self.num_impedance)
         A_load_list = [get_A_load(self, i) for i in 1:self.num_loads]
 
@@ -2129,10 +1905,8 @@ function generate_A(self::NodeConstructor)
                 start = (i + self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL +
                     self.num_loads_L)
                 A_load_diag[start:start, start:start] = ele
-
             end
         end
-
         A_load_zeros = zeros(self.num_fltr, self.num_impedance)
         A_load_zeros_t = A_load_zeros'
     end
@@ -2159,7 +1933,7 @@ end
 """
     generate_B(self::NodeConstructor)
 
-Generates the B matrix by joining the individual sub-matrices together.
+Returns the B matrix by joining the individual sub-matrices together.
 """
 function generate_B(self::NodeConstructor)
     """
@@ -2175,19 +1949,18 @@ function generate_B(self::NodeConstructor)
     # start at 1 bc Source 1
     B_source_list = [get_B_source(self, i) for i in 1:self.num_sources]
     cntr = 0
+
     for (i, ele) in enumerate(B_source_list)
         if self.parameters["source"][i]["fltr"] == "LCL"
             start = 1 + cntr
             stop = 4 + cntr
             cntr += 4
             B[start:stop, i] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "LC"
             start = 1 + cntr
             stop = 3 + cntr
             cntr += 3
             B[start:stop, i] = ele
-
         elseif self.parameters["source"][i]["fltr"] == "L"
             start = 1 + cntr
             stop = 2 + cntr
@@ -2195,6 +1968,7 @@ function generate_B(self::NodeConstructor)
             B[start:stop, i:i] = ele
         end
     end
+
     if self.parameters["grid"]["phase"] === 1
         return B
     elseif self.parameters["grid"]["phase"] === 3
@@ -2208,15 +1982,11 @@ end
 """
     generate_C(self::NodeConstructor)
 
-Generates the C matrix.
+Returns the C matrix.
 """
 function generate_C(self::NodeConstructor)
-    """Generate the C matrix
-
-    Retruns:
-        C: Identity matrix (2*num_sources+num_connections)
-    """
     C = Diagonal(ones(self.num_fltr + self.num_connections + self.num_impedance))
+
     if self.parameters["grid"]["phase"] === 1
         return C
     elseif self.parameters["grid"]["phase"] === 3
@@ -2231,7 +2001,7 @@ end
 """
     generate_D(self::NodeConstructor)
 
-Generates the D matrix.
+Returns the D matrix.
 """
 function generate_D(self::NodeConstructor)
     return 0
@@ -2241,11 +2011,10 @@ end
 """
     get_sys(self::NodeConstructor)
 
-Generates the system matrices A, B, C and D.
+Returns the system matrices A, B, C and D.
 """
 function get_sys(self::NodeConstructor)
-    """Returns state space matrices"""
-
+    # Returns state space matrices
     A = generate_A(self)
     B = generate_B(self)
     C = generate_C(self)
@@ -2253,29 +2022,26 @@ function get_sys(self::NodeConstructor)
     return (A, B, C, D)
 end
 
+#TODO: remove legacy workaround
+get_states(self::NodeConstructor) = get_state_ids(self)
+
 """
     get_state_ids(self::NodeConstructor)
 
 Creates the State Vector for an related NodeConstructor and outputs it as a list of strings.
 """
-
-#TODO: remove legacy workaround
-get_states(self::NodeConstructor) = get_state_ids(self)
-
 function get_state_ids(self::NodeConstructor)
     states = []
     for s in 1:self.num_sources
         if self.parameters["source"][s]["fltr"] == "LCL"
-            push!(states, "source$s" * "_i_L1")    # i_f1; dann i_f2....
+            push!(states, "source$s" * "_i_L1")
             push!(states, "source$s" * "_v_C_filt")
             push!(states, "source$s" * "_i_L2")
             push!(states, "source$s" * "_v_C_cables")
-
         elseif self.parameters["source"][s]["fltr"] == "LC"
             push!(states, "source$s" * "_i_L1")
             push!(states, "source$s" * "_v_C_filt")
             push!(states, "source$s" * "_v_C_cables")
-
         elseif self.parameters["source"][s]["fltr"] == "L"
             push!(states, "source$s" * "_i_L1")
             push!(states, "source$s" * "_v_C_cables")
@@ -2283,7 +2049,6 @@ function get_state_ids(self::NodeConstructor)
     end
 
     for c in 1:self.num_connections
-        # TODO: correct?
         push!(states, "cable$c" * "_i_L")
     end
 
@@ -2324,12 +2089,10 @@ function get_state_paras(self::NodeConstructor)
             push!(state_paras, self.parameters["source"][s]["C"])
             push!(state_paras, self.parameters["source"][s]["L2"])
             push!(state_paras, get_C_sum_cable_node(s, self))
-
         elseif self.parameters["source"][s]["fltr"] == "LC"
             push!(state_paras, self.parameters["source"][s]["L1"])
             push!(state_paras, self.parameters["source"][s]["C"])
             push!(state_paras, get_C_sum_cable_node(s, self))
-
         elseif self.parameters["source"][s]["fltr"] == "L"
             push!(state_paras, self.parameters["source"][s]["L1"])
             push!(state_paras, get_C_sum_cable_node(s, self))
@@ -2346,18 +2109,22 @@ function get_state_paras(self::NodeConstructor)
             self.parameters["load"][l]["impedance"] == "RL" ||
             self.parameters["load"][l]["impedance"] == "L")
             c = 0
+
             if haskey(self.parameters["load"][l], "C")
                 c = self.parameters["load"][l]["C"]
             end
+
             push!(state_paras, get_C_sum_cable_node(self.num_sources + l, self) + c)
             push!(state_paras, self.parameters["load"][l]["L"])
         elseif (self.parameters["load"][l]["impedance"] == "RC" ||
                 self.parameters["load"][l]["impedance"] == "C" ||
                 self.parameters["load"][l]["impedance"] == "R")
             c = 0
+
             if haskey(self.parameters["load"][l], "C")
                 c = self.parameters["load"][l]["C"]
             end
+
             push!(state_paras, get_C_sum_cable_node(self.num_sources + l, self) + c)
         end
     end
@@ -2401,10 +2168,8 @@ function get_action_ids(self::NodeConstructor)
     for s in 1:self.num_sources
         if self.parameters["source"][s]["fltr"] == "LCL"
             push!(actions, "source$s" * "_u")
-
         elseif self.parameters["source"][s]["fltr"] == "LC"
             push!(actions, "source$s" * "_u")
-
         elseif self.parameters["source"][s]["fltr"] == "L"
             push!(actions, "source$s" * "_u")
         end
@@ -2428,6 +2193,7 @@ function get_source_state_indices(self::NodeConstructor, sources)
     state_ids = get_state_ids(self)
     action_ids = get_action_ids(self)
     source_indices = Dict()
+
     for idx in sources
         source = Dict()
         state_indices = findall(x -> occursin("source$idx" * "_", x), state_ids)
@@ -2449,6 +2215,7 @@ Returns all state indices for passed cables.
 function get_cable_state_indices(self::NodeConstructor, cables)
     state_ids = get_state_ids(self)
     cable_indices = Dict()
+
     for idx in cables
         cable = Dict()
         state_indices = findall(x -> occursin("cable$idx" * "_", x), state_ids)
@@ -2468,6 +2235,7 @@ Returns all state indices for passed loads.
 function get_load_state_indices(self::NodeConstructor, loads)
     state_ids = get_state_ids(self)
     load_indices = Dict()
+
     for idx in loads
         load = Dict()
         state_indices = findall(x -> occursin("load$idx" * "_", x), state_ids)
@@ -2486,9 +2254,7 @@ Plotting a graphical representation of the grid.
 function draw_graph(self::NodeConstructor)
     CM = self.CM
     parameters = self.parameters
-
     CMtemp = CM + -2 * LowerTriangular(CM)
-
     G = SimpleGraph(CMtemp)
 
     # Position nodes
@@ -2542,7 +2308,6 @@ function draw_graph(self::NodeConstructor)
             push!(color_map, "#00F3E7")
         end
     end
-
 
     # Create edges
     edges_trace = scatter(
@@ -2616,6 +2381,7 @@ function get_Y_bus(self::NodeConstructor)
                 cable_idxs = filter(n -> n != 0, self.CM[row, :])
                 G = 0
                 B = 0
+
                 for idx in cable_idxs
                     # add all RL
                     idx = abs(Int(idx))
@@ -2628,6 +2394,7 @@ function get_Y_bus(self::NodeConstructor)
                     # and add all shunt C connected to that bus since diagonal element
                     B += omega * self.parameters["cable"][idx]["C"] / 2
                 end
+
                 Y_bus[row, col] = G + im * B
             end
         end
@@ -2638,12 +2405,9 @@ end
 
 
 """
-    Source_Setup(num_sources; random=nothing, awg_pwr=200e3, mode=3)
-
-Returns lala. TODO: Add documentation
+under development
 """
 function Source_Setup(num_sources; random=nothing, awg_pwr=200e3, mode=3)
-
     #= Modes:
         1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
         2 -> "PQ" - grid following controllable source/load (active and reactive Power)
@@ -2674,9 +2438,7 @@ function Source_Setup(num_sources; random=nothing, awg_pwr=200e3, mode=3)
             source["τv"] = 0.002  # Time constant of the voltage loop, seconds
             source["τf"] = 0.002  # Time constant of the frequency loop, seconds
             source["Observer"] = true   # Discrete Luenberger Observer
-
         else
-
             source["mode"] = mode
             source["fltr"] = "LCL"  # Filter type
             pwr = pwrs[i]
@@ -2700,9 +2462,7 @@ function Source_Setup(num_sources; random=nothing, awg_pwr=200e3, mode=3)
         end
 
         total_gen += pwr
-
         push!(source_list, source)
-
     end
 
     return source_list, total_gen
@@ -2712,14 +2472,13 @@ end
 """
     Load_Setup(num_loads, total_gen; gen_load_ratio=6, random=nothing, Vrms=230)
 
-Returns lala. TODO: Add documentation
+    under development
 """
 function Load_Setup(num_loads, total_gen; gen_load_ratio=6, random=nothing, Vrms=230)
     load_list = []
     avg_load = total_gen / (num_loads * gen_load_ratio)
 
     if random != 0 && !isnothing(random)
-
         Random.seed!(1234)
         pwrs = rand(Uniform(0.5 * avg_load, 1.5 * avg_load), num_loads)
         Random.seed!(1234)
@@ -2728,15 +2487,14 @@ function Load_Setup(num_loads, total_gen; gen_load_ratio=6, random=nothing, Vrms
 
     for i in 1:num_loads
         load = Dict()
+
         if random == 0 || isnothing(random)
             R_load, L_load, _, _ = Parallel_Load_Impedance(avg_load, 0.8, Vrms)
             load["impedance"] = "RL"
             load["R"] = R_load
             load["L"] = L_load
             load["S"] = avg_load
-
         else
-
             R_load, L_load, _, _ = Parallel_Load_Impedance(pwrs[i], pfs[i], Vrms)
             load["impedance"] = "RL"
             load["R"] = R_load
@@ -2754,7 +2512,7 @@ end
 """
     Cable_Length_Setup(num_cables; random=0, length_bounds=[0.5; 1.5])
 
-Returns lala. TODO: Add documentation
+    under development
 """
 function Cable_Length_Setup(num_cables; random=0, length_bounds=[0.5; 1.5])
     cable_list = []
@@ -2774,9 +2532,7 @@ function Cable_Length_Setup(num_cables; random=0, length_bounds=[0.5; 1.5])
             cable["L"] = 0.00025 # H, line inductance
             cable["C"] = 0.4e-3  # F, line capacitance
             cable["i_limit"] = 10e12   # A, line current limit
-
         else
-
             cable["len"] = lengths[i]
         end
 
@@ -2790,7 +2546,7 @@ end
 """
     MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=230)
 
-Returns lala. TODO: Add documentation
+under development
 """
 function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=230)
 
@@ -2836,10 +2592,8 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
             source["Observer"] = true   # Discrete Luenberger Observer
             source["τv"] = 0.002  # Time constant of the voltage loop, seconds
             source["τf"] = 0.002  # Time constant of the frequency loop, seconds
-
         else
-
-            source["mode"]     = "Synchronverter"
+            source["mode"] = "Synchronverter"
             source["fltr"] = "LCL"  # Filter type
             pwr = pwrs[i]
             source["pwr"] = pwr # Rated Apparent Power, VA
@@ -2849,62 +2603,11 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
             source["τf"] = 0.002 # Time constant of the frequency loop, seconds
             source["Observer"] = true # Discrete Luenberger Observer
             source["v_pu_set"] = 1.00 # Voltage Set Point, p.u.
-
         end
 
         total_gen += pwr
-
         push!(source_list, source)
     end
-
-    #= # Grid Following sources, i.e. controllable loads
-    avg_contr_load = total_gen/(num_contr_loads*gen_contr_load_ratio)
-
-    if random != 0 && !isnothing(random)
-
-        Random.seed!(1234)
-        pwrs = rand(Uniform(0.5*avg_contr_load, 1.5*avg_contr_load), num_contr_loads)
-        Random.seed!(1234)
-        pfs = rand(Uniform(0.9, 1.0), num_contr_loads)
-    end
-
-    for i in 1:num_contr_loads
-
-        source = Dict()
-
-        if random == 0 || isnothing(random)
-
-            source["mode"]     = 2
-
-            source["fltr"]     = "L"  # Filter type
-
-            pwr = avg_contr_load
-            pf = 0.9
-            source["pwr"]      = 1.5*pwr # Rated Apparent Power, VA
-            source["p_set"]    = -pf*pwr # Real Power Set Point, Watt
-            source["q_set"]    = -pwr*sqrt(1 - pf^2)   # Imaginary Power Set Point, VAi
-
-        else
-
-            source["mode"]     = 2
-
-            source["fltr"]     = "L"  # Filter type
-
-            source["pwr"]      = 1.5*pwrs[i] # Rated Apparent Power, VA
-            source["p_set"]    = -pfs[i]*pwrs[i] # Real Power Set Point, Watt
-            source["q_set"]    = -pwrs[i]*sqrt(1 - pfs[i]^2) # Imaginary Power Set Point, VAi
-
-            source["std_asy"]  = pwrs[i]/2   # Asymptotic Standard Deviation
-            source["σ"]        = pwrs[i]/2   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
-            source["Δt"]       = 0.02   # Time Step, seconds
-            #source["X₀"]       = 0      # Initial Process Values, Watt
-            source["k"]        = 1      # Interpolation degree
-
-        end
-
-        push!(source_list, source)
-
-    end =#
 
     # Static loads
     avg_static_load = total_gen / (num_static_loads * gen_static_load_ratio)
@@ -2912,9 +2615,7 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
     for i in 1:num_static_loads
 
         load = Dict()
-
         R_load, L_load, _, _ = Parallel_Load_Impedance(avg_static_load, 1.0, Vrms)
-
         load["impedance"] = "R"
         load["R"] = R_load
         load["L"] = L_load
@@ -2924,8 +2625,6 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
     end
 
     # Cables
-
-    #MG_cables = 2*num_sources
     MG_cables = num_sources
     inter_cables = num_cables - MG_cables
 
@@ -2952,12 +2651,43 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
     end
 
     # parameters
-
     parameters = Dict{Any,Any}()
-
     parameters["source"] = source_list
     parameters["load"] = load_list
     parameters["cable"] = cable_list
 
     return parameters
+end
+
+"""
+default source settings
+"""
+function _sample_source(grid_properties, fltr)
+    source = Dict()
+    source["source_type"] = "ideal"
+    source["fltr"] = fltr
+
+    source["pwr"] = rand(range(start=5, step=5, stop=50)) * 1e3
+    source["vdc"] = 800
+    source["i_rip"] = 0.15
+    source["v_rip"] = 0.01537
+
+    source["τv"] = 0.002 # time constant of the voltage loop # 0.02
+    source["τf"] = 0.002 # time constant of the frequency loop # 0.002
+    source["pf"] = 0.95 # power factor
+    source["p_set"] = 0#source["pwr"] * source["pf"]
+    source["q_set"] = 0#sqrt(source["pwr"]^2 - source["p_set"]^2)
+    source["v_pu_set"] = 1.0
+    source["v_δ_set"] = 0.0
+    source["mode"] = "Synchronverter"
+    source["control_type"] = "classic"
+    source["γ"] = source["p_set"]
+    source["std_asy"] = source["pwr"] / 4
+    source["σ"] = 0.0
+    source["κ"] = source["σ"]^2 / (2 * source["std_asy"]^2)
+    source["X₀"] = source["p_set"]
+    source["Δt"] = round(grid_properties["fs"] / (grid_properties["f_grid"])) / grid_properties["fs"]
+    source["k"] = 0
+
+    return source
 end

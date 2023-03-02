@@ -1,5 +1,5 @@
 using Dare
-using Distributions
+#using Distributions
 #= using DrWatson
 @quickactivate "dare"
 
@@ -22,7 +22,7 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
-num_eps  = 10       # number of episodes to run
+num_eps  = 4       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -72,7 +72,7 @@ source = Dict()
 
 source["mode"]     = 4
 
-source["fltr"]     = "LC"  # Filter type
+source["fltr"]     = "LCL"  # Filter type
 
 source["pwr"]      = 200e3  # Rated Apparent Power, VA
 source["p_set"]    = 50e3   # Real Power Set Point, Watt
@@ -170,7 +170,7 @@ push!(source_list, source) =#
 #-------------------------------------------------------------------------------
 # Loads
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.6, 230)
+R_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.95, 230)
 
 load_list = []
 load = Dict()
@@ -208,7 +208,7 @@ parameters["grid"] = grid
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
 
 #_______________________________________________________________________________
 # Setting up data hooks
@@ -217,13 +217,22 @@ hook = DataHook(vrms     = [1 2],
                 irms     = [1 2], 
                 power_pq = [1 2],
                 freq     = [1 2],
-                angles   = [1 2])
+                angles   = [1 2],
+                i_sat    = [1 2],
+                v_sat    = [1],
+                i_err_t  = [1 2],
+                v_err_t  = [1])
 
 #_______________________________________________________________________________
-# Running the Time Simulation
+# initialising the agents 
 
-Multi_Agent = Power_System_Dynamics(env, hook, num_episodes = num_eps, return_Agents = true)
+Multi_Agent = setup_agents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+#_______________________________________________________________________________
+# running the time simulation 
+
+hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
 #_______________________________________________________________________________
 # Plotting
@@ -239,7 +248,11 @@ for eps in 1:num_eps
                       vrms            = [1 2], 
                       irms            = [],
                       freq            = [1 2],
-                      angles          = [1 2])
+                      angles          = [1 2],
+                      i_sat           = [],
+                      v_sat           = [],
+                      i_err_t         = [1 2],
+                      v_err_t         = [1])
 end
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

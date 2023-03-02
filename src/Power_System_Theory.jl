@@ -1,3 +1,7 @@
+"""
+# Description
+Per phase least squares calculation of fundamental rms signal
+"""
 function RMS(θ, t_signals)
 
     # Calcutates the DC offset, RMS magnitude, and phase angle relative to the
@@ -48,6 +52,10 @@ function RMS(θ, t_signals)
     return rms
 end
 
+"""
+# Description
+Three phase DQ0 calculation of rms signals
+"""
 function DQ_RMS(i_abc)
 
     return i_rms = sqrt(1/3)*norm(DQ0_transform(i_abc, 0)[1:3])
@@ -347,6 +355,28 @@ function Series_Load_Impedance(S, pf, vrms; fsys = 50)
     return R, L_C, X, Z
 end
 
+"""
+R, L_C, X, Z = Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
+
+# Arguments
+- `S::Float`: 3 phase Apparent Power [VA]
+- `pf::Float`: power factor. pf > 0 -> inductive load, pf < 0 -> capacitive load
+- `Vrms::Float`: Line to Neutral rms voltage of external network [V]
+
+# Keyword Arguments
+- `fsys::Float`: system frequency [Hz]
+- `type_sign::String`: "L" or "C" -> for purely capacitive or inductive loads
+
+# Return Values
+- `R::Float`: resistance [Ω]
+- `L_C::Float`: inductance [H] or capacitance [F]
+- `X::Float`: reactance [Ω]
+- `Z::Complex`: impedance [Ω]
+
+# Theory
+Converts a Resistance-Inductance Load, or a Resistance-Capacitance Load
+from power to circuit values, where the components are placed in parallel.
+"""
 function Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
 
     ω = 2*π*fsys
@@ -383,6 +413,23 @@ function Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
     return R, L_C, X, Z
 end
 
+"""
+    Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+
+# Description
+Designs the filter inductances and capacitances for the sources
+
+# Arguments
+- `Sr::Float`: rated 3 phase Apparent Power [VA]
+- `fs::Float`:switching frequency
+- `fltr::String`: topology "LCL", "LC", "L"
+
+# Keyword Arguments
+- `Vrms::Float`: nominal AC rms voltage
+- `Vdc::Float`: nominal DC voltage
+- `ΔILf_ILf::Float`: current ripple ratio
+- `ΔVCf_VCf::Float`: voltage ripple ratio
+"""
 function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
 
     #= Theory:
@@ -560,29 +607,28 @@ function get_node_connections(CM = CM) # which nodes are connected to each other
     return result
 end
 
-
-function CheckPowerBalance(parameters, num_source, num_load, CM)
-    """
+"""
     p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(parameters)
 
-    # Description
-    Determines based on the parameters of the grid the total power (active and reactive) drawn from all load
-    and the total power provided by the sources.
-    Thereby, steady state is assumed.
+# Description
+Determines based on the parameters of the grid the total power (active and reactive) drawn from all load
+and the total power provided by the sources.
+Thereby, steady state is assumed.
 
-    # Arguments
-    - `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/nodeconstructor.
-    - `num_source::Int`: number of sources in the grid (todo: calulate based on parameter dict?)
-    - `num_load::Int`: number of num_load in the grid (todo: calulate based on parameter dict?)
-    - `CM::Matrix`: connectivity matrix describing the connections in the grid
+# Arguments
+- `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/nodeconstructor.
+- `num_source::Int`: number of sources in the grid (todo: calulate based on parameter dict?)
+- `num_load::Int`: number of num_load in the grid (todo: calulate based on parameter dict?)
+- `CM::Matrix`: connectivity matrix describing the connections in the grid
 
 
-    # Return Values
-    - `p_load_total::float`: total active power drawn by all loads (passive components as well as controlled with negative reference value)
-    - `q_load_total::float`: total reactive power drawn by all loads
-    - `s_load_total::float`: total aparent power drawn by all loads
-    - `s_source_total::float`: total aparent power provided by all sources in steady state
-    """
+# Return Values
+- `p_load_total::float`: total active power drawn by all loads (passive components as well as controlled with negative reference value)
+- `q_load_total::float`: total reactive power drawn by all loads
+-  s_load_total::float`: total apparent power drawn by all loads
+- `s_source_total::float`: total apparent power provided by all sources in steady state
+"""
+function CheckPowerBalance(parameters, num_source, num_load, CM)
 
     num_nodes = num_source + num_load
     num_cables = Int(maximum(CM))
@@ -599,7 +645,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 
             # println(s_source_total)
 
-            if parameters["source"][i]["mode"] in ["PQ Control", 3]
+            if parameters["source"][i]["mode"] in ["PQ", 3]
 
                 if parameters["source"][i]["p_set"] < 0
                     p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
@@ -609,7 +655,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
                     q_load_total = q_load_total + parameters["source"][i]["q_set"]/parameters["grid"]["phase"]
                 end
 
-            elseif parameters["source"][i]["mode"] in ["PV Control", 4]
+            elseif parameters["source"][i]["mode"] in ["PV", 4]
 
                 if parameters["source"][i]["p_set"] < 0
                     p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
@@ -619,19 +665,26 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 
             p_load_total = p_load_total + parameters["load"][i-num_source]["pf"]*parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             q_load_total = q_load_total + sin(acos(parameters["load"][i-num_source]["pf"]))*parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
-        end   
+        end
     end
 
     s_load_total = sqrt(p_load_total^2 + q_load_total^2)
     return p_load_total, q_load_total, s_load_total, s_source_total
 end
 
+optimizer_status = Dict()
+function get_optimizer_status(model)
 
-function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosity)
+    status = Dict(
+                    "termination_status" => termination_status(model),
+                    "primal_status"      => (primal_status(model)),
+                    "objective_value"    => (objective_value(model))
+                )
 
-    if verbosity > 1
-        @info "The cable parameters will be automatically generated."
-    end
+    return status
+end
+
+function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
@@ -791,10 +844,10 @@ function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosi
     D = 0.5 #m
 
     for i=1:num_cables
-        
-       
-        set_bounds(cables[i, "radius"], (3e-3)/2, 0.1*(2.05232e-3)/2, 100*(4.1148e-3)/2) #m 
-        # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m 
+
+
+        set_bounds(cables[i, "radius"], (3e-3)/2, 0.1*(2.05232e-3)/2, 100*(4.1148e-3)/2) #m
+        # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m
         # assumption: min value of D-to-neutral : 3 * max radius :  # (2.05232e-3)/2, (4.1148e-3)/2
         set_bounds(cables[i, "D-to-neutral"], 0.5, 0.1, 1.0) #m
         # assumption to line to line(neutral) --  for low voltages
@@ -909,144 +962,161 @@ function layout_cables(CM, num_source, num_load, parameters; verbosity = verbosi
                             # + λ₂ * sum( (cables[i, "D-to-neutral"]  for i in 1:num_cables)) / (num_cables * (D_to_neutral_upper - D_to_neutral_lower) )
                             )
 
-
+    set_silent(model)    # turns off output of the solver #TODO put to verbosity?
     optimize!(model)
 
-    # TODO: put these warning/messages with logger // verbosity 
-    if verbosity > 0
+    # TODO: put these warning/messages with logger // verbosity
+    if verbosity > 1
+        println("CABLE LAYOUT BASED ON POWER FLOW EQUATIONS:")
         println("""
         termination_status = $(termination_status(model))
         primal_status      = $(primal_status(model))
         objective_value    = $(objective_value(model))
-        """) 
+        """)
+        global optimizer_status = get_optimizer_status(model)
+        @show optimizer_status["termination_status"]
 
-        @show total_P_load, total_Q_load
-        # check radius - check bounds
-        @show value.(R_cable)
+
+        println()
+        println()
+        println(value.(nodes))
+        println("asdasdasd")
+        println()
+        println(value.(cables))
     end
-
-    println()
-    println()
-    output = value.(nodes.data)
-    output = 3*output[:, 3:end]
-    @show display(output)
-
-    for (index, cable) in enumerate(parameters["cable"])
-
-        cable["L"] = value.(L_cable)[index]
-        cable["Lb"] = cable["L"]/cable["len"]
-
-        cable["R"] = value.(R_cable)[index]
-        cable["Rb"] = cable["R"]/cable["len"]
-
-        cable["C"] = value.(C_cable)[index]
-        cable["Cb"] = cable["C"]/cable["len"]
+    #= OPTIMAL, LOCALLY_SOLVED, INFEASIBLE, DUAL_INFEASIBLE, and TIME_LIMIT.
+    if termination_status(model) == OPTIMAL
+        println("Solution is optimal")
+    elseif termination_status(model) == TIME_LIMIT && has_values(model)
+        println("Solution is suboptimal due to a time limit, but a primal solution is available")
+    else
+        error("The model was not solved correctly.")
     end
+    =#
+    if termination_status(model) in [OPTIMAL, LOCALLY_SOLVED]
+        # if solver was successful, we use the values
+        for (index, cable) in enumerate(parameters["cable"])
 
-    for i in 1:num_cables
+            cable["L"] = value.(L_cable)[index]
+            cable["Lb"] = cable["L"]/cable["len"]
 
-        j, k = Tuple(findfirst(x -> x == i, CM))
+            cable["R"] = value.(R_cable)[index]
+            cable["Rb"] = cable["R"]/cable["len"]
 
-        #= Legacy code
-            a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-            #println(omega*value.(L_cable)[i])
-            println()
-            println()
-            println(value.(B)[j,j])
-            println(value.(G)[j,j])
-            println()
-            println()
-
-            Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i])
-            V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-            V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-            println()
-            println("Aparent power:")
-            println(conj(Y)*conj(V1-V2)*V1)
-
-            println()
-            println()
-
-            println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
-
-            println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
-            println()
-            println()
-
-            dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
-
-            I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
-            println(I)
-        =#
-
-        Z = value.(R_cable)[i] + 1im*omega*value.(L_cable)[i]
-        Zₘ = abs(Z)
-        θᵧ = angle(Z)
-
-        Y = 1im*omega*value.(C_cable)[i] # C is the total capacitance of the line, not the halved capacitance
-        A = 1 + Y*Z/2
-        Aₘ = abs(A)
-        θₐ = angle(A)
-
-        vᵣ = value.(nodes[k, "v"]) # magnitude of receiving end voltage
-        vₛ = value.(nodes[j, "v"]) # magnitude of sending end voltage
-
-        P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-        #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
-        #Q = value.(nodes[j, "Q"])
-
-        println(Zₘ)
-        println(P)
-        println(value.(C_cable))
-        println(value.(L_cable))
-        println(Aₘ)
-        println(vᵣ)
-        println(θᵧ)
-        println(θₐ)
-        println(vₛ)
-
-
-        δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
-
-        Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
-        Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
-
-        Yₗ = 1/Z # for debugging
-        Iₗ = (conj(Yₗ)*(Vr - Vs)) # this is almost our answer - the limit through the inductor
-
-        I₂ = ((Vs - A*Vr)/Z)
-
-        #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
-
-        if !haskey(parameters["cable"][i], "i_limit")
-            parameters["cable"][i]["i_limit"] = abs(Iₗ)
+            cable["C"] = value.(C_cable)[index]
+            cable["Cb"] = cable["C"]/cable["len"]
         end
 
-        #=
-        S = sqrt(P^2 + Q^2)
-        println("\nDebugging\n")
-        println("1. Cable = ", i)
-        println("2. δ = ", δ, " ?= ", value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))
-        println("3. S = ", S, " S₁ ?= ", abs(Vs*conj(Yₗ)*(Vr - Vs)), " ?= ", abs(Vr*conj(Yₗ)*(Vs - Vr)))
-        println("4. S = ", S, " S₂ ?= ", abs(Vs*Iₗ), " ?= ", abs(Vs*I₂), " ?= ", abs(Vr*Iₗ), " ?= ", abs(Vr*I₂))
-        println("5. |Iₗ| = ", abs(Iₗ), " angle = ", angle(Iₗ)*180/pi, " Iₗ = ", Iₗ, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)), " this is probably the right one")
-        println("6. |I₂| = ", abs(I₂), " angle = ", angle(I₂)*180/pi, " I₂ = ", I₂, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
-        println("7. vᵣ = ", value.(nodes[j, "v"]))
-        println("8. vₛ = ", value.(nodes[k, "v"]))
-        println("9. P = ", P, " ?= ", vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ), " ?= ", real(Vs*I₂), " ?= ", real(Vr*I₂), " ?= ", real(Vs*Iₗ), " ?= ", real(Vr*Iₗ))
-        println("10. Q = ", Q, " ?= ", vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ)/(Zₘ), " ?= ", imag(Vs*I₂), " ?= ", imag(Vr*I₂), " ?= ", imag(Vs*Iₗ), " ?= ", imag(Vr*Iₗ))
-        println("11. R = ", value.(R_cable)[i] , " L = ", value.(L_cable)[i], " C = ", value.(C_cable)[i])
-        println("12. Vs = ", Vs , " Vr = ", Vr)
-        println()
-        =#
+        for i in 1:num_cables
 
+            j, k = Tuple(findfirst(x -> x == i, CM))
+
+            #= Legacy code
+                a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+                #println(omega*value.(L_cable)[i])
+                println()
+                println()
+                println(value.(B)[j,j])
+                println(value.(G)[j,j])
+                println()
+                println()
+
+                Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i])
+                V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
+                V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
+                println()
+                println("Aparent power:")
+                println(conj(Y)*conj(V1-V2)*V1)
+
+                println()
+                println()
+
+                println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
+
+                println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
+                println()
+                println()
+
+                dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
+
+                I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
+                println(I)
+            =#
+
+            Z = value.(R_cable)[i] + 1im*omega*value.(L_cable)[i]
+            Zₘ = abs(Z)
+            θᵧ = angle(Z)
+
+            Y = 1im*omega*value.(C_cable)[i] # C is the total capacitance of the line, not the halved capacitance
+            A = 1 + Y*Z/2
+            Aₘ = abs(A)
+            θₐ = angle(A)
+
+            vᵣ = value.(nodes[k, "v"]) # magnitude of receiving end voltage
+            vₛ = value.(nodes[j, "v"]) # magnitude of sending end voltage
+
+            P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
+            #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
+            #Q = value.(nodes[j, "Q"])
+
+            # println(Zₘ)
+            # println(P)
+            # println(value.(C_cable))
+            # println(value.(L_cable))
+            # println(Aₘ)
+            # println(vᵣ)
+            # println(θᵧ)
+            # println(θₐ)
+            # println(vₛ)
+
+
+            δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
+
+            Vr = vᵣ # magnitude of receiving end voltage - set angle to 0.0
+            Vs = vₛ*exp(1im*δ) # magnitude and angle of sending end voltage
+
+            Yₗ = 1/Z # for debugging
+            Iₗ = (conj(Yₗ)*(Vr - Vs)) # this is almost our answer - the limit through the inductor
+
+            I₂ = ((Vs - A*Vr)/Z)
+
+            #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
+
+            if !haskey(parameters["cable"][i], "i_limit")
+                parameters["cable"][i]["i_limit"] = abs(Iₗ)
+            end
+
+            #=
+            S = sqrt(P^2 + Q^2)
+            println("\nDebugging\n")
+            println("1. Cable = ", i)
+            println("2. δ = ", δ, " ?= ", value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))
+            println("3. S = ", S, " S₁ ?= ", abs(Vs*conj(Yₗ)*(Vr - Vs)), " ?= ", abs(Vr*conj(Yₗ)*(Vs - Vr)))
+            println("4. S = ", S, " S₂ ?= ", abs(Vs*Iₗ), " ?= ", abs(Vs*I₂), " ?= ", abs(Vr*Iₗ), " ?= ", abs(Vr*I₂))
+            println("5. |Iₗ| = ", abs(Iₗ), " angle = ", angle(Iₗ)*180/pi, " Iₗ = ", Iₗ, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)), " this is probably the right one")
+            println("6. |I₂| = ", abs(I₂), " angle = ", angle(I₂)*180/pi, " I₂ = ", I₂, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
+            println("7. vᵣ = ", value.(nodes[j, "v"]))
+            println("8. vₛ = ", value.(nodes[k, "v"]))
+            println("9. P = ", P, " ?= ", vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ), " ?= ", real(Vs*I₂), " ?= ", real(Vr*I₂), " ?= ", real(Vs*Iₗ), " ?= ", real(Vr*Iₗ))
+            println("10. Q = ", Q, " ?= ", vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ)/(Zₘ), " ?= ", imag(Vs*I₂), " ?= ", imag(Vr*I₂), " ?= ", imag(Vs*Iₗ), " ?= ", imag(Vr*Iₗ))
+            println("11. R = ", value.(R_cable)[i] , " L = ", value.(L_cable)[i], " C = ", value.(C_cable)[i])
+            println("12. Vs = ", Vs , " Vr = ", Vr)
+            println()
+            =#
+
+        end
+    else
+        if verbosity > 0
+            @warn("Power flow equation not solveable! Maybe parameter setting invalid.
+                  Default values are used for cable parameters")
+        end
     end
 
     return parameters
 end
 
 """
-    R, L = Fault_Level(S, X_R, Vrms; fsys = 50)
+    R, L = Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
 
 # Arguments
 - `S::Float`: 3 phase Fault Level [VA]
@@ -1055,6 +1125,7 @@ end
 
 # Keyword Arguments
 - `fsys::Float`: system frequency [Hz]
+- `phase::Int`: single or 3 phase system, i.e. phase = 1, or phase = 3
 
 # Return Values
 - `R::Float`: effective resistance [Ω]
@@ -1069,11 +1140,11 @@ ratios are in the range of 0.5 to 1.5, for distribution networks. Transmission n
 at higher voltages tend to have higher X/R ratios.
 
 """
-function Fault_Level(S, X_R, Vrms; fsys = 50)
+function Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
 
     rad = atan(X_R)
 
-    I_fault = S/(3*Vrms)
+    I_fault = S/(phase*Vrms)
     Z = Vrms/I_fault
 
     R = Z*cos(rad)

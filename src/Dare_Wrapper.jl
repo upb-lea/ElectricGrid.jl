@@ -1,23 +1,17 @@
-
 """
-    Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
+    setup_agents(env, hook; num_episodes = 1, return_Agents = false)
 
 # Description
-Runs the simulation with the specified parameters.
+Initialises up the agents that will be controlling the electrical network.
 
 # Arguments
 - `env::SimEnv`: mutable struct containing the environment.
-- `hook::DataHook`: mutable struct definining the signals to be saved.
-
-# Keyword Arguments
-- `num_episodes::Int`: the number of times that the simulation is run.
-- `return_Agents::Float`: returns the mutable struct containing the agents.
 
 # Return Values
-- `Multi_Agent::MultiAgentGridController`: (optional)
+- `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
 
 """
-function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = false)
+function setup_agents(env)
 
 
     #_______________________________________________________________________________
@@ -41,34 +35,6 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
     num_RL_sources = env.nc.num_sources - num_clas_sources # number of reinforcement learning controlled sources
 
-    #= for s in axes(Source_Indices, 1)
-
-        s_idx = string(Source_Indices[s])
-
-        Source.V_cable_loc[:, s]  = findall(contains(s_idx*"_v_C_cable"), state_ids_classic)
-        Source.I_inv_loc[:, s] = findall(contains(s_idx*"_i_L1"), state_ids_classic)
-
-        if Source.filter_type[s] == "LC"
-
-            Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_filt"), state_ids)
-
-        elseif Source.filter_type[s] == "LCL"
-
-            Source.V_cap_loc[:, s]  = findall(contains(s_idx*"_v_C_filt"), state_ids_classic)
-            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_i_L2"), state_ids_classic)
-        
-        elseif Source.filter_type[s] == "L"
-
-            Source.I_poc_loc[:, s] = findall(contains(s_idx*"_v_C_cable"), state_ids)   # TODO check _v_C_??
-        end
-    end
-
-    letterdict = Dict("a" => 1, "b" => 2, "c" => 3)
-
-    Source.Action_loc = [[findfirst(y -> y == parse(Int64, SubString(split(x, "_")[1], 7)), 
-    Source_Indices), letterdict[split(x, "_")[3]]] for x in action_ids_classic] =#
-
     RL_Source_Indices = Array{Int64, 1}(undef, 0)
     for ns in 1:env.nc.num_sources
 
@@ -78,7 +44,7 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     end
 
     ssa = "source".*string.(RL_Source_Indices)
-    env.state_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.state_ids)     
+    env.state_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.state_ids)
     env.action_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.action_ids)
 
     if num_RL_sources > 0
@@ -98,7 +64,7 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
             agent.policy.target_actor.model.layers[i].bias ./= 100
         end
 
-        agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
+        agent = DareAgent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
 
         RL_policy = Dict()
         RL_policy["policy"] = agent
@@ -107,7 +73,7 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
         Agents[nameof(agent)] = RL_policy
     end
-    
+
     #-------------------------------------------------------------------------------
     # Finalising the Control
 
@@ -123,7 +89,7 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
 
         Agents[nameof(Animo)] = polc
     end
-    
+
     Multi_Agent = MultiAgentGridController(Agents, env.action_ids)
 
     #_______________________________________________________________________________
@@ -132,144 +98,102 @@ function Power_System_Dynamics(env, hook; num_episodes = 1, return_Agents = fals
     if env.verbosity > 1
 
         @info "Time simulation run time: $((env.maxsteps - 1)*env.ts) [s] ~ $(Int(env.maxsteps)) steps"
-        @info "Number of episodes: $(num_episodes)"
     end
-    
+
     #_______________________________________________________________________________
-    # Running the time simulation
-    
-    RLBase.run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook);    
+    # returns
 
-    if return_Agents
+    return Multi_Agent
 
-        return Multi_Agent
-    else
-        
-        return nothing
-    end
 end
 
+function simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
-#= 
-    mutable struct dare_setup
-        env
-        control_agent
-        hook
+    if isnothing(hook) # default hook
+
+        hook = default_data_hook(Multi_Agent, env)
+
     end
 
-    function create_setup(;num_sources, num_loads, CM=nothing, parameters=nothing, ts=0.0001, t_end=0.05, env_cuda=false, agent_cuda=false)
+    dare_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
 
-        CM = [ 0. 0. 1.
-        0. 0. 2
-        -1. -2. 0.]
+    return hook
+end
 
-        #-------------------------------------------------------------------------------
-        # Cables
+function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
-        cable_list = []
+    if isnothing(hook) # default hook
 
-        # Network Cable Impedances
-        l = 1.0 # length in km
-        cable = Dict()
-        cable["R"] = 0.208*l # Ω, line resistance 0.722#
-        cable["L"] = 0.00025*l # H, line inductance 0.264e-3#
-        cable["C"] = 0.4e-6*l # 0.4e-6#
+        hook = default_data_hook(Multi_Agent, env)
 
-        push!(cable_list, cable, cable)
+    end
 
-        # Sources
+    dare_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
 
-        source_list = []
-        source = Dict()
-        # time step
-        ts = 0.0001
+    return hook
+end
 
-        fs = 1/ts
+"""
+which signals are the default ones if the user does not define a data hook for plotting
+"""
+function default_data_hook(Multi_Agent, env)
 
-        source["pwr"] = 200e3
-        #source["vdc"] = 800
-        source["fltr"] = "LC"
-        Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-        source["R1"] = 0.4
-        source["R_C"] = 0.0006
-        source["L1"] = Lf
-        source["C"] = Cf
-        source["v_limit"]= 1500
-        source["i_limit"]= 1000
+    Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+    all_class = collect(1:Source.num_sources)
+    all_sources = collect(1:env.nc.num_sources)
+    all_loads = collect(1:env.nc.num_loads)
+    all_cables = collect(1:env.nc.num_connections)
 
-        push!(source_list, source)
+    hook = DataHook(collect_sources  = all_sources,
+                    collect_cables   = all_cables,
+                    #collect_loads    = all_loads,
+                    vrms             = all_class,
+                    irms             = all_class,
+                    vdq              = all_class,
+                    idq              = all_class,
+                    power_pq         = all_class,
+                    freq             = all_class,
+                    angles           = all_class,
+                    i_sat            = all_class,
+                    v_sat            = Source.grid_forming,
+                    i_err_t          = all_class,
+                    v_err_t          = Source.grid_forming)
 
-        source = Dict()
+    return hook
+end
 
-        source["pwr"] = 100e3
-        source["vdc"] = 600
-        source["fltr"] = "LC"
-        Lf, Cf, _ = Filter_Design(source["pwr"], fs)
-        source["R1"] = 0.4
-        source["R_C"] = 0.0006
-        source["L1"] = Lf
-        source["C"] = Cf
-        source["v_limit"]= 1500 
-        source["i_limit"]= 1000
+function dare_run(policy, env, stop_condition, hook, training = false)
 
-        push!(source_list, source)
+    hook(PRE_EXPERIMENT_STAGE, policy, env, training)
+    policy(PRE_EXPERIMENT_STAGE, env, training)
+    is_stop = false
+    while !is_stop
+        RLBase.reset!(env)
+        policy(PRE_EPISODE_STAGE, env, training)
+        hook(PRE_EPISODE_STAGE, policy, env, training)
 
-        #-------------------------------------------------------------------------------
-        # Loads
+        while !is_terminated(env) # one episode
+            action = policy(env, training)
 
-        load_list = []
-        load = Dict()
+            policy(PRE_ACT_STAGE, env, action, training)
+            hook(PRE_ACT_STAGE, policy, env, action, training)
 
-        R1_load, L_load, _, _ = Load_Impedance_2(50e3, 0.6, 230)
-        #R2_load, C_load, _, _ = Load_Impedance_2(150e3, -0.8, 230)
+            env(action)
 
-        load["impedance"] = "RL"
-        load["R"] = R1_load# + R2_load # 
-        load["L"] = L_load
-        #load["C"] = C_load
+            policy(POST_ACT_STAGE, env, training)
+            hook(POST_ACT_STAGE, policy, env, training)
 
-        push!(load_list, load)
+            if stop_condition(policy, env)
+                is_stop = true
+                break
+            end
+        end # end of an episode
 
-        #-------------------------------------------------------------------------------
-        # Amalgamation
-
-        parameters = Dict()
-
-        parameters["source"] = source_list
-        parameters["cable"] = cable_list
-        parameters["load"] = load_list
-        parameters["grid"] = Dict("fs" => fs, "phase" => 1, "v_rms" => 230)
-
-        maxsteps = Int(t_end / ts)
-
-        function reward(env, name = nothing)
-            u_l1_index = findfirst(x -> x == "source1_v_C", env.state_ids)
-
-            u_l1 = env.state[u_l1_index]
-
-            ref = sqrt(2)*230 * cos.(2*pi*50*env.t)
-
-            r = -abs(ref/600 - u_l1)/3 * (1 - 0.99)
-        
-            return r
+        if is_terminated(env)
+            policy(POST_EPISODE_STAGE, env, training)  # let the policy see the last observation
+            hook(POST_EPISODE_STAGE, policy, env, training)
         end
-
-        env = SimEnv(reward_function = reward, num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, ts = ts, maxsteps = maxsteps, use_gpu = env_cuda)
-
-        ns = length(env.sys_d.A[1,:])
-        na = length(env.sys_d.B[1,:])
-
-        agent = create_agent_ddpg(na = na, ns = ns, use_gpu = env_cuda)
-
-        hook = DataHook(save_best_NNA = true, plot_rewards = true, collect_state_ids = env.state_ids, collect_action_ids = [])
-
-        dare_setup(env, agent, hook)
     end
-
-    function run(dare_setup, no_episodes)
-
-        RLBase.run(dare_setup.control_agent, dare_setup.env, StopAfterEpisode(no_episodes), dare_setup.hook)
-
-        return nothing
-    end 
-=#
+    hook(POST_EXPERIMENT_STAGE, policy, env, training)
+    hook
+end

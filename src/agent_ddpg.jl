@@ -4,6 +4,49 @@ using Zygote: ignore
 import CUDA: device
 using MacroTools: @forward
 
+Base.@kwdef struct DareAgent{P<:AbstractPolicy,T<:AbstractTrajectory} <: AbstractPolicy
+    policy::P
+    trajectory::T
+    hook
+end
+
+functor(x::DareAgent) = (policy = x.policy,), y -> @set x.policy = y.policy
+
+(agent::DareAgent)(env; training = false) = agent.policy(env; training)
+
+function check(agent::DareAgent, env::AbstractEnv)
+    if ActionStyle(env) === FULL_ACTION_SET &&
+       !haskey(agent.trajectory, :legal_actions_mask)
+    end
+    check(agent.policy, env)
+end
+
+Base.nameof(agent::DareAgent) = nameof(agent.policy)
+
+function (agent::DareAgent)(stage::AbstractStage, env::AbstractEnv, training = false)
+    training && update!(agent.trajectory, agent.policy, env, stage)
+    training && update!(agent.policy, agent.trajectory, env, stage)
+    agent.hook(stage, agent, env, training)
+end
+
+function (agent::DareAgent)(stage::PreExperimentStage, env::AbstractEnv, training = false)
+    training && update!(agent.policy, agent.trajectory, env, stage)
+    agent.hook(stage, agent, env, training)
+end
+
+function (agent::DareAgent)(stage::PreActStage, env::AbstractEnv, action, training = false)
+    training && update!(agent.trajectory, agent.policy, env, stage, action)
+    training && update!(agent.policy, agent.trajectory, env, stage)
+    agent.hook(stage, agent, env, action, training)
+end
+
+#remove training for all policies that do not define it
+(policy::AbstractPolicy)(env, training::Bool) = policy(env)
+(policy::AbstractPolicy)(env, name::Union{Nothing, String}, training::Bool) = policy(env, name)
+(policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, training::Bool) = policy(stage, env)
+(policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, action, training::Bool) = policy(stage, env, action)
+
+
 Base.@kwdef struct DareNeuralNetworkApproximator{M,O} <: AbstractApproximator
     model::M
     optimizer::O = nothing
@@ -116,7 +159,7 @@ function (::DareDDPGPolicy)(::AbstractStage, ::AbstractEnv)
     nothing
 end
 
-function (p::DareDDPGPolicy)(env::SimEnv, name::Any = nothing)
+function (p::DareDDPGPolicy)(env::SimEnv, name::Any = nothing, training = false)
     p.update_step += 1
 
     if p.update_step <= p.start_steps
@@ -126,7 +169,11 @@ function (p::DareDDPGPolicy)(env::SimEnv, name::Any = nothing)
         s = isnothing(name) ? state(env) : state(env, name)
         s = Flux.unsqueeze(s, ndims(s) + 1)
         actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
-        c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
+        if training
+            c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
+        else
+            c = clamp.(actions, -p.act_limit, p.act_limit)
+        end
         #p.na == 1 && return c[1]
         c
     end
@@ -210,7 +257,7 @@ global create_critic(na, ns) = Chain(
 )
 
 function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
-    Agent(
+    DareAgent(
         policy = DareDDPGPolicy(
             behavior_actor = DareNeuralNetworkApproximator(
                 model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
@@ -244,6 +291,9 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
             capacity = 20_000,
             state = Vector{Float32} => (ns,),
             action = Float32 => (na, ),
+        ),
+        hook = DataHook(
+            is_inner_hook_RL = true
         ),
     )
 end

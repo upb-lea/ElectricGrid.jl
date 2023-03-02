@@ -6,30 +6,9 @@ global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_ti
 
 
 @testset "NodeConstructor" begin
-    
+
     include("./nc_test_function.jl")
-    # TODO check A, B, C and D matrix with analytical calculation
 
-    #sum of the output of get_fltr_distr should add up to the argument
-    for i in 1:4:300
-        @test i == sum(get_fltr_distr(i))
-    end
-
-    #same for get_loads_distr
-    for i in 1:4:300
-        @test i == sum(get_loads_distr(i))
-    end
-
-    #test lengths of check_parameters output
-    #temp = check_parameters(Dict(), 3,2,6) #TODO add CM
-    #@test length(temp) == 4
-    #@test length(temp["source"])        == 3
-    #@test length(temp["source"][1])     == 12
-    #@test length(temp["load"])          == 2
-    #@test length(temp["load"][1])       == 4
-    #@test length(temp["cable"])         == 6
-    #@test length(temp["cable"][1])      == 7
-    #@test length(temp["grid"])          == 4
 end
 
 @testset "Env" begin
@@ -57,15 +36,19 @@ end
 end
 
 @testset "ClassicalController" begin
-    
+
     include("./classic_control_test.jl")
-    
+
 end
 
 @testset "DataHook" begin
-    
+
 end
 
+# Need to define where this should go
+@testset "Optimizer" begin
+    include("./env_test_optimizer_status.jl")
+end
 
 #@testset "env_run_1" begin
 #    @test 1==1

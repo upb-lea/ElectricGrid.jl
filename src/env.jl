@@ -2,7 +2,7 @@
 
 #= # might be better for large sparse matrices
 using SparseArrays
-using FastExpm 
+using FastExpm
 =#
 
 
@@ -48,9 +48,9 @@ end
     SimEnv(...)
 
 # Description
-Returns an environment consisting of an electrical power grid as control plant, 
-which can interact via this interface with a reinforcement learing agent from 
-https://juliareinforcementlearning.org/ 
+Returns an environment consisting of an electrical power grid as control plant,
+which can interact via this interface with a reinforcement learing agent from
+https://juliareinforcementlearning.org/
 
 # Arguments
 
@@ -59,14 +59,14 @@ https://juliareinforcementlearning.org/
 - `ts::Float`: Sampling time by which the environment is evolved per step.
 - `action_space::Space`: Defines the valide space per action.
 - `state_space::Space`: Defines the valide space per state. Default is [-1, 1] since the states of the env will be normalized.
-- `prepare_action::function(env::SimEnv)`: Function to adjust, change, prepare the actions before they are applied to the env during a step(). 
+- `prepare_action::function(env::SimEnv)`: Function to adjust, change, prepare the actions before they are applied to the env during a step().
                                            Per default it returns the action without changes.
-- `featurize::function(x:Vector, t:Float; env::SimEnv, name::String)`: Function to adjust the state before it is returned by the env. For example here 
-reference values can be added to provide the to an RL agent or other feature engineering to improve the learning.  
+- `featurize::function(x:Vector, t:Float; env::SimEnv, name::String)`: Function to adjust the state before it is returned by the env. For example here
+reference values can be added to provide the to an RL agent or other feature engineering to improve the learning.
 - `reward_function::function(env::SimEnv, name::String) )`: Function to define the reward for a (named) policy. Return 0 per default.
 - `CM::Vactor`: Conectivity matrix to define the structure of the electric power grid (for more details see NodeConstructor)
-- `num_sources::Int`: Number of sources in the electric power grid 
-- `num_loads::Int`: Number of loads in the electric power grid 
+- `num_sources::Int`: Number of sources in the electric power grid
+- `num_loads::Int`: Number of loads in the electric power grid
 - `parameter::Dict`: Dictonary to define the parameterof the grid. Entries can be "grid", "source", "load", "cable". Here, e.g. the electric components are defined.
 - `x0::Vactor`: Co
 
@@ -80,20 +80,20 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
         maxsteps = floor(t_end/ts) + 1
     end
 
-    if isnothing(num_sources) && isnothing(num_loads) 
-        
+    if isnothing(num_sources) && isnothing(num_loads)
+
     end
 
 
 
-    
-    
-    if !(isnothing(num_sources) || isnothing(num_loads)) 
+
+
+    if !(isnothing(num_sources) || isnothing(num_loads))
 
         nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, ts = ts, verbosity = verbosity)
 
     else
-        
+
 
         if isnothing(parameters)
             # Construct standard env with 2 sources, 1 load
@@ -107,14 +107,14 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
                 num_sources = length(parameters["source"])
                 num_loads = length(parameters["load"])
-            elseif haskey(parameters, "source") 
+            elseif haskey(parameters, "source")
                 num_sources = length(parameters["source"])
                 num_loads = 0
             else
                 @info "Three phase electric power grid with 2 sources and 1 load is created! Parameters are drawn randomly! To change, please define parameters (see nodeconstructor)"
                 num_sources = 2
                 num_loads = 1
-            end 
+            end
             nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM, parameters = parameters, ts = ts, verbosity = verbosity)
         end
 
@@ -123,14 +123,14 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     A, B, C, D = get_sys(nc)
     Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
-    Bd = (Ad - I) * B # 
+    Bd = (Ad - I) * B #
     ldiv!(factorize(A), Bd)
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
     state_parameters = get_state_paras(nc)
 
     if use_gpu
         Ad = CuArray(A)
-        Bd = CuArray(B) 
+        Bd = CuArray(B)
         C = CuArray(C)
         if isa(D, Array)
             D = CuArray(D)
@@ -154,13 +154,13 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     end
 
     if isnothing(prepare_action)
-        prepare_action = function(env) 
+        prepare_action = function(env)
             env.action
         end
     end
 
     if isnothing(reward_function)
-        reward_function = function(env, name = nothing) 
+        reward_function = function(env, name = nothing)
             return 0.0
         end
     end
@@ -212,7 +212,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
     if isnothing(action_ids_RL)
         action_ids_RL = action_ids
     end
-    
+
     vdc_fixed = 0
     v_dc = ones(nc.num_sources)  # vector to store evaluated v_dc_arr (constants and functions) in the env, needed e.g. in the data_hook
     v_dc_arr = []  # array to store all functions for v_dc as well as constants
@@ -240,7 +240,7 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
                 # find(x -> .... source$source_number_i_L in state_ids)
                 fun = (env, G, T) -> get_V(:($pv_array), env.x[:($source_number)]*env.action, G, T)
                 push!(v_dc_arr, fun)
-                
+
                 # first value set to 0
                 v_dc[source_number] = 0
             else
@@ -331,9 +331,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
             end
         end
     end
-
-    i_limit_fixed > 0 && @info "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit! What???"
-    v_limit_fixed > 0 && @info "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit! Whatt???"   
+    if verbosity > 1
+        i_limit_fixed > 0 && @info "$i_limit_fixed Current limits set to 1000 A - please define in nc.parameters -> source -> i_limit! What???"
+        v_limit_fixed > 0 && @info "$v_limit_fixed Voltage limits set to 1.05*nc.parameters[grid][v_rms] - please define in nc.parameters -> source -> v_limit! Whatt???"
+    end
 
     if isnothing(reward)
         reward = 0.0
@@ -352,10 +353,10 @@ function SimEnv(; maxsteps = 500, ts = 1/10_000, action_space = nothing, state_s
 
     y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
 
-    SimEnv(verbosity, nc, sys_d, action_space, state_space, 
-    false, featurize, prepare_action, reward_function, 
-    x0, x, t0, t, ts, state, maxsteps, 0, state_ids, 
-    v_dc, v_dc_arr, norm_array, convert_state_to_cpu, 
+    SimEnv(verbosity, nc, sys_d, action_space, state_space,
+    false, featurize, prepare_action, reward_function,
+    x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
+    v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
     reward, action, action_ids, action_delay_buffer,
     A, B, C, D, state_parameters, y, state_ids_RL, action_ids_RL)
 end
@@ -393,7 +394,7 @@ end
 
 function (env::SimEnv)(action)
     env.steps += 1
-    # i_1, v_1 , i_L = 
+    # i_1, v_1 , i_L =
     # why tt??
     tt = [env.t, env.t + env.ts]
 
@@ -413,11 +414,11 @@ function (env::SimEnv)(action)
     G = 1000
     T = 27
 
-    env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr] 
-    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])  
+    env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr]
+    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])
 
     env.action = env.prepare_action(env)
-    
+
     if env.sys_d.A isa CuArray && !(env.action isa CuArray)
         if env.action isa Array
             env.action = CuArray(env.action)
@@ -446,13 +447,13 @@ function (env::SimEnv)(action)
     # use functions outside this reward function - normalised
     # P_load = (env.norm_array[end] * env.state[end])^2 / 14
     # push!(PLoad, P_load)
-    # P_diff = -abs(P_required - P_load)   
+    # P_diff = -abs(P_required - P_load)
 
     # env.reward = -sqrt((P_source - (P_R + P_load + loss_error))^2)
     # Power constraint
     env.reward = env.reward_function(env)
 
- 
+
 
     env.done = (env.steps >= env.maxsteps) || (any(abs.(env.x./env.norm_array) .> 1))
 
@@ -475,5 +476,5 @@ end
 function get_vDC_PV(I)
 
     V_dc = I *N_cell * P_cell
-    
+
 end
