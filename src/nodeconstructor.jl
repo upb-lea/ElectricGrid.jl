@@ -359,7 +359,7 @@ function check_parameters(
 
                         source["fltr"] = "L"
                     else
-                        
+
                         source["fltr"] = "LCL"
                     end
                 else
@@ -602,25 +602,8 @@ function check_parameters(
             for s in 1:num_fltr_L_undef
                 push!(parameters["source"], _sample_fltr_L(parameters["grid"]))
             end
-
-            # What is this? What if the user defined an L or LCL filter
-            if num_LC_defined == 0 && num_fltr_LC_undef == 0
-                if verbosity > 0
-                    @warn("No LC filter defined/set random, if wanted please set in parameter
-                        dict!")
-                end
-            end
-        else
-            if num_LC_defined == 0
-                @warn("No LC filter defined/set random, if wanted please set in parameter
-                    dict!")
-            end
-        end
-        if verbosity > 0
-            source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined!"
         end
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
-
     end
 
     # calculate grid power
