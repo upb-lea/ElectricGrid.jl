@@ -13,23 +13,23 @@ using FFTW
 using LinearAlgebra
 using LinearMaps #*
 using JuMP
-import Ipopt
 using NearestNeighbors #*
 using NonNegLeastSquares #*
 using PlotlyJS
-using ReinforcementLearning
-using SpecialFunctions
-using StatsBase
 using Flux
-using StableRNGs
-using IntervalSets
 using Graphs
 using GraphPlot
+using IJulia
+import Ipopt
+using IntervalSets
 using PlotlyJS
 using Random
+using ReinforcementLearning
 using StableRNGs
+using SpecialFunctions
+using StatsBase
 
-#export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, DataHook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup, SimEnv
+#export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, data_hook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup, SimEnv
 
 include("./Power_System_Theory.jl")
 include("./nodeconstructor.jl")

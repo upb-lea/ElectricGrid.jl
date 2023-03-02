@@ -35,7 +35,7 @@ using ReinforcementLearning
 
     plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
     plt_action_ids = ["source1_u_a"]
-    hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
+    hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
     #_______________________________________________________________________________
     # initialising the agents
@@ -89,7 +89,7 @@ end
 
     env = SimEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1, verbosity = 0)
 
-    hook = DataHook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
+    hook = data_hook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
 
     #_______________________________________________________________________________
     # initialising the agents
@@ -128,7 +128,7 @@ end
     )
     env = SimEnv(ts = 1e-6, CM = CM, parameters = parameters, verbosity = 0, maxsteps = 600, action_delay = 1)
 
-    hook = DataHook(collect_sources  = [1 2],
+    hook = data_hook(collect_sources  = [1 2],
                     collect_cables = [1])
 
     #_______________________________________________________________________________
@@ -201,7 +201,7 @@ end;
     #_______________________________________________________________________________
     # Setting up data hooks
 
-    hook = DataHook(collect_sources  = [1 2 3],
+    hook = data_hook(collect_sources  = [1 2 3],
                     collect_loads = [1],
                     collect_cables = [1, 5])
 

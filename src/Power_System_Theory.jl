@@ -54,11 +54,11 @@ end
 
 """
 # Description
-Three phase DQ0 calculation of rms signals
+Scaled L2 norm in αβγ coordinates - intantaneous approximation of rms for 3 phase systems
 """
-function DQ_RMS(i_abc)
+function Clarke_mag(i_abc)
 
-    return i_rms = sqrt(1/3)*norm(DQ0_transform(i_abc, 0)[1:3])
+    return sqrt(1/3)*norm(Clarke_Transform(i_abc)[1:3])
 end
 
 function Clarke_Transform(v_abc)
@@ -127,7 +127,7 @@ function Inv_Park_Transform(v_dq0, θ)
     return v_αβγ = [cos(θ) -sin(θ) 0; sin(θ) cos(θ) 0; 0 0 1]*v_dq0
 end
 
-function DQ0_transform(v_abc,θ)
+function DQ0_Transform(v_abc,θ)
 
     #v_dq0 = Park_Transform(Clarke_Transform(v_abc), θ)
     v_dq0 = sqrt(2/3)*[cos(θ) cos(θ - 2π/3) cos(θ + 2π/3);
@@ -137,7 +137,7 @@ function DQ0_transform(v_abc,θ)
     return v_dq0
 end
 
-function Inv_DQ0_transform(v_dq0, θ)
+function Inv_DQ0_Transform(v_dq0, θ)
 
     #v_abc  = Inv_Clarke_Transform(Inv_Park_Transform(v_dq0, θ))
     v_abc = sqrt(2/3)*[cos(θ) -sin(θ) sqrt(2)/2;

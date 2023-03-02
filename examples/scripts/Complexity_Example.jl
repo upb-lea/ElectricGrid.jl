@@ -40,9 +40,9 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, ver
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_sources  = 1:num_sources,
-                vrms             = 1:num_sources, 
-                irms             = 1:num_sources, 
+hook = data_hook(collect_sources  = 1:num_sources,
+                v_mag            = 1:num_sources, 
+                i_mag            = 1:num_sources, 
                 power_pq         = 1:num_sources,
                 freq             = 1:num_sources,
                 i_sat            = 1:num_sources,
@@ -73,8 +73,8 @@ plot_hook_results(hook = hook,
                     actions_to_plot = [],  
                     power_p         = [], 
                     power_q         = [], 
-                    vrms            = 1:num_sources, 
-                    irms            = [],
+                    v_mag           = 1:num_sources, 
+                    i_mag           = [],
                     freq            = [],
                     i_sat           = 1:num_sources,
                     v_sat           = 1:num_sources,

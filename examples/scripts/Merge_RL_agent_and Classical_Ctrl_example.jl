@@ -219,7 +219,7 @@ ma = MultiAgentGridController(ma_agents, action_ids)
 
 plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c", "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true, collect_vdc_idx = [2])
+hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true, collect_vdc_idx = [2])
 
 ma["agent"]["policy"].policy.policy.act_noise = 0.1
 run(ma, env, StopAfterEpisode(1), hook);

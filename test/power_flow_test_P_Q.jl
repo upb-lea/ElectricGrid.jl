@@ -41,7 +41,7 @@ using Test
             #_______________________________________________________________________________
             # Setting up data hooks
 
-            hook = DataHook(collect_vrms_ids = [1 2], 
+            hook = data_hook(collect_vrms_ids = [1 2], 
                             collect_irms_ids = [1 2], 
                             collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
                             collect_freq     = [1 2],
