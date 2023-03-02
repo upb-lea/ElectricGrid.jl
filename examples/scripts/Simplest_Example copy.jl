@@ -33,7 +33,7 @@ num_eps  = 1       # number of episodes to run
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+R_load, L_load, _, _ = Parallel_Load_Impedance(220e3, 0.95, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
@@ -41,7 +41,7 @@ parameters = Dict{Any, Any}(
                         # Dict{Any, Any}("pwr" => 100e3, "mode" => 4),
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load),
+                        Dict{Any, Any}("impedance" => "RL", "R" => 1.5, "L" => 1e-3),
                         ],
         # "cable"   => Any[
         #                 Dict{Any, Any}("R" => 0.208, "L" => 0.00025, "C" => 0.4e-3, "i_limit" => 10e4,),
