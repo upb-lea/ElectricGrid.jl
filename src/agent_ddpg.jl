@@ -13,6 +13,33 @@ using MacroTools: @forward
 (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, action, training::Bool) = policy(stage, env, action)
 
 
+#re-definition needed to use Dare-internal action-space functions
+function RLBase.update!(
+    trajectory::AbstractTrajectory,
+    policy::AbstractPolicy,
+    env::SimEnv,
+    ::PostEpisodeStage,
+)
+    # Note that for trajectories like `CircularArraySARTTrajectory`, data are
+    # stored in a SARSA format, which means we still need to generate a dummy
+    # action at the end of an episode.
+
+    s = policy isa NamedPolicy ? state(env, nameof(policy)) : state(env)
+
+    A = policy isa NamedPolicy ? action_space(env, nameof(policy)) : action_space(env)
+    a = rand(A)
+
+    push!(trajectory[:state], s)
+    push!(trajectory[:action], a)
+    if haskey(trajectory, :legal_actions_mask)
+        lasm =
+            policy isa NamedPolicy ? legal_action_space_mask(env, nameof(policy)) :
+            legal_action_space_mask(env)
+        push!(trajectory[:legal_actions_mask], lasm)
+    end
+end
+
+
 Base.@kwdef struct DareNeuralNetworkApproximator{M,O} <: AbstractApproximator
     model::M
     optimizer::O = nothing

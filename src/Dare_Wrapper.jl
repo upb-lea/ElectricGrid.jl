@@ -11,7 +11,7 @@ Initialises up the agents that will be controlling the electrical network.
 - `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
 
 """
-function setup_agents(env)
+function setup_agents(env, custom_agents = nothing)
 
 
     #_______________________________________________________________________________
@@ -33,51 +33,46 @@ function setup_agents(env)
     #-------------------------------------------------------------------------------
     # Setting up the controls for the Reinforcement Learning Sources
 
-    num_RL_sources = env.nc.num_sources - num_clas_sources # number of reinforcement learning controlled sources
+    for (name, config) in env.agent_dict
 
-    RL_Source_Indices = Array{Int64, 1}(undef, 0)
-    for ns in 1:env.nc.num_sources
+        if config["mode"] == "dare_ddpg"
+            agent = create_agent_ddpg(na = length(env.agent_dict[name]["action_ids"]),
+                                        ns = length(env.agent_dict[name]["state_ids"]),
+                                        use_gpu = false)
 
-        if env.nc.parameters["source"][ns]["control_type"] == "RL"
-            RL_Source_Indices = [RL_Source_Indices; Int(ns)]
-        end
-    end
-
-    ssa = "source".*string.(RL_Source_Indices)
-    env.state_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.state_ids)
-    env.action_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.action_ids)
-
-    if num_RL_sources > 0
-
-        if num_clas_sources > 0
-            na = length(env.action_ids) - length(Animo.policy.action_ids)
+            for i in 1:3
+                agent.policy.behavior_actor.model.layers[i].weight ./= 3
+                agent.policy.behavior_actor.model.layers[i].bias ./= 3
+                agent.policy.target_actor.model.layers[i].weight ./= 3
+                agent.policy.target_actor.model.layers[i].bias ./= 3
+            end
         else
-            na = length(env.action_ids)
+            agent = custom_agents[name]
         end
 
-        agent = create_agent_ddpg(na = na, ns = length(state(env,"agent")), use_gpu = false)
-
-        for i in 1:3
-            agent.policy.behavior_actor.model.layers[i].weight ./= 3
-            agent.policy.behavior_actor.model.layers[i].bias ./= 3
-            agent.policy.target_actor.model.layers[i].weight ./= 3
-            agent.policy.target_actor.model.layers[i].bias ./= 3
-        end
-
-        agent = Agent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
+        agent = Agent(policy = NamedPolicy(name, agent.policy), trajectory = agent.trajectory)
 
         RL_policy = Dict()
         RL_policy["policy"] = agent
-        RL_policy["state_ids"] = env.state_ids_RL
-        RL_policy["action_ids"] = env.action_ids_RL
+        RL_policy["state_ids"] = env.agent_dict[name]["state_ids"]
+        RL_policy["action_ids"] = env.agent_dict[name]["action_ids"]
 
-        Agents[nameof(agent)] = RL_policy
+        Agents[name] = RL_policy
     end
 
+    @eval function action_space(env::SimEnv, name::String)
+        for (pname, config) in env.agent_dict
+            if name == pname
+                return Space(fill(-1.0..1.0, length(env.agent_dict[name]["action_ids"])))
+            end
+        end
+
+        return Space(fill(-1.0..1.0, size(env.action_ids_RL)))
+    end
     #-------------------------------------------------------------------------------
     # Finalising the Control
 
-    num_policies = num_RL_sources + convert(Int64, num_clas_sources > 0)
+    #num_policies = num_RL_sources + convert(Int64, num_clas_sources > 0)
 
     if num_clas_sources > 0
 
@@ -124,7 +119,7 @@ function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
-        hook = DataHook()
+        hook = data_hook()
 
     end
 

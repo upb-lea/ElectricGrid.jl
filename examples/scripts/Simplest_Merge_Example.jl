@@ -18,14 +18,6 @@ num_eps  = 100    # number of episodes to run
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-CM = [ 0. 0. 1.
-        0. 0. 2.
-        -1. -2. 0.]
-
-
-#CM = [0. 1.
-#      -1. 0.]
-
 #-------------------------------------------------------------------------------
 # Parameters
 
@@ -48,8 +40,11 @@ R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "L"),
+                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "ddpg", "fltr" => "L"),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "RL", "mode" => "sac"),
                         Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1),
+                        #Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "sac", "fltr" => "L"),
+                        #Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "ddpg2", "fltr" => "L"),
                         ],
          "load"   => Any[
                         Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load,"v_limit"=>1e4, "i_limit"=>10e4),
@@ -59,6 +54,10 @@ parameters = Dict{Any, Any}(
          #               ],
         "grid" => Dict{Any, Any}("ramp_end" => 0.04, "phase" => 3 )
     )
+
+
+#agents = Dict("ddpg1" => RL.DDPG(params1))
+
 #_______________________________________________________________________________
 # Defining the environment
 
@@ -119,7 +118,7 @@ function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
 end
 
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, featurize = featurize, reward_function = reward, action_delay = 0)
+env = SimEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
 
 #_______________________________________________________________________________
 # Setting up data hooks
@@ -130,17 +129,12 @@ hook = data_hook(collect_sources  = [1],
 #_______________________________________________________________________________
 # Running the Time Simulation
 
-function RLBase.action_space(env::SimEnv, name::String)
-        if name == "agent"
-                return Space(fill(-1.0..1.0, size(env.action_ids_RL)))
-        end
-end
 
 ma = setup_agents(env)
 
 learn(ma, env, num_episodes = num_eps)
 
-hook = DataHook(collect_state_ids = env.state_ids,
+hook = data_hook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
 

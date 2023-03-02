@@ -31,8 +31,7 @@ mutable struct SimEnv <: AbstractEnv
     D
     state_parameters
     y #holds all of the inductor voltages and capacitor currents
-    state_ids_RL
-    action_ids_RL
+    agent_dict
 end
 
 
@@ -113,8 +112,7 @@ function SimEnv(;
     action_delay = 1,
     t_end = nothing,
     verbosity = 0,
-    state_ids_RL = nothing,
-    action_ids_RL = nothing
+    agent_dict = nothing
 )
 
     if !(isnothing(t_end))
@@ -175,10 +173,54 @@ function SimEnv(;
         action_space = Space([ -1.0..1.0 for i = 1:length(sys_d.B[1,:]) ], )
     end
 
+    if isnothing(state_ids)
+        if isnothing(nc)
+            state_ids = []
+            @warn("No state_ids array specified - observing states with data_hook not
+                    possible")
+        else
+            state_ids = get_state_ids(nc)
+        end
+    end
+
+    if isnothing(action_ids)
+        if isnothing(nc)
+            action_ids = []
+            @warn("No state_ids array specified - observing states with data_hook not
+                    possible")
+        else
+            action_ids = get_action_ids(nc)
+        end
+    end
+
+    if isnothing(agent_dict)
+        agent_dict = Dict()
+        for ns in 1:nc.num_sources
+            if nc.parameters["source"][ns]["control_type"] == "RL"
+                name = nc.parameters["source"][ns]["mode"] * "_$ns"
+                agent_dict[name] = Dict(
+                    "source_number" => ns,
+                    "mode" => nc.parameters["source"][ns]["mode"],
+                    )
+
+                ssa = "source$ns"
+
+                agent_dict[name]["state_ids"] = filter(x -> split(x, "_")[1] == ssa, state_ids)
+
+                agent_dict[name]["action_ids"] = filter(x -> split(x, "_")[1] == ssa, action_ids)
+            end
+        end
+    end
+
     if isnothing(featurize)
         featurize = function(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
             if !isnothing(name)
-                return env.state
+                if name == "classic"
+                    return env.state
+                else
+                    state = env.state[findall(x -> x in env.agent_dict[name]["state_ids"], env.state_ids)]
+                    return state
+                end
             elseif isnothing(env)
                 return x0
             else
@@ -218,34 +260,6 @@ function SimEnv(;
         if !(convert_state_to_cpu) && isa(state, Array)
             state = CuArray(state)
         end
-    end
-
-    if isnothing(state_ids)
-        if isnothing(nc)
-            state_ids = []
-            @warn("No state_ids array specified - observing states with data_hook not
-                    possible")
-        else
-            state_ids = get_state_ids(nc)
-        end
-    end
-
-    if isnothing(action_ids)
-        if isnothing(nc)
-            action_ids = []
-            @warn("No state_ids array specified - observing states with data_hook not
-                    possible")
-        else
-            action_ids = get_action_ids(nc)
-        end
-    end
-
-    if isnothing(state_ids_RL)
-        state_ids_RL = state_ids
-    end
-
-    if isnothing(action_ids_RL)
-        action_ids_RL = action_ids
     end
 
     vdc_fixed = 0
@@ -396,7 +410,7 @@ function SimEnv(;
     x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
     v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
     reward, action, action_ids, action_delay_buffer,
-    A, B, C, D, state_parameters, y, state_ids_RL, action_ids_RL)
+    A, B, C, D, state_parameters, y, agent_dict)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
