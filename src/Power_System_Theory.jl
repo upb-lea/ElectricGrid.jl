@@ -1135,7 +1135,7 @@ ratios are in the range of 0.5 to 1.5, for distribution networks. Transmission n
 at higher voltages tend to have higher X/R ratios.
 
 """
-function Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
+function fault_level(S, X_R, Vrms; fsys = 50, phase = 3)
 
     rad = atan(X_R)
 

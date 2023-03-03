@@ -99,7 +99,8 @@ mutable struct Classical_Controls
     V_filt_cap::Array{Float64}
     I_filt_poc::Array{Float64}
     I_filt_inv::Array{Float64}
-    p_q_filt::Matrix{Float64}
+    p_q_inv::Matrix{Float64}
+    p_q_poc::Matrix{Float64}
 
     #---------------------------------------------------------------------------
     # Current Controller
@@ -230,7 +231,7 @@ mutable struct Classical_Controls
         fpll::Array{Float64}, θpll::Array{Float64},
         V_filt_poc::Array{Float64}, V_filt_cap::Array{Float64}, 
         I_filt_poc::Array{Float64}, I_filt_inv::Array{Float64},
-        p_q_filt::Matrix{Float64},
+        p_q_inv::Matrix{Float64}, p_q_poc::Matrix{Float64},
         Gi_cl::Array{TransferFunction},
         I_dq0::Matrix{Float64}, I_ref_dq0::Matrix{Float64}, I_ref::Matrix{Float64},
         I_err::Array{Float64}, I_err_t::Matrix{Float64},
@@ -277,7 +278,7 @@ mutable struct Classical_Controls
         fpll, θpll,
         V_filt_poc, V_filt_cap, 
         I_filt_poc, I_filt_inv,
-        p_q_filt,
+        p_q_inv, p_q_poc,
         Gi_cl,
         I_dq0, I_ref_dq0, I_ref,
         I_err, I_err_t,
@@ -456,8 +457,11 @@ mutable struct Classical_Controls
         I_filt_inv = Array{Float64, 3}(undef, num_sources, phases, N)
         I_filt_inv = fill!(I_filt_inv, 0.0)
 
-        p_q_filt = Array{Float64, 2}(undef, num_sources, phases)
-        p_q_filt  = fill!(p_q_filt, 0)
+        p_q_inv = Array{Float64, 2}(undef, num_sources, phases)
+        p_q_inv  = fill!(p_q_inv, 0)
+
+        p_q_poc = Array{Float64, 2}(undef, num_sources, phases)
+        p_q_poc  = fill!(p_q_poc, 0)
 
         #---------------------------------------------------------------------------
         # Current Controller
@@ -647,7 +651,7 @@ mutable struct Classical_Controls
         fpll, θpll,
         V_filt_poc, V_filt_cap,
         I_filt_poc, I_filt_inv,
-        p_q_filt,
+        p_q_inv, p_q_poc,
         Gi_cl,
         I_dq0, I_ref_dq0, I_ref,
         I_err, I_err_t,
@@ -941,7 +945,7 @@ function Source_Interface(Animo::Classical_Policy, env::SimEnv)
 
     state = env.x[findall(x -> x in Animo.state_ids, env.state_ids)]
 
-    for ns in 1:Source.num_sources
+    Threads.@threads for ns in 1:Source.num_sources
 
         Source.θ_source[ns, :, 1:end-1] = Source.θ_source[ns, :, 2:end]
 
@@ -969,12 +973,16 @@ function Source_Interface(Animo::Classical_Policy, env::SimEnv)
                 Source.V_filt_cap[ns, :, end] = state[Source.V_cap_loc[:, ns]]
             end
 
-        elseif Source.filter_type[ns] == "LC"
+            icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
+            Source.V_filt_cap[ns, :, end] = Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap
 
-            Source.V_filt_cap[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+        elseif Source.filter_type[ns] == "LC"
 
             Source.V_filt_poc[ns, :, end] = Source.V_filt_cap[ns, :, end]
             Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
+
+            icap = env.y[Source.I_poc_loc[:, ns]]
+            Source.V_filt_cap[ns, :, end] = state[Source.V_cable_loc[:, ns]] .+ Source.Rf_C[ns]*icap
 
         elseif Source.filter_type[ns] == "L"
 
@@ -984,7 +992,15 @@ function Source_Interface(Animo::Classical_Policy, env::SimEnv)
             Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
         end
 
-        Source.p_q_filt[ns, :] =  p_q_theory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
+        Source.p_q_inv[ns, :] =  p_q_theory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
+
+        if Source.filter_type[ns] != "L"
+
+            Source.p_q_poc[ns, :] =  p_q_theory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end])
+        else
+
+            Source.p_q_poc[ns, :] =  Source.p_q_inv[ns, :]
+        end
     end
 
     return nothing
@@ -1515,7 +1531,7 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
     if mode == 2 || mode == 5
         eq_new = (1/Source.K_sync[num_source])*(Dq*(Vn - Vg))
     else
-        eq_new = (1/Source.K_sync[num_source])*(pq0_ref[2] + Dq*(Vn - Vg) - Source.p_q_filt[num_source, 2])
+        eq_new = (1/Source.K_sync[num_source])*(pq0_ref[2] + Dq*(Vn - Vg) - Source.p_q_poc[num_source, 2])
     end
 
     Mfif_new = Third_Order_Integrator(Source.Mfif[num_source], Source.ts, [eq[2:end]; eq_new])
@@ -1550,7 +1566,7 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
     end
     #~~~
 
-    Te_new = Source.p_q_filt[num_source, 1]/ω[end] # New Electrical Torque
+    Te_new = Source.p_q_poc[num_source, 1]/ω[end] # New Electrical Torque
 
     α_new = (1/Source.J_sync[num_source])*(Tm - Te_new - ΔT) # New Angular Acceleration
     Source.α_sync[num_source, :] = [α[2:end]; α_new]
@@ -1650,7 +1666,7 @@ function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrm
 
     ω = Source.ω_droop[num_source, 1, :]
     θ = Source.θ_droop[num_source, 1]
-    p_q = Source.p_q_filt[num_source, :]
+    p_q = Source.p_q_poc[num_source, :]
 
     ω_new = Source.fsys*2π - p_q[1]*Source.D[num_source, 1]
     Source.ω_droop[num_source, 1, 1:2] = ω[2:end]
@@ -2235,7 +2251,14 @@ function Measurements(Source::Classical_Controls)
     Source.f_avg[:, 1:end-1] = Source.f_avg[:, 2:end] 
     Source.θ_avg[:, 1:end-1] = Source.θ_avg[:, 2:end] 
 
-    Source.f_avg[:, end] = sum(Source.f_source[Source.grid_forming , : , end], dims = 1)./length(Source.grid_forming)
+    grid_swing = findfirst(x->x == "Swing", Source.Source_Modes)
+    grid_voltage = findfirst(x->x == "Voltage", Source.Source_Modes)
+
+    if isnothing(grid_swing) &&  isnothing(grid_voltage)
+        Source.f_avg[:, end] = sum(Source.f_source[Source.grid_forming , : , end], dims = 1)./length(Source.grid_forming)
+    else
+        Source.f_avg[:, end] = Source.fsys*[1 1 1]
+    end
 
     for i in 1:Source.phases
         Source.θ_avg[i, end] = Third_Order_Integrator(Source.θ_avg[i, end], Source.ts, 2π*Source.f_avg[i, :]) # integration
@@ -2699,7 +2722,11 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
 
     if env.verbosity > 1
         
-        @info "$(Source.num_sources) 'classically' controlled sources have been initialised."
+        if Source.num_sources == 1
+            @info "$(Source.num_sources) 'classically' controlled source has been initialised."
+        else
+            @info "$(Source.num_sources) 'classically' controlled sources have been initialised."
+        end
 
         for modes in eachindex(Mode_Keys)
 

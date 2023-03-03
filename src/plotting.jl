@@ -131,14 +131,64 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     return nothing
 end
 
+"""
+    plot_hook_results(; hook, 
+                        states_to_plot = nothing, 
+                        actions_to_plot = nothing ,
+                        episode = 1, 
+                        power_p_inv = [], 
+                        power_q_inv = [], 
+                        power_p_poc = [], 
+                        power_q_poc = [], 
+                        v_mag_inv   = [], 
+                        v_mag_cap   = [], 
+                        i_mag_inv   = [], 
+                        i_mag_poc   = [],
+                        freq        = [], 
+                        angles      = [], 
+                        i_sat       = [], 
+                        i_err       = [], 
+                        i_err_t     = [], 
+                        v_sat       = [], 
+                        v_err       = [], 
+                        v_err_t     = [],
+                        plot_reward = false, 
+                        plot_reference = false,
+                        vdc_to_plot = [],)
+
+# Keyword Arguments
+- `episode::Int`: episode to plot
+- `power_p_inv::Vector{Int}`: instantaneous real power at the terminals of the source [W]
+- `power_q_inv::Vector{Int}`: instantaneousimaginary power at the terminals of the source [VAi]
+- `power_p_poc::Vector{Int}`: instantaneousreal power at the point of connection of the source [W]
+- `power_q_poc::Vector{Int}`: instantaneous imaginary power at the point of connection of the source [VAi]
+- `v_mag_inv::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase voltages at the terminals of the source [V] 
+- `v_mag_cap::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase voltages at the filter capacitor of the source [V] 
+- `i_mag_inv::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase currents at the terminals of the source [A] 
+- `i_mag_poc::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase currents flowing into the external network of the source [A]
+- `freq::Vector{Int}`: angular velocity of the 3 phase voltages over the capacior nearest to the source [Hz]
+- `angles::Vector{Int}`: relative positive phase sequence angles of the 3 phase voltages over the capacitor nearest to the source (measured with respect to the average angle over all the grid-forming sources) [degrees]
+- `i_sat::Vector{Int}`: normalised and scaled L₂ norm in αβγ coordinates of the degree of nonlinearity (or anti-windup) of the current controller [V]
+- `i_err::Vector{Int}`: L₂ norm in αβγ coordinates of the current error signal (measured current subtracted from reference current in DQ0 coordinates) [A]
+- `i_err_t::Vector{Int}`: L₂ norm in αβγ coordinates of the integrated current error signal [As]
+- `v_sat::Vector{Int}`: normalised and scaled L₂ norm in αβγ coordinates of the degree of nonlinearity (or anti-windup) of the voltage controller [A]
+- `v_err::Vector{Int}`: L₂ norm in αβγ coordinates of the voltage error signal (measured voltage subtracted from reference voltage in DQ0 coordinates) [V]
+- `v_err_t::Vector{Int}`: L₂ norm in αβγ coordinates of the integrated voltage error signal [Vs]
+
+# Note
+For quantities denoted by "..._mag_..." for balanced symmetrical networks in steady state this quantity equals the root-mean-square (rms) of the signal.
+"""
 function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
     plot_reward = false, plot_reference = false, episode = 1, vdc_to_plot = [],
-    vdq = [], idq = [], 
-    power_p = [], power_q = [], 
-    v_mag = [], i_mag = [], 
+    power_p_inv = [], power_q_inv = [], 
+    power_p_poc = [], power_q_poc = [], 
+    v_mag_inv = [], v_mag_cap = [], 
+    i_mag_inv = [], i_mag_poc = [],
     freq = [], angles = [], 
     i_sat = [], i_err = [], i_err_t = [], 
     v_sat = [], v_err = [], v_err_t = [])
+
+    #TODO complete documentation
 
     if isnothing(states_to_plot)
         states_to_plot = hook.collect_state_ids
@@ -200,7 +250,7 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
             push!(traces, scatter(df, x = :time, y = Symbol("debug_$(idx)"), mode="lines", name = "debug_$(idx)"))
         end
         
-        for idx in vdq #hook.collect_vdq_ids #
+        #= for idx in vdq #hook.collect_vdq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vd"), mode="lines", name = "source$(idx)_vd"))
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vq"), mode="lines", name = "source$(idx)_vq"))
         end
@@ -208,22 +258,38 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
         for idx in idq #hook.collect_idq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_id"), mode="lines", name = "source$(idx)_id"))
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_iq"), mode="lines", name = "source$(idx)_iq"))
+        end =#
+
+        for idx in power_p_inv #hook.collect_pq_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p_inv"), mode="lines", name = "source$(idx)_p_inv"))
         end
 
-        for idx in power_p #hook.collect_pq_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p"), mode="lines", name = "source$(idx)_p"))
+        for idx in power_p_poc #hook.collect_pq_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p_poc"), mode="lines", name = "source$(idx)_p_poc"))
         end
 
-        for idx in power_q #hook.collect_pq_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q"), mode="lines", name = "source$(idx)_q"))
+        for idx in power_q_inv #hook.collect_pq_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q_inv"), mode="lines", name = "source$(idx)_q_inv"))
         end
 
-        for idx in v_mag #hook.collect_vrms_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag"), mode="lines", name = "source$(idx)_v_mag"))
+        for idx in power_q_poc #hook.collect_pq_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_q_poc"), mode="lines", name = "source$(idx)_q_poc"))
         end
 
-        for idx in i_mag #hook.collect_irms_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_mag"), mode="lines", name = "source$(idx)_i_mag"))
+        for idx in v_mag_inv #hook.collect_vrms_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag_inv"), mode="lines", name = "source$(idx)_v_mag_inv"))
+        end
+
+        for idx in v_mag_cap #hook.collect_vrms_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag_cap"), mode="lines", name = "source$(idx)_v_mag_cap"))
+        end
+
+        for idx in i_mag_inv #hook.collect_irms_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_mag_inv"), mode="lines", name = "source$(idx)_i_mag_inv"))
+        end
+
+        for idx in i_mag_poc #hook.collect_irms_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_mag_poc"), mode="lines", name = "source$(idx)_i_mag_poc"))
         end
 
         for idx in freq
@@ -278,7 +344,6 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
     display(p)
 
 end
-
 
 function plot_p_source(;env, hook, episode, source_ids)
     layout = Layout(

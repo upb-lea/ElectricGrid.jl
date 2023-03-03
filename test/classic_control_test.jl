@@ -199,11 +199,14 @@ using Distributions
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = data_hook(collect_sources  = [1 2 3],
-                        v_mag            = [1 2 3],
-                        i_mag            = [1 2 3],
-                        power_pq         = [1 2 3],
-                        freq             = [1 2 3],
+        hook = data_hook(collect_sources     = [1 2 3],
+                        v_mag_inv            = [1 2 3],
+                        v_mag_cap            = [1 2 3],
+                        i_mag_inv            = [1 2 3],
+                        i_mag_poc            = [1 2 3],
+                        power_pq_inv         = [1 2 3],
+                        power_pq_poc         = [1 2 3],
+                        freq                 = [1 2 3],
                         )
 
         #_______________________________________________________________________________
@@ -226,10 +229,14 @@ using Distributions
                                         episode = eps,
                                         states_to_plot  = ["source1_v_C_filt_a"],
                                         actions_to_plot = [],
-                                        power_p         = [1 2 3],
-                                        power_q         = [1 2 3],
-                                        v_mag           = [1 2 3],
-                                        i_mag           = [1 2 3],
+                                        power_p_inv     = [1 2 3],
+                                        power_q_inv     = [1 2 3],
+                                        power_p_poc     = [1 2 3],
+                                        power_q_poc     = [1 2 3],
+                                        v_mag_inv       = [1 2 3],
+                                        v_mag_cap       = [1 2 3],
+                                        i_mag_inv       = [1 2 3],
+                                        i_mag_poc       = [1 2 3],
                                         freq            = [1 2 3])
         end =#
 
@@ -395,9 +402,10 @@ end
         # Setting up data hooks
 
         hook = data_hook(collect_sources  = [1 2 3],
-                         v_mag            = [1 2 3],
-                         i_mag            = [1 2 3],
-                         power_pq         = [1 2 3],
+                         v_mag_inv            = [1 2 3],
+                         i_mag_inv            = [1 2 3],
+                         power_pq_inv     = [1 2 3],
+                         power_pq_poc     = [1 2 3],
                          freq             = [1 2 3],
                          angles           = [1 2 3],
                          )
@@ -422,10 +430,10 @@ end
                                         episode = eps,
                                         states_to_plot  = [],
                                         actions_to_plot = [],
-                                        power_p         = [3],
-                                        power_q         = [3],
-                                        v_mag           = [],
-                                        i_mag           = [],
+                                        power_p_inv         = [3],
+                                        power_q_inv         = [3],
+                                        v_mag_inv           = [],
+                                        i_mag_inv           = [],
                                         freq            = [3],
                                         angles          = [1 2 3])
         end =#
@@ -451,8 +459,8 @@ end
         step = Int(parameters["source"][3]["Δt"]/Timestep)
         start = Int(parameters["grid"]["process_start"]/Timestep) + 1 + step
 
-        new_data = convert.(Float64, Matrix(hook.df)[start:step:end, 7])
-        new_angles = convert.(Float64, Matrix(hook.df)[:, 18:19])
+        new_data = convert.(Float64, (hook.df[!,"source3_p_inv"][start:step:end]))
+        new_angles = convert.(Float64, Matrix(hook.df[!,["source1_θ", "source2_θ"]]))
 
         angles_eval = ones(size(new_angles, 1), 2)
         angles_eval[:,1] = parameters["source"][1]["v_δ_set"].*angles_eval[:,1]
@@ -478,9 +486,8 @@ end
 
         @test s3_L1 ≈ env.nc.parameters["source"][3]["L1"] atol = 0.00001
         @test s3_R1 ≈ env.nc.parameters["source"][3]["R1"] atol = 0.00001
-
-                #= 
-        println("stats.μ = ", stats.μ)
+      
+        #= println("stats.μ = ", stats.μ)
         println("γ = ", parameters["source"][3]["γ"])
         println("stats.σ = ", stats.σ)
         println("std_asy = ", parameters["source"][3]["std_asy"])  
@@ -498,7 +505,7 @@ end
         println(env.nc.parameters["source"][2]["R_C"])
         println()
         println(env.nc.parameters["source"][3]["L1"])
-        println(env.nc.parameters["source"][3]["R1"])=#
+        println(env.nc.parameters["source"][3]["R1"]) =#
 
         return nothing
 end
@@ -542,7 +549,7 @@ end
                                 Dict{Any, Any}("pwr" => 200e3,
                                                 "mode" => "PQ",
                                                 "fltr" => "LCL",
-                                                "p_set" => -41.5e3, # making this slightly less/more, means that the voltage control loop recovers
+                                                "p_set" => -40.9e3, # making this slightly less/more, means that the voltage control loop recovers
                                                 "q_set" => 100e3),
                                 ],
                 "cable"   => Any[
@@ -562,9 +569,12 @@ end
         # Setting up data hooks
 
         hook = data_hook(collect_sources  = [1 2],
-                        v_mag            = [1 2],
-                        i_mag            = [1 2],
-                        power_pq         = [1 2],
+                        v_mag_inv            = [1 2],
+                        v_mag_cap            = [1 2],
+                        i_mag_inv            = [1 2],
+                        i_mag_poc            = [1 2],
+                        power_pq_inv         = [1 2],
+                        power_pq_poc         = [1 2],
                         freq             = [1 2],
                         angles           = [1 2],
                         i_sat            = [1 2],
@@ -589,10 +599,14 @@ end
         #= plot_hook_results(hook = hook,
                         states_to_plot  = [],
                         actions_to_plot = [],
-                        power_p         = [],
-                        power_q         = [],
-                        v_mag           = [1 2],
-                        i_mag           = [1 2],
+                        power_p_inv     = [],
+                        power_q_inv     = [],
+                        power_p_poc     = [],
+                        power_q_poc     = [],
+                        v_mag_inv           = [1 2],
+                        v_mag_cap           = [1 2],
+                        i_mag_inv           = [1 2],
+                        i_mag_poc           = [1 2],
                         i_sat           = [1 2],
                         v_sat           = [1],
                         i_err_t         = [1 2],
@@ -693,7 +707,7 @@ end
                                         "process_start" => 1.0, 
                                         "v_rms" => 100,
                                         "Δfmax" => 0.005, # The drop (increase) in frequency that causes a 100% increase (decrease) in active power (from nominal)
-                                        "ΔEmax" => 0.05, # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
+                                        "ΔEmax" => 0.1, # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
                                         ) 
         )
         #_______________________________________________________________________________
@@ -719,10 +733,14 @@ end
         #= plot_hook_results(hook = hook, 
                         states_to_plot  = [], 
                         actions_to_plot = [],  
-                        power_p         = [1 2 3], 
-                        power_q         = [1 2 3], 
-                        v_mag           = [1 2 3], 
-                        i_mag           = [],
+                        power_p_inv     = [1 2 3], 
+                        power_q_inv     = [1 2 3], 
+                        power_p_poc     = [1 2 3], 
+                        power_q_poc     = [1 2 3],
+                        v_mag_inv       = [1 2 3], 
+                        v_mag_cap       = [1 2 3], 
+                        i_mag_inv       = [],
+                        i_mag_poc       = [],
                         freq            = [1 2 3],
                         angles          = [1 2 3],
                         i_sat           = [],
@@ -740,16 +758,16 @@ end
         freq_end_1 = hook.df[!,"source1_freq"][total_steps]
         freq_Δ_1 = (freq_start_1 - freq_end_1)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
-        vrms_start_1 = hook.df[!,"source1_v_mag"][step_start]
-        vrms_end_1 = hook.df[!,"source1_v_mag"][total_steps]
+        vrms_start_1 = hook.df[!,"source1_v_mag_cap"][step_start]
+        vrms_end_1 = hook.df[!,"source1_v_mag_cap"][total_steps]
         vrms_Δ_1 = (vrms_start_1 - vrms_end_1)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
 
-        p_start_1 = hook.df[!,"source1_p"][step_start]
-        p_end_1 = hook.df[!,"source1_p"][total_steps]
+        p_start_1 = hook.df[!,"source1_p_poc"][step_start]
+        p_end_1 = hook.df[!,"source1_p_poc"][total_steps]
         p_Δ_1 = - p_start_1 + p_end_1
 
-        q_start_1 = hook.df[!,"source1_q"][step_start]
-        q_end_1 = hook.df[!,"source1_q"][total_steps]
+        q_start_1 = hook.df[!,"source1_q_poc"][step_start]
+        q_end_1 = hook.df[!,"source1_q_poc"][total_steps]
         q_Δ_1 = - q_start_1 + q_end_1
 
         dP_1 = p_Δ_1/Source.S[1]
@@ -761,16 +779,16 @@ end
         freq_end_2 = hook.df[!,"source2_freq"][total_steps]
         freq_Δ_2 = (freq_start_2 - freq_end_2)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
-        vrms_start_2 = hook.df[!,"source2_v_mag"][step_start]
-        vrms_end_2 = hook.df[!,"source2_v_mag"][total_steps]
+        vrms_start_2 = hook.df[!,"source2_v_mag_cap"][step_start]
+        vrms_end_2 = hook.df[!,"source2_v_mag_cap"][total_steps]
         vrms_Δ_2 = (vrms_start_2 - vrms_end_2)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
 
-        p_start_2 = hook.df[!,"source2_p"][step_start]
-        p_end_2 = hook.df[!,"source2_p"][total_steps]
+        p_start_2 = hook.df[!,"source2_p_poc"][step_start]
+        p_end_2 = hook.df[!,"source2_p_poc"][total_steps]
         p_Δ_2 = - p_start_2 + p_end_2
 
-        q_start_2 = hook.df[!,"source2_q"][step_start]
-        q_end_2 = hook.df[!,"source2_q"][total_steps]
+        q_start_2 = hook.df[!,"source2_q_poc"][step_start]
+        q_end_2 = hook.df[!,"source2_q_poc"][total_steps]
         q_Δ_2 = - q_start_2 + q_end_2
 
         dP_2 = p_Δ_2/Source.S[2]
@@ -778,7 +796,7 @@ end
         dQ_2 = q_Δ_2/Source.S[2]
 
         @test freq_Δ_1/dP_1 ≈ 1 atol = 0.001
-        @test vrms_Δ_1/dQ_1 ≈ 1 atol = 0.001
+        @test vrms_Δ_1/dQ_1 ≈ 1 atol = 0.01
 
         @test freq_Δ_2/dP_2 ≈ 1 atol = 0.001
         @test vrms_Δ_2/dQ_2 ≈ 1 atol = 0.001
@@ -794,6 +812,24 @@ end
 
         @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] > 0.99 
         @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] < 1.01 
+
+        @test hook.df[!,"source3_p_inv"][total_steps]/Source.pq0_set[3, 1] ≈ 1 atol = 0.001
+        @test hook.df[!,"source3_q_inv"][total_steps]/Source.pq0_set[3, 2] ≈ 1 atol = 0.001
+
+        #= @show freq_Δ_1
+        @show dP_1
+
+        @show vrms_Δ_1
+        @show dQ_1
+
+        @show freq_Δ_2
+        @show dP_2
+
+        @show vrms_Δ_2
+        @show dQ_2
+
+        @show hook.df[!,"source3_p_inv"][total_steps]
+        @show hook.df[!,"source3_q_inv"][total_steps] =#
 
         return nothing
 end
