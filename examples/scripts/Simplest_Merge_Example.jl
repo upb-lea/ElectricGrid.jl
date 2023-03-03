@@ -40,8 +40,8 @@ R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "ddpg", "fltr" => "L"),
-                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "RL", "mode" => "sac"),
+                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "fltr" => "L"),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "RL"),
                         Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1),
                         #Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "sac", "fltr" => "L"),
                         #Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "ddpg2", "fltr" => "L"),
@@ -56,7 +56,7 @@ parameters = Dict{Any, Any}(
     )
 
 
-#agents = Dict("ddpg1" => RL.DDPG(params1))
+#agents = Dict("ddpg" => RL.DDPG(params1), "sac" => RL.DDPG(params1), )
 
 #_______________________________________________________________________________
 # Defining the environment
@@ -65,7 +65,7 @@ function reference(t)
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
     #i = [10 * cos.(2*pi*50*t .- 2/3*pi*(i-1)) for i = 1:3]
-    return [-10, -10, -10].* cos.(θph)#, -1, -1]#[2, 2, 2]# * cos.(θph)
+    return [-10, -10, -10]#.* cos.(θph)#, -1, -1]#[2, 2, 2]# * cos.(θph)
 end
 
 function reward(env, name = nothing)
@@ -97,25 +97,6 @@ function reward(env, name = nothing)
 end
 
 
-function featurize(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
-        if !isnothing(name)
-            state = env.state
-            if name == "agent"
-                state = state[findall(x -> x in env.state_ids_RL, env.state_ids)]
-                norm_ref = env.nc.parameters["source"][1]["i_limit"]
-                state = vcat(state, reference(env.t)/norm_ref)
-            #else
-            #    global state_ids_classic
-            #    global state_ids
-            #    state = env.x[findall(x -> x in state_ids_classic, state_ids)]
-            end
-        elseif isnothing(env)
-            return vcat(x0, zeros(size(reference(t0))))
-        else
-            return env.state
-        end
-        return state
-end
 
 
 env = SimEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
