@@ -532,7 +532,9 @@ function check_parameters(
                     source["mode"] = "Synchronverter"
                 end
             elseif source["control_type"] ==  "RL"
-                source["mode"] = "dare_ddpg"
+                if !haskey(source, "mode")
+                    source["mode"] = "dare_ddpg"
+                end
             else
                 @assert("Invalid control type, please choose RL or classic")
             end

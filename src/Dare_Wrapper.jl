@@ -37,7 +37,7 @@ function setup_agents(env, custom_agents = nothing)
 
         if config["mode"] == "dare_ddpg"
             agent = create_agent_ddpg(na = length(env.agent_dict[name]["action_ids"]),
-                                        ns = length(env.agent_dict[name]["state_ids"]),
+                                        ns = length(state(env, name)),
                                         use_gpu = false)
 
             for i in 1:3
