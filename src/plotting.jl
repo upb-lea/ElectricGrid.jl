@@ -167,7 +167,7 @@ end
 - `i_mag_inv::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase currents at the terminals of the source [A] 
 - `i_mag_poc::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase currents flowing into the external network of the source [A]
 - `freq::Vector{Int}`: angular velocity of the 3 phase voltages over the capacior nearest to the source [Hz]
-- `angles::Vector{Int}`: relative positive phase sequence angles of the 3 phase voltages over the capacitor nearest to the source (measured with respect to the average angle over all the grid-forming sources) [degrees]
+- `angles::Vector{Int}`: relative positive phase sequence angles of the 3 phase voltages at the control nodes (measured with respect to the average angle over all the grid-forming sources) [degrees]
 - `i_sat::Vector{Int}`: normalised and scaled L₂ norm in αβγ coordinates of the degree of nonlinearity (or anti-windup) of the current controller [V]
 - `i_err::Vector{Int}`: L₂ norm in αβγ coordinates of the current error signal (measured current subtracted from reference current in DQ0 coordinates) [A]
 - `i_err_t::Vector{Int}`: L₂ norm in αβγ coordinates of the integrated current error signal [As]
@@ -186,7 +186,8 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
     i_mag_inv = [], i_mag_poc = [],
     freq = [], angles = [], 
     i_sat = [], i_err = [], i_err_t = [], 
-    v_sat = [], v_err = [], v_err_t = [])
+    v_sat = [], v_err = [], v_err_t = [],
+    v_dq = [], i_dq = [])
 
     #TODO complete documentation
 
@@ -250,15 +251,15 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
             push!(traces, scatter(df, x = :time, y = Symbol("debug_$(idx)"), mode="lines", name = "debug_$(idx)"))
         end
         
-        #= for idx in vdq #hook.collect_vdq_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vd"), mode="lines", name = "source$(idx)_vd"))
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_vq"), mode="lines", name = "source$(idx)_vq"))
+        for idx in v_dq #hook.collect_vdq_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_d"), mode="lines", name = "source$(idx)_v_d"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_q"), mode="lines", name = "source$(idx)_v_q"))
         end
 
-        for idx in idq #hook.collect_idq_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_id"), mode="lines", name = "source$(idx)_id"))
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_iq"), mode="lines", name = "source$(idx)_iq"))
-        end =#
+        for idx in i_dq #hook.collect_idq_ids #
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_d"), mode="lines", name = "source$(idx)_i_d"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_i_q"), mode="lines", name = "source$(idx)_i_q"))
+        end
 
         for idx in power_p_inv #hook.collect_pq_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_p_inv"), mode="lines", name = "source$(idx)_p_inv"))

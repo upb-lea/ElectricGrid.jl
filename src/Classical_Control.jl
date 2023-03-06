@@ -1215,7 +1215,7 @@ function PV_Control_Mode(Source::Classical_Controls, num_source, pq0)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 1)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 2)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 3)
-    θ = Source.θpll[num_source, 1, end] # phase a
+    θ = Source.θpll[num_source, 1, end] # positive phase sequence angle
     ω = 2π*Source.fpll[num_source, 1, end]
 
     Filtering(Source, num_source, θ)
@@ -1225,6 +1225,7 @@ function PV_Control_Mode(Source::Classical_Controls, num_source, pq0)
         pq0_ref = PV_Control(pq0_ref = pq0, Source, num_source)
         PQ_Control(pq0_ref = pq0_ref, Source, num_source, θ)
         Current_Controller(Source, num_source, θ, ω)
+
     else
 
         PQ_Control(pq0_ref = [0.0; 0.0; 0.0], Source, num_source, θ)
@@ -1629,10 +1630,11 @@ end
 function PV_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
     
     Vn = sqrt(2)*Source.V_pu_set[num_source, 1]*Source.Vrms[num_source] #peak
-    Vg = sqrt(2/3)*norm(Source.V_dq0_inv[num_source, :]) #peak
+    #Vg = sqrt(2/3)*norm(Source.V_dq0_inv[num_source, :]) #peak
+    Vg = sqrt(2/3)*norm(DQ0_Transform(Source.V_filt_cap[num_source, :, end], 0))
 
-    Kp = Source.V_kp[num_source]
-    Ki = 250*Source.V_ki[num_source]
+    Kp = 200000*Source.V_kp[num_source]
+    Ki = 5000*Source.V_ki[num_source]
 
     V_err = Source.V_err[num_source, :, 1]
     V_err_t = Source.V_err_t[num_source, 1]
@@ -1704,7 +1706,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         from the grid to operate in the standalone mode or when the grid is weak because,
         it does not have the capability of regulating the voltage. A current-controlled
         inverter may also continue injecting currents into the grid when there is
-        a fault on the grid, which might cause excessively high voltage. Moreover,
+        a fault on the grid, which might cause excessively high voltage. Moreover, for
         a current-controlled inverter is difficult to take part in the regulation of
         the grid frequency and voltage, which is a must when the penetration of
         renewable energy exceeds a certain level.
