@@ -14,25 +14,42 @@ CM = [0. 1.
 # Set parameters accoring graphic above
 parameters = Dict{Any, Any}(
     "source" => Any[
-                    Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "user_def", "fltr" => "LC"),
+                    Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "my_ddpg", "fltr" => "L"),
                     ],
     "load"   => Any[
                     Dict{Any, Any}("impedance" => "R", "R" => R_load,"v_limit"=>1e4, "i_limit"=>1e4),
                     ],
-    "grid" => Dict{Any, Any}("phase" => 3)
+    "grid" => Dict{Any, Any}("phase" => 1)
 )
 
 
 function reference(t)
-    return [1]
+    return 1
 end
 
 
 featurize_ddpg = function(state, env, name)
+    if name == "my_ddpg"
+        norm_ref = env.nc.parameters["source"][1]["i_limit"]
+        state = vcat(state, reference(env.t)/norm_ref)
+    end
+end
 
-    norm_ref = env.nc.parameters["source"][1]["i_limit"]
-    state = vcat(state, reference(env.t)/norm_ref)
+function reward_function(env, name = nothing)
+    if name == "my_ddpg"
+        index_1 = findfirst(x -> x == "source1_i_L1", env.state_ids)
+        state_to_control = env.state[index_1]
 
+        if any(abs.(state_to_control).>1)
+            return -1
+        else
+
+            refs = reference(env.t)
+            norm_ref = env.nc.parameters["source"][1]["i_limit"]
+            r = 1-((abs(refs/norm_ref - state_to_control)/2)^0.5)
+            return r
+        end
+    end
 end
 
 env = SimEnv(
@@ -40,11 +57,11 @@ env = SimEnv(
     parameters = parameters,
     t_end = 0.1,
     featurize = featurize_ddpg,
-    #reward_function = reward_function,
+    reward_function = reward_function,
     action_delay = 0)
 
-agent = create_agent_ddpg(na = length(env.agent_dict["user_def"]["action_ids"]),
-                          ns = length(state(env, "user_def")),
+agent = create_agent_ddpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
+                          ns = length(state(env, "my_ddpg")),
                                      use_gpu = false)
 
 #=
@@ -104,11 +121,22 @@ agent = Agent(
 )
 =#
 
-controllers = setup_agents(env, Dict("user_def" => agent))
+controllers = setup_agents(env, Dict("my_ddpg" => agent))
 
 
 #run(ma["dare_ddpg_1"]["policy"], env)
 
-learn(controllers, env, num_episodes = 1)
+learn(controllers, env, num_episodes = 5)
 
 #learn(agent, env)
+
+
+states_to_plot = ["source1_i_L1"]
+action_to_plot = ["source1_u"]
+
+hook = data_hook(collect_state_ids = states_to_plot)
+
+simulate(controllers, env, hook=hook)
+
+plot_hook_results(hook = hook,
+                  states_to_plot  = states_to_plot)
