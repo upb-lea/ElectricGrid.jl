@@ -164,6 +164,8 @@ function dare_run(policy, env, stop_condition, hook, training = false)
     is_stop = false
     while !is_stop
         RLBase.reset!(env)
+        reset_policy(policy)
+
         policy(PRE_EPISODE_STAGE, env, training)
         hook(PRE_EPISODE_STAGE, policy, env, training)
 

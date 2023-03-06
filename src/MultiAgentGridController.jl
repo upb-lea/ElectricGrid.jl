@@ -58,3 +58,15 @@ function (A::MultiAgentGridController)(stage::PreActStage, env::AbstractEnv, act
         end
     end
 end
+
+function reset_policy(A::MultiAgentGridController)
+    for agent in values(A.agents)
+        reset_policy(agent["policy"])
+    end
+end
+
+function reset_policy(np::NamedPolicy) 
+    reset_policy(np.policy)
+end
+
+function reset_policy(::AbstractPolicy) end
