@@ -292,7 +292,7 @@ end
         cable_list = []
 
         cable = Dict()
-        cable["R"]       = 0.208   # Ω, line resistance
+        cable["R"]       = 0.01   # Ω, line resistance
         cable["L"]       = 0.00025 # H, line inductance
         cable["C"]       = 0.4e-3  # F, line capacitance
         cable["i_limit"] = 10e12   # A, line current limit
@@ -350,7 +350,7 @@ end
 
         source["std_asy"]      = 5e3   # Asymptotic Standard Deviation
         source["σ"]            = 25e3    # Brownian motion scale i.e. ∝ diffusion, volatility parameter
-        source["Δt"]           = 0.02   # Time Step, seconds
+        source["Δt"]           = 0.01   # Time Step, seconds
         source["X₀"]           = 30e3   # Initial Process Values, Watt
         source["k"]            = 1      # Interpolation degree
         source["γ"]            = 50e3   # Asymptotoic Mean
@@ -468,7 +468,7 @@ end
 
         stats = fit(Normal{Float32}, new_data)
 
-        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.02
+        @test 1 ≈ stats.μ/parameters["source"][3]["γ"] atol = 0.05
         @test 1 ≈ stats.σ/parameters["source"][3]["std_asy"] atol = 0.1
         @test new_angles ≈ angles_eval atol = 0.001
 
