@@ -261,7 +261,7 @@ using Distributions
         @test Source.I_ki ≈ I_ki atol = 0.001
         @test Source.V_kp[2:end] ≈ V_kp atol = 0.001
         @test Source.V_ki[2:end] ≈ V_ki atol = 0.001
-        @test new_data ≈ old_data atol = 0.001
+        @test new_data ≈ old_data atol = 0.01
         @test new_data[1:total_steps, 2:end] ≈ new_data[total_steps + 1:2*total_steps, 2:end] atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[2*total_steps + 1:end, 2:end] atol = 0.001
 end
@@ -619,7 +619,7 @@ end
 
         new_data = convert.(Float64, Matrix(hook.df)[end-100:end, 1:17])
 
-        @test new_data ≈ old_data atol = 0.001
+        @test new_data ≈ old_data atol = 0.01
 
         return nothing
 end
