@@ -523,12 +523,20 @@ function check_parameters(
                 source["v_δ_set"] = 0.0
             end
 
-            if !haskey(source, "mode")
-                source["mode"] = "Synchronverter"
-            end
-
             if !haskey(source, "control_type")
                 source["control_type"] = "classic"
+            end
+
+            if source["control_type"] ==  "classic"
+                if !haskey(source, "mode")
+                    source["mode"] = "Synchronverter"
+                end
+            elseif source["control_type"] ==  "RL"
+                if !haskey(source, "mode")
+                    source["mode"] = "dare_ddpg"
+                end
+            else
+                @assert("Invalid control type, please choose RL or classic")
             end
 
             if !haskey(source, "γ") # asymptotic mean
@@ -933,6 +941,8 @@ function _sample_fltr_LCL(grid_properties)
     source["R_C"] = R_C
     source["i_limit"] = i_limit
     source["v_limit"] = v_limit
+    source["control_type"] ==  "classic"
+    source["mode"] = "Synchronverter"
 
     return source
 end
@@ -962,6 +972,8 @@ function _sample_fltr_LC(grid_properties)
     source["R_C"] = R_C
     source["i_limit"] = i_limit
     source["v_limit"] = v_limit
+    source["control_type"] ==  "classic"
+    source["mode"] = "Synchronverter"
 
     return source
 end
@@ -988,6 +1000,8 @@ function _sample_fltr_L(grid_properties)
     source["R1"] = R_1
     source["i_limit"] = i_limit
     source["v_limit"] = 1.1 * grid_properties["v_rms"] * sqrt(2)
+    source["control_type"] ==  "classic"
+    source["mode"] = "Synchronverter"
 
     return source
 end

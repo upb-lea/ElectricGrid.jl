@@ -5,12 +5,39 @@ import CUDA: device
 using MacroTools: @forward
 
 #functions to make the training flag work for the whole RL framework
-(agent::Agent)(env::SimEnv, training::Bool) = agent.policy(env; training)
+(agent::Agent)(env::SimEnv, training::Bool) = agent.policy(env, training)
 (p::NamedPolicy)(env::SimEnv, training::Bool) = p.policy(env, p.name, training)
 (policy::AbstractPolicy)(env, training::Bool) = policy(env)
 (policy::AbstractPolicy)(env, name::Union{Nothing, String}, training::Bool) = policy(env, name)
 (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, training::Bool) = policy(stage, env)
 (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, action, training::Bool) = policy(stage, env, action)
+
+
+#re-definition needed to use Dare-internal action-space functions
+function RLBase.update!(
+    trajectory::AbstractTrajectory,
+    policy::AbstractPolicy,
+    env::SimEnv,
+    ::PostEpisodeStage,
+)
+    # Note that for trajectories like `CircularArraySARTTrajectory`, data are
+    # stored in a SARSA format, which means we still need to generate a dummy
+    # action at the end of an episode.
+
+    s = policy isa NamedPolicy ? state(env, nameof(policy)) : state(env)
+
+    A = policy isa NamedPolicy ? action_space(env, nameof(policy)) : action_space(env)
+    a = rand(A)
+
+    push!(trajectory[:state], s)
+    push!(trajectory[:action], a)
+    if haskey(trajectory, :legal_actions_mask)
+        lasm =
+            policy isa NamedPolicy ? legal_action_space_mask(env, nameof(policy)) :
+            legal_action_space_mask(env)
+        push!(trajectory[:legal_actions_mask], lasm)
+    end
+end
 
 
 Base.@kwdef struct DareNeuralNetworkApproximator{M,O} <: AbstractApproximator
@@ -78,7 +105,7 @@ y -> begin
     x = @set x.target_critic = y.tc
     x
 end
-    
+
 function DareDDPGPolicy(;
     behavior_actor,
     behavior_critic,
@@ -125,7 +152,7 @@ function (::DareDDPGPolicy)(::AbstractStage, ::AbstractEnv)
     nothing
 end
 
-function (p::DareDDPGPolicy)(env::SimEnv, name::Any = nothing, training = false)
+function (p::DareDDPGPolicy)(env::SimEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
     p.update_step += 1
 
     if p.update_step <= p.start_steps
@@ -203,7 +230,7 @@ function RLBase.update!(p::DareDDPGPolicy, batch::NamedTuple{SARTS})
         dest .= ρ .* dest .+ (1 - ρ) .* src
     end
 end
-    
+
 
 # also in a sep src
 
@@ -247,7 +274,7 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
             batch_size = batch_size,
             start_steps = -1,
             start_policy = RandomPolicy(-1.0..1.0; rng = rngg),
-            update_after = 50, #1000 
+            update_after = 50, #1000
             update_freq = 10,
             act_limit = 1.0,
             act_noise = 0.032,
@@ -260,4 +287,3 @@ function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
         ),
     )
 end
-

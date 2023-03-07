@@ -470,7 +470,7 @@ function (hook::data_hook)(::PostActStage, agent, env, training = false)
             if length(hook.reward) != length(agent.agents)
                 hook.reward = zeros(length(agent.agents))
             end
-            
+
             if length(hook.policy_names) != length(agent.agents)
                 hook.policy_names = [s for s in keys(agent.agents)]
             end
@@ -537,14 +537,28 @@ function (hook::data_hook)(::PostExperimentStage, agent, env, training = false)
     end
 
     if hook.plot_rewards
-        matrix_to_plot = reduce(hcat, hook.rewards)
-        if length(hook.policy_names) > 0
-            p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        if hook.is_inner_hook_RL
+            if training
+                matrix_to_plot = reduce(hcat, hook.rewards)
+
+                p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+
+                for i in 2:length(hook.rewards[1])
+                    lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
+                end
+
+                display(p)
+            end
         else
+            matrix_to_plot = reduce(hcat, hook.rewards)
+
             p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), title="Total reward per episode", xlabel="Episode", ylabel="Score")
-        end
-        for i in 2:length(hook.rewards[1])
-            lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
+
+            for i in 2:length(hook.rewards[1])
+                lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
+            end
+
+            display(p)
         end
         # println(p)
     end

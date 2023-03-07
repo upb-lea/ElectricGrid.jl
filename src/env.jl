@@ -5,6 +5,7 @@ mutable struct SimEnv <: AbstractEnv
     action_space
     state_space
     done
+    inner_featurize
     featurize
     prepare_action
     reward_function
@@ -31,8 +32,7 @@ mutable struct SimEnv <: AbstractEnv
     D
     state_parameters
     y #holds all of the inductor voltages and capacitor currents
-    state_ids_RL
-    action_ids_RL
+    agent_dict
 end
 
 
@@ -113,8 +113,7 @@ function SimEnv(;
     action_delay = 1,
     t_end = nothing,
     verbosity = 0,
-    state_ids_RL = nothing,
-    action_ids_RL = nothing
+    agent_dict = nothing
 )
 
     if !(isnothing(t_end))
@@ -175,51 +174,6 @@ function SimEnv(;
         action_space = Space([ -1.0..1.0 for i = 1:length(sys_d.B[1,:]) ], )
     end
 
-    if isnothing(featurize)
-        featurize = function(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
-            if !isnothing(name)
-                return env.state
-            elseif isnothing(env)
-                return x0
-            else
-                return env.state
-            end
-        end
-    end
-
-    if isnothing(prepare_action)
-        prepare_action = function(env)
-            env.action
-        end
-    end
-
-    if isnothing(reward_function)
-        reward_function = function(env, name = nothing)
-            return 0.0
-        end
-    end
-
-    if isnothing(x0)
-        x0 = [ 0.0 for i = 1:length(sys_d.A[1,:]) ]
-    end
-
-    x = x0
-    t = t0
-    state = featurize(x0,t0)
-
-    if isnothing(state_space)
-        state_space = Space([ -1.0..1.0 for i = 1:length(state) ], )
-    end
-
-    if use_gpu
-        if isa(x0, Array)
-            x0 = CuArray(x0)
-        end
-        if !(convert_state_to_cpu) && isa(state, Array)
-            state = CuArray(state)
-        end
-    end
-
     if isnothing(state_ids)
         if isnothing(nc)
             state_ids = []
@@ -240,12 +194,80 @@ function SimEnv(;
         end
     end
 
-    if isnothing(state_ids_RL)
-        state_ids_RL = state_ids
+    if isnothing(agent_dict)
+        agent_dict = Dict()
+        for ns in 1:nc.num_sources
+            if nc.parameters["source"][ns]["control_type"] == "RL"
+                if nc.parameters["source"][ns]["mode"] == "dare_ddpg"
+                    name = nc.parameters["source"][ns]["mode"] * "_$ns"
+                else
+                    name = nc.parameters["source"][ns]["mode"]
+                end
+                agent_dict[name] = Dict(
+                    "source_number" => ns,
+                    "mode" => nc.parameters["source"][ns]["mode"],
+                    )
+
+                ssa = "source$ns"
+
+                agent_dict[name]["state_ids"] = filter(x -> split(x, "_")[1] == ssa, state_ids)
+
+                agent_dict[name]["action_ids"] = filter(x -> split(x, "_")[1] == ssa, action_ids)
+            end
+        end
     end
 
-    if isnothing(action_ids_RL)
-        action_ids_RL = action_ids
+
+    inner_featurize = function(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
+        if !isnothing(name)
+            if name == "classic"
+                return env.state
+            else
+                state = env.state[findall(x -> x in env.agent_dict[name]["state_ids"], env.state_ids)]
+                if !isnothing(featurize)
+                    state = featurize(state, env, name)
+                end
+                return state
+            end
+        elseif isnothing(env)
+            return x0
+        else
+            return env.state
+        end
+    end
+
+
+    if isnothing(prepare_action)
+        prepare_action = function(env)
+            env.action
+        end
+    end
+
+    if isnothing(reward_function)
+        reward_function = function(env, name = nothing)
+            return 0.0
+        end
+    end
+
+    if isnothing(x0)
+        x0 = [ 0.0 for i = 1:length(sys_d.A[1,:]) ]
+    end
+
+    x = x0
+    t = t0
+    state = inner_featurize(x0,t0)
+
+    if isnothing(state_space)
+        state_space = Space([ -1.0..1.0 for i = 1:length(state) ], )
+    end
+
+    if use_gpu
+        if isa(x0, Array)
+            x0 = CuArray(x0)
+        end
+        if !(convert_state_to_cpu) && isa(state, Array)
+            state = CuArray(state)
+        end
     end
 
     vdc_fixed = 0
@@ -393,11 +415,11 @@ function SimEnv(;
     y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
 
     SimEnv(verbosity, nc, sys_d, action_space, state_space,
-    false, featurize, prepare_action, reward_function,
+    false, inner_featurize, featurize, prepare_action, reward_function,
     x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
     v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
     reward, action, action_ids, action_delay_buffer,
-    A, B, C, D, state_parameters, y, state_ids_RL, action_ids_RL)
+    A, B, C, D, state_parameters, y, agent_dict)
 end
 
 RLBase.action_space(env::SimEnv) = env.action_space
@@ -412,7 +434,7 @@ RLBase.is_terminated(env::SimEnv) = env.done
 RLBase.state(env::SimEnv) = env.state
 
 function RLBase.state(env::SimEnv, name::String)
-    return env.featurize(;env = env, name = name)
+    return env.inner_featurize(;env = env, name = name)
 end
 
 """
@@ -422,7 +444,7 @@ Resets the environment. The state is set to x0, the time to t0, reward to zero a
 false.
 """
 function RLBase.reset!(env::SimEnv)
-    env.state = env.convert_state_to_cpu ? Array(env.featurize(env.x0, env.t0)) : env.featurize(env.x0, env.t0)
+    env.state = env.convert_state_to_cpu ? Array(env.inner_featurize(env.x0, env.t0)) : env.inner_featurize(env.x0, env.t0)
     env.x = env.x0
     env.y = fill!(env.y, 0.0) #TODO: y0
     if !isnothing(env.action_delay_buffer)
@@ -487,7 +509,7 @@ function (env::SimEnv)(action)
         env.state = xout_d'[2,:] ./ env.norm_array
     end
 
-    env.state = env.featurize(; env = env)
+    env.state = env.inner_featurize(; env = env)
     env.reward = env.reward_function(env)
     env.done = (env.steps >= env.maxsteps) || (any(abs.(env.x ./ env.norm_array) .> 1))
 

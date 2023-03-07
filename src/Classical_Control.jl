@@ -785,8 +785,7 @@ function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing})
     return Action    
 end
 
-function (Animo::Classical_Policy)(::PostEpisodeStage, ::AbstractEnv)
-
+function reset_policy(Animo::Classical_Policy)
     Source = Animo.Source
 
     Source.steps = 0
