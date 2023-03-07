@@ -178,8 +178,8 @@ using Distributions
         grid["ramp_end"] = 0.04
         grid["process_start"] = 0.04
         grid["f_grid"] = 50
-        grid["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
-        grid["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
+        grid["Δfmax"] = 0.5 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
+        grid["ΔEmax"] = 5 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
         #-------------------------------------------------------------------------------
         # Amalgamation
@@ -243,7 +243,7 @@ using Distributions
         #_______________________________________________________________________________
         # Tests
 
-        D = [6.710040724346115e-5 0.0003909248293754465; 202.64236728467552 6148.754619013457]
+        D = [303.9635509270133 9223.131928520184; 202.64236728467552 6148.754619013457]
         I_kp = [0.003212489119409699; 0.0021416594129397997; 0.003212489119409699]
         I_ki = [0.34970957351408755; 0.23313971567605846; 0.34970957351408755]
         V_kp = [0.44465925382594856; 0.2964395025506326]
@@ -676,6 +676,8 @@ end
                                                 "mode" => "Droop", 
                                                 "v_pu_set" => 1.0,
                                                 "vdc" => 800, 
+                                                "τv"       => 0.02,  # Time constant of the voltage loop, seconds
+                                                "τf"       => 0.002,  # Time constant of the frequency loop, seconds 
                                                 "i_rip" => 0.02),
                                 Dict{Any, Any}("pwr" => 100e3, 
                                                 "mode" => "PQ", 
@@ -706,8 +708,8 @@ end
                                         "f_grid" => 60, 
                                         "process_start" => 1.0, 
                                         "v_rms" => 100,
-                                        "Δfmax" => 0.005, # The drop (increase) in frequency that causes a 100% increase (decrease) in active power (from nominal)
-                                        "ΔEmax" => 0.1, # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
+                                        "Δfmax" => 0.5, # The drop (increase) in frequency that causes a 100% increase (decrease) in active power (from nominal)
+                                        "ΔEmax" => 10, # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
                                         ) 
         )
         #_______________________________________________________________________________
@@ -756,11 +758,11 @@ end
         # VSG
         freq_start_1 = hook.df[!,"source1_freq"][step_start]
         freq_end_1 = hook.df[!,"source1_freq"][total_steps]
-        freq_Δ_1 = (freq_start_1 - freq_end_1)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
+        freq_Δ_1 = 100*(freq_start_1 - freq_end_1)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
         vrms_start_1 = hook.df[!,"source1_v_mag_cap"][step_start]
         vrms_end_1 = hook.df[!,"source1_v_mag_cap"][total_steps]
-        vrms_Δ_1 = (vrms_start_1 - vrms_end_1)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
+        vrms_Δ_1 = 100*(vrms_start_1 - vrms_end_1)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"]*env.nc.parameters["source"][1]["v_pu_set"])
 
         p_start_1 = hook.df[!,"source1_p_poc"][step_start]
         p_end_1 = hook.df[!,"source1_p_poc"][total_steps]
@@ -777,11 +779,11 @@ end
         # Droop
         freq_start_2 = hook.df[!,"source2_freq"][step_start]
         freq_end_2 = hook.df[!,"source2_freq"][total_steps]
-        freq_Δ_2 = (freq_start_2 - freq_end_2)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
+        freq_Δ_2 = 100*(freq_start_2 - freq_end_2)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
         vrms_start_2 = hook.df[!,"source2_v_mag_cap"][step_start]
         vrms_end_2 = hook.df[!,"source2_v_mag_cap"][total_steps]
-        vrms_Δ_2 = (vrms_start_2 - vrms_end_2)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"])
+        vrms_Δ_2 = 100*(vrms_start_2 - vrms_end_2)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"]*env.nc.parameters["source"][2]["v_pu_set"])
 
         p_start_2 = hook.df[!,"source2_p_poc"][step_start]
         p_end_2 = hook.df[!,"source2_p_poc"][total_steps]
@@ -795,6 +797,21 @@ end
 
         dQ_2 = q_Δ_2/Source.S[2]
 
+        #= @show freq_Δ_1
+        @show dP_1
+
+        @show vrms_Δ_1
+        @show dQ_1
+
+        @show freq_Δ_2
+        @show dP_2
+
+        @show vrms_Δ_2
+        @show dQ_2
+
+        @show hook.df[!,"source3_p_inv"][total_steps]
+        @show hook.df[!,"source3_q_inv"][total_steps]
+ =#
         @test freq_Δ_1/dP_1 ≈ 1 atol = 0.001
         @test vrms_Δ_1/dQ_1 ≈ 1 atol = 0.01
 
@@ -815,21 +832,6 @@ end
 
         @test hook.df[!,"source3_p_inv"][total_steps]/Source.pq0_set[3, 1] ≈ 1 atol = 0.001
         @test hook.df[!,"source3_q_inv"][total_steps]/Source.pq0_set[3, 2] ≈ 1 atol = 0.001
-
-        #= @show freq_Δ_1
-        @show dP_1
-
-        @show vrms_Δ_1
-        @show dQ_1
-
-        @show freq_Δ_2
-        @show dP_2
-
-        @show vrms_Δ_2
-        @show dQ_2
-
-        @show hook.df[!,"source3_p_inv"][total_steps]
-        @show hook.df[!,"source3_q_inv"][total_steps] =#
 
         return nothing
 end
