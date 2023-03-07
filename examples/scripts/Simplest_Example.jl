@@ -41,7 +41,7 @@ parameters = Dict{Any, Any}(
                                         "fltr" => "L",
                                         "mode" => "PQ", 
                                         "p_set" => 50e3, 
-                                        "q_set" => 0, 
+                                        "q_set" => 10e3, 
                                         "v_pu_set" => 1.0,
                                         "v_δ_set" => 1),
                         ],
