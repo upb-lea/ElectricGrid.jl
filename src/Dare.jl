@@ -6,7 +6,6 @@ using CSV
 using CUDA
 using DataStructures
 using ControlSystemsBase
-using DifferentialEquations
 using Distributions
 using DSP
 using FFTW
