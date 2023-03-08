@@ -1,2 +1,0 @@
-#!/bin/sh
-julia --color=yes --depwarn=no --project=@. -q -i -- $(dirname $0)/../bootstrap.jl s "$@"
