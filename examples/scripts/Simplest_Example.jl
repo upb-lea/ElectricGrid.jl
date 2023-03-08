@@ -68,13 +68,13 @@ env = ElectricGridEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity
 #_______________________________________________________________________________
 # initialising the agents 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env)
+hook = Simulate(Multi_Agent, env)
 
 #_______________________________________________________________________________
 # Plotting

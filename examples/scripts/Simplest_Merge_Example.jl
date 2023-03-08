@@ -111,15 +111,15 @@ hook = data_hook(collect_sources  = [1],
 # Running the Time Simulation
 
 
-ma = setup_agents(env)
+ma = SetupAgents(env)
 
-learn(ma, env, num_episodes = num_eps)
+Learn(ma, env, num_episodes = num_eps)
 
 hook = data_hook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
 
-hook = simulate(ma, env, hook=hook)
+hook = Simulate(ma, env, hook=hook)
 
 #RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 #_______________________________________________________________________________

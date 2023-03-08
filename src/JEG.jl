@@ -23,7 +23,7 @@ using StableRNGs
 using SpecialFunctions
 using StatsBase
 
-#export create_setup, ClassicalPolicy, CreateAgentDdpg, Source_Initialiser, MultiAgentGridController, data_hook, plot_hook_results, plot_best_results, NodeConstructor, JEG_setup, ElectricGridEnv
+#export create_setup, ClassicalPolicy, CreateAgentDdpg, Source_Initialiser, MultiController, data_hook, plot_hook_results, plot_best_results, NodeConstructor, JEG_setup, ElectricGridEnv
 
 include("./power_system_theory.jl")
 include("./node_constructor.jl")
@@ -32,7 +32,7 @@ include("./solar_module.jl")
 include("./electric_grid_env.jl")
 include("./agent_ddpg.jl")
 include("./classical_control.jl")
-include("./MultiAgentGridController.jl")
+include("./multi_controller.jl")
 include("./plotting.jl")
 include("./data_hook.jl")
 include("./logger.jl")

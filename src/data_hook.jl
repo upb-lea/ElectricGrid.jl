@@ -465,7 +465,7 @@ function (hook::data_hook)(::PostActStage, agent, env, training = false)
     hook.tmp = DataFrame()
 
     if training
-        if isa(agent, MultiAgentGridController)
+        if isa(agent, MultiController)
 
             if length(hook.reward) != length(agent.agents)
                 hook.reward = zeros(length(agent.agents))
@@ -492,7 +492,7 @@ function (hook::data_hook)(::PostEpisodeStage, agent, env, training = false)
     hook.ep += 1
 
     if training
-        if isa(agent, MultiAgentGridController)
+        if isa(agent, MultiController)
             if length(hook.rewards) >= 1 && sum(hook.reward) > maximum(sum.(hook.rewards))
                 if hook.is_inner_hook_RL
                     for name in hook.policy_names
@@ -513,7 +513,7 @@ function (hook::data_hook)(::PostEpisodeStage, agent, env, training = false)
 
         push!(hook.rewards, hook.reward)
 
-        if isa(agent, MultiAgentGridController)
+        if isa(agent, MultiController)
             hook.reward = zeros(length(agent.agents))
         else
             hook.reward = [0.0]

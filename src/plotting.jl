@@ -34,7 +34,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
         actions_to_plot = hook.collect_action_ids
     end
 
-    if isa(agent, MultiAgentGridController)
+    if isa(agent, MultiController)
         act_noise_old = Dict()
         for (name, agent_temp) in agent.agents
             if isa(agent_temp["policy"], Agent)
@@ -55,7 +55,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     
     temphook = data_hook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
     
-    if isa(agent, MultiAgentGridController)
+    if isa(agent, MultiController)
         ma2 = deepcopy(agent)
         for (name, policy) in ma2.agents
             if isa(policy["policy"], Agent)
@@ -110,7 +110,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
     display(p)
     
-    if isa(agent, MultiAgentGridController)
+    if isa(agent, MultiController)
         for (name, agent_temp) in agent.agents
             if isa(agent_temp["policy"], Agent)
                 agent_temp["policy"].policy.policy.act_noise = act_noise_old[name]

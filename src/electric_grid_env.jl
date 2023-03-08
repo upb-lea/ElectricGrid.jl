@@ -87,7 +87,7 @@ https://juliareinforcementlearning.org/
 - `action_ids_RL::Vector{String}`: Action ids which are given to RL agents.
 
 # Return Values
-- `Multi_Agent::MultiAgentGridController`: (optional)
+- `Multi_Agent::MultiController`: (optional)
 
 """
 function ElectricGridEnv(;

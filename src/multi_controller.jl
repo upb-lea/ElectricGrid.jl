@@ -1,6 +1,3 @@
-export MultiAgentGridController
-
-
 #=
 Example for agents dict:
 
@@ -11,25 +8,25 @@ Dict(nameof(agent) => {"policy" => agent,
                       "state_ids" => state_ids_classic,
                       "action_ids" => action_ids_classic})
 =#
-mutable struct MultiAgentGridController <: AbstractPolicy
+mutable struct MultiController <: AbstractPolicy
     agents::Dict{Any,Any}
     action_ids
     hook
 end
 
-function MultiAgentGridController(agents, action_ids)
+function MultiController(agents, action_ids)
     hook = data_hook(is_inner_hook_RL = true, plot_rewards = true)
 
-    return MultiAgentGridController(
+    return MultiController(
         agents,
         action_ids,
         hook
     )
 end
 
-Base.getindex(A::MultiAgentGridController, x) = getindex(A.agents, x)
+Base.getindex(A::MultiController, x) = getindex(A.agents, x)
 
-function (A::MultiAgentGridController)(env::AbstractEnv, training::Bool = false)
+function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
     for agent in values(A.agents)
@@ -39,7 +36,7 @@ function (A::MultiAgentGridController)(env::AbstractEnv, training::Bool = false)
     return action
 end
 
-function (A::MultiAgentGridController)(stage::AbstractStage, env::AbstractEnv, training::Bool = false)
+function (A::MultiController)(stage::AbstractStage, env::AbstractEnv, training::Bool = false)
     A.hook(stage, A, env, training)
 
     if training
@@ -49,7 +46,7 @@ function (A::MultiAgentGridController)(stage::AbstractStage, env::AbstractEnv, t
     end
 end
 
-function (A::MultiAgentGridController)(stage::PreActStage, env::AbstractEnv, action, training::Bool = false)
+function (A::MultiController)(stage::PreActStage, env::AbstractEnv, action, training::Bool = false)
     A.hook(stage, A, env, action, training)
 
     if training
@@ -59,7 +56,7 @@ function (A::MultiAgentGridController)(stage::PreActStage, env::AbstractEnv, act
     end
 end
 
-function ResetPolicy(A::MultiAgentGridController)
+function ResetPolicy(A::MultiController)
     for agent in values(A.agents)
         ResetPolicy(agent["policy"])
     end
@@ -73,7 +70,7 @@ function ResetPolicy(::AbstractPolicy) end
 
 
 """
-    setup_agents(env, hook; num_episodes = 1, return_Agents = false)
+    SetupAgents(env, hook; num_episodes = 1, return_Agents = false)
 
 # Description
 Initialises up the agents that will be controlling the electrical network.
@@ -82,10 +79,10 @@ Initialises up the agents that will be controlling the electrical network.
 - `env::ElectricGridEnv`: mutable struct containing the environment.
 
 # Return Values
-- `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
+- `Multi_Agent::MultiController`: the struct containing the initialised agents
 
 """
-function setup_agents(env, custom_agents = nothing)
+function SetupAgents(env, custom_agents = nothing)
 
 
     #_______________________________________________________________________________
@@ -159,7 +156,7 @@ function setup_agents(env, custom_agents = nothing)
         Agents[nameof(Animo)] = polc
     end
 
-    Multi_Agent = MultiAgentGridController(Agents, env.action_ids)
+    Multi_Agent = MultiController(Agents, env.action_ids)
 
     #_______________________________________________________________________________
     # Logging
@@ -172,20 +169,20 @@ function setup_agents(env, custom_agents = nothing)
 
 end
 
-function simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
+function Simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
-        hook = default_data_hook(Multi_Agent, env)
+        hook = DefaultDataHook(Multi_Agent, env)
 
     end
 
-    JEG_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
+    CustomRun(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
 
     return hook
 end
 
-function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
+function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
@@ -193,7 +190,7 @@ function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     end
 
-    JEG_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
+    CustomRun(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
 
     return hook
 end
@@ -201,7 +198,7 @@ end
 """
 which signals are the default ones if the user does not define a data hook for plotting
 """
-function default_data_hook(Multi_Agent, env)
+function DefaultDataHook(Multi_Agent, env)
 
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
     all_class = collect(1:Source.num_sources)
@@ -231,7 +228,7 @@ function default_data_hook(Multi_Agent, env)
     return hook
 end
 
-function JEG_run(policy, env, stop_condition, hook, training = false)
+function CustomRun(policy, env, stop_condition, hook, training = false)
 
     hook(PRE_EXPERIMENT_STAGE, policy, env, training)
     policy(PRE_EXPERIMENT_STAGE, env, training)

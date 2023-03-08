@@ -31,13 +31,13 @@ env = ElectricGridEnv(num_sources = 2, num_loads = 1)
 
 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # running the time simulation
 
-#hook = simulate(Multi_Agent, env)
+#hook = Simulate(Multi_Agent, env)
 
 #hook = data_hook(collect_state_ids = env.state_ids,
 #                collect_action_ids = env.action_ids
@@ -48,7 +48,7 @@ states_to_plot = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_
 
 hook = data_hook(collect_state_ids = states_to_plot)
 
-simulate(Multi_Agent, env, hook=hook)
+Simulate(Multi_Agent, env, hook=hook)
 
 #_______________________________________________________________________________
 # Plotting

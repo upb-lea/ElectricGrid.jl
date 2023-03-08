@@ -10,7 +10,7 @@ include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("classical_control.jl"))
 include(srcdir("power_system_theory.jl"))
-include(srcdir("MultiAgentGridController.jl"))
+include(srcdir("multi_controller.jl"))
 
 
 agentname = "agent"
@@ -215,7 +215,7 @@ ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
                             "state_ids" => state_ids_classic,
                             "action_ids" => action_ids_classic))
                             
-ma = MultiAgentGridController(ma_agents, action_ids)
+ma = MultiController(ma_agents, action_ids)
 
 plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c", "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]

@@ -118,14 +118,14 @@ agent = Agent(
     ),
 )
 
-controllers = setup_agents(env, Dict("my_ddpg" => agent))
+controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
 
 #run(ma["JEG_ddpg_1"]["policy"], env)
 
-learn(controllers, env, num_episodes = 5)
+Learn(controllers, env, num_episodes = 5)
 
-#learn(agent, env)
+#Learn(agent, env)
 
 
 states_to_plot = ["source1_i_L1"]
@@ -133,7 +133,7 @@ action_to_plot = ["source1_u"]
 
 hook = data_hook(collect_state_ids = states_to_plot)
 
-simulate(controllers, env, hook=hook)
+Simulate(controllers, env, hook=hook)
 
 plot_hook_results(hook = hook,
                   states_to_plot  = states_to_plot)

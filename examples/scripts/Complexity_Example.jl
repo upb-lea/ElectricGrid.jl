@@ -54,12 +54,12 @@ hook = data_hook(collect_sources  = 1:num_sources,
 #_______________________________________________________________________________
 # initialising the agents 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env, 1, hook = hook)   
+hook = Simulate(Multi_Agent, env, 1, hook = hook)   
 
 #_______________________________________________________________________________
 # Plotting

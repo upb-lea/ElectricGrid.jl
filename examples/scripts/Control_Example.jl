@@ -220,13 +220,13 @@ hook = data_hook(v_mag_inv   = [1 2],
 #_______________________________________________________________________________
 # initialising the agents 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
+hook = Simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
 #_______________________________________________________________________________
 # Plotting

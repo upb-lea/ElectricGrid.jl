@@ -11,7 +11,7 @@ include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("ClassicalControl.jl"))
 include(srcdir("power_system_theory.jl"))
-include(srcdir("MultiAgentGridController.jl"))
+include(srcdir("multi_controller.jl"))
 
 
 CM = [  0   0   0   1

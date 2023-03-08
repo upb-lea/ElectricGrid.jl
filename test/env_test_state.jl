@@ -40,13 +40,13 @@ using ReinforcementLearning
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
     # running the time simulation
 
-    hook = simulate(Multi_Agent, env, hook = hook)
+    hook = Simulate(Multi_Agent, env, hook = hook)
 
 
     idx_end = 300
@@ -94,7 +94,7 @@ end
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
@@ -134,13 +134,13 @@ end
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
     # running the time simulation
 
-    hook = simulate(Multi_Agent, env, hook = hook)
+    hook = Simulate(Multi_Agent, env, hook = hook)
 
 
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source2_i_L1_a",   "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_source2_v_C_cables_a"]
@@ -208,13 +208,13 @@ end;
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
     # running the time simulation
 
-    hook = simulate(Multi_Agent, env, hook = hook)
+    hook = Simulate(Multi_Agent, env, hook = hook)
 
     #_______________________________________________________________________________
     # Plotting
