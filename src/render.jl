@@ -53,7 +53,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
         end
     end
     
-    temphook = data_hook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
+    temphook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
     
     if isa(agent, MultiController)
         ma2 = deepcopy(agent)

@@ -131,7 +131,7 @@ Learn(controllers, env, num_episodes = 5)
 states_to_plot = ["source1_i_L1"]
 action_to_plot = ["source1_u"]
 
-hook = data_hook(collect_state_ids = states_to_plot)
+hook = DataHook(collect_state_ids = states_to_plot)
 
 Simulate(controllers, env, hook=hook)
 

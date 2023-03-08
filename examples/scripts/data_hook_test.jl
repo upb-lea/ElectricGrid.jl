@@ -37,7 +37,7 @@ env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(collect_sources  = [1])
+hook = DataHook(collect_sources  = [1])
 
 #_______________________________________________________________________________
 # Running the Time Simulation

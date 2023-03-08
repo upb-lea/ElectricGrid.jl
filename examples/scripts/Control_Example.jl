@@ -201,7 +201,7 @@ env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(v_mag_inv   = [1 2],
+hook = DataHook(v_mag_inv   = [1 2],
                 v_mag_cap    = [1 2], 
                 i_mag_inv    = [1 2], 
                 i_mag_poc    = [1 2], 

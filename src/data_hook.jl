@@ -1,8 +1,4 @@
-using DataFrames
-using UnicodePlots
-
-
-Base.@kwdef mutable struct data_hook <: AbstractHook
+Base.@kwdef mutable struct DataHook <: AbstractHook
 
     save_data_to_hd = false
     dir = "episode_data/"
@@ -61,7 +57,7 @@ Base.@kwdef mutable struct data_hook <: AbstractHook
 
 end
 
-function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
+function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
 
     # rest
     #hook.df = DataFrame()
@@ -196,7 +192,7 @@ function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
     end
 end
 
-function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
+function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
 
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
@@ -416,7 +412,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
 
 end
 
-function (hook::data_hook)(::PostActStage, agent, env, training = false)
+function (hook::DataHook)(::PostActStage, agent, env, training = false)
 
     states_x = Vector( env.x )
     opstates = (hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
@@ -488,7 +484,7 @@ function (hook::data_hook)(::PostActStage, agent, env, training = false)
     end
 end
 
-function (hook::data_hook)(::PostEpisodeStage, agent, env, training = false)
+function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
     hook.ep += 1
 
     if training
@@ -529,7 +525,7 @@ function (hook::data_hook)(::PostEpisodeStage, agent, env, training = false)
     end
 end
 
-function (hook::data_hook)(::PostExperimentStage, agent, env, training = false)
+function (hook::DataHook)(::PostExperimentStage, agent, env, training = false)
 
     if hook.save_data_to_hd
         isdir(hook.dir) || mkdir(hook.dir)

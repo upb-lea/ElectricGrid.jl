@@ -39,14 +39,14 @@ Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #hook = Simulate(Multi_Agent, env)
 
-#hook = data_hook(collect_state_ids = env.state_ids,
+#hook = DataHook(collect_state_ids = env.state_ids,
 #                collect_action_ids = env.action_ids
 #                #collect_sources  = [1]  # alternative
 #                );
 
 states_to_plot = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c"]
 
-hook = data_hook(collect_state_ids = states_to_plot)
+hook = DataHook(collect_state_ids = states_to_plot)
 
 Simulate(Multi_Agent, env, hook=hook)
 
@@ -68,7 +68,7 @@ RenderHookResults(hook = hook,
 
 #println(env.done)
 #=
-hook = data_hook(collect_state_ids = env.state_ids,
+hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids
                 #collect_sources  = [1]  # alternative
                 );

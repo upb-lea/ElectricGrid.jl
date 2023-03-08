@@ -70,14 +70,14 @@ https://juliareinforcementlearning.org/
 - `x0::Vector`: Initial states which will be used in reset!().
 - `t0::Float`: Initial time where the env starts from simulating.
 - `state_ids::Vector{String}`: IDs of the states. Can be used for plotting or collecting
-    trajectories during a simulation with the data_hook.
+    trajectories during a simulation with the DataHook.
 - `convert_state_to_cpu::Bool`: Flag if the states are converted to cpu if calculated one
     gpu before
 - `use_gpu::Bool`: Flag if the simulation is done on gpu (if possible).
 - `reward::Float`: Reward which the action achieved, applied in the env.
 - `action::Vector{Float}`: Action which is applied to the env.
 - `action_ids::Vector{String}`: IDs of the actions. Can be used for plotting or collecting
-    trajectories during a simulation with the data_hook.
+    trajectories during a simulation with the DataHook.
 - `state_action_delay::Int`: Specifies the number of simulation steps it is delayed from
     giving an action to the env to when it is applied to the plant.
 - `t_end::Float`: Spezifies the end time of an episode. If defined it overwrites maxsteps.
@@ -177,7 +177,7 @@ function ElectricGridEnv(;
     if isnothing(state_ids)
         if isnothing(nc)
             state_ids = []
-            @warn("No state_ids array specified - observing states with data_hook not
+            @warn("No state_ids array specified - observing states with DataHook not
                     possible")
         else
             state_ids = GetStateIds(nc)
@@ -187,7 +187,7 @@ function ElectricGridEnv(;
     if isnothing(action_ids)
         if isnothing(nc)
             action_ids = []
-            @warn("No state_ids array specified - observing states with data_hook not
+            @warn("No state_ids array specified - observing states with DataHook not
                     possible")
         else
             action_ids = GetActionIds(nc)
@@ -272,7 +272,7 @@ function ElectricGridEnv(;
 
     vdc_fixed = 0
     v_dc = ones(nc.num_sources)  # vector to store evaluated v_dc_arr (constants and
-                                 # functions) in the env, needed e.g. in the data_hook
+                                 # functions) in the env, needed e.g. in the DataHook
     v_dc_arr = []  # array to store all functions for v_dc as well as constants
     for (source_number, source) in enumerate(nc.parameters["source"])
         if haskey(source, "source_type")

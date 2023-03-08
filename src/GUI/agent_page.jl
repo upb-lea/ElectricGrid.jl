@@ -14,7 +14,7 @@ function prepare_env()
     
     global agent = CreateAgentDdpg(na = na, ns = ns)
 
-    global hook = data_hook(save_best_NNA = true, plot_rewards = false)
+    global hook = DataHook(save_best_NNA = true, plot_rewards = false)
 
     global model.plot_agent[] = PlotlyBase.Plot()
 end

@@ -99,7 +99,7 @@ action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)
 plt_state_ids = ["source1_i_L1"]#, "i_2_a", "i_2_b", "i_2_c"]  
 # define which states to store, to check what states are avalible type GetActionIds(env.nc) into command line 
 plt_action_ids = ["source1_u"]#, "u_v2_a", "u_v2_b", "u_v2_c"]
-hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, collect_vdc_idx = [1])
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, collect_vdc_idx = [1])
 
 #######################################################################################
 # GOAL: Use run function provided by ReinforcementLearning.jl to be able to interact 

@@ -199,7 +199,7 @@ using Distributions
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = data_hook(collect_sources     = [1 2 3],
+        hook = DataHook(collect_sources     = [1 2 3],
                         v_mag_inv            = [1 2 3],
                         v_mag_cap            = [1 2 3],
                         i_mag_inv            = [1 2 3],
@@ -325,7 +325,7 @@ end
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = data_hook(collect_sources  = [1 2],
+        hook = DataHook(collect_sources  = [1 2],
                         v_mag_inv            = [1 2],
                         v_mag_cap            = [1 2],
                         i_mag_inv            = [1 2],
@@ -516,7 +516,7 @@ end
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = data_hook(collect_sources  = [1 2 3],
+        hook = DataHook(collect_sources  = [1 2 3],
                          v_mag_inv            = [1 2 3],
                          i_mag_inv            = [1 2 3],
                          power_pq_inv     = [1 2 3],

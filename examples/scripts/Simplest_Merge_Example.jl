@@ -104,7 +104,7 @@ env = ElectricGridEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters 
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(collect_sources  = [1],
+hook = DataHook(collect_sources  = [1],
                 plot_rewards = true)
 
 #_______________________________________________________________________________
@@ -115,7 +115,7 @@ ma = SetupAgents(env)
 
 Learn(ma, env, num_episodes = num_eps)
 
-hook = data_hook(collect_state_ids = env.state_ids,
+hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
 

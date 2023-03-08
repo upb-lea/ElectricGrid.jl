@@ -15,7 +15,7 @@ mutable struct MultiController <: AbstractPolicy
 end
 
 function MultiController(agents, action_ids)
-    hook = data_hook(is_inner_hook_RL = true, plot_rewards = true)
+    hook = DataHook(is_inner_hook_RL = true, plot_rewards = true)
 
     return MultiController(
         agents,
@@ -186,7 +186,7 @@ function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
-        hook = data_hook()
+        hook = DataHook()
 
     end
 
@@ -206,7 +206,7 @@ function DefaultDataHook(Multi_Agent, env)
     all_loads = collect(1:env.nc.num_loads)
     all_cables = collect(1:env.nc.num_connections)
 
-    hook = data_hook(collect_sources  = all_sources,
+    hook = DataHook(collect_sources  = all_sources,
                     collect_cables   = all_cables,
                     #collect_loads    = all_loads,
                     v_mag_inv        = all_class,

@@ -58,7 +58,7 @@ na = length(env.sys_d.B[1,:])
 
 agent = CreateAgentDdpg(na = na, ns = ns, use_gpu = env_cuda)
 
-hook = data_hook(save_best_NNA = true, plot_rewards = true)
+hook = DataHook(save_best_NNA = true, plot_rewards = true)
 
 run(agent, env, StopAfterEpisode(80), hook)
 
