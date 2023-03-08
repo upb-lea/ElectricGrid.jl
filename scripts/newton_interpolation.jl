@@ -1,7 +1,7 @@
 using DrWatson
 @quickactivate "JEG"
 
-include(srcdir("ClassicalControl.jl"))
+include(srcdir("classical_control.jl"))
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
 

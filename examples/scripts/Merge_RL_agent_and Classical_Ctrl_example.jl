@@ -8,7 +8,7 @@ include(srcdir("node_constructor.jl"))
 include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("ClassicalControl.jl"))
+include(srcdir("classical_control.jl"))
 include(srcdir("power_system_theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
