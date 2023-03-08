@@ -109,6 +109,6 @@ hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_act
 run(policy, env, StopAfterEpisode(1), hook)
 
 #TODO
-# this will be shifted to plotting.jl soon
-plot_hook_results(hook=hook, vdc_to_plot=[1])
-plot_hook_results(; hook = hook, states_to_plot = ["source1_i_L1"] )
+# this will be shifted to render.jl soon
+RenderHookResults(hook=hook, vdc_to_plot=[1])
+RenderHookResults(; hook = hook, states_to_plot = ["source1_i_L1"] )

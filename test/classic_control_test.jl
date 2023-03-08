@@ -225,7 +225,7 @@ using Distributions
 
         #= for eps in 1:num_eps
 
-                plot_hook_results(hook = hook,
+                RenderHookResults(hook = hook,
                                         episode = eps,
                                         states_to_plot  = ["source1_v_C_filt_a"],
                                         actions_to_plot = [],
@@ -249,8 +249,8 @@ using Distributions
         V_kp = [0.44465925382594856; 0.2964395025506326]
         V_ki = [8.78477386799335; 5.85651591199507]
 
-        #CSV.write("ClassicalControl_Unit_test.csv", hook.df)
-        old_data = convert.(Float64, Matrix(CSV.read("./test/ClassicalControl_Unit_test.csv", DataFrame))[1:end, 1:17])
+        #CSV.write("Classical_Control_Unit_test.csv", hook.df)
+        old_data = convert.(Float64, Matrix(CSV.read("./test/Classical_Control_Unit_test.csv", DataFrame))[1:end, 1:17])
 
         new_data = convert.(Float64, Matrix(hook.df)[1:end, 1:17])
 
@@ -353,7 +353,7 @@ end
         #_______________________________________________________________________________
         # Plotting
 
-        #= plot_hook_results(hook = hook,
+        #= RenderHookResults(hook = hook,
                         states_to_plot  = [],
                         actions_to_plot = [],
                         power_p_inv     = [],
@@ -541,7 +541,7 @@ end
 
         #= for eps in 1:num_eps
 
-                plot_hook_results(hook = hook,
+                RenderHookResults(hook = hook,
                                         episode = eps,
                                         states_to_plot  = [],
                                         actions_to_plot = [],
@@ -733,7 +733,7 @@ end
         #_______________________________________________________________________________
         # Plotting
 
-        #= plot_hook_results(hook = hook, 
+        #= RenderHookResults(hook = hook, 
                         states_to_plot  = [], 
                         actions_to_plot = [],  
                         power_p_inv     = [1 2 3], 

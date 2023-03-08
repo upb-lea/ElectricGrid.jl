@@ -135,5 +135,5 @@ hook = data_hook(collect_state_ids = states_to_plot)
 
 Simulate(controllers, env, hook=hook)
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                   states_to_plot  = states_to_plot)

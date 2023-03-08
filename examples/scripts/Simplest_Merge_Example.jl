@@ -126,7 +126,7 @@ hook = Simulate(ma, env, hook=hook)
 # Plotting
 
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                     #episode = hook.bestepisode,
                     #episode = num_eps,
                     #states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],

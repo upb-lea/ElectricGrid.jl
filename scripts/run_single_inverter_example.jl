@@ -118,6 +118,6 @@ run(agent, env, StopAfterEpisode(50), hook)
 
 #plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1"], plot_reward = true, plot_reference = true)#, "u_load1"])
 
-plot_hook_results(hook=hook, episode=38, plot_reference = true)
+RenderHookResults(hook=hook, episode=38, plot_reference = true)
 
 plot_best_results(;agent = agent, env = env, hook = hook, plot_reward = true, plot_reference = true)#, "u_load1"])

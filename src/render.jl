@@ -132,7 +132,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
 end
 
 """
-    plot_hook_results(; hook, 
+    RenderHookResults(; hook, 
                         states_to_plot = nothing, 
                         actions_to_plot = nothing ,
                         episode = 1, 
@@ -178,7 +178,7 @@ end
 # Note
 For quantities denoted by "..._mag_..." for balanced symmetrical networks in steady state this quantity equals the root-mean-square (rms) of the signal.
 """
-function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
+function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
     plot_reward = false, plot_reference = false, episode = 1, vdc_to_plot = [],
     power_p_inv = [], power_q_inv = [], 
     power_p_poc = [], power_q_poc = [], 
@@ -346,7 +346,7 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
 
 end
 
-function plot_p_source(;env, hook, episode, source_ids)
+function RenderPSource(;env, hook, episode, source_ids)
     layout = Layout(
         plot_bgcolor="#f1f3f7",
         xaxis_title = "Time in Seconds",
@@ -408,7 +408,7 @@ function plot_p_source(;env, hook, episode, source_ids)
 
 end
 
-function plot_p_load(;env, hook, episode, load_ids)
+function RenderPLoad(;env, hook, episode, load_ids)
     layout = Layout(
         plot_bgcolor="#f1f3f7",
         xaxis_title = "Time in Seconds",
@@ -519,7 +519,6 @@ function plot_p_load(;env, hook, episode, load_ids)
 
 end
 
-function drawGraph(CM, parameters; Layout = 1)
   
     CMtemp = CM + -2 * LowerTriangular(CM)
   

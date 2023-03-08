@@ -53,7 +53,7 @@ Power_System_Dynamics(env, hook)
 #println(action_data)
 
 
-#plot_hook_results(hook = hook, 
+#RenderHookResults(hook = hook, 
 #                    states_to_plot  = [], 
 #                    actions_to_plot = [])
 

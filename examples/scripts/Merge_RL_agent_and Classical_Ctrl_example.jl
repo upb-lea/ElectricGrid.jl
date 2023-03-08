@@ -227,6 +227,6 @@ run(ma, env, StopAfterEpisode(1), hook);
 
 ###############################
 # Plotting
-#plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 3000)
+#RenderHookResults(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 3000)
 
 plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, plot_reward = false, plot_reference = true, use_best = false)

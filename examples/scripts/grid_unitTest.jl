@@ -49,7 +49,7 @@ num_eps = 1
 
 Power_System_Dynamics(env, hook)
 
-plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
+RenderHookResults(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
 
 idx_end = 10
 #=

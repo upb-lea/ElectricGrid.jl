@@ -68,7 +68,7 @@ hook = Simulate(Multi_Agent, env, 1, hook = hook)
 # Circular Layout (Layout = 1) is better for SmallWolrd
 drawGraph(CM, parameters, Layout = 3)
 
-plot_hook_results(hook = hook, 
+RenderHookResults(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
                     power_p         = [], 

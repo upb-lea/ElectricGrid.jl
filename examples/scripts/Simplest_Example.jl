@@ -79,7 +79,7 @@ hook = Simulate(Multi_Agent, env)
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(hook = hook, 
+RenderHookResults(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
                     power_p_inv     = [2], 

@@ -143,7 +143,7 @@ run(policy, env, StopAfterEpisode(1), hook)
 
 end =#
 
-plot_hook_results(hook = hook)
+RenderHookResults(hook = hook)
 
 #= T_plot_start = 0
 T_plot_end = 10

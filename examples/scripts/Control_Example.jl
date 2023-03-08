@@ -233,7 +233,7 @@ hook = Simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
 for eps in 1:num_eps
 
-    plot_hook_results(hook = hook, 
+    RenderHookResults(hook = hook, 
                       episode = eps,
                       states_to_plot  = [], 
                       actions_to_plot = [],  

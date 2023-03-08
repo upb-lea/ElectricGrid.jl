@@ -53,7 +53,7 @@ Simulate(Multi_Agent, env, hook=hook)
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                     states_to_plot  = states_to_plot,
                     actions_to_plot = [])
 #env.state_ids
@@ -78,7 +78,7 @@ hook = data_hook(collect_state_ids = env.state_ids,
 #=
 Power_System_Dynamics(env, hook, num_episodes = 1)
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                     episode = 1,
                     states_to_plot  = env.state_ids,
                     actions_to_plot = env.action_ids)
