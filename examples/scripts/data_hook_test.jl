@@ -1,4 +1,4 @@
-using Dare
+using JEG
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -32,12 +32,12 @@ parameters = Dict{Any, Any}(
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, action_delay = 3)
+env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, action_delay = 3)
 
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(collect_sources  = [1])
+hook = DataHook(collect_sources  = [1])
 
 #_______________________________________________________________________________
 # Running the Time Simulation
@@ -53,7 +53,7 @@ Power_System_Dynamics(env, hook)
 #println(action_data)
 
 
-#plot_hook_results(hook = hook, 
+#RenderHookResults(hook = hook, 
 #                    states_to_plot  = [], 
 #                    actions_to_plot = [])
 

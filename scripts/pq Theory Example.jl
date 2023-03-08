@@ -1,9 +1,9 @@
 using DrWatson
-@quickactivate ("dare")
+@quickactivate ("JEG")
 
 using Plots
 
-include(srcdir("Power_System_Theory.jl"))
+include(srcdir("power_system_theory.jl"))
 
 Timestep = 100 #time step in μs ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_final = 0.4 #time in seconds, total simulation run time
@@ -30,7 +30,7 @@ P = Array{Float64, 1}(undef, N)
 
 for i in 1:N
 
-    pq0[:, i] = p_q_theory(Vac[:, i], Iac[:, i])
+    pq0[:, i] = pqTheory(Vac[:, i], Iac[:, i])
 
 end
 

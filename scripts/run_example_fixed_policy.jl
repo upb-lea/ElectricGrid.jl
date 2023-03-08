@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using IntervalSets
@@ -9,8 +9,8 @@ using CUDA
 #using Plots
 using PlotlyJS
 
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"));
+include(srcdir("node_constructor.jl"))
+include(srcdir("electric_grid_env.jl"));
 include(srcdir("data_hook.jl"))
 include(srcdir("sin_policy.jl"))
 
@@ -64,7 +64,7 @@ parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230);
 
 ts = 1e-4
-env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
+env = ElectricGridEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
 , CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 500)
 
 
@@ -98,7 +98,7 @@ unbalance_ab = maximum((env.sys_d.A)[1:5, 1:5] .- (env.sys_d.A)[6:10, 6:10])
 unbalance_bc = maximum((env.sys_d.A)[6:10, 6:10] .- (env.sys_d.A)[11:15, 11:15]) 
 unbalance_ac = maximum((env.sys_d.A)[1:5, 1:5] .- (env.sys_d.A)[11:15, 11:15]) 
 
-#get_state_ids(env.nc)
+#GetStateIds(env.nc)
 V_poc_loc = [2; 7; 12]
 #state_index = findfirst(x -> x == "u_1_a", env.state_ids)
 I_poc_loc = [1; 6; 11]
@@ -110,7 +110,7 @@ plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"]
 plt_state_ids = ["i_1_a", "i_1_b", "i_1_c"]#, "i_2_a", "i_2_b", "i_2_c"] 
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
 #plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]#, "u_v2_a", "u_v2_b", "u_v2_c"]
-hook = data_hook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
+hook = DataHook(collect_state_ids = plt_state_ids#= , collect_action_ids = plt_action_ids =#)
 
 policy = sin_policy(action_space = action_space(env), ts = ts)
 run(policy, env, StopAfterEpisode(1), hook)
@@ -143,7 +143,7 @@ run(policy, env, StopAfterEpisode(1), hook)
 
 end =#
 
-plot_hook_results(hook = hook)
+RenderHookResults(hook = hook)
 
 #= T_plot_start = 0
 T_plot_end = 10

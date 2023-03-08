@@ -1,31 +1,31 @@
 using Test
 using MAT
-using Dare
+using JEG
 using LinearAlgebra
 
-@testset "get_fltr_distr" begin
+@testset "GetFltrDistr" begin
     for i in [1,14,17,42]
-        @test i == sum(get_fltr_distr(i))
+        @test i == sum(GetFltrDistr(i))
     end
 end
 
-@testset "get_loads_distr" begin
+@testset "GetLoadsDistr" begin
     for i in [1,14,17,42]
-        @test i == sum(get_loads_distr(i))
+        @test i == sum(GetLoadsDistr(i))
     end
 end
 
-@testset "CM_generate" begin
+@testset "GenerateCM" begin
     for i in [2,14,17,42]
-        num_connections, CM = CM_generate(i, i, 1, 1, 1)
+        num_connections, CM = GenerateCM(i, i, 1, 1, 1)
         @test CM[1,end] == -CM[end,1]
         @test tr(CM) == 0
     end
 
     for i in [2,14,17,42]
-        num_connections, CM = CM_generate(i, 1, 1, 0, 0)
+        num_connections, CM = GenerateCM(i, 1, 1, 0, 0)
         @test num_connections == i
-        num_connections, CM = CM_generate(i, 2, 1, 0, 0)
+        num_connections, CM = GenerateCM(i, 2, 1, 0, 0)
         @test num_connections == 2*i
     end
 end
@@ -112,7 +112,7 @@ end
 
     S3_L1.parameters["source"][1]
 
-    A, B, C, D = get_sys(S3_L1);
+    A, B, C, D = GetSystem(S3_L1);
 
     @test file["A"] ≈ A atol=1e-9
     @test file["B"] ≈ B atol=1e-9
@@ -195,7 +195,7 @@ end
 
     S1_L3.parameters["source"][1]
 
-    A, B, C, D = get_sys(S1_L3);
+    A, B, C, D = GetSystem(S1_L3);
 
     @test file["A"] ≈ A atol=1e-9
     @test file["B"] ≈ B atol=1e-9

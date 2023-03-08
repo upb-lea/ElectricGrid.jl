@@ -1,8 +1,8 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("node_constructor.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 
@@ -51,14 +51,14 @@ parameters = Dict{Any, Any}(
 )
 
 
-env = SimEnv(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, reward_function = reward, maxsteps=600, use_gpu=env_cuda)
+env = ElectricGridEnv(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, reward_function = reward, maxsteps=600, use_gpu=env_cuda)
 
 ns = length(env.sys_d.A[1,:])
 na = length(env.sys_d.B[1,:])
 
-agent = create_agent_ddpg(na = na, ns = ns, use_gpu = env_cuda)
+agent = CreateAgentDdpg(na = na, ns = ns, use_gpu = env_cuda)
 
-hook = data_hook(save_best_NNA = true, plot_rewards = true)
+hook = DataHook(save_best_NNA = true, plot_rewards = true)
 
 run(agent, env, StopAfterEpisode(80), hook)
 

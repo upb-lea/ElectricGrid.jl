@@ -1,16 +1,16 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using PlotlyJS
 
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("node_constructor.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("Classical_Control.jl"))
-include(srcdir("Power_System_Theory.jl"))
-include(srcdir("MultiAgentGridController.jl"))
+include(srcdir("classical_control.jl"))
+include(srcdir("power_system_theory.jl"))
+include(srcdir("multi_controller.jl"))
 
 
 agentname = "agent"
@@ -107,7 +107,7 @@ fs = 1/ts
 source["pwr"] = 200e3
 #source["vdc"] = 800
 source["fltr"] = "LC"
-Lf, Cf, _ = Filter_Design(source["pwr"], fs)
+Lf, Cf, _ = FilterDesign(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf
@@ -122,7 +122,7 @@ source = Dict()
 source["pwr"] = 100e3
 source["vdc"] = 600
 source["fltr"] = "LC"
-Lf, Cf, _ = Filter_Design(source["pwr"], fs)
+Lf, Cf, _ = FilterDesign(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf
@@ -161,18 +161,18 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 # Define the environment
 V_source = 800
 
-env = SimEnv(reward_function = reward, featurize = featurize, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
+env = ElectricGridEnv(reward_function = reward, featurize = featurize, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
 maxsteps = 1000, action_delay = 0)
 
-state_ids = get_state_ids(env.nc)
-action_ids = get_action_ids(env.nc)
+state_ids = GetStateIds(env.nc)
+action_ids = GetActionIds(env.nc)
 
 state_ids_agent = filter(x -> split(x, "_")[1] == "source1", state_ids)
 action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)
 state_ids_classic = filter(x -> split(x, "_")[1] == "source2", state_ids)
 action_ids_classic = filter(x -> split(x, "_")[1] == "source2", action_ids)
 
-function RLBase.action_space(env::SimEnv, name::String)
+function RLBase.action_space(env::ElectricGridEnv, name::String)
     if name == "agent"
         return Space(fill(-1.0..1.0, size(action_ids_agent)))
     else
@@ -181,15 +181,15 @@ function RLBase.action_space(env::SimEnv, name::String)
 end
 
 na = length(env.action_space)
-agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
+agent = CreateAgentDdpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
 agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
 
-#agent = NamedPolicy(agentname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
+#agent = NamedPolicy(agentname, ClassicalPolicy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
 
 #_______________________________________________________________________________
 # Setting up the Sources
 
-Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
+Animo = NamedPolicy(classicname, ClassicalPolicy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
 fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
 #=
@@ -201,10 +201,10 @@ fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids
     6 -> "Self-Synchronverter Mode" - grid forming with power balancing via virtual motor
 =#
 
-Source_Initialiser(env, Animo, [2])
+SourceInitialiser(env, Animo, [2])
 
 #TODO: entfernen!!!
-#Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
+#Animo = CreateAgentDdpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
 
 #Animo = Agent(policy = NamedPolicy(classicname, Animo.policy), trajectory = Animo.trajectory)
 
@@ -215,11 +215,11 @@ ma_agents = Dict(nameof(agent) => Dict("policy" => agent,
                             "state_ids" => state_ids_classic,
                             "action_ids" => action_ids_classic))
                             
-ma = MultiAgentGridController(ma_agents, action_ids)
+ma = MultiController(ma_agents, action_ids)
 
 plt_state_ids = ["source1_v_C_a", "source1_v_C_b", "source1_v_C_c", "source2_v_C_a", "source2_v_C_b", "source2_v_C_c", "source1_i_L1_a", "source2_i_L1_a"]
 plt_action_ids = []#"u_v1_a", "u_v1_b", "u_v1_c"]
-hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true, collect_vdc_idx = [2])
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true, plot_rewards=true, collect_vdc_idx = [2])
 
 ma["agent"]["policy"].policy.policy.act_noise = 0.1
 run(ma, env, StopAfterEpisode(1), hook);
@@ -227,6 +227,6 @@ run(ma, env, StopAfterEpisode(1), hook);
 
 ###############################
 # Plotting
-#plot_hook_results(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 3000)
+#RenderHookResults(; hook = hook, actions_to_plot = [] ,plot_reward = false, plot_reference = true, episode = 3000)
 
 plot_best_results(;agent = ma, env = env, hook = hook, states_to_plot = plt_state_ids, plot_reward = false, plot_reference = true, use_best = false)

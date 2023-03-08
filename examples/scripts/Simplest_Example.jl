@@ -1,4 +1,4 @@
-using Dare
+using JEG
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -30,7 +30,7 @@ CM = [ 0. 0. 1.
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.99, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
@@ -63,23 +63,23 @@ parameters = Dict{Any, Any}(
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = ElectricGridEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
 # initialising the agents 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env)
+hook = Simulate(Multi_Agent, env)
 
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(hook = hook, 
+RenderHookResults(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
                     power_p_inv     = [2], 

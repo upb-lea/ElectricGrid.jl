@@ -1,11 +1,11 @@
 
-using Dare
+using JEG
 
 #=
  File to prepare all functions needed in #24
- Most of the developed function will have to be shifted to the NodeConstructor or Power_System_Theory.jl
+ Most of the developed function will have to be shifted to the NodeConstructor or power_system_theory.jl
 
-Based on documentation can be found in https://github.com/upb-lea/dare/issues/24 
+Based on documentation can be found in https://github.com/upb-lea/JEG/issues/24 
 =#
 
 
@@ -41,7 +41,7 @@ parameters = Dict{Any, Any}(
 )
 
 
-env = SimEnv(num_sources = 5, num_loads = 4, CM = nothing, parameters = parameters, maxsteps=600)
+env = ElectricGridEnv(num_sources = 5, num_loads = 4, CM = nothing, parameters = parameters, maxsteps=600)
 
 #################################
 # 2 Calulate characteristic impedance Z_0 of cables
@@ -56,7 +56,7 @@ Z_0 = Dict{Any, Any}(
 
 #################################
 # 3 Calulate SIL as P_max of cables from first design
-# Location: Should be used in NC (?); implement in Power_System_Theory?
+# Location: Should be used in NC (?); implement in power_system_theory?
 # TODO: Add P_max (in the end!!) to parameter_dict of the cables?
 #################################
 # Take for V = parameters["grid"] * sqrt(3) (-> phase neutral to phase-phase) ~ 400 V

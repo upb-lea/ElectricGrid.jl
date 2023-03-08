@@ -1,4 +1,4 @@
-using Dare;
+using JEG;
 
 
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n\n")
@@ -32,7 +32,7 @@ parameters = Dict{Any, Any}(
 )
 
 
-env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
+env = ElectricGridEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
 
 #_______________________________________________________________________________
 #%% Setting up data hooks
@@ -40,7 +40,7 @@ env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, 
 
 plt_state_ids = ["source1_v_C_filt_a", "source1_i_L1_a", "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]               
 plt_action_ids = ["source1_u_a", "source2_u_a",]
-hook = data_hook(collect_sources = [1,2])
+hook = DataHook(collect_sources = [1,2])
 
 #_______________________________________________________________________________
 # Starting time simulation
@@ -49,32 +49,32 @@ num_eps = 1
 
 Power_System_Dynamics(env, hook)
 
-plot_hook_results(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
+RenderHookResults(; hook = hook, states_to_plot = ["source1_v_C_filt_a","source2_v_C_filt_a",], actions_to_plot = plt_action_ids)
 
 idx_end = 10
 #=
 function collect_matrix(plt_state_ids, idx_end)
-    X_dare2 = []
+    X_JEG2 = []
     for s_id in plt_state_ids
         if s_id == plt_state_ids[1]
-            X_dare2 = [hook.df[!,s_id][2:idx_end,:]']
+            X_JEG2 = [hook.df[!,s_id][2:idx_end,:]']
         else
-            hcat(X_dare2, hook.df[!,s_id][2:idx_end,:]')
+            hcat(X_JEG2, hook.df[!,s_id][2:idx_end,:]')
         end
     end
-    return X_dare2
+    return X_JEG2
 end
 =#
 
 
-X_dare2 = []
+X_JEG2 = []
 for s_id in plt_state_ids
     if s_id == plt_state_ids[1]
         println("Hallo")
-        push!(X_dare2, [hook.df[!,s_id][2:idx_end,:]'])
-        println(X_dare2)
+        push!(X_JEG2, [hook.df[!,s_id][2:idx_end,:]'])
+        println(X_JEG2)
     else
-        hcat(X_dare2, hook.df[!,s_id][2:idx_end,:]')
+        hcat(X_JEG2, hook.df[!,s_id][2:idx_end,:]')
     end
 end
 
@@ -82,8 +82,8 @@ end
 #X_d = collect_matrix(plt_state_ids, idx_end)
 
 println()
-println("DARE:")
-display(X_dare2)
+println("JEG:")
+display(X_JEG2)
 println()  
 
 

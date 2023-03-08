@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using IntervalSets
@@ -8,8 +8,8 @@ using ControlSystems
 using CUDA
 using Plots
 
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"));
+include(srcdir("node_constructor.jl"))
+include(srcdir("electric_grid_env.jl"));
 include(srcdir("sin_policy.jl"))
 include(srcdir("data_hook.jl"))
 
@@ -67,11 +67,11 @@ parameters["grid"] = Dict("fs" => 10000.0, "phase" => 3, "v_rms" => 230);
 #######################################################################################
 # Define grid using random initialization
 power_grid = NodeConstructor(num_sources=2, num_loads=1, S2S_p=1, S2L_p=1, CM = CM, parameters = parameters);
-A, B, C, D = get_sys(power_grid)
+A, B, C, D = GetSystem(power_grid)
 ns = length(A[1,:]) # get num of states
 ni = length(B[1,:]) # get num of inputs
 x0 = [0.0 for i = 1:ns]
-env = SimEnv(A=A, B=B, C=C, D=D, x0=x0, state_ids=get_state_ids(power_grid), rewardfunction = reward)
+env = ElectricGridEnv(A=A, B=B, C=C, D=D, x0=x0, state_ids=GetStateIds(power_grid), rewardfunction = reward)
 
 
 #######################################################################################
@@ -90,7 +90,7 @@ policy = sin_policy(action_space=action_space(env))
 
 #######################################################################################
 # Define data-logging hook
-hook = data_hook(state_ids = ["u_f1", "u_1", "u_l1", "i_f2"])
+hook = DataHook(state_ids = ["u_f1", "u_1", "u_l1", "i_f2"])
 
 #######################################################################################
 # GOAL: Use run function provided by ReinforcementLearning.jl to be able to interact 

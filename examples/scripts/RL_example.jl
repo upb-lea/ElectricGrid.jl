@@ -1,11 +1,11 @@
-using Dare
+using JEG
 using ReinforcementLearning
 using StableRNGs
 using Flux
 using Flux.Losses
 using IntervalSets
 
-R_load, L_load, X, Z = Parallel_Load_Impedance(100e3, 1, 230)
+R_load, L_load, X, Z = ParallelLoadImpedance(100e3, 1, 230)
 
 # define grid using CM
 CM = [0. 1.
@@ -52,7 +52,7 @@ function reward_function(env, name = nothing)
     end
 end
 
-env = SimEnv(
+env = ElectricGridEnv(
     CM = CM,
     parameters = parameters,
     t_end = 0.1,
@@ -60,24 +60,22 @@ env = SimEnv(
     reward_function = reward_function,
     action_delay = 0)
 
-agent = create_agent_ddpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
-                          ns = length(state(env, "my_ddpg")),
-                                     use_gpu = false)
+#agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]), ns = length(state(env, "my_ddpg")), use_gpu = false)
 
-#=
+
 rng = StableRNG(1)
 init = glorot_uniform(rng)
 
-ns = length(env.agent_dict["user_def"]["state_ids"])
-na = length(env.agent_dict["user_def"]["action_ids"])
+ns = length(env.agent_dict["my_ddpg"]["state_ids"])
+na = length(env.agent_dict["my_ddpg"]["action_ids"])
 
-create_actor() = Chain(
+CreateActor() = Chain(
     Dense(ns, 30, relu; init = init),
     Dense(30, 30, relu; init = init),
     Dense(30, 1, tanh; init = init),
 ) |> gpu
 
-create_critic() = Chain(
+CreateCritic() = Chain(
     Dense(ns + na, 30, relu; init = init),
     Dense(30, 30, relu; init = init),
     Dense(30, 1; init = init),
@@ -85,20 +83,20 @@ create_critic() = Chain(
 
 agent = Agent(
     policy = DDPGPolicy(
-        behavior_actor = DareNeuralNetworkApproximator(
-            model = create_actor(),
+        behavior_actor = NeuralNetworkApproximator(
+            model = CreateActor(),
             optimizer = ADAM(),
         ),
-        behavior_critic = DareNeuralNetworkApproximator(
-            model = create_critic(),
+        behavior_critic = NeuralNetworkApproximator(
+            model = CreateCritic(),
             optimizer = ADAM(),
         ),
-        target_actor = DareNeuralNetworkApproximator(
-            model = create_actor(),
+        target_actor = NeuralNetworkApproximator(
+            model = CreateActor(),
             optimizer = ADAM(),
         ),
-        target_critic = DareNeuralNetworkApproximator(
-            model = create_critic(),
+        target_critic = NeuralNetworkApproximator(
+            model = CreateCritic(),
             optimizer = ADAM(),
         ),
         γ = 0.99f0,
@@ -119,24 +117,23 @@ agent = Agent(
         action = Float32 => (na, ),
     ),
 )
-=#
 
-controllers = setup_agents(env, Dict("my_ddpg" => agent))
+controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
 
-#run(ma["dare_ddpg_1"]["policy"], env)
+#run(ma["JEG_ddpg_1"]["policy"], env)
 
-learn(controllers, env, num_episodes = 5)
+Learn(controllers, env, num_episodes = 5)
 
-#learn(agent, env)
+#Learn(agent, env)
 
 
 states_to_plot = ["source1_i_L1"]
 action_to_plot = ["source1_u"]
 
-hook = data_hook(collect_state_ids = states_to_plot)
+hook = DataHook(collect_state_ids = states_to_plot)
 
-simulate(controllers, env, hook=hook)
+Simulate(controllers, env, hook=hook)
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                   states_to_plot  = states_to_plot)

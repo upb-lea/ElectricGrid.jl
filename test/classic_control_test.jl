@@ -1,11 +1,11 @@
-using Dare
+using JEG
 using Test
 using Logging
 using CSV
 using DataFrames
 using Distributions
 
-@testset "Classical_Controllers_Dynamics" begin
+@testset "ClassicalControllers_Dynamics" begin
 
         #_______________________________________________________________________________
         # Network Parameters
@@ -156,7 +156,7 @@ using Distributions
         #-------------------------------------------------------------------------------
         # Loads
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.6, 230)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.6, 230)
 
         load_list = []
         load = Dict()
@@ -194,12 +194,12 @@ using Distributions
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
 
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = data_hook(collect_sources     = [1 2 3],
+        hook = DataHook(collect_sources     = [1 2 3],
                         v_mag_inv            = [1 2 3],
                         v_mag_cap            = [1 2 3],
                         i_mag_inv            = [1 2 3],
@@ -212,20 +212,20 @@ using Distributions
         #_______________________________________________________________________________
         # initialising the agents
 
-        Multi_Agent = setup_agents(env)
+        Multi_Agent = SetupAgents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
         # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
+        hook = Simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
 
         #= for eps in 1:num_eps
 
-                plot_hook_results(hook = hook,
+                RenderHookResults(hook = hook,
                                         episode = eps,
                                         states_to_plot  = ["source1_v_C_filt_a"],
                                         actions_to_plot = [],
@@ -294,7 +294,7 @@ end
         4 -> "Synchronverter" - enhanced droop control
         =#
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.99, 230)
 
         length = 1
         parameters = Dict{Any, Any}(
@@ -320,12 +320,12 @@ end
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
 
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = data_hook(collect_sources  = [1 2],
+        hook = DataHook(collect_sources  = [1 2],
                         v_mag_inv            = [1 2],
                         v_mag_cap            = [1 2],
                         i_mag_inv            = [1 2],
@@ -342,18 +342,18 @@ end
         #_______________________________________________________________________________
         # initialising the agents
 
-        Multi_Agent = setup_agents(env)
+        Multi_Agent = SetupAgents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
         # running the time simulation
 
-        hook = simulate(Multi_Agent, env, hook = hook)
+        hook = Simulate(Multi_Agent, env, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
 
-        #= plot_hook_results(hook = hook,
+        #= RenderHookResults(hook = hook,
                         states_to_plot  = [],
                         actions_to_plot = [],
                         power_p_inv     = [],
@@ -381,7 +381,7 @@ end
         return nothing
 end
 
-@testset "Ornstein_Uhlenbeck_Filters_Angles" begin
+@testset "OrnsteinUhlenbeck_Filters_Angles" begin
 
         #_______________________________________________________________________________
         # Network Parameters
@@ -475,7 +475,7 @@ end
         #-------------------------------------------------------------------------------
         # Loads
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.95, 230)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.95, 230)
 
         load_list = []
         load = Dict()
@@ -511,12 +511,12 @@ end
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
 
         #_______________________________________________________________________________
         # Setting up data hooks
 
-        hook = data_hook(collect_sources  = [1 2 3],
+        hook = DataHook(collect_sources  = [1 2 3],
                          v_mag_inv            = [1 2 3],
                          i_mag_inv            = [1 2 3],
                          power_pq_inv     = [1 2 3],
@@ -528,20 +528,20 @@ end
         #_______________________________________________________________________________
         # initialising the agents
 
-        Multi_Agent = setup_agents(env)
+        Multi_Agent = SetupAgents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
         # running the time simulation
 
-        hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
+        hook = Simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
         #_______________________________________________________________________________
         # Plotting
 
         #= for eps in 1:num_eps
 
-                plot_hook_results(hook = hook,
+                RenderHookResults(hook = hook,
                                         episode = eps,
                                         states_to_plot  = [],
                                         actions_to_plot = [],
@@ -662,7 +662,7 @@ end
         4 -> "VSG" - enhanced droop control
         =#
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 100)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.99, 100)
 
         parameters = Dict{Any, Any}(
                 "source" => Any[
@@ -716,24 +716,24 @@ end
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0, action_delay = 1)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0, action_delay = 1)
 
         #_______________________________________________________________________________
         # initialising the agents 
 
-        Multi_Agent = setup_agents(env)
+        Multi_Agent = SetupAgents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
         # running the time simulation 
 
-        hook = simulate(Multi_Agent, env, num_episodes = num_eps)
+        hook = Simulate(Multi_Agent, env, num_episodes = num_eps)
 
         total_steps = Int(env.maxsteps)
         #_______________________________________________________________________________
         # Plotting
 
-        #= plot_hook_results(hook = hook, 
+        #= RenderHookResults(hook = hook, 
                         states_to_plot  = [], 
                         actions_to_plot = [],  
                         power_p_inv     = [1 2 3], 

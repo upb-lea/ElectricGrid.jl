@@ -1,4 +1,4 @@
-using Dare
+using JEG
 using Test
 
 @testset "Layout cables with Power flow equations" begin
@@ -36,12 +36,12 @@ using Test
 
 
             # Defining the environment
-            env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
+            env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
 
             #_______________________________________________________________________________
             # Setting up data hooks
 
-            hook = data_hook(collect_vrms_ids = [1 2], 
+            hook = DataHook(collect_vrms_ids = [1 2], 
                             collect_irms_ids = [1 2], 
                             collect_pq_ids   = [1 2], #collecting p and q for sources 1, 2
                             collect_freq     = [1 2],
@@ -55,7 +55,7 @@ using Test
             #_______________________________________________________________________________
             # Plotting
 
-            plot_hook_results(hook = hook, 
+            RenderHookResults(hook = hook, 
                                 states_to_plot  = [], 
                                 actions_to_plot = [],  
                                 p_to_plot       = [1 2], 

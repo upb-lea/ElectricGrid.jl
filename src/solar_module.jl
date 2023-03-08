@@ -3,7 +3,7 @@
 """
 Basic example for a diffrent source 
 """
-Base.@kwdef mutable struct PV_module
+Base.@kwdef mutable struct SolarModule
     I_0 = 2.0381e-10           # Diode seturation
     ni = 1.2                   # Diode ideality factor for Si-mono
     k = 1.3806e-23             # Boltzman constant
@@ -18,8 +18,8 @@ Base.@kwdef mutable struct PV_module
     
 end;
 
-Base.@kwdef mutable struct PV_array
-    pv_module::PV_module           # module parameters
+Base.@kwdef mutable struct SolarArray
+    SolarModule::SolarModule           # module parameters
     serial = 10
     parallel = 4
     
@@ -27,16 +27,16 @@ end;
 
 
 
-function get_I(pv_arr::PV_array, V, G, T)
+function GetI(pv_arr::SolarArray, V, G, T)
 
-    self = pv_arr.pv_module
-    function I_photo(self::PV_module, G, T)
+    self = pv_arr.SolarModule
+    function I_photo(self::SolarModule, G, T)
         dT = self.T_0 + T
         I_ph = G/self.G_ref*(self.I_ph_ref + self.mu_sc * dT)
         return I_ph
     end;
 
-    function I_diode(self::PV_module, V, G, T)
+    function I_diode(self::SolarModule, V, G, T)
         dT = self.T_0 + T
         V_T = self.k*dT/self.q
         I_d = self.I_0*(exp(V/(self.ni*self.N_cell*pv_arr.serial*V_T))-1)
@@ -47,10 +47,10 @@ function get_I(pv_arr::PV_array, V, G, T)
     return I
 end
 
-function get_V(pv_arr::PV_array, I, G, T)
+function GetV(pv_arr::SolarArray, I, G, T)
 
-    self = pv_arr.pv_module
-    function I_photo(self::PV_module, G, T)
+    self = pv_arr.SolarModule
+    function I_photo(self::SolarModule, G, T)
         dT = self.T_0 + T
         I_ph = G/self.G_ref*(self.I_ph_ref + self.mu_sc * dT)
         return I_ph

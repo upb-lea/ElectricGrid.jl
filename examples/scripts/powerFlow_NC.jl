@@ -1,17 +1,17 @@
-#using dare   warum geht das nicht?
+#using JEG   warum geht das nicht?
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using PlotlyJS
 
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("node_constructor.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("Classical_Control.jl"))
-include(srcdir("Power_System_Theory.jl"))
-include(srcdir("MultiAgentGridController.jl"))
+include(srcdir("ClassicalControl.jl"))
+include(srcdir("power_system_theory.jl"))
+include(srcdir("multi_controller.jl"))
 
 
 CM = [  0   0   0   1
@@ -25,11 +25,11 @@ num_source = 3 # user
 num_load = 1 # user
 
 # example to calculate RC load for 1000 VA per phase
-#R_load, C_load, _, Z = Parallel_Load_Impedance(3000, -0.9, 230)
-R_load, L_load, _, Z = Parallel_Load_Impedance(3000, 0.9, 230)
+#R_load, C_load, _, Z = ParallelLoadImpedance(3000, -0.9, 230)
+R_load, L_load, _, Z = ParallelLoadImpedance(3000, 0.9, 230)
 
 #===
-#TODO: shift this for every load to the nodeconstructor
+#TODO: shift this for every load to the node_constructor
 for (index, load) in enumerate(parameters["load"])
     # example for RL load
     print(load)
@@ -73,7 +73,7 @@ parameters_nc = Dict{Any, Any}(
                     Dict{Any, Any}("len"=>3)
                     ]
 )
-env = SimEnv(ts = 1e-4, use_gpu = false, CM = CM, num_sources = num_source, num_loads = num_load, parameters = parameters_nc, maxsteps = 100, action_delay = 1)
+env = ElectricGridEnv(ts = 1e-4, use_gpu = false, CM = CM, num_sources = num_source, num_loads = num_load, parameters = parameters_nc, maxsteps = 100, action_delay = 1)
 
 println("########################################################################")
 println()

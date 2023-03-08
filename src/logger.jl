@@ -1,7 +1,4 @@
-using LoggingExtras
-using Dates
-
-function DareLogger(;file_name = "", add_timestamp = true, log_file = false, log_level = Logging.Info, log_level_file = Logging.Debug)
+function CustomLogger(;file_name = "", add_timestamp = true, log_file = false, log_level = Logging.Info, log_level_file = Logging.Debug)
 
     if log_file
         isdir("log") || mkdir("log")

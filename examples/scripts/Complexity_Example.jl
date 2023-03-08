@@ -1,4 +1,4 @@
-using Dare
+using JEG
 using Graphs
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
@@ -27,20 +27,20 @@ CM, num_cables  = SmallWorld(num_nodes, p = 0.0, Z = 2, num_sources = num_source
 
 parameters = Dict{Any, Any}()
 
-parameters["source"], total_gen = Source_Setup(num_sources, random = 1, mode = 4)
-parameters["load"] = Load_Setup(num_nodes - num_sources, total_gen, random = 1)
-parameters["cable"] = Cable_Length_Setup(num_cables, random = 0)
+parameters["source"], total_gen = SourceSetup(num_sources, random = 1, mode = 4)
+parameters["load"] = LoadSetup(num_nodes - num_sources, total_gen, random = 1)
+parameters["cable"] = CableLengthSetup(num_cables, random = 0)
 parameters["grid"] = Dict("v_rms" => 230, "ramp_end" => 0.04, "process_start" => 0.05)
 
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(collect_sources  = 1:num_sources,
+hook = DataHook(collect_sources  = 1:num_sources,
                 v_mag            = 1:num_sources, 
                 i_mag            = 1:num_sources, 
                 power_pq         = 1:num_sources,
@@ -54,12 +54,12 @@ hook = data_hook(collect_sources  = 1:num_sources,
 #_______________________________________________________________________________
 # initialising the agents 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env, 1, hook = hook)   
+hook = Simulate(Multi_Agent, env, 1, hook = hook)   
 
 #_______________________________________________________________________________
 # Plotting
@@ -68,7 +68,7 @@ hook = simulate(Multi_Agent, env, 1, hook = hook)
 # Circular Layout (Layout = 1) is better for SmallWolrd
 drawGraph(CM, parameters, Layout = 3)
 
-plot_hook_results(hook = hook, 
+RenderHookResults(hook = hook, 
                     states_to_plot  = [], 
                     actions_to_plot = [],  
                     power_p         = [], 

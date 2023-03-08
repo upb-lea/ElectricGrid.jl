@@ -1,11 +1,11 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using PlotlyJS
 
-include(srcdir("nodeconstructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("node_constructor.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 
@@ -98,26 +98,26 @@ ts = 1e-4
 
 V_source = 300
 
-env = SimEnv(reward_function = reward, featurize = featurize, 
+env = ElectricGridEnv(reward_function = reward, featurize = featurize, 
 v_dc=V_source, ts=ts, use_gpu=env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
 maxsteps=1000)
 
 ns = length(env.state_space)
 na = length(env.action_space)
-agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
+agent = CreateAgentDdpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 #plt_state_ids = ["u_f1", "i_f1"]
 #plt_action_ids = ["u_v1"]
 
 plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"]
 plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
-hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true)
+hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true)
 
 run(agent, env, StopAfterEpisode(50), hook)
 
 
 #plot_best_results(;agent = agent, env = env, hook = hook, state_ids_to_plot = ["u_f1", "u_1"], plot_reward = true, plot_reference = true)#, "u_load1"])
 
-plot_hook_results(hook=hook, episode=38, plot_reference = true)
+RenderHookResults(hook=hook, episode=38, plot_reference = true)
 
 plot_best_results(;agent = agent, env = env, hook = hook, plot_reward = true, plot_reference = true)#, "u_load1"])

@@ -1,5 +1,5 @@
 using Test
-using Dare
+using JEG
 using MAT
 using ReinforcementLearning
 
@@ -31,37 +31,37 @@ using ReinforcementLearning
     )
 
 
-    env = SimEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
+    env = ElectricGridEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
 
     plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
     plt_action_ids = ["source1_u_a"]
-    hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
+    hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
 
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
     # running the time simulation
 
-    hook = simulate(Multi_Agent, env, hook = hook)
+    hook = Simulate(Multi_Agent, env, hook = hook)
 
 
     idx_end = 300
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]
-    X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
 
     #=println("MATLAB:")
     display(X_malab["X_matlab"][1:idx_end,:])
     println()
-    println("DARE:")
-    display(X_dare)
+    println("JEG:")
+    display(X_JEG)
     println() =#
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
 end
 
 
@@ -87,14 +87,14 @@ end
     "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
     )
 
-    env = SimEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1, verbosity = 0)
+    env = ElectricGridEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1, verbosity = 0)
 
-    hook = data_hook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
+    hook = DataHook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
 
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
@@ -105,10 +105,10 @@ end
 
     idx_end = 300
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_source2_v_C_filt_a", "next_state_source2_i_L2_a","next_state_source2_v_C_cables_a", "next_state_cable2_i_L_a",]
-    X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_2source_1load1e6.mat")
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=.001   # 1e-6
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=.001   # 1e-6
 
 end
 
@@ -126,29 +126,29 @@ end
                         ],
         "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
-    env = SimEnv(ts = 1e-6, CM = CM, parameters = parameters, verbosity = 0, maxsteps = 600, action_delay = 1)
+    env = ElectricGridEnv(ts = 1e-6, CM = CM, parameters = parameters, verbosity = 0, maxsteps = 600, action_delay = 1)
 
-    hook = data_hook(collect_sources  = [1 2],
+    hook = DataHook(collect_sources  = [1 2],
                     collect_cables = [1])
 
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
     # running the time simulation
 
-    hook = simulate(Multi_Agent, env, hook = hook)
+    hook = Simulate(Multi_Agent, env, hook = hook)
 
 
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source2_i_L1_a",   "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_source2_v_C_cables_a"]
     idx_end = 300
-    X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_2source1e6.mat")
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.01   # 1e-6
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=0.01   # 1e-6
 end;
 
 @testset "env_3source_2load" begin
@@ -196,42 +196,42 @@ end;
     #__________________________________________________________________
     # Defining the environment
 
-    env = SimEnv(ts = 1e-6, CM = CM, parameters = parameters, maxsteps=300,  verbosity = 0)
+    env = ElectricGridEnv(ts = 1e-6, CM = CM, parameters = parameters, maxsteps=300,  verbosity = 0)
 
     #_______________________________________________________________________________
     # Setting up data hooks
 
-    hook = data_hook(collect_sources  = [1 2 3],
+    hook = DataHook(collect_sources  = [1 2 3],
                     collect_loads = [1],
                     collect_cables = [1, 5])
 
     #_______________________________________________________________________________
     # initialising the agents
 
-    Multi_Agent = setup_agents(env)
+    Multi_Agent = SetupAgents(env)
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
     #_______________________________________________________________________________
     # running the time simulation
 
-    hook = simulate(Multi_Agent, env, hook = hook)
+    hook = Simulate(Multi_Agent, env, hook = hook)
 
     #_______________________________________________________________________________
     # Plotting
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source2_v_C_cables_a", "next_state_source3_i_L1_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_cable1_i_L_a", "load1_v_C_total_a",   "next_state_cable5_i_L_a"]
 
     idx_end = 300
-    X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_3source_2load1e6.mat")
 
     #=
     println("MATLAB:")
     display(X_malab["X_matlab"][1:idx_end,:])
     println()
-    println("DARE:")
-    display(X_dare)
+    println("JEG:")
+    display(X_JEG)
     println()
     =#
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=14 # such high, since the steady state current is very high, so talking about a toleranz below 1 % of max values
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=14 # such high, since the steady state current is very high, so talking about a toleranz below 1 % of max values
 end

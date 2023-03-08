@@ -1,4 +1,4 @@
-using Dare
+using JEG
 
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -158,7 +158,7 @@ push!(source_list, source) =#
 #-------------------------------------------------------------------------------
 # Loads
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.95, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(10e3, 0.95, 230)
 
 load_list = []
 load = Dict()
@@ -196,12 +196,12 @@ parameters["grid"] = grid
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
+env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
 
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(v_mag_inv   = [1 2],
+hook = DataHook(v_mag_inv   = [1 2],
                 v_mag_cap    = [1 2], 
                 i_mag_inv    = [1 2], 
                 i_mag_poc    = [1 2], 
@@ -220,20 +220,20 @@ hook = data_hook(v_mag_inv   = [1 2],
 #_______________________________________________________________________________
 # initialising the agents 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # running the time simulation 
 
-hook = simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
+hook = Simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
 #_______________________________________________________________________________
 # Plotting
 
 for eps in 1:num_eps
 
-    plot_hook_results(hook = hook, 
+    RenderHookResults(hook = hook, 
                       episode = eps,
                       states_to_plot  = [], 
                       actions_to_plot = [],  

@@ -1,8 +1,8 @@
-using Dare
+using JEG
 using Test
 using Logging
 
-global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
+global_logger(CustomLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
 
 
 @testset "NodeConstructor" begin
@@ -17,20 +17,20 @@ end
     include("./env_test_basics.jl")
     include("./env_test_state.jl")
 
-    #env = SimEnv()
+    #env = ElectricGridEnv()
     #@test size(env.A)              == (33,33)
     #@test size(env.state_space)    == (33,)
     #@test size(env.action_space)   == (6,)
 
     #start_state = env.state
     #env(ones(size(env.action_space)))
-    #Dare.RLBase.reset!(env)
+    #JEG.RLBase.reset!(env)
     #@test env.state                 == start_state
 end
 
 @testset "Agent" begin
-    #env = SimEnv()
-    #agent = create_agent_ddpg(na = length(env.action_space), ns = length(env.state_space), use_gpu = false)
+    #env = ElectricGridEnv()
+    #agent = CreateAgentDdpg(na = length(env.action_space), ns = length(env.state_space), use_gpu = false)
 
     #@test length(agent(env)) == length(env.action_space)
 end
@@ -41,7 +41,7 @@ end
 
 end
 
-@testset "data_hook" begin
+@testset "DataHook" begin
 
 end
 

@@ -34,7 +34,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
         actions_to_plot = hook.collect_action_ids
     end
 
-    if isa(agent, MultiAgentGridController)
+    if isa(agent, MultiController)
         act_noise_old = Dict()
         for (name, agent_temp) in agent.agents
             if isa(agent_temp["policy"], Agent)
@@ -53,9 +53,9 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
         end
     end
     
-    temphook = data_hook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
+    temphook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot, collect_reference = true)
     
-    if isa(agent, MultiAgentGridController)
+    if isa(agent, MultiController)
         ma2 = deepcopy(agent)
         for (name, policy) in ma2.agents
             if isa(policy["policy"], Agent)
@@ -110,7 +110,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
     p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
     display(p)
     
-    if isa(agent, MultiAgentGridController)
+    if isa(agent, MultiController)
         for (name, agent_temp) in agent.agents
             if isa(agent_temp["policy"], Agent)
                 agent_temp["policy"].policy.policy.act_noise = act_noise_old[name]
@@ -132,7 +132,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
 end
 
 """
-    plot_hook_results(; hook, 
+    RenderHookResults(; hook, 
                         states_to_plot = nothing, 
                         actions_to_plot = nothing ,
                         episode = 1, 
@@ -178,7 +178,7 @@ end
 # Note
 For quantities denoted by "..._mag_..." for balanced symmetrical networks in steady state this quantity equals the root-mean-square (rms) of the signal.
 """
-function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
+function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = nothing ,
     plot_reward = false, plot_reference = false, episode = 1, vdc_to_plot = [],
     power_p_inv = [], power_q_inv = [], 
     power_p_poc = [], power_q_poc = [], 
@@ -346,7 +346,7 @@ function plot_hook_results(; hook, states_to_plot = nothing, actions_to_plot = n
 
 end
 
-function plot_p_source(;env, hook, episode, source_ids)
+function RenderPSource(;env, hook, episode, source_ids)
     layout = Layout(
         plot_bgcolor="#f1f3f7",
         xaxis_title = "Time in Seconds",
@@ -408,7 +408,7 @@ function plot_p_source(;env, hook, episode, source_ids)
 
 end
 
-function plot_p_load(;env, hook, episode, load_ids)
+function RenderPLoad(;env, hook, episode, load_ids)
     layout = Layout(
         plot_bgcolor="#f1f3f7",
         xaxis_title = "Time in Seconds",
@@ -518,140 +518,3 @@ function plot_p_load(;env, hook, episode, load_ids)
     display(p)
 
 end
-
-function drawGraph(CM, parameters; Layout = 1)
-  
-    CMtemp = CM + -2 * LowerTriangular(CM)
-  
-    G = SimpleGraph(CMtemp)
-  
-    # Position nodes
-    if Layout == 1
-        pos_x, pos_y = GraphPlot.shell_layout(G)
-    elseif Layout == 2
-        pos_x, pos_y = GraphPlot.circular_layout(G)
-    elseif Layout == 3
-        pos_x, pos_y = GraphPlot.spring_layout(G)
-    end
-  
-    # Create plot points
-    edge_x = []
-    edge_y = []
-  
-    for edge in edges(G)
-        push!(edge_x, pos_x[src(edge)])
-        push!(edge_x, pos_x[dst(edge)])
-        push!(edge_x, nothing)
-        push!(edge_y, pos_y[src(edge)])
-        push!(edge_y, pos_y[dst(edge)])
-        push!(edge_y, nothing)
-    end
-  
-    #  Color nodes
-    color_map = []
-    node_descriptions = []
-  
-    for source in parameters["source"]
-
-      #push!(node_descriptions, "Filter: " * source["fltr"])
-      #push!(node_descriptions, "Mode: " * source["mode"])
-      pwr = source["pwr"]
-
-      if pwr > 1000
-        pwr = string(round(pwr/1000, digits = 3))
-        push!(node_descriptions, "Power: " * pwr * " kVA")
-      else
-        pwr = string(round(pwr, digits = 3))
-        push!(node_descriptions, "Power: " * pwr * " VA")
-      end
-  
-      if source["fltr"] == "LCL"
-        push!(color_map, "#FF8800")
-      elseif source["fltr"] == "LC"
-        push!(color_map, "#FF6600")
-      elseif source["fltr"] == "L"
-        push!(color_map, "#FF3300")
-      end
-    end
-  
-    for load in parameters["load"]
-
-        if haskey(load, "S")
-
-            pwr = load["S"]
-
-            if pwr > 1000
-
-                pwr = string(round(pwr/1000, digits = 3))
-                push!(node_descriptions, "Load: " * pwr * " kVA")
-            else
-
-                pwr = string(round(pwr, digits = 3))
-                push!(node_descriptions, "Power: " * pwr * " VA")
-            end
-        else
-            push!(node_descriptions, "Load: " * load["impedance"])
-        end
-  
-      if load["impedance"] == "RLC"
-        push!(color_map, "#8F00D1")
-      elseif load["impedance"] == "LC"
-        push!(color_map, "#4900A8")
-      elseif load["impedance"] == "RL"
-        push!(color_map, "#3A09C0")
-      elseif load["impedance"] == "RC"
-        push!(color_map, "#0026FF")
-      elseif load["impedance"] == "L"
-        push!(color_map, "#0066FF")
-      elseif load["impedance"] == "C"
-        push!(color_map, "#00CCFF")
-      elseif load["impedance"] == "R"
-        push!(color_map, "#00F3E7")
-      end
-    end
-    
-    # Create edges
-    edges_trace = scatter(
-        mode="lines",
-        x=edge_x,
-        y=edge_y,
-        line=attr(
-            width=0.8,
-            color="#113"
-        ),
-    )
-  
-    # Create nodes
-    nodes_trace = scatter(
-        x=pos_x,
-        y=pos_y,
-        mode="markers",
-        text = node_descriptions,
-        marker=attr(
-            color=color_map,
-            size=13,
-            line=attr(
-              color="Black",
-              width=1
-              )
-        )
-    )
-  
-    # Create Plot
-    pl = PlotlyBase.Plot(
-        [edges_trace, nodes_trace],
-        PlotlyBase.Layout(
-            plot_bgcolor="#f1f3f7",
-            hovermode="closest",
-            showlegend=false,
-            showarrow=false,
-            dragmode="select",
-            xaxis=attr(showgrid=false, zeroline=false, showticklabels=false),
-            yaxis=attr(showgrid=false, zeroline=false, showticklabels=false)
-        )
-    )
-  
-    display(pl)
-  
-    return nothing
-  end

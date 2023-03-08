@@ -1,5 +1,5 @@
 
-using Dare
+using JEG
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -33,7 +33,7 @@ num_eps  = 1       # number of episodes to run
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(220e3, 0.95, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(220e3, 0.95, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
@@ -51,9 +51,9 @@ parameters = Dict{Any, Any}(
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
+env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
 
-Dare.optimizer_status
+JEG.optimizer_status
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
 num_source = 1
@@ -68,6 +68,6 @@ params
 status = Dict{String, Any}()
 
 # function get_optim_status()
-layout_cabels(CM, num_source, num_load, parameters, 2)
-Dare.optimizer_status
+LayoutCabels(CM, num_source, num_load, parameters, 2)
+JEG.optimizer_status
 

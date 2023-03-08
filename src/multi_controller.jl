@@ -1,17 +1,88 @@
+#=
+Example for agents dict:
+
+Dict(nameof(agent) => {"policy" => agent,
+                       "state_ids" => state_ids_agent,
+                       "action_ids" => action_ids_agent},
+    nameof(Animo) => {"policy" => Animo,
+                      "state_ids" => state_ids_classic,
+                      "action_ids" => action_ids_classic})
+=#
+mutable struct MultiController <: AbstractPolicy
+    agents::Dict{Any,Any}
+    action_ids
+    hook
+end
+
+function MultiController(agents, action_ids)
+    hook = DataHook(is_inner_hook_RL = true, plot_rewards = true)
+
+    return MultiController(
+        agents,
+        action_ids,
+        hook
+    )
+end
+
+Base.getindex(A::MultiController, x) = getindex(A.agents, x)
+
+function (A::MultiController)(env::AbstractEnv, training::Bool = false)
+    action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
+
+    for agent in values(A.agents)
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] = agent["policy"](env, training)
+    end
+
+    return action
+end
+
+function (A::MultiController)(stage::AbstractStage, env::AbstractEnv, training::Bool = false)
+    A.hook(stage, A, env, training)
+
+    if training
+        for agent in values(A.agents)
+            agent["policy"](stage, env, training)
+        end
+    end
+end
+
+function (A::MultiController)(stage::PreActStage, env::AbstractEnv, action, training::Bool = false)
+    A.hook(stage, A, env, action, training)
+
+    if training
+        for agent in values(A.agents)
+            agent["policy"](stage, env, action[findall(x -> x in agent["action_ids"], A.action_ids)], training)
+        end
+    end
+end
+
+function ResetPolicy(A::MultiController)
+    for agent in values(A.agents)
+        ResetPolicy(agent["policy"])
+    end
+end
+
+function ResetPolicy(np::NamedPolicy) 
+    ResetPolicy(np.policy)
+end
+
+function ResetPolicy(::AbstractPolicy) end
+
+
 """
-    setup_agents(env, hook; num_episodes = 1, return_Agents = false)
+    SetupAgents(env, hook; num_episodes = 1, return_Agents = false)
 
 # Description
 Initialises up the agents that will be controlling the electrical network.
 
 # Arguments
-- `env::SimEnv`: mutable struct containing the environment.
+- `env::ElectricGridEnv`: mutable struct containing the environment.
 
 # Return Values
-- `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
+- `Multi_Agent::MultiController`: the struct containing the initialised agents
 
 """
-function setup_agents(env, custom_agents = nothing)
+function SetupAgents(env, custom_agents = nothing)
 
 
     #_______________________________________________________________________________
@@ -22,7 +93,7 @@ function setup_agents(env, custom_agents = nothing)
     #-------------------------------------------------------------------------------
     # Setting up the controls for the Classical Sources
 
-    Animo = NamedPolicy("classic", Classical_Policy(env))
+    Animo = NamedPolicy("classic", ClassicalPolicy(env))
 
     if !isnothing(Animo.policy)
         num_clas_sources = Animo.policy.Source.num_sources # number of classically controlled sources
@@ -35,8 +106,8 @@ function setup_agents(env, custom_agents = nothing)
 
     for (name, config) in env.agent_dict
 
-        if config["mode"] == "dare_ddpg"
-            agent = create_agent_ddpg(na = length(env.agent_dict[name]["action_ids"]),
+        if config["mode"] == "JEG_ddpg"
+            agent = CreateAgentDdpg(na = length(env.agent_dict[name]["action_ids"]),
                                         ns = length(state(env, name)),
                                         use_gpu = false)
 
@@ -60,7 +131,7 @@ function setup_agents(env, custom_agents = nothing)
         Agents[name] = RL_policy
     end
 
-    @eval function action_space(env::SimEnv, name::String)
+    @eval function action_space(env::ElectricGridEnv, name::String)
         for (pname, config) in env.agent_dict
             if name == pname
                 return Space(fill(-1.0..1.0, length(env.agent_dict[name]["action_ids"])))
@@ -85,7 +156,7 @@ function setup_agents(env, custom_agents = nothing)
         Agents[nameof(Animo)] = polc
     end
 
-    Multi_Agent = MultiAgentGridController(Agents, env.action_ids)
+    Multi_Agent = MultiController(Agents, env.action_ids)
 
     #_______________________________________________________________________________
     # Logging
@@ -98,28 +169,28 @@ function setup_agents(env, custom_agents = nothing)
 
 end
 
-function simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
+function Simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
-        hook = default_data_hook(Multi_Agent, env)
+        hook = DefaultDataHook(Multi_Agent, env)
 
     end
 
-    dare_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
+    CustomRun(Multi_Agent, env, StopAfterEpisode(num_episodes), hook)
 
     return hook
 end
 
-function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
+function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
-        hook = data_hook()
+        hook = DataHook()
 
     end
 
-    dare_run(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
+    CustomRun(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
 
     return hook
 end
@@ -127,7 +198,7 @@ end
 """
 which signals are the default ones if the user does not define a data hook for plotting
 """
-function default_data_hook(Multi_Agent, env)
+function DefaultDataHook(Multi_Agent, env)
 
     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
     all_class = collect(1:Source.num_sources)
@@ -135,7 +206,7 @@ function default_data_hook(Multi_Agent, env)
     all_loads = collect(1:env.nc.num_loads)
     all_cables = collect(1:env.nc.num_connections)
 
-    hook = data_hook(collect_sources  = all_sources,
+    hook = DataHook(collect_sources  = all_sources,
                     collect_cables   = all_cables,
                     #collect_loads    = all_loads,
                     v_mag_inv        = all_class,
@@ -157,14 +228,14 @@ function default_data_hook(Multi_Agent, env)
     return hook
 end
 
-function dare_run(policy, env, stop_condition, hook, training = false)
+function CustomRun(policy, env, stop_condition, hook, training = false)
 
     hook(PRE_EXPERIMENT_STAGE, policy, env, training)
     policy(PRE_EXPERIMENT_STAGE, env, training)
     is_stop = false
     while !is_stop
         RLBase.reset!(env)
-        reset_policy(policy)
+        ResetPolicy(policy)
 
         policy(PRE_EPISODE_STAGE, env, training)
         hook(PRE_EPISODE_STAGE, policy, env, training)

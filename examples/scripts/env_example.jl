@@ -1,4 +1,4 @@
-using Dare
+using JEG
 #using ReinforcementLearning
 CM = [0. 1.
     -1. 0.]
@@ -8,7 +8,7 @@ S_source = 2e6
 S_load = 3e6
 pf_load = 1
 v_rms = 230
-R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
+R_load, L_load, X, Z = ParallelLoadImpedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
@@ -24,41 +24,41 @@ parameters = Dict{Any, Any}(
     )
 
 
-#env = SimEnv(CM = CM, parameters = parameters, verbosity = 2)
-env = SimEnv(num_sources = 2, num_loads = 1)
+#env = ElectricGridEnv(CM = CM, parameters = parameters, verbosity = 2)
+env = ElectricGridEnv(num_sources = 2, num_loads = 1)
 
 #env.nc.parameters["cable"][1]["i_limit"] = 10e3
 
 
 
-Multi_Agent = setup_agents(env)
+Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
 # running the time simulation
 
-#hook = simulate(Multi_Agent, env)
+#hook = Simulate(Multi_Agent, env)
 
-#hook = data_hook(collect_state_ids = env.state_ids,
+#hook = DataHook(collect_state_ids = env.state_ids,
 #                collect_action_ids = env.action_ids
 #                #collect_sources  = [1]  # alternative
 #                );
 
 states_to_plot = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c"]
 
-hook = data_hook(collect_state_ids = states_to_plot)
+hook = DataHook(collect_state_ids = states_to_plot)
 
-simulate(Multi_Agent, env, hook=hook)
+Simulate(Multi_Agent, env, hook=hook)
 
 #_______________________________________________________________________________
 # Plotting
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                     states_to_plot  = states_to_plot,
                     actions_to_plot = [])
 #env.state_ids
 
-#env = SimEnv(num_sources = 1, num_loads = 1)
+#env = ElectricGridEnv(num_sources = 1, num_loads = 1)
 
 #reset!(env)
 #env([1])
@@ -68,7 +68,7 @@ plot_hook_results(hook = hook,
 
 #println(env.done)
 #=
-hook = data_hook(collect_state_ids = env.state_ids,
+hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids
                 #collect_sources  = [1]  # alternative
                 );
@@ -78,7 +78,7 @@ hook = data_hook(collect_state_ids = env.state_ids,
 #=
 Power_System_Dynamics(env, hook, num_episodes = 1)
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                     episode = 1,
                     states_to_plot  = env.state_ids,
                     actions_to_plot = env.action_ids)

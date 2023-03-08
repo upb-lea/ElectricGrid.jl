@@ -1,4 +1,4 @@
-using Dare
+using JEG
 using ReinforcementLearning
 using IntervalSets
 using Statistics
@@ -36,7 +36,7 @@ C_1 = 1e-5;
 S_load = 100e3
 pf_load = 0.98
 v_rms = 230
-R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
+R_load, L_load, X, Z = ParallelLoadImpedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
@@ -99,34 +99,34 @@ end
 
 
 
-env = SimEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
+env = ElectricGridEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
 
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = data_hook(collect_sources  = [1],
+hook = DataHook(collect_sources  = [1],
                 plot_rewards = true)
 
 #_______________________________________________________________________________
 # Running the Time Simulation
 
 
-ma = setup_agents(env)
+ma = SetupAgents(env)
 
-learn(ma, env, num_episodes = num_eps)
+Learn(ma, env, num_episodes = num_eps)
 
-hook = data_hook(collect_state_ids = env.state_ids,
+hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
 
-hook = simulate(ma, env, hook=hook)
+hook = Simulate(ma, env, hook=hook)
 
 #RLBase.run(ma, env, StopAfterEpisode(num_eps), hook);
 #_______________________________________________________________________________
 # Plotting
 
 
-plot_hook_results(hook = hook,
+RenderHookResults(hook = hook,
                     #episode = hook.bestepisode,
                     #episode = num_eps,
                     #states_to_plot  = ["source1_i_L1_a", "source2_i_L1_a", "source2_v_C_filt_a"],

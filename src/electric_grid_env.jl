@@ -1,4 +1,4 @@
-mutable struct SimEnv <: AbstractEnv
+mutable struct ElectricGridEnv <: AbstractEnv
     verbosity
     nc
     sys_d
@@ -37,7 +37,7 @@ end
 
 
 """
-    SimEnv(...)
+    ElectricGridEnv(...)
 
 # Description
 Returns an environment consisting of an electrical power grid as control plant,
@@ -52,14 +52,14 @@ https://juliareinforcementlearning.org/
 - `action_space::Space`: Defines the valide space per action.
 - `state_space::Space`: Defines the valide space per state. Default is [-1, 1] since the
     states of the env will be normalized.
-- `prepare_action::function(env::SimEnv)`: Function to adjust, change, prepare the actions
+- `prepare_action::function(env::ElectricGridEnv)`: Function to adjust, change, prepare the actions
     before they are applied to the env during a step(). Per default it returns the action
     without changes.
-- `featurize::function(x:Vector, t:Float; env::SimEnv, name::String)`: Function to adjust
+- `featurize::function(x:Vector, t:Float; env::ElectricGridEnv, name::String)`: Function to adjust
    the state before it is returned by the env. For example here
    reference values can be added to provide the to an RL agent or other feature engineering
    to improve the learning.
-- `reward_function::function(env::SimEnv, name::String) )`: Function to define the reward
+- `reward_function::function(env::ElectricGridEnv, name::String) )`: Function to define the reward
     for a (named) policy. Return 0 per default.
 - `CM::Matrix`: Conectivity matrix to define the structure of the electric power grid
     (for more details see NodeConstructor)
@@ -70,14 +70,14 @@ https://juliareinforcementlearning.org/
 - `x0::Vector`: Initial states which will be used in reset!().
 - `t0::Float`: Initial time where the env starts from simulating.
 - `state_ids::Vector{String}`: IDs of the states. Can be used for plotting or collecting
-    trajectories during a simulation with the data_hook.
+    trajectories during a simulation with the DataHook.
 - `convert_state_to_cpu::Bool`: Flag if the states are converted to cpu if calculated one
     gpu before
 - `use_gpu::Bool`: Flag if the simulation is done on gpu (if possible).
 - `reward::Float`: Reward which the action achieved, applied in the env.
 - `action::Vector{Float}`: Action which is applied to the env.
 - `action_ids::Vector{String}`: IDs of the actions. Can be used for plotting or collecting
-    trajectories during a simulation with the data_hook.
+    trajectories during a simulation with the DataHook.
 - `state_action_delay::Int`: Specifies the number of simulation steps it is delayed from
     giving an action to the env to when it is applied to the plant.
 - `t_end::Float`: Spezifies the end time of an episode. If defined it overwrites maxsteps.
@@ -87,34 +87,34 @@ https://juliareinforcementlearning.org/
 - `action_ids_RL::Vector{String}`: Action ids which are given to RL agents.
 
 # Return Values
-- `Multi_Agent::MultiAgentGridController`: (optional)
+- `Multi_Agent::MultiController`: (optional)
 
 """
-function SimEnv(;
-    maxsteps = 500,
-    ts = 1/10_000,
-    action_space = nothing,
-    state_space = nothing,
-    prepare_action = nothing,
-    featurize = nothing,
-    reward_function = nothing,
-    CM = nothing,
-    num_sources = nothing,
-    num_loads = nothing,
-    parameters = nothing,
-    x0 = nothing,
-    t0 = 0.0,
-    state_ids = nothing,
-    convert_state_to_cpu = true,
-    use_gpu = false,
-    reward = nothing,
-    action = nothing,
-    action_ids = nothing,
-    action_delay = 1,
-    t_end = nothing,
-    verbosity = 0,
-    agent_dict = nothing
-)
+function ElectricGridEnv(;
+        maxsteps = 500,
+        ts = 1/10_000,
+        action_space = nothing,
+        state_space = nothing,
+        prepare_action = nothing,
+        featurize = nothing,
+        reward_function = nothing,
+        CM = nothing,
+        num_sources = nothing,
+        num_loads = nothing,
+        parameters = nothing,
+        x0 = nothing,
+        t0 = 0.0,
+        state_ids = nothing,
+        convert_state_to_cpu = true,
+        use_gpu = false,
+        reward = nothing,
+        action = nothing,
+        action_ids = nothing,
+        action_delay = 1,
+        t_end = nothing,
+        verbosity = 0,
+        agent_dict = nothing
+    )
 
     if !(isnothing(t_end))
         maxsteps = floor(t_end/ts) + 1
@@ -129,7 +129,7 @@ function SimEnv(;
             # Construct standard env with 2 sources, 1 load
             @info("Three phase electric power grid with 2 sources and 1 load is created!
             Parameters are drawn randomly! To change, please define parameters
-            (see nodeconstructor)")
+            (see node_constructor)")
             CM = [ 0. 0. 1.
                    0. 0. 2
                   -1. -2. 0.]
@@ -144,7 +144,7 @@ function SimEnv(;
             else
                 @info("Three phase electric power grid with 2 sources and 1 load is created!
                  Parameters are drawn randomly! To change, please define parameters
-                 (see nodeconstructor)")
+                 (see node_constructor)")
                 num_sources = 2
                 num_loads = 1
             end
@@ -153,13 +153,13 @@ function SimEnv(;
         end
     end
 
-    A, B, C, D = get_sys(nc)
+    A, B, C, D = GetSystem(nc)
     Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
     Bd = (Ad - I) * B #
     ldiv!(factorize(A), Bd)
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
-    state_parameters = get_state_paras(nc)
+    state_parameters = GetStateParameters(nc)
 
     if use_gpu
         Ad = CuArray(A)
@@ -177,20 +177,20 @@ function SimEnv(;
     if isnothing(state_ids)
         if isnothing(nc)
             state_ids = []
-            @warn("No state_ids array specified - observing states with data_hook not
+            @warn("No state_ids array specified - observing states with DataHook not
                     possible")
         else
-            state_ids = get_state_ids(nc)
+            state_ids = GetStateIds(nc)
         end
     end
 
     if isnothing(action_ids)
         if isnothing(nc)
             action_ids = []
-            @warn("No state_ids array specified - observing states with data_hook not
+            @warn("No state_ids array specified - observing states with DataHook not
                     possible")
         else
-            action_ids = get_action_ids(nc)
+            action_ids = GetActionIds(nc)
         end
     end
 
@@ -198,7 +198,7 @@ function SimEnv(;
         agent_dict = Dict()
         for ns in 1:nc.num_sources
             if nc.parameters["source"][ns]["control_type"] == "RL"
-                if nc.parameters["source"][ns]["mode"] == "dare_ddpg"
+                if nc.parameters["source"][ns]["mode"] == "JEG_ddpg"
                     name = nc.parameters["source"][ns]["mode"] * "_$ns"
                 else
                     name = nc.parameters["source"][ns]["mode"]
@@ -272,7 +272,7 @@ function SimEnv(;
 
     vdc_fixed = 0
     v_dc = ones(nc.num_sources)  # vector to store evaluated v_dc_arr (constants and
-                                 # functions) in the env, needed e.g. in the data_hook
+                                 # functions) in the env, needed e.g. in the DataHook
     v_dc_arr = []  # array to store all functions for v_dc as well as constants
     for (source_number, source) in enumerate(nc.parameters["source"])
         if haskey(source, "source_type")
@@ -289,15 +289,15 @@ function SimEnv(;
                     vdc_fixed += 1
                 end
             elseif source["source_type"] == "pv"
-                #v_dc[source_number] = :(get_V(pv_array, env.x[1]*env.action, G, T))
+                #v_dc[source_number] = :(GetV(SolarArray, env.x[1]*env.action, G, T))
                 #TODO : how to calculate i_dc in 3-phase grid? Which current of env to use?
                 #TODO : $source_number does only fit if all L filters! Otherwise how to
                 #       define the offet for $source_number?!?!?
                 # TODO built pv module from parameter dict - where to define? In env?
-                pv_m = PV_module()
-                pv_array = PV_array(;pv_module=pv_m)
+                pv_m = SolarModule()
+                SolarArray = SolarArray(;SolarModule=pv_m)
                 # find(x -> .... source$source_number_i_L in state_ids)
-                fun = (env, G, T) -> get_V(:($pv_array),
+                fun = (env, G, T) -> GetV(:($SolarArray),
                                             env.x[:($source_number)]*env.action, G, T)
                 push!(v_dc_arr, fun)
 
@@ -326,7 +326,7 @@ function SimEnv(;
         @info "Normalization is done based on the defined parameter limits."
         @info "Time simulation run time: $((maxsteps - 1)*ts) [s] ~> $(Int(maxsteps)) steps"
     end
-    states = get_state_ids(nc)
+    states = GetStateIds(nc)
 
     i_limit_fixed = 0
     v_limit_fixed = 0
@@ -334,7 +334,7 @@ function SimEnv(;
 
     for (source_number, source) in enumerate(nc.parameters["source"])
         # set norm_array based on in parameters defined limits
-        for state_index in get_source_state_indices(nc, [source_number])["source$source_number"]["state_indices"]
+        for state_index in GetSourceStateIndices(nc, [source_number])["source$source_number"]["state_indices"]
             if contains(states[state_index], "_i")
                 if haskey(source, "i_limit")
                     norm_array[state_index] = source["i_limit"]
@@ -358,7 +358,7 @@ function SimEnv(;
     end
 
     for (load_number, load) in enumerate(nc.parameters["load"])
-        for state_index in get_load_state_indices(nc, [load_number])["load$load_number"]["state_indices"]
+        for state_index in GetLoadStateIndices(nc, [load_number])["load$load_number"]["state_indices"]
             if contains(states[state_index], "_i")
                 if haskey(load, "i_limit")
                     norm_array[state_index] = load["i_limit"]
@@ -378,7 +378,7 @@ function SimEnv(;
     end
 
     for (cable_number, cable) in enumerate(nc.parameters["cable"])
-        for state_index in get_cable_state_indices(nc, [cable_number])["cable$cable_number"]["state_indices"]
+        for state_index in GetCableStateIndices(nc, [cable_number])["cable$cable_number"]["state_indices"]
             if contains(states[state_index], "_i")
                 if haskey(cable, "i_limit")
                     norm_array[state_index] = cable["i_limit"]
@@ -414,7 +414,7 @@ function SimEnv(;
 
     y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
 
-    SimEnv(verbosity, nc, sys_d, action_space, state_space,
+    ElectricGridEnv(verbosity, nc, sys_d, action_space, state_space,
     false, inner_featurize, featurize, prepare_action, reward_function,
     x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
     v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
@@ -422,18 +422,18 @@ function SimEnv(;
     A, B, C, D, state_parameters, y, agent_dict)
 end
 
-RLBase.action_space(env::SimEnv) = env.action_space
-RLBase.state_space(env::SimEnv) = env.state_space
-RLBase.reward(env::SimEnv) =  env.reward
+RLBase.action_space(env::ElectricGridEnv) = env.action_space
+RLBase.state_space(env::ElectricGridEnv) = env.state_space
+RLBase.reward(env::ElectricGridEnv) =  env.reward
 
-function RLBase.reward(env::SimEnv, name::String)
+function RLBase.reward(env::ElectricGridEnv, name::String)
     return env.reward_function(env, name)
 end
 
-RLBase.is_terminated(env::SimEnv) = env.done
-RLBase.state(env::SimEnv) = env.state
+RLBase.is_terminated(env::ElectricGridEnv) = env.done
+RLBase.state(env::ElectricGridEnv) = env.state
 
-function RLBase.state(env::SimEnv, name::String)
+function RLBase.state(env::ElectricGridEnv, name::String)
     return env.inner_featurize(;env = env, name = name)
 end
 
@@ -443,7 +443,7 @@ end
 Resets the environment. The state is set to x0, the time to t0, reward to zero and done to
 false.
 """
-function RLBase.reset!(env::SimEnv)
+function RLBase.reset!(env::ElectricGridEnv)
     env.state = env.convert_state_to_cpu ? Array(env.inner_featurize(env.x0, env.t0)) : env.inner_featurize(env.x0, env.t0)
     env.x = env.x0
     env.y = fill!(env.y, 0.0) #TODO: y0
@@ -471,7 +471,7 @@ the system defined by the linear state-space system using that action.
     multiplied with vdc and can be interpreted as modulation index.
 
 """
-function (env::SimEnv)(action)
+function (env::ElectricGridEnv)(action)
     env.steps += 1
     t = [env.t, env.t + env.ts]
     env.t = t[2]
@@ -483,7 +483,7 @@ function (env::SimEnv)(action)
         env.action = action
     end
 
-    # TODO V2: define G and T via data_set or stochastic process next to pv_array
+    # TODO V2: define G and T via data_set or stochastic process next to SolarArray
     G = 1000
     T = 27
     env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr]
@@ -500,7 +500,7 @@ function (env::SimEnv)(action)
     end
     u = [env.action env.action]
 
-    xout_d = custom_lsim(env.sys_d, u, t, x0=env.x)
+    xout_d = CustomLsim(env.sys_d, u, t, x0=env.x)
     env.x = xout_d[:,2]
 
     if env.convert_state_to_cpu
@@ -529,7 +529,7 @@ function (env::SimEnv)(action)
     env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action)) ) .* (env.state_parameters)
 end
 
-function get_vDC_PV(I)
+function GetVDC_PV(I)
 
     V_dc = I *N_cell * P_cell
 
