@@ -500,7 +500,7 @@ function (env::SimEnv)(action)
     end
     u = [env.action env.action]
 
-    xout_d = custom_lsim(env.sys_d, u, t, x0=env.x)
+    xout_d = CustomLsim(env.sys_d, u, t, x0=env.x)
     env.x = xout_d[:,2]
 
     if env.convert_state_to_cpu
