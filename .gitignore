@@ -53,7 +53,7 @@ db/*.sqlite
 .idea/*
 
 # Jupyter Nodebook
-*/.ipynb_checkpoints/
+.ipynb_checkpoints/
 
 # pre_investigations
 pre_investigations/*
