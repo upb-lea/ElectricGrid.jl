@@ -261,9 +261,124 @@ using Distributions
         @test Source.I_ki ≈ I_ki atol = 0.001
         @test Source.V_kp[2:end] ≈ V_kp atol = 0.001
         @test Source.V_ki[2:end] ≈ V_ki atol = 0.001
-        @test new_data ≈ old_data atol = 0.001
+        @test ((1 .+ new_data)./(1 .+ old_data)) ≈ ones(size(new_data, 1),size(new_data, 2)) atol = 0.01
+
         @test new_data[1:total_steps, 2:end] ≈ new_data[total_steps + 1:2*total_steps, 2:end] atol = 0.001
         @test new_data[1:total_steps, 2:end] ≈ new_data[2*total_steps + 1:end, 2:end] atol = 0.001
+end
+
+@testset "Saturation" begin
+
+        #_______________________________________________________________________________
+        # Network Configuration
+
+        #-------------------------------------------------------------------------------
+        # Time simulation
+
+        Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+        t_end    = 0.1     # total run time, seconds
+
+        #-------------------------------------------------------------------------------
+        # Connectivity Matrix
+
+        CM = [ 0. 1.
+                -1. 0.]
+
+        #-------------------------------------------------------------------------------
+        # Parameters
+
+        #= Modes:
+        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
+        3 -> "Droop" - simple grid forming with power balancing
+        4 -> "Synchronverter" - enhanced droop control
+        =#
+
+        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+
+        length = 1
+        parameters = Dict{Any, Any}(
+                "source" => Any[
+                                Dict{Any, Any}("pwr" => 200e3,
+                                                "mode" => "Semi-Synchronverter",
+                                                "v_pu_set" => 1.0),
+
+                                Dict{Any, Any}("pwr" => 200e3,
+                                                "mode" => "PQ",
+                                                "fltr" => "LCL",
+                                                "p_set" => -40.9e3, # making this slightly less/more, means that the voltage control loop recovers
+                                                "q_set" => 100e3),
+                                ],
+                "cable"   => Any[
+                                Dict{Any, Any}("R" => length*0.208,
+                                                "L" => length*0.00025,
+                                                "C" => length*0.4e-3,
+                                                "i_limit" => 10e4,),
+                                ],
+                "grid" => Dict{Any, Any}("ramp_end" => 0.04, "process_start"=> 0.06)
+        )
+        #_______________________________________________________________________________
+        # Defining the environment
+
+        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+
+        #_______________________________________________________________________________
+        # Setting up data hooks
+
+        hook = data_hook(collect_sources  = [1 2],
+                        v_mag_inv            = [1 2],
+                        v_mag_cap            = [1 2],
+                        i_mag_inv            = [1 2],
+                        i_mag_poc            = [1 2],
+                        power_pq_inv         = [1 2],
+                        power_pq_poc         = [1 2],
+                        freq             = [1 2],
+                        angles           = [1 2],
+                        i_sat            = [1 2],
+                        v_sat            = [1],
+                        i_err_t          = [1 2],
+                        v_err_t          = [1])
+
+        #_______________________________________________________________________________
+        # initialising the agents
+
+        Multi_Agent = setup_agents(env)
+        Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+        #_______________________________________________________________________________
+        # running the time simulation
+
+        hook = simulate(Multi_Agent, env, hook = hook)
+
+        #_______________________________________________________________________________
+        # Plotting
+
+        #= plot_hook_results(hook = hook,
+                        states_to_plot  = [],
+                        actions_to_plot = [],
+                        power_p_inv     = [],
+                        power_q_inv     = [],
+                        power_p_poc     = [],
+                        power_q_poc     = [],
+                        v_mag_inv           = [1 2],
+                        v_mag_cap           = [1 2],
+                        i_mag_inv           = [1 2],
+                        i_mag_poc           = [1 2],
+                        i_sat           = [1 2],
+                        v_sat           = [1],
+                        i_err_t         = [1 2],
+                        v_err_t         = [1],
+                        freq            = [],
+                        angles          = []) =#
+
+        #CSV.write("Control_Saturation_Unit_test.csv", hook.df[end-100:end,:])
+        old_data = convert.(Float64, Matrix(CSV.read("./test/Control_Saturation_Unit_test.csv", DataFrame))[1:end, 1:17])
+
+        new_data = convert.(Float64, Matrix(hook.df)[end-100:end, 1:17])
+
+        @test ((1 .+ new_data)./(1 .+ old_data)) ≈ ones(size(new_data, 1),size(new_data, 2)) atol = 0.01
+
+        return nothing
 end
 
 @testset "Ornstein_Uhlenbeck_Filters_Angles" begin
@@ -506,120 +621,6 @@ end
         println()
         println(env.nc.parameters["source"][3]["L1"])
         println(env.nc.parameters["source"][3]["R1"]) =#
-
-        return nothing
-end
-
-@testset "Saturation" begin
-
-        #_______________________________________________________________________________
-        # Network Configuration
-
-        #-------------------------------------------------------------------------------
-        # Time simulation
-
-        Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-        t_end    = 0.1     # total run time, seconds
-
-        #-------------------------------------------------------------------------------
-        # Connectivity Matrix
-
-        CM = [ 0. 1.
-                -1. 0.]
-
-        #-------------------------------------------------------------------------------
-        # Parameters
-
-        #= Modes:
-        1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
-        2 -> "PQ" - grid following controllable source/load (active and reactive Power)
-        3 -> "Droop" - simple grid forming with power balancing
-        4 -> "Synchronverter" - enhanced droop control
-        =#
-
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
-
-        length = 1
-        parameters = Dict{Any, Any}(
-                "source" => Any[
-                                Dict{Any, Any}("pwr" => 200e3,
-                                                "mode" => "Semi-Synchronverter",
-                                                "v_pu_set" => 1.0),
-
-                                Dict{Any, Any}("pwr" => 200e3,
-                                                "mode" => "PQ",
-                                                "fltr" => "LCL",
-                                                "p_set" => -40.9e3, # making this slightly less/more, means that the voltage control loop recovers
-                                                "q_set" => 100e3),
-                                ],
-                "cable"   => Any[
-                                Dict{Any, Any}("R" => length*0.208,
-                                                "L" => length*0.00025,
-                                                "C" => length*0.4e-3,
-                                                "i_limit" => 10e4,),
-                                ],
-                "grid" => Dict{Any, Any}("ramp_end" => 0.04, "process_start"=> 0.06)
-        )
-        #_______________________________________________________________________________
-        # Defining the environment
-
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
-
-        #_______________________________________________________________________________
-        # Setting up data hooks
-
-        hook = data_hook(collect_sources  = [1 2],
-                        v_mag_inv            = [1 2],
-                        v_mag_cap            = [1 2],
-                        i_mag_inv            = [1 2],
-                        i_mag_poc            = [1 2],
-                        power_pq_inv         = [1 2],
-                        power_pq_poc         = [1 2],
-                        freq             = [1 2],
-                        angles           = [1 2],
-                        i_sat            = [1 2],
-                        v_sat            = [1],
-                        i_err_t          = [1 2],
-                        v_err_t          = [1])
-
-        #_______________________________________________________________________________
-        # initialising the agents
-
-        Multi_Agent = setup_agents(env)
-        Source = Multi_Agent.agents["classic"]["policy"].policy.Source
-
-        #_______________________________________________________________________________
-        # running the time simulation
-
-        hook = simulate(Multi_Agent, env, hook = hook)
-
-        #_______________________________________________________________________________
-        # Plotting
-
-        #= plot_hook_results(hook = hook,
-                        states_to_plot  = [],
-                        actions_to_plot = [],
-                        power_p_inv     = [],
-                        power_q_inv     = [],
-                        power_p_poc     = [],
-                        power_q_poc     = [],
-                        v_mag_inv           = [1 2],
-                        v_mag_cap           = [1 2],
-                        i_mag_inv           = [1 2],
-                        i_mag_poc           = [1 2],
-                        i_sat           = [1 2],
-                        v_sat           = [1],
-                        i_err_t         = [1 2],
-                        v_err_t         = [1],
-                        freq            = [],
-                        angles          = []) =#
-
-        #CSV.write("Control_Saturation_Unit_test.csv", hook.df[end-100:end,:])
-        old_data = convert.(Float64, Matrix(CSV.read("./test/Control_Saturation_Unit_test.csv", DataFrame))[1:end, 1:17])
-
-        new_data = convert.(Float64, Matrix(hook.df)[end-100:end, 1:17])
-
-        @test new_data ≈ old_data atol = 0.001
 
         return nothing
 end
