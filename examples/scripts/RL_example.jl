@@ -43,11 +43,9 @@ env = SimEnv(
     #reward_function = reward_function,
     action_delay = 0)
 
-agent = create_agent_ddpg(na = length(env.agent_dict["user_def"]["action_ids"]),
-                          ns = length(state(env, "user_def")),
-                                     use_gpu = false)
+#agent = create_agent_ddpg(na = length(env.agent_dict["user_def"]["action_ids"]), ns = length(state(env, "user_def")), use_gpu = false)
 
-#=
+
 rng = StableRNG(1)
 init = glorot_uniform(rng)
 
@@ -68,19 +66,19 @@ create_critic() = Chain(
 
 agent = Agent(
     policy = DDPGPolicy(
-        behavior_actor = DareNeuralNetworkApproximator(
+        behavior_actor = NeuralNetworkApproximator(
             model = create_actor(),
             optimizer = ADAM(),
         ),
-        behavior_critic = DareNeuralNetworkApproximator(
+        behavior_critic = NeuralNetworkApproximator(
             model = create_critic(),
             optimizer = ADAM(),
         ),
-        target_actor = DareNeuralNetworkApproximator(
+        target_actor = NeuralNetworkApproximator(
             model = create_actor(),
             optimizer = ADAM(),
         ),
-        target_critic = DareNeuralNetworkApproximator(
+        target_critic = NeuralNetworkApproximator(
             model = create_critic(),
             optimizer = ADAM(),
         ),
@@ -102,7 +100,6 @@ agent = Agent(
         action = Float32 => (na, ),
     ),
 )
-=#
 
 controllers = setup_agents(env, Dict("user_def" => agent))
 
