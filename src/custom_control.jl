@@ -1,5 +1,5 @@
 # ?
-function custom_lsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVector;
+function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVector;
     x0::AbstractVecOrMat=zeros(Bool, nstates(sys)), method::Symbol=:zoh)
     ny, nu = size(sys)
     nx = sys.nx
@@ -32,13 +32,13 @@ function custom_lsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVe
         dsys = sys
     end
 
-    x = custom_ltitr(dsys.A, dsys.B, u, x0)
+    x = CustomLtitr(dsys.A, dsys.B, u, x0)
     #y = sys.C * x + sys.D * u
     #return SimResult(y, t, x, u, dsys) # saves the system that actually produced the simulation
     return x
 end
 
-@views function custom_ltitr(A::AbstractMatrix, B::AbstractMatrix, u::AbstractVecOrMat,
+@views function CustomLtitr(A::AbstractMatrix, B::AbstractMatrix, u::AbstractVecOrMat,
     x0::AbstractVecOrMat=zeros(eltype(A), size(A, 1)))
 
     T = promote_type(LinearAlgebra.promote_op(LinearAlgebra.matprod, eltype(A), eltype(x0)),

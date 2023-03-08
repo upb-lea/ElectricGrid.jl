@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-pre_investigations/python/
-saves/
-.idea/
-=======
+Manifest.toml
+
 # App
 dev/*
 build/*
@@ -12,7 +9,9 @@ docs/build
 log/*
 sessions/*
 !*.gitkeep
-Manifest.toml
+
+
+pre_investigations/julia/Manifest.toml
 
 # Vagrant
 .vagrant
@@ -49,4 +48,15 @@ node_modules/
 
 # Database
 db/*.sqlite
->>>>>>> develop
+
+# Notebook helper
+.idea/*
+
+# Jupyter Nodebook
+*/.ipynb_checkpoints/
+
+# pre_investigations
+pre_investigations/*
+
+# .github files
+*.github
