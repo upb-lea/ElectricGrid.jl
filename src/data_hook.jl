@@ -2,7 +2,7 @@ using DataFrames
 using UnicodePlots
 
 
-Base.@kwdef mutable struct DataHook <: AbstractHook
+Base.@kwdef mutable struct data_hook <: AbstractHook
 
     save_data_to_hd = false
     dir = "episode_data/"
@@ -40,11 +40,14 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     collect_reference = false
     collect_vdc_ids = []
 
-    vdq = []
-    vrms = []
-    idq = []
-    irms = []
-    power_pq = []
+    v_dq = []
+    v_mag_inv = []
+    v_mag_cap = []
+    i_dq = []
+    i_mag_inv = []
+    i_mag_poc = []
+    power_pq_inv = []
+    power_pq_poc = []
     freq = []
     angles = []
     i_sat = []
@@ -58,7 +61,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
 
 end
 
-function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
+function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
 
     # rest
     #hook.df = DataFrame()
@@ -152,27 +155,48 @@ function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
     hook.collect_state_paras = get_state_paras(env.nc)
 
     if hook.is_inner_hook_RL
-        if isa(agent.policy, NamedPolicy)
-            hook.currentNNA === nothing && (hook.currentNNA = deepcopy(agent.policy.policy.behavior_actor))
-            hook.bestNNA === nothing && (hook.bestNNA = deepcopy(agent.policy.policy.behavior_actor))
-            if training
-                agent.policy.policy.behavior_actor = deepcopy(hook.currentNNA)
-            else
-                agent.policy.policy.behavior_actor = deepcopy(hook.bestNNA)
+
+        if length(hook.policy_names) != length(agent.agents)
+            hook.policy_names = [s for s in keys(agent.agents)]
+        end
+
+        if isnothing(hook.currentNNA)
+            hook.currentNNA = Dict()
+
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        end
+
+        if isnothing(hook.bestNNA)
+            hook.bestNNA = Dict()
+
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
+            end
+        end
+
+        if training
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    agent.agents[name]["policy"].policy.policy.behavior_actor = deepcopy(hook.currentNNA[name])
+                end
             end
         else
-            hook.currentNNA === nothing && (hook.currentNNA = deepcopy(agent.policy.behavior_actor))
-            hook.bestNNA === nothing && (hook.bestNNA = deepcopy(agent.policy.behavior_actor))
-            if training
-                agent.policy.behavior_actor = deepcopy(hook.currentNNA)
-            else
-                agent.policy.behavior_actor = deepcopy(hook.bestNNA)
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    agent.agents[name]["policy"].policy.policy.behavior_actor = deepcopy(hook.bestNNA[name])
+                end
             end
         end
     end
 end
 
-function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
+function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
 
     insertcols!(hook.tmp, :episode => hook.ep)
     insertcols!(hook.tmp, :time => Float32(env.t))
@@ -190,45 +214,70 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
             insertcols!(hook.tmp, "debug_$(idx)" => Classical_Policy.Source.debug[idx])
         end
 
-        for idx in hook.vdq
-
+        for idx in hook.v_dq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_vd" => Classical_Policy.Source.V_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_vq" => Classical_Policy.Source.V_dq0[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_v_d" => Classical_Policy.Source.V_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_v_q" => Classical_Policy.Source.V_dq0[s_idx, 2])
             end
         end
 
-        for idx in hook.idq
+        for idx in hook.i_dq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_id" => Classical_Policy.Source.I_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_iq" => Classical_Policy.Source.I_dq0[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_i_d" => Classical_Policy.Source.I_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_i_q" => Classical_Policy.Source.I_dq0[s_idx, 2])
             end
         end
 
-        for idx in hook.power_pq
+        for idx in hook.power_pq_inv
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_p" => Classical_Policy.Source.p_q_filt[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_q" => Classical_Policy.Source.p_q_filt[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_p_inv" => Classical_Policy.Source.p_q_inv[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_q_inv" => Classical_Policy.Source.p_q_inv[s_idx, 2])
             end
         end
 
-        for idx in hook.vrms
+        for idx in hook.power_pq_poc
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                vrms = DQ_RMS(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_vrms" => vrms)
+                insertcols!(hook.tmp, "source$(idx)_p_poc" => Classical_Policy.Source.p_q_poc[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_q_poc" => Classical_Policy.Source.p_q_poc[s_idx, 2])
+            end
+        end
+
+        for idx in hook.v_mag_inv
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                v_mag = Clarke_mag((Classical_Policy.Source.Vdc[s_idx]/2)*Classical_Policy.Source.Vd_abc_new[s_idx, :, end])
+                insertcols!(hook.tmp, "source$(idx)_v_mag_inv" => v_mag)
                 #insertcols!(hook.tmp, "source$(idx)_vrms_a" => Classical_Policy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
-        for idx in hook.irms
+        for idx in hook.v_mag_cap
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                irms = DQ_RMS(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_irms" => irms)
+                v_mag = Clarke_mag(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
+                insertcols!(hook.tmp, "source$(idx)_v_mag_cap" => v_mag)
+                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => Classical_Policy.Source.V_ph[s_idx, 1, 2])
+            end
+        end
+
+        for idx in hook.i_mag_inv
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                i_mag = Clarke_mag(Classical_Policy.Source.I_filt_inv[s_idx, :, end])
+                insertcols!(hook.tmp, "source$(idx)_i_mag_inv" => i_mag)
+                #insertcols!(hook.tmp, "source$(idx)_irms_a" => Classical_Policy.Source.I_ph[s_idx, 1, 2])
+            end
+        end
+
+        for idx in hook.i_mag_poc
+            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            if s_idx !== nothing
+                i_mag = Clarke_mag(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
+                insertcols!(hook.tmp, "source$(idx)_i_mag_poc" => i_mag)
                 #insertcols!(hook.tmp, "source$(idx)_irms_a" => Classical_Policy.Source.I_ph[s_idx, 1, 2])
             end
         end
@@ -236,7 +285,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.freq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                freq = Classical_Policy.Source.fpll[s_idx, 1, end]
+                freq = Classical_Policy.Source.f_source[s_idx, 1, end]
                 insertcols!(hook.tmp, "source$(idx)_freq" => freq)
             end
         end
@@ -250,22 +299,22 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
 
             if s_idx !== nothing
 
-                θpll = (Classical_Policy.Source.θpll[s_idx, 1, end] - θ_ref
+                θ_source = (Classical_Policy.Source.θ_source[s_idx, 1, end] - θ_ref
                         + Classical_Policy.Source.ts*π*Classical_Policy.Source.fsys)*180/π
 
-                if θpll > 180
-                    θpll = θpll - 360
-                elseif θpll < -180
-                    θpll = θpll + 360
+                if θ_source > 180
+                    θ_source = θ_source - 360
+                elseif θ_source < -180
+                    θ_source = θ_source + 360
                 end
-                insertcols!(hook.tmp, "source$(idx)_θ" => θpll)
+                insertcols!(hook.tmp, "source$(idx)_θ" => θ_source)
             end
         end
 
         for idx in hook.i_sat
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*DQ_RMS(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
+                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*Clarke_mag(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
                 insertcols!(hook.tmp, "source$(idx)_i_sat" => i_sat)
             end
         end
@@ -273,7 +322,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_err = DQ_RMS(Classical_Policy.Source.I_err[s_idx, :, end])
+                i_err = Clarke_mag(Classical_Policy.Source.I_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_err" => i_err)
             end
         end
@@ -281,7 +330,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err_t
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_err_t = DQ_RMS(Classical_Policy.Source.I_err_t[s_idx, :])
+                i_err_t = Clarke_mag(Classical_Policy.Source.I_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_i_err_t" => i_err_t)
             end
         end
@@ -289,7 +338,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_sat
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_sat = sqrt(2)*DQ_RMS(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
+                v_sat = sqrt(2)*Clarke_mag(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
                 insertcols!(hook.tmp, "source$(idx)_v_sat" => v_sat)
             end
         end
@@ -297,7 +346,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_err = DQ_RMS(Classical_Policy.Source.V_err[s_idx, :, end])
+                v_err = Clarke_mag(Classical_Policy.Source.V_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_err" => v_err)
             end
         end
@@ -305,7 +354,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err_t
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_err_t = DQ_RMS(Classical_Policy.Source.V_err_t[s_idx, :])
+                v_err_t = Clarke_mag(Classical_Policy.Source.V_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_v_err_t" => v_err_t)
             end
         end
@@ -367,7 +416,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
 
 end
 
-function (hook::DataHook)(::PostActStage, agent, env, training = false)
+function (hook::data_hook)(::PostActStage, agent, env, training = false)
 
     states_x = Vector( env.x )
     opstates = (hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
@@ -421,6 +470,7 @@ function (hook::DataHook)(::PostActStage, agent, env, training = false)
             if length(hook.reward) != length(agent.agents)
                 hook.reward = zeros(length(agent.agents))
             end
+
             if length(hook.policy_names) != length(agent.agents)
                 hook.policy_names = [s for s in keys(agent.agents)]
             end
@@ -438,24 +488,24 @@ function (hook::DataHook)(::PostActStage, agent, env, training = false)
     end
 end
 
-function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
+function (hook::data_hook)(::PostEpisodeStage, agent, env, training = false)
     hook.ep += 1
 
     if training
         if isa(agent, MultiAgentGridController)
             if length(hook.rewards) >= 1 && sum(hook.reward) > maximum(sum.(hook.rewards))
+                if hook.is_inner_hook_RL
+                    for name in hook.policy_names
+                        if isa(agent.agents[name]["policy"], Agent)
+                            hook.bestNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                        end
+                    end
+                end
                 hook.bestepisode = hook.ep
                 hook.bestreward = sum(hook.reward)
             end
         else
             if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards)
-                if hook.is_inner_hook_RL
-                    if isa(agent.policy, NamedPolicy)
-                        copyto!(hook.bestNNA, agent.policy.policy.behavior_actor)
-                    else
-                        copyto!(hook.bestNNA, agent.policy.behavior_actor)
-                    end
-                end
                 hook.bestepisode = hook.ep
                 hook.bestreward = hook.reward
             end
@@ -470,16 +520,16 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
         end
 
         if hook.is_inner_hook_RL
-            if isa(agent.policy, NamedPolicy)
-                copyto!(hook.currentNNA, agent.policy.policy.behavior_actor)
-            else
-                copyto!(hook.currentNNA, agent.policy.behavior_actor)
+            for name in hook.policy_names
+                if isa(agent.agents[name]["policy"], Agent)
+                    hook.currentNNA[name] = deepcopy(agent.agents[name]["policy"].policy.policy.behavior_actor)
+                end
             end
         end
     end
 end
 
-function (hook::DataHook)(::PostExperimentStage, agent, env, training = false)
+function (hook::data_hook)(::PostExperimentStage, agent, env, training = false)
 
     if hook.save_data_to_hd
         isdir(hook.dir) || mkdir(hook.dir)
@@ -487,23 +537,37 @@ function (hook::DataHook)(::PostExperimentStage, agent, env, training = false)
     end
 
     if hook.plot_rewards
-        matrix_to_plot = reduce(hcat, hook.rewards)
-        if length(hook.policy_names) > 0
-            p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+        if hook.is_inner_hook_RL
+            if training
+                matrix_to_plot = reduce(hcat, hook.rewards)
+
+                p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), name=hook.policy_names[1], title="Total reward per episode", xlabel="Episode", ylabel="Score")
+
+                for i in 2:length(hook.rewards[1])
+                    lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
+                end
+
+                display(p)
+            end
         else
+            matrix_to_plot = reduce(hcat, hook.rewards)
+
             p = lineplot(matrix_to_plot[1,:], ylim=(minimum(matrix_to_plot), maximum(matrix_to_plot)), title="Total reward per episode", xlabel="Episode", ylabel="Score")
-        end
-        for i in 2:length(hook.rewards[1])
-            lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
+
+            for i in 2:length(hook.rewards[1])
+                lineplot!(p, matrix_to_plot[i,:], name=hook.policy_names[i])
+            end
+
+            display(p)
         end
         # println(p)
     end
 
     if hook.is_inner_hook_RL
-        if isa(agent.policy, NamedPolicy)
-            agent.policy.policy.behavior_actor = deepcopy(hook.currentNNA)
-        else
-            agent.policy.behavior_actor = deepcopy(hook.currentNNA)
+        for name in hook.policy_names
+            if isa(agent.agents[name]["policy"], Agent)
+                agent.agents[name]["policy"].policy.policy.behavior_actor = deepcopy(hook.currentNNA[name])
+            end
         end
     end
 

@@ -11,7 +11,7 @@ Initialises up the agents that will be controlling the electrical network.
 - `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
 
 """
-function setup_agents(env)
+function setup_agents(env, custom_agents = nothing)
 
 
     #_______________________________________________________________________________
@@ -33,51 +33,46 @@ function setup_agents(env)
     #-------------------------------------------------------------------------------
     # Setting up the controls for the Reinforcement Learning Sources
 
-    num_RL_sources = env.nc.num_sources - num_clas_sources # number of reinforcement learning controlled sources
+    for (name, config) in env.agent_dict
 
-    RL_Source_Indices = Array{Int64, 1}(undef, 0)
-    for ns in 1:env.nc.num_sources
+        if config["mode"] == "dare_ddpg"
+            agent = create_agent_ddpg(na = length(env.agent_dict[name]["action_ids"]),
+                                        ns = length(state(env, name)),
+                                        use_gpu = false)
 
-        if env.nc.parameters["source"][ns]["control_type"] == "RL"
-            RL_Source_Indices = [RL_Source_Indices; Int(ns)]
-        end
-    end
-
-    ssa = "source".*string.(RL_Source_Indices)
-    env.state_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.state_ids)
-    env.action_ids_RL = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), env.action_ids)
-
-    if num_RL_sources > 0
-
-        if num_clas_sources > 0
-            na = length(env.action_ids) - length(Animo.policy.action_ids)
+            for i in 1:3
+                agent.policy.behavior_actor.model.layers[i].weight ./= 3
+                agent.policy.behavior_actor.model.layers[i].bias ./= 3
+                agent.policy.target_actor.model.layers[i].weight ./= 3
+                agent.policy.target_actor.model.layers[i].bias ./= 3
+            end
         else
-            na = length(env.action_ids)
+            agent = custom_agents[name]
         end
 
-        agent = create_agent_ddpg(na = na, ns = length(state(env,"agent")), use_gpu = false)
-
-        for i in 1:3
-            agent.policy.behavior_actor.model.layers[i].weight ./= 100
-            agent.policy.behavior_actor.model.layers[i].bias ./= 100
-            agent.policy.target_actor.model.layers[i].weight ./= 100
-            agent.policy.target_actor.model.layers[i].bias ./= 100
-        end
-
-        agent = DareAgent(policy = NamedPolicy("agent", agent.policy), trajectory = agent.trajectory)
+        agent = Agent(policy = NamedPolicy(name, agent.policy), trajectory = agent.trajectory)
 
         RL_policy = Dict()
         RL_policy["policy"] = agent
-        RL_policy["state_ids"] = env.state_ids_RL
-        RL_policy["action_ids"] = env.action_ids_RL
+        RL_policy["state_ids"] = env.agent_dict[name]["state_ids"]
+        RL_policy["action_ids"] = env.agent_dict[name]["action_ids"]
 
-        Agents[nameof(agent)] = RL_policy
+        Agents[name] = RL_policy
     end
 
+    @eval function action_space(env::SimEnv, name::String)
+        for (pname, config) in env.agent_dict
+            if name == pname
+                return Space(fill(-1.0..1.0, length(env.agent_dict[name]["action_ids"])))
+            end
+        end
+
+        return Space(fill(-1.0..1.0, size(env.action_ids_RL)))
+    end
     #-------------------------------------------------------------------------------
     # Finalising the Control
 
-    num_policies = num_RL_sources + convert(Int64, num_clas_sources > 0)
+    #num_policies = num_RL_sources + convert(Int64, num_clas_sources > 0)
 
     if num_clas_sources > 0
 
@@ -95,10 +90,6 @@ function setup_agents(env)
     #_______________________________________________________________________________
     # Logging
 
-    if env.verbosity > 1
-
-        @info "Time simulation run time: $((env.maxsteps - 1)*env.ts) [s] ~ $(Int(env.maxsteps)) steps"
-    end
 
     #_______________________________________________________________________________
     # returns
@@ -124,7 +115,7 @@ function learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
 
-        hook = default_data_hook(Multi_Agent, env)
+        hook = data_hook()
 
     end
 
@@ -144,20 +135,24 @@ function default_data_hook(Multi_Agent, env)
     all_loads = collect(1:env.nc.num_loads)
     all_cables = collect(1:env.nc.num_connections)
 
-    hook = DataHook(collect_sources  = all_sources,
+    hook = data_hook(collect_sources  = all_sources,
                     collect_cables   = all_cables,
                     #collect_loads    = all_loads,
-                    vrms             = all_class,
-                    irms             = all_class,
-                    vdq              = all_class,
-                    idq              = all_class,
-                    power_pq         = all_class,
+                    v_mag_inv        = all_class,
+                    v_mag_cap        = all_class,
+                    i_mag_inv        = all_class,
+                    i_mag_poc        = all_class,
+                    v_dq             = all_class,
+                    i_dq             = all_class,
+                    power_pq_inv     = all_class,
+                    power_pq_poc     = all_class,
                     freq             = all_class,
                     angles           = all_class,
                     i_sat            = all_class,
                     v_sat            = Source.grid_forming,
                     i_err_t          = all_class,
-                    v_err_t          = Source.grid_forming)
+                    v_err_t          = Source.grid_forming,
+                    debug            = [])
 
     return hook
 end
@@ -169,6 +164,8 @@ function dare_run(policy, env, stop_condition, hook, training = false)
     is_stop = false
     while !is_stop
         RLBase.reset!(env)
+        reset_policy(policy)
+
         policy(PRE_EPISODE_STAGE, env, training)
         hook(PRE_EPISODE_STAGE, policy, env, training)
 
@@ -194,6 +191,8 @@ function dare_run(policy, env, stop_condition, hook, training = false)
             hook(POST_EPISODE_STAGE, policy, env, training)
         end
     end
+
+    policy(POST_EXPERIMENT_STAGE, env, training)
     hook(POST_EXPERIMENT_STAGE, policy, env, training)
-    hook
+    return hook
 end

@@ -111,7 +111,7 @@ agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 plt_state_ids = ["u_f1_a", "u_f1_b", "u_f1_c", "u_f2_a", "u_f2_b", "u_f2_c"]
 plt_action_ids = ["u_v1_a", "u_v1_b", "u_v1_c"]
-hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true)
+hook = data_hook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids, save_best_NNA = true, collect_reference = true)
 
 run(agent, env, StopAfterEpisode(50), hook)
 

@@ -245,8 +245,8 @@ function check_parameters(
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
-        grid_properties["Δfmax"] = 0.005 # The drop in frequency
-        grid_properties["ΔEmax"] = 5 / 100 # The drop in rms voltage
+        grid_properties["Δfmax"] = 0.5 # The drop in frequency
+        grid_properties["ΔEmax"] = 5 # The drop in rms voltage
         grid_properties["ramp_end"] = 2 / 50
         grid_properties["process_start"] = 2 / 50
         parameters["grid"] = grid_properties
@@ -268,11 +268,11 @@ function check_parameters(
         end
 
         if !haskey(parameters["grid"], "Δfmax")
-            parameters["grid"]["Δfmax"] = 0.005
+            parameters["grid"]["Δfmax"] = 0.5
         end
 
         if !haskey(parameters["grid"], "ΔEmax")
-            parameters["grid"]["ΔEmax"] = 5 / 100
+            parameters["grid"]["ΔEmax"] = 5
         end
 
         if !haskey(parameters["grid"], "ramp_end")
@@ -352,7 +352,20 @@ function check_parameters(
             end
 
             if !haskey(source, "fltr")
-                source["fltr"] = "LCL"
+
+                if haskey(source, "mode")
+
+                    if (source["mode"] == "Swing")
+
+                        source["fltr"] = "L"
+                    else
+
+                        source["fltr"] = "LCL"
+                    end
+                else
+                    source["fltr"] = "LCL"
+                end
+
             elseif !(source["fltr"] in ["L", "LC", "LCL"])
                 # TODO: Raise warning: False key
                 source["fltr"] = "LCL"
@@ -390,7 +403,7 @@ function check_parameters(
                 if !haskey(source, "C")
                     Vorms = parameters["grid"]["v_rms"] * 0.95
                     Vop = Vorms * sqrt(2)
-                    Zl = 3 * Vorms * Vorms / source["pwr"]
+                    Zl = 3 * Vorms * Vorms / source["pwr"] #TODO
                     Iorms = Vorms / Zl
                     Iop = Iorms * sqrt(2)
                     Ir_d = source["vdc"] /
@@ -510,12 +523,20 @@ function check_parameters(
                 source["v_δ_set"] = 0.0
             end
 
-            if !haskey(source, "mode")
-                source["mode"] = "Synchronverter"
-            end
-
             if !haskey(source, "control_type")
                 source["control_type"] = "classic"
+            end
+
+            if source["control_type"] ==  "classic"
+                if !haskey(source, "mode")
+                    source["mode"] = "Synchronverter"
+                end
+            elseif source["control_type"] ==  "RL"
+                if !haskey(source, "mode")
+                    source["mode"] = "dare_ddpg"
+                end
+            else
+                @assert("Invalid control type, please choose RL or classic")
             end
 
             if !haskey(source, "γ") # asymptotic mean
@@ -589,25 +610,8 @@ function check_parameters(
             for s in 1:num_fltr_L_undef
                 push!(parameters["source"], _sample_fltr_L(parameters["grid"]))
             end
-
-            # What is this? What if the user defined an L or LCL filter
-            if num_LC_defined == 0 && num_fltr_LC_undef == 0
-                if verbosity > 0
-                    @warn("No LC filter defined/set random, if wanted please set in parameter
-                        dict!")
-                end
-            end
-        else
-            if num_LC_defined == 0
-                @warn("No LC filter defined/set random, if wanted please set in parameter
-                    dict!")
-            end
-        end
-        if verbosity > 0
-            source_type_fixed > 0 && @warn "$source_type_fixed sourceType not defined!"
         end
         num_fltr_LCL, num_fltr_LC, num_fltr_L = cntr_fltrs(parameters["source"])
-
     end
 
     # calculate grid power
@@ -937,6 +941,8 @@ function _sample_fltr_LCL(grid_properties)
     source["R_C"] = R_C
     source["i_limit"] = i_limit
     source["v_limit"] = v_limit
+    source["control_type"] ==  "classic"
+    source["mode"] = "Synchronverter"
 
     return source
 end
@@ -966,6 +972,8 @@ function _sample_fltr_LC(grid_properties)
     source["R_C"] = R_C
     source["i_limit"] = i_limit
     source["v_limit"] = v_limit
+    source["control_type"] ==  "classic"
+    source["mode"] = "Synchronverter"
 
     return source
 end
@@ -992,6 +1000,8 @@ function _sample_fltr_L(grid_properties)
     source["R1"] = R_1
     source["i_limit"] = i_limit
     source["v_limit"] = 1.1 * grid_properties["v_rms"] * sqrt(2)
+    source["control_type"] ==  "classic"
+    source["mode"] = "Synchronverter"
 
     return source
 end

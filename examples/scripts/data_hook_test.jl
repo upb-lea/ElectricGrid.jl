@@ -37,7 +37,7 @@ env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, act
 #_______________________________________________________________________________
 # Setting up data hooks
 
-hook = DataHook(collect_sources  = [1])
+hook = data_hook(collect_sources  = [1])
 
 #_______________________________________________________________________________
 # Running the Time Simulation

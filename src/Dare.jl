@@ -1,35 +1,31 @@
 module Dare
 
-using ArnoldiMethod #*
 using Combinatorics
 using CSV
 using CUDA
 using DataStructures
+using DataFrames
 using ControlSystemsBase
-using DifferentialEquations
 using Distributions
 using DSP
 using FFTW
-using LinearAlgebra
-using LinearMaps #*
-using JuMP
-import Ipopt
-using NearestNeighbors #*
-using NonNegLeastSquares #*
-using PlotlyJS
-using ReinforcementLearning
-using SpecialFunctions
-using StatsBase
 using Flux
-using StableRNGs
-using IntervalSets
 using Graphs
 using GraphPlot
+using IJulia
+using IntervalSets
+import Ipopt
+using JuMP
+using LinearAlgebra
+using Logging
 using PlotlyJS
 using Random
+using ReinforcementLearning
 using StableRNGs
+using SpecialFunctions
+using StatsBase
 
-#export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, DataHook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup, SimEnv
+#export create_setup, Classical_Policy, create_agent_ddpg, Source_Initialiser, MultiAgentGridController, data_hook, plot_hook_results, plot_best_results, NodeConstructor, dare_setup, SimEnv
 
 include("./Power_System_Theory.jl")
 include("./nodeconstructor.jl")
@@ -43,11 +39,6 @@ include("./plotting.jl")
 include("./data_hook.jl")
 include("./Dare_Wrapper.jl")
 include("./Dare_Logger.jl")
-include("./Kernel_Machine.jl")
-include("./Machine_Dynamics.jl")
-include("./Dif_Map.jl")
-include("./Dynamical_Systems.jl")
-include("./Complexity.jl")
 
 #code to export all, taken from https://discourse.julialang.org/t/exportall/4970/18
 for n in names(@__MODULE__; all=true)
