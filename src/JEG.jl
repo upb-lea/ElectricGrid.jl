@@ -5,6 +5,7 @@ using CSV
 using CUDA
 using DataStructures
 using DataFrames
+using Dates
 using ControlSystemsBase
 using Distributions
 using Flux
@@ -14,6 +15,7 @@ using IJulia
 using IntervalSets
 using Ipopt
 using JuMP
+using LoggingExtras
 using LinearAlgebra
 using Logging
 using PlotlyJS

@@ -2,7 +2,7 @@ using JEG
 using Test
 using Logging
 
-global_logger(JEGLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
+global_logger(CustomLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
 
 
 @testset "NodeConstructor" begin
