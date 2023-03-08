@@ -59,17 +59,17 @@ function (A::MultiAgentGridController)(stage::PreActStage, env::AbstractEnv, act
     end
 end
 
-function reset_policy(A::MultiAgentGridController)
+function ResetPolicy(A::MultiAgentGridController)
     for agent in values(A.agents)
-        reset_policy(agent["policy"])
+        ResetPolicy(agent["policy"])
     end
 end
 
-function reset_policy(np::NamedPolicy) 
-    reset_policy(np.policy)
+function ResetPolicy(np::NamedPolicy) 
+    ResetPolicy(np.policy)
 end
 
-function reset_policy(::AbstractPolicy) end
+function ResetPolicy(::AbstractPolicy) end
 
 
 """
@@ -96,7 +96,7 @@ function setup_agents(env, custom_agents = nothing)
     #-------------------------------------------------------------------------------
     # Setting up the controls for the Classical Sources
 
-    Animo = NamedPolicy("classic", Classical_Policy(env))
+    Animo = NamedPolicy("classic", ClassicalPolicy(env))
 
     if !isnothing(Animo.policy)
         num_clas_sources = Animo.policy.Source.num_sources # number of classically controlled sources
@@ -238,7 +238,7 @@ function JEG_run(policy, env, stop_condition, hook, training = false)
     is_stop = false
     while !is_stop
         RLBase.reset!(env)
-        reset_policy(policy)
+        ResetPolicy(policy)
 
         policy(PRE_EPISODE_STAGE, env, training)
         hook(PRE_EPISODE_STAGE, policy, env, training)

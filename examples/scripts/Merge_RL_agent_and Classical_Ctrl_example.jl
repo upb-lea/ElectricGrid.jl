@@ -8,7 +8,7 @@ include(srcdir("node_constructor.jl"))
 include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("Classical_Control.jl"))
+include(srcdir("ClassicalControl.jl"))
 include(srcdir("power_system_theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
@@ -184,12 +184,12 @@ na = length(env.action_space)
 agent = CreateAgentDdpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
 agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
 
-#agent = NamedPolicy(agentname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
+#agent = NamedPolicy(agentname, ClassicalPolicy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
 
 #_______________________________________________________________________________
 # Setting up the Sources
 
-Animo = NamedPolicy(classicname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
+Animo = NamedPolicy(classicname, ClassicalPolicy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_classic)]), t_final = ts*1001, 
 fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids_classic))
 
 #=
@@ -201,7 +201,7 @@ fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids
     6 -> "Self-Synchronverter Mode" - grid forming with power balancing via virtual motor
 =#
 
-Source_Initialiser(env, Animo, [2])
+SourceInitialiser(env, Animo, [2])
 
 #TODO: entfernen!!!
 #Animo = CreateAgentDdpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)

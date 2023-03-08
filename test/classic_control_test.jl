@@ -5,7 +5,7 @@ using CSV
 using DataFrames
 using Distributions
 
-@testset "Classical_Controllers_Dynamics" begin
+@testset "ClassicalControllers_Dynamics" begin
 
         #_______________________________________________________________________________
         # Network Parameters
@@ -249,8 +249,8 @@ using Distributions
         V_kp = [0.44465925382594856; 0.2964395025506326]
         V_ki = [8.78477386799335; 5.85651591199507]
 
-        #CSV.write("Classical_Control_Unit_test.csv", hook.df)
-        old_data = convert.(Float64, Matrix(CSV.read("./test/Classical_Control_Unit_test.csv", DataFrame))[1:end, 1:17])
+        #CSV.write("ClassicalControl_Unit_test.csv", hook.df)
+        old_data = convert.(Float64, Matrix(CSV.read("./test/ClassicalControl_Unit_test.csv", DataFrame))[1:end, 1:17])
 
         new_data = convert.(Float64, Matrix(hook.df)[1:end, 1:17])
 
@@ -381,7 +381,7 @@ end
         return nothing
 end
 
-@testset "Ornstein_Uhlenbeck_Filters_Angles" begin
+@testset "OrnsteinUhlenbeck_Filters_Angles" begin
 
         #_______________________________________________________________________________
         # Network Parameters

@@ -207,100 +207,100 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
 
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
-        Classical_Policy = agent.agents["classic"]["policy"].policy
+        ClassicalPolicy = agent.agents["classic"]["policy"].policy
 
         for idx in hook.debug
 
-            insertcols!(hook.tmp, "debug_$(idx)" => Classical_Policy.Source.debug[idx])
+            insertcols!(hook.tmp, "debug_$(idx)" => ClassicalPolicy.Source.debug[idx])
         end
 
         for idx in hook.v_dq
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_v_d" => Classical_Policy.Source.V_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_v_q" => Classical_Policy.Source.V_dq0[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_v_d" => ClassicalPolicy.Source.V_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_v_q" => ClassicalPolicy.Source.V_dq0[s_idx, 2])
             end
         end
 
         for idx in hook.i_dq
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_i_d" => Classical_Policy.Source.I_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_i_q" => Classical_Policy.Source.I_dq0[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_i_d" => ClassicalPolicy.Source.I_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_i_q" => ClassicalPolicy.Source.I_dq0[s_idx, 2])
             end
         end
 
         for idx in hook.power_pq_inv
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_p_inv" => Classical_Policy.Source.p_q_inv[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_q_inv" => Classical_Policy.Source.p_q_inv[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_p_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_q_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 2])
             end
         end
 
         for idx in hook.power_pq_poc
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_p_poc" => Classical_Policy.Source.p_q_poc[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_q_poc" => Classical_Policy.Source.p_q_poc[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_p_poc" => ClassicalPolicy.Source.p_q_poc[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_q_poc" => ClassicalPolicy.Source.p_q_poc[s_idx, 2])
             end
         end
 
         for idx in hook.v_mag_inv
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                v_mag = ClarkeMag((Classical_Policy.Source.Vdc[s_idx]/2)*Classical_Policy.Source.Vd_abc_new[s_idx, :, end])
+                v_mag = ClarkeMag((ClassicalPolicy.Source.Vdc[s_idx]/2)*ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_mag_inv" => v_mag)
-                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => Classical_Policy.Source.V_ph[s_idx, 1, 2])
+                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
         for idx in hook.v_mag_cap
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                v_mag = ClarkeMag(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
+                v_mag = ClarkeMag(ClassicalPolicy.Source.V_filt_cap[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_mag_cap" => v_mag)
-                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => Classical_Policy.Source.V_ph[s_idx, 1, 2])
+                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
         for idx in hook.i_mag_inv
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                i_mag = ClarkeMag(Classical_Policy.Source.I_filt_inv[s_idx, :, end])
+                i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_inv[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_mag_inv" => i_mag)
-                #insertcols!(hook.tmp, "source$(idx)_irms_a" => Classical_Policy.Source.I_ph[s_idx, 1, 2])
+                #insertcols!(hook.tmp, "source$(idx)_irms_a" => ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
             end
         end
 
         for idx in hook.i_mag_poc
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                i_mag = ClarkeMag(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
+                i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_poc[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_mag_poc" => i_mag)
-                #insertcols!(hook.tmp, "source$(idx)_irms_a" => Classical_Policy.Source.I_ph[s_idx, 1, 2])
+                #insertcols!(hook.tmp, "source$(idx)_irms_a" => ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
             end
         end
 
         for idx in hook.freq
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                freq = Classical_Policy.Source.f_source[s_idx, 1, end]
+                freq = ClassicalPolicy.Source.f_source[s_idx, 1, end]
                 insertcols!(hook.tmp, "source$(idx)_freq" => freq)
             end
         end
 
         if !isempty(hook.angles)
-            θ_ref = Classical_Policy.Source.θ_avg[1, end]
+            θ_ref = ClassicalPolicy.Source.θ_avg[1, end]
         end
         for idx in hook.angles
 
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
 
             if s_idx !== nothing
 
-                θ_source = (Classical_Policy.Source.θ_source[s_idx, 1, end] - θ_ref
-                        + Classical_Policy.Source.ts*π*Classical_Policy.Source.fsys)*180/π
+                θ_source = (ClassicalPolicy.Source.θ_source[s_idx, 1, end] - θ_ref
+                        + ClassicalPolicy.Source.ts*π*ClassicalPolicy.Source.fsys)*180/π
 
                 if θ_source > 180
                     θ_source = θ_source - 360
@@ -312,49 +312,49 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         end
 
         for idx in hook.i_sat
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*ClarkeMag(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
+                i_sat = sqrt(2)*(ClassicalPolicy.Source.Vdc[s_idx]/2)*ClarkeMag(ClassicalPolicy.Source.s_dq0_avg[s_idx, :] .- ClassicalPolicy.Source.s_lim[s_idx, :])/ClassicalPolicy.Source.v_max[s_idx]
                 insertcols!(hook.tmp, "source$(idx)_i_sat" => i_sat)
             end
         end
 
         for idx in hook.i_err
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                i_err = ClarkeMag(Classical_Policy.Source.I_err[s_idx, :, end])
+                i_err = ClarkeMag(ClassicalPolicy.Source.I_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_err" => i_err)
             end
         end
 
         for idx in hook.i_err_t
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                i_err_t = ClarkeMag(Classical_Policy.Source.I_err_t[s_idx, :])
+                i_err_t = ClarkeMag(ClassicalPolicy.Source.I_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_i_err_t" => i_err_t)
             end
         end
 
         for idx in hook.v_sat
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                v_sat = sqrt(2)*ClarkeMag(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
+                v_sat = sqrt(2)*ClarkeMag(ClassicalPolicy.Source.I_ref_dq0[s_idx, :] .- ClassicalPolicy.Source.I_lim[s_idx, :])/(0.98*ClassicalPolicy.Source.i_max[s_idx])
                 insertcols!(hook.tmp, "source$(idx)_v_sat" => v_sat)
             end
         end
 
         for idx in hook.v_err
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                v_err = ClarkeMag(Classical_Policy.Source.V_err[s_idx, :, end])
+                v_err = ClarkeMag(ClassicalPolicy.Source.V_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_err" => v_err)
             end
         end
 
         for idx in hook.i_err_t
-            s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
+            s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                v_err_t = ClarkeMag(Classical_Policy.Source.V_err_t[s_idx, :])
+                v_err_t = ClarkeMag(ClassicalPolicy.Source.V_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_v_err_t" => v_err_t)
             end
         end

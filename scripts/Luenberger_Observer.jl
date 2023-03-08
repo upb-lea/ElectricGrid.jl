@@ -20,7 +20,7 @@ function Observability(C, A; n = size(A,1))
     return O, rank(O)
 end
 
-function charpoly_coef(λ)
+function CharpolyCoef(λ)
 
     # given the roots, this function finds the coefficients
 
@@ -47,7 +47,7 @@ function charpoly_coef(λ)
     return α
 end
 
-function Ackermann_Gain_Matrix(A, C, λ; n = size(A, 1))
+function AckermannGainMatrix(A, C, λ; n = size(A, 1))
 
     #= Theory
         For a single-output, observable system (A, C) and the desired closed-loop 
@@ -57,7 +57,7 @@ function Ackermann_Gain_Matrix(A, C, λ; n = size(A, 1))
 
     αd_A = Array{Float64, 2}(undef, size(A,1), size(A,2))
 
-    α = charpoly_coef(λ)
+    α = CharpolyCoef(λ)
 
     αd_A = α[1]*I
 
@@ -77,7 +77,7 @@ function Ackermann_Gain_Matrix(A, C, λ; n = size(A, 1))
     return K
 end
 
-function Multi_Gain_Matrix_par(A, C, λ, p)
+function MultiGainMatrixPar(A, C, λ, p)
 
     n = size(A, 1)
     v = Array{Float64, 2}(undef, size(A,1), size(A,2))
@@ -106,7 +106,7 @@ function Multi_Gain_Matrix_vec(A, C, λ, v)
     return K, p
 end
 
-function Feed_Gain_Matrix_par(A, B, λ, p)
+function FeedGainMatrixPar(A, B, λ, p)
 
     n = size(A, 1)
     v = Array{Float64, 2}(undef, size(A,1), size(A,2))
@@ -175,7 +175,7 @@ p = [2. 0. 1.;
 
 _, r = Observability(C, A)
 
-K, v = Multi_Gain_Matrix_par(A, C, λ, p)
+K, v = MultiGainMatrixPar(A, C, λ, p)
 
 #= println()
 println("K = ", round.(K, digits = 3))
@@ -199,7 +199,7 @@ C = [1.0 0 0]
 
 λ = [-10. -10 -10]
 
-K = Ackermann_Gain_Matrix(A, C, λ)
+K = AckermannGainMatrix(A, C, λ)
 
 #= println()
 println("K = ", round.(K, digits = 3))
@@ -218,7 +218,7 @@ p = [1. 0. 1.;
 
 λ = [-5. -1 -3]
 
-F, v = Feed_Gain_Matrix_par(A, B, λ, p)
+F, v = FeedGainMatrixPar(A, B, λ, p)
 
 #= println()
 println("F = ", round.(F, digits = 3))
@@ -239,7 +239,7 @@ p = [2.5 8. 1. 1.5;
 
 λ = [-0.0 -0.0 -0.01 -0.01]
 
-K, _ = Multi_Gain_Matrix_par(A, C, λ, p)
+K, _ = MultiGainMatrixPar(A, C, λ, p)
 
 #= println()
 println("K = ", round.(K, digits = 3))
