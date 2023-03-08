@@ -180,8 +180,8 @@ grid["v_rms"] = 230
 grid["ramp_end"] = 0.04
 grid["process_start"] = 0.04
 grid["f_grid"] = 60 
-grid["Δfmax"] = 0.005 # The drop (increase) in frequency that causes a 100% increase (decrease) in power
-grid["ΔEmax"] = 0.05 # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
+grid["Δfmax"] = 0.5 # The % drop (increase) in frequency that causes a 100% increase (decrease) in power
+grid["ΔEmax"] = 5 # The % drop (increase) in voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
 #-------------------------------------------------------------------------------
 # Amalgamation

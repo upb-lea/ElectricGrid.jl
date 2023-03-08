@@ -40,10 +40,10 @@ Base.@kwdef mutable struct data_hook <: AbstractHook
     collect_reference = false
     collect_vdc_ids = []
 
-    vdq = []
+    v_dq = []
     v_mag_inv = []
     v_mag_cap = []
-    idq = []
+    i_dq = []
     i_mag_inv = []
     i_mag_poc = []
     power_pq_inv = []
@@ -214,19 +214,19 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
             insertcols!(hook.tmp, "debug_$(idx)" => Classical_Policy.Source.debug[idx])
         end
 
-        for idx in hook.vdq
+        for idx in hook.v_dq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_vd" => Classical_Policy.Source.V_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_vq" => Classical_Policy.Source.V_dq0[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_v_d" => Classical_Policy.Source.V_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_v_q" => Classical_Policy.Source.V_dq0[s_idx, 2])
             end
         end
 
-        for idx in hook.idq
+        for idx in hook.i_dq
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_id" => Classical_Policy.Source.I_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_iq" => Classical_Policy.Source.I_dq0[s_idx, 2])
+                insertcols!(hook.tmp, "source$(idx)_i_d" => Classical_Policy.Source.I_dq0[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_i_q" => Classical_Policy.Source.I_dq0[s_idx, 2])
             end
         end
 

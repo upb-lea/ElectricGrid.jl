@@ -245,8 +245,8 @@ function check_parameters(
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
         grid_properties["f_grid"] = 50
-        grid_properties["Δfmax"] = 0.005 # The drop in frequency
-        grid_properties["ΔEmax"] = 5 / 100 # The drop in rms voltage
+        grid_properties["Δfmax"] = 0.5 # The drop in frequency
+        grid_properties["ΔEmax"] = 5 # The drop in rms voltage
         grid_properties["ramp_end"] = 2 / 50
         grid_properties["process_start"] = 2 / 50
         parameters["grid"] = grid_properties
@@ -268,11 +268,11 @@ function check_parameters(
         end
 
         if !haskey(parameters["grid"], "Δfmax")
-            parameters["grid"]["Δfmax"] = 0.005
+            parameters["grid"]["Δfmax"] = 0.5
         end
 
         if !haskey(parameters["grid"], "ΔEmax")
-            parameters["grid"]["ΔEmax"] = 5 / 100
+            parameters["grid"]["ΔEmax"] = 5
         end
 
         if !haskey(parameters["grid"], "ramp_end")

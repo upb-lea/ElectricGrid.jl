@@ -1214,7 +1214,7 @@ function PV_Control_Mode(Source::Classical_Controls, num_source, pq0)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 1)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 2)
     #Phase_Locked_Loop_1ph(Source, num_source, ph = 3)
-    θ = Source.θpll[num_source, 1, end] # phase a
+    θ = Source.θpll[num_source, 1, end] # positive phase sequence angle
     ω = 2π*Source.fpll[num_source, 1, end]
 
     Filtering(Source, num_source, θ)
@@ -1224,6 +1224,7 @@ function PV_Control_Mode(Source::Classical_Controls, num_source, pq0)
         pq0_ref = PV_Control(pq0_ref = pq0, Source, num_source)
         PQ_Control(pq0_ref = pq0_ref, Source, num_source, θ)
         Current_Controller(Source, num_source, θ, ω)
+
     else
 
         PQ_Control(pq0_ref = [0.0; 0.0; 0.0], Source, num_source, θ)
@@ -1540,7 +1541,7 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
     #----
 
     #---- Integrate α_new to find ω_new
-    Tm = pq0_ref[1]/ωsys # Virtual machine Torque
+    Tm = pq0_ref[1]/ω[end] # Virtual machine Torque
 
     ω_err_new = ω[end] - ωsys - Source.ω_set[num_source]
     ΔT = Source.D[num_source, 1]*ω_err_new
@@ -1628,10 +1629,11 @@ end
 function PV_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[num_source]; Source.Q[num_source]; 0])
     
     Vn = sqrt(2)*Source.V_pu_set[num_source, 1]*Source.Vrms[num_source] #peak
-    Vg = sqrt(2/3)*norm(Source.V_dq0_inv[num_source, :]) #peak
+    #Vg = sqrt(2/3)*norm(Source.V_dq0_inv[num_source, :]) #peak
+    Vg = sqrt(2/3)*norm(DQ0_Transform(Source.V_filt_cap[num_source, :, end], 0))
 
-    Kp = Source.V_kp[num_source]
-    Ki = 250*Source.V_ki[num_source]
+    Kp = 200000*Source.V_kp[num_source]
+    Ki = 5000*Source.V_ki[num_source]
 
     V_err = Source.V_err[num_source, :, 1]
     V_err_t = Source.V_err_t[num_source, 1]
@@ -1667,7 +1669,9 @@ function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrm
     θ = Source.θ_droop[num_source, 1]
     p_q = Source.p_q_poc[num_source, :]
 
-    ω_new = Source.fsys*2π - p_q[1]*Source.D[num_source, 1]
+    ωsys = Source.fsys*2π
+
+    ω_new = ωsys - p_q[1]/(ωsys*Source.D[num_source, 1])
     Source.ω_droop[num_source, 1, 1:2] = ω[2:end]
     Source.ω_droop[num_source, :, end] = [ω_new; ω_new; ω_new]
 
@@ -1675,9 +1679,9 @@ function Droop_Control(Source::Classical_Controls, num_source; Vrms = Source.Vrm
 
     Source.θ_droop[num_source, :] = [θ_new; θ_new - 120*π/180; θ_new + 120*π/180].%(2π)
 
-    E_new = Vrms - p_q[2]*Source.D[num_source, 2]
+    e = sqrt(2)*Vrms - p_q[2]/Source.D[num_source, 2]
 
-    Source.V_ref[num_source, :] = sqrt(2)*E_new*cos.(Source.θ_droop[num_source, :])
+    Source.V_ref[num_source, :] = e*cos.(Source.θ_droop[num_source, :])
 
     return nothing
 end
@@ -1703,7 +1707,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         from the grid to operate in the standalone mode or when the grid is weak because,
         it does not have the capability of regulating the voltage. A current-controlled
         inverter may also continue injecting currents into the grid when there is
-        a fault on the grid, which might cause excessively high voltage. Moreover,
+        a fault on the grid, which might cause excessively high voltage. Moreover, for
         a current-controlled inverter is difficult to take part in the regulation of
         the grid frequency and voltage, which is a must when the penetration of
         renewable energy exceeds a certain level.
@@ -2316,16 +2320,16 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
     C = [1]
     D = [0]
     sys = ss(A, B, C, D) # continuous
-    tf_sys = tf(sys)
+    tf_sys = tf(sys) |> ss
 
     Ts = Source.ts
     dly = Source.action_delay*Ts 
-    ZoH = tf([1], [Ts/2, 1]) # Transfer function of the sample and hold process
-    Pade = tf([-dly/2, 1], [dly/2, 1]) # Pure first-order delay approximation
+    ZoH = tf([1], [Ts/2, 1]) |> ss # Transfer function of the sample and hold process
+    Pade = tf([-dly/2, 1], [dly/2, 1]) |> ss # Pure first-order delay approximation
     PWM_gain = Source.Vdc[num_source]/2
 
     #SC = tf([1/(1*Lf_1)], [1, Rf_L1/Lf_1]) # = tf(sys_sc)
-    Gsc_ol = minreal(tf_sys*Pade*PWM_gain*ZoH) # Full transfer function of plant
+    Gsc_ol = minreal(tf_sys*Pade*PWM_gain*ZoH) |> ss # Full transfer function of plant
 
     min_fp = 300 # Hz, minimum allowable gain cross-over frequency
     max_i = convert(Int64, floor(1/(min_fp*Ts)))
@@ -2340,7 +2344,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
         pm = 60 # degrees, phase margin
         Gpi_i, _, _ = loopshapingPI(Gsc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
 
-        Gi_cl = minreal(Gsc_ol*Gpi_i/(1 + Gsc_ol*Gpi_i)) # closed loop transfer function
+        Gi_cl = minreal(Gsc_ol*Gpi_i/(1 + Gsc_ol*Gpi_i)) |> ss # closed loop transfer function
 
         if any(real(ControlSystemsBase.poles(Gi_cl)) .> 0) == false
 
@@ -2348,7 +2352,7 @@ function Current_PI_LoopShaping(Source::Classical_Controls, num_source)
             ωp = 2π/((i)*Ts) # gain cross-over frequency
             pm = 60 # degrees, phase margin
             Gpi_i, kp_i, ki_i = loopshapingPI(Gsc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
-            Gi_cl = minreal(Gsc_ol*Gpi_i/(1 + Gsc_ol*Gpi_i))
+            Gi_cl = minreal(Gsc_ol*Gpi_i/(1 + Gsc_ol*Gpi_i)) |> ss
 
             Source.I_kp[num_source] = kp_i
             Source.I_ki[num_source] = ki_i
@@ -2416,7 +2420,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
 
     pole_flag = 0
 
-    Goc_ol = minreal(Source.Gi_cl[num_source]*tf([1], [Source.Cf[num_source], 0]))
+    Goc_ol = minreal(Source.Gi_cl[num_source]*tf([1], [Source.Cf[num_source], 0])) |> ss
 
     Ts = Source.ts
     min_fp = 300 # Hz, minimum allowable gain cross-over frequency
@@ -2432,7 +2436,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
         pm = 60 # degrees, phase margin
         Gpi_v, _, _ = loopshapingPI(Goc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
 
-        Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v)) # closed loop transfer function
+        Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v)) |> ss # closed loop transfer function
 
         if any(real(ControlSystemsBase.poles(Gv_cl)) .> 0) == false
 
@@ -2440,7 +2444,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
             ωp = 2π/((i)*Ts) # gain cross-over frequency
             pm = 60 # degrees, phase margin
             Gpi_v, kp_v, ki_v = loopshapingPI(Goc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
-            Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v))
+            Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v)) |> ss
 
             Source.V_kp[num_source] = kp_v
             Source.V_ki[num_source] = ki_v
@@ -2454,7 +2458,7 @@ function Voltage_PI_LoopShaping(Source::Classical_Controls, num_source)
             ωp = 2π/((i)*Ts) # gain cross-over frequency
             pm = 60 # degrees, phase margin
             Gpi_v, kp_v, ki_v = loopshapingPI(Goc_ol, ωp, rl = 1, phasemargin = pm, form = :parallel)
-            Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v))
+            Gv_cl = minreal(Goc_ol*Gpi_v/(1 + Goc_ol*Gpi_v)) |> ss
 
             Source.V_kp[num_source] = kp_v
             Source.V_ki[num_source] = ki_v
@@ -2492,11 +2496,13 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
 
     Source.ramp_end = env.nc.parameters["grid"]["ramp_end"]
     Source.process_start = env.nc.parameters["grid"]["process_start"]
-    Source.Δfmax = env.nc.parameters["grid"]["Δfmax"]
-    Source.ΔEmax = env.nc.parameters["grid"]["ΔEmax"]
+    Source.Δfmax = env.nc.parameters["grid"]["Δfmax"]/100
+    Source.ΔEmax = env.nc.parameters["grid"]["ΔEmax"]/100
 
-    Source.ω_sync = fill!(Source.ω_sync, Source.fsys*2π)
-    Source.ω_droop = fill!(Source.ω_droop, Source.fsys*2π)
+    ωsys = Source.fsys*2π
+
+    Source.ω_sync = fill!(Source.ω_sync, ωsys)
+    Source.ω_droop = fill!(Source.ω_droop, ωsys)
 
     e = 1
 
@@ -2564,28 +2570,14 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
             end
         end
 
-        if Source.Source_Modes[e] == "Semi-Synchronverter" || Source.Source_Modes[e] == "Synchronverter"
+        if (Source.Source_Modes[e] == "Semi-Synchronverter" || 
+            Source.Source_Modes[e] == "Synchronverter" || 
+            Source.Source_Modes[e] == "Semi-Droop" || 
+            Source.Source_Modes[e] == "Droop")
 
             if !haskey(env.nc.parameters["source"][ns], "Dp")
-                Source.D[e, 1] = Source.S[e]/((2π)*(Source.fsys)*Source.fsys*2π*Source.Δfmax)
+                Source.D[e, 1] = Source.S[e]/(ωsys*ωsys*Source.Δfmax)
                 count_Dp += 1
-            else
-                Source.D[e, 1] = env.nc.parameters["source"][ns]["Dp"]
-            end
-
-            if !haskey(env.nc.parameters["source"][ns], "Dq")
-                Source.D[e, 2] = Source.S[e]/(Source.Vrms[e]*sqrt(2)*Source.ΔEmax)
-                count_Dq += 1
-            else
-                Source.D[e, 2] = env.nc.parameters["source"][ns]["Dq"]
-            end
-
-        elseif Source.Source_Modes[e] == "Semi-Droop" || Source.Source_Modes[e] == "Droop"
-            
-            if !haskey(env.nc.parameters["source"][ns], "Dp")
-                Source.D[e, 1] = Source.fsys*2π*Source.Δfmax/Source.S[e]
-                count_Dp += 1
-                
             else
                 Source.D[e, 1] = env.nc.parameters["source"][ns]["Dp"]
             end
@@ -2594,7 +2586,7 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
                 if Source.Source_Modes[e] == "Semi-Droop"
                     Source.D[e, 2] = 0.0
                 else
-                    Source.D[e, 2] = Source.Vrms[e]*Source.ΔEmax/Source.S[e]
+                    Source.D[e, 2] = Source.S[e]/(Source.V_pu_set[e, 1]*Source.Vrms[e]*sqrt(2)*Source.ΔEmax)
                 end
                 count_Dq += 1
             else
@@ -2603,7 +2595,7 @@ function Source_Initialiser(env, Source, modes, source_indices; seed = false)
         end
 
         Source.J_sync[e] = Source.τf[e]*Source.D[e, 1] #total mass moment of inertia of the rotating masses, kg*m^2
-        Source.K_sync[e] = Source.τv[e]*Source.fsys*2π*Source.D[e, 2]
+        Source.K_sync[e] = Source.τv[e]*ωsys*Source.D[e, 2]
 
         if Source.Source_Modes[e] == "Synchronverter" || Source.Source_Modes[e] == "PQ"
             Source.σ[e] = abs(env.nc.parameters["source"][ns]["σ"]) # Brownian motion scale (standard deviation) - sqrt(diffusion) 
