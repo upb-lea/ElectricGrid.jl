@@ -34,14 +34,14 @@ R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, 
+                        Dict{Any, Any}("pwr" => 400e3, 
                                         "mode" => "VSG",
                                         "v_δ_set" => 4),
                         Dict{Any, Any}("pwr" => 100e3, 
                                         "fltr" => "L",
                                         "mode" => "PQ", 
-                                        "p_set" => 50e3, 
-                                        "q_set" => 0, 
+                                        "p_set" => -50e3, 
+                                        "q_set" => 10e3, 
                                         "v_pu_set" => 1.0,
                                         "v_δ_set" => 1),
                         ],
@@ -87,13 +87,13 @@ plot_hook_results(hook = hook,
                     power_p_poc     = [], 
                     power_q_poc     = [], 
                     v_mag_inv       = [], 
-                    v_mag_cap       = [2], 
+                    v_mag_cap       = [1 2], 
                     i_mag_inv       = [],
                     i_mag_poc       = [],
-                    i_sat           = [2],
-                    i_dq            = [2],
-                    v_dq            = [2],
-                    freq            = [],
+                    i_sat           = [],
+                    i_dq            = [],
+                    v_dq            = [],
+                    freq            = [1 2],
                     angles          = [1 2])
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
