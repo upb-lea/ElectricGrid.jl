@@ -20,5 +20,5 @@ function (p::Classical_Policy)(env::SimEnv, name::Union{String, Nothing} = nothi
     #u = [0.5, 0, -0.5, 0.7, 0.2, -0.2]
     # u = [1 * sin.(50*2*pi*p.t .- 2/3*pi*(i-1)) for i = 1:3]
     return u
-    #return [u[1], u[1], u[2], u[2], u[3], u[3]]   # order for 2 sources depening on get_action_ids(env.nc) 
+    #return [u[1], u[1], u[2], u[2], u[3], u[3]]   # order for 2 sources depening on GetActionIds(env.nc) 
 end

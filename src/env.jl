@@ -153,13 +153,13 @@ function SimEnv(;
         end
     end
 
-    A, B, C, D = get_sys(nc)
+    A, B, C, D = GetSystem(nc)
     Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
     Bd = (Ad - I) * B #
     ldiv!(factorize(A), Bd)
     sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
-    state_parameters = get_state_paras(nc)
+    state_parameters = GetStateParameters(nc)
 
     if use_gpu
         Ad = CuArray(A)
@@ -180,7 +180,7 @@ function SimEnv(;
             @warn("No state_ids array specified - observing states with data_hook not
                     possible")
         else
-            state_ids = get_state_ids(nc)
+            state_ids = GetStateIds(nc)
         end
     end
 
@@ -190,7 +190,7 @@ function SimEnv(;
             @warn("No state_ids array specified - observing states with data_hook not
                     possible")
         else
-            action_ids = get_action_ids(nc)
+            action_ids = GetActionIds(nc)
         end
     end
 
@@ -326,7 +326,7 @@ function SimEnv(;
         @info "Normalization is done based on the defined parameter limits."
         @info "Time simulation run time: $((maxsteps - 1)*ts) [s] ~> $(Int(maxsteps)) steps"
     end
-    states = get_state_ids(nc)
+    states = GetStateIds(nc)
 
     i_limit_fixed = 0
     v_limit_fixed = 0
@@ -334,7 +334,7 @@ function SimEnv(;
 
     for (source_number, source) in enumerate(nc.parameters["source"])
         # set norm_array based on in parameters defined limits
-        for state_index in get_source_state_indices(nc, [source_number])["source$source_number"]["state_indices"]
+        for state_index in GetSourceStateIndices(nc, [source_number])["source$source_number"]["state_indices"]
             if contains(states[state_index], "_i")
                 if haskey(source, "i_limit")
                     norm_array[state_index] = source["i_limit"]
@@ -358,7 +358,7 @@ function SimEnv(;
     end
 
     for (load_number, load) in enumerate(nc.parameters["load"])
-        for state_index in get_load_state_indices(nc, [load_number])["load$load_number"]["state_indices"]
+        for state_index in GetLoadStateIndices(nc, [load_number])["load$load_number"]["state_indices"]
             if contains(states[state_index], "_i")
                 if haskey(load, "i_limit")
                     norm_array[state_index] = load["i_limit"]
@@ -378,7 +378,7 @@ function SimEnv(;
     end
 
     for (cable_number, cable) in enumerate(nc.parameters["cable"])
-        for state_index in get_cable_state_indices(nc, [cable_number])["cable$cable_number"]["state_indices"]
+        for state_index in GetCableStateIndices(nc, [cable_number])["cable$cable_number"]["state_indices"]
             if contains(states[state_index], "_i")
                 if haskey(cable, "i_limit")
                     norm_array[state_index] = cable["i_limit"]

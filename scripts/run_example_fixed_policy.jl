@@ -98,7 +98,7 @@ unbalance_ab = maximum((env.sys_d.A)[1:5, 1:5] .- (env.sys_d.A)[6:10, 6:10])
 unbalance_bc = maximum((env.sys_d.A)[6:10, 6:10] .- (env.sys_d.A)[11:15, 11:15]) 
 unbalance_ac = maximum((env.sys_d.A)[1:5, 1:5] .- (env.sys_d.A)[11:15, 11:15]) 
 
-#get_state_ids(env.nc)
+#GetStateIds(env.nc)
 V_poc_loc = [2; 7; 12]
 #state_index = findfirst(x -> x == "u_1_a", env.state_ids)
 I_poc_loc = [1; 6; 11]

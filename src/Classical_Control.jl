@@ -711,8 +711,8 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
             end
         end
 
-        state_ids = get_state_ids(env.nc)
-        action_ids = get_action_ids(env.nc)
+        state_ids = GetStateIds(env.nc)
+        action_ids = GetActionIds(env.nc)
 
         ssa = "source".*string.(Source_Indices)
         state_ids_classic = filter(x -> !isempty(findall(y -> y == split(x, "_")[1], ssa)), state_ids)     

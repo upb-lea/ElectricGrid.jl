@@ -73,7 +73,7 @@ function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
 
     for source in hook.collect_sources
         para = env.nc.parameters["source"][source]
-        indices = get_source_state_indices(env.nc,source)
+        indices = GetSourceStateIndices(env.nc,source)
 
         for id in indices["source$source"]["state_indices"]
 
@@ -109,7 +109,7 @@ function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
     # with this method, in addition to the state at L, one also obtains the states of R
     for cable in hook.collect_cables
         para = env.nc.parameters["cable"][cable]
-        indices = get_cable_state_indices(env.nc,cable)
+        indices = GetCableStateIndices(env.nc,cable)
         for id in indices["cable$cable"]["state_indices"]
             if !(env.state_ids[id] in hook.collect_state_ids)
                 push!(hook.collect_state_ids,env.state_ids[id])
@@ -124,14 +124,14 @@ function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
     # with this method, in addition to the states at L and C, one also obtains the states of R
     for load in hook.collect_loads
         para = env.nc.parameters["load"][load]
-        indices = get_load_state_indices(env.nc,load)
+        indices = GetLoadStateIndices(env.nc,load)
         for id in indices["load$load"]["state_indices"]
             if !(env.state_ids[id] in hook.collect_state_ids)
                 push!(hook.collect_state_ids,env.state_ids[id])
                 if occursin("_v", env.state_ids[id])
                     if occursin("R", para["impedance"]) && occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
-                        push!(hook.extra_state_paras,(para["R"],(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1)), )
+                        push!(hook.extra_state_paras,(para["R"],(para["C"])*(para["C"]+GetCSumCableNode(env.nc.num_sources+load,env.nc))^(-1),(GetCSumCableNode(env.nc.num_sources+load,env.nc))*(para["C"]+GetCSumCableNode(env.nc.num_sources+load,env.nc))^(-1)), )
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_v_C_total" => "_i_R"),replace(env.state_ids[id], "_v_C_total" => "_i_C"),replace(env.state_ids[id], "_v_C_total" => "_i_C_cables")))
                     elseif occursin("R", para["impedance"])
                         push!(hook.extra_state_ids,id)
@@ -139,7 +139,7 @@ function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_v_C_total" => "_i_R"),replace(env.state_ids[id], "_v_C_total" => "_i_C_cables")))
                     elseif occursin("C", para["impedance"])
                         push!(hook.extra_state_ids,id)
-                        push!(hook.extra_state_paras,(0,(para["C"])*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1),(get_C_sum_cable_node(env.nc.num_sources+load,env.nc))*(para["C"]+get_C_sum_cable_node(env.nc.num_sources+load,env.nc))^(-1) ))
+                        push!(hook.extra_state_paras,(0,(para["C"])*(para["C"]+GetCSumCableNode(env.nc.num_sources+load,env.nc))^(-1),(GetCSumCableNode(env.nc.num_sources+load,env.nc))*(para["C"]+GetCSumCableNode(env.nc.num_sources+load,env.nc))^(-1) ))
                         push!(hook.extra_state_names,(replace(env.state_ids[id], "_v_C_total" => "_i_C"),replace(env.state_ids[id], "_v_C_total" => "_i_C_cables")))
                     else
                         push!(hook.extra_state_ids,id)
@@ -151,8 +151,8 @@ function (hook::data_hook)(::PreExperimentStage, agent, env, training = false)
         end
     end
 
-    hook.A,hook.B ,_ ,_ = get_sys(env.nc)
-    hook.collect_state_paras = get_state_paras(env.nc)
+    hook.A,hook.B ,_ ,_ = GetSystem(env.nc)
+    hook.collect_state_paras = GetStateParameters(env.nc)
 
     if hook.is_inner_hook_RL
 

@@ -164,8 +164,8 @@ V_source = 800
 env = SimEnv(reward_function = reward, featurize = featurize, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
 maxsteps = 1000, action_delay = 0)
 
-state_ids = get_state_ids(env.nc)
-action_ids = get_action_ids(env.nc)
+state_ids = GetStateIds(env.nc)
+action_ids = GetActionIds(env.nc)
 
 state_ids_agent = filter(x -> split(x, "_")[1] == "source1", state_ids)
 action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)

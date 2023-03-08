@@ -652,7 +652,7 @@ function Env_Interface(env, Animo, name = nothing)
 
         # -- Legacy Code
         
-        _, B, _, _ = get_sys(env.nc)
+        _, B, _, _ = GetSystem(env.nc)
         Action = zeros(length(B[1,:]))
 
         for ph in 1:3
@@ -677,7 +677,7 @@ end
 
 function Collect_IDs(env, Source::Classical_Controls)
 
-    A, _, _, _ = get_sys(env.nc)
+    A, _, _, _ = GetSystem(env.nc)
     num_fltr_LCL = env.nc.num_fltr_LCL
     num_fltr_LC = env.nc.num_fltr_LC
     num_fltr_L = env.nc.num_fltr_L
