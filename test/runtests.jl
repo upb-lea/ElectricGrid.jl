@@ -1,8 +1,8 @@
-using Dare
+using JEG
 using Test
 using Logging
 
-global_logger(DareLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
+global_logger(JEGLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
 
 
 @testset "NodeConstructor" begin
@@ -24,7 +24,7 @@ end
 
     #start_state = env.state
     #env(ones(size(env.action_space)))
-    #Dare.RLBase.reset!(env)
+    #JEG.RLBase.reset!(env)
     #@test env.state                 == start_state
 end
 

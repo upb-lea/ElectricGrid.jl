@@ -1,10 +1,10 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using PlotlyJS
 
-include(srcdir("nodeconstructor.jl"))
+include(srcdir("node_constructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))

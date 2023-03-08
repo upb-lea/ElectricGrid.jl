@@ -1,5 +1,5 @@
 using Test
-using Dare
+using JEG
 using ReinforcementLearning
 CM = [0. 1.
     -1. 0.]

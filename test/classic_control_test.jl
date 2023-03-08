@@ -1,4 +1,4 @@
-using Dare
+using JEG
 using Test
 using Logging
 using CSV
@@ -156,7 +156,7 @@ using Distributions
         #-------------------------------------------------------------------------------
         # Loads
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.6, 230)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.6, 230)
 
         load_list = []
         load = Dict()
@@ -294,7 +294,7 @@ end
         4 -> "Synchronverter" - enhanced droop control
         =#
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.99, 230)
 
         length = 1
         parameters = Dict{Any, Any}(
@@ -475,7 +475,7 @@ end
         #-------------------------------------------------------------------------------
         # Loads
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.95, 230)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.95, 230)
 
         load_list = []
         load = Dict()
@@ -662,7 +662,7 @@ end
         4 -> "VSG" - enhanced droop control
         =#
 
-        R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 100)
+        R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.99, 100)
 
         parameters = Dict{Any, Any}(
                 "source" => Any[

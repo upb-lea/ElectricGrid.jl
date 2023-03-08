@@ -1,4 +1,4 @@
-using Dare
+using JEG
 #using ReinforcementLearning
 CM = [0. 1.
     -1. 0.]
@@ -8,7 +8,7 @@ S_source = 2e6
 S_load = 3e6
 pf_load = 1
 v_rms = 230
-R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
+R_load, L_load, X, Z = ParallelLoadImpedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[

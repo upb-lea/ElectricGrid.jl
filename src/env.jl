@@ -129,7 +129,7 @@ function SimEnv(;
             # Construct standard env with 2 sources, 1 load
             @info("Three phase electric power grid with 2 sources and 1 load is created!
             Parameters are drawn randomly! To change, please define parameters
-            (see nodeconstructor)")
+            (see node_constructor)")
             CM = [ 0. 0. 1.
                    0. 0. 2
                   -1. -2. 0.]
@@ -144,7 +144,7 @@ function SimEnv(;
             else
                 @info("Three phase electric power grid with 2 sources and 1 load is created!
                  Parameters are drawn randomly! To change, please define parameters
-                 (see nodeconstructor)")
+                 (see node_constructor)")
                 num_sources = 2
                 num_loads = 1
             end
@@ -198,7 +198,7 @@ function SimEnv(;
         agent_dict = Dict()
         for ns in 1:nc.num_sources
             if nc.parameters["source"][ns]["control_type"] == "RL"
-                if nc.parameters["source"][ns]["mode"] == "dare_ddpg"
+                if nc.parameters["source"][ns]["mode"] == "JEG_ddpg"
                     name = nc.parameters["source"][ns]["mode"] * "_$ns"
                 else
                     name = nc.parameters["source"][ns]["mode"]

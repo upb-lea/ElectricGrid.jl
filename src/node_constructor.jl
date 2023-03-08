@@ -174,12 +174,12 @@ end
 
 
 """
-    get_fltr_distr(num)
+    GetFltrDistr(num)
 
 Calculates the distribution of filters based on a Dirichlet distribution and the total `num`
 of filters.
 """
-function get_fltr_distr(num)
+function GetFltrDistr(num)
     # a = [.49 .02 .49] # probability for LC should be lower
     di_di = Dirichlet(ones(3))
     smpl = rand(di_di, 1) * num
@@ -286,7 +286,7 @@ function check_parameters(
 
     # check sources
     if !haskey(parameters, "source")
-        num_fltr_L, num_fltr_LC, num_fltr_LCL = get_fltr_distr(num_sources)
+        num_fltr_L, num_fltr_LC, num_fltr_LCL = GetFltrDistr(num_sources)
         source_list = []
 
         for s in 1:num_fltr_LCL
@@ -533,7 +533,7 @@ function check_parameters(
                 end
             elseif source["control_type"] ==  "RL"
                 if !haskey(source, "mode")
-                    source["mode"] = "dare_ddpg"
+                    source["mode"] = "JEG_ddpg"
                 end
             else
                 @assert("Invalid control type, please choose RL or classic")
@@ -595,7 +595,7 @@ function check_parameters(
         end
 
         if num_undef_sources > 0
-            num_fltr_L_undef, num_fltr_LC_undef, num_fltr_LCL_undef = get_fltr_distr(
+            num_fltr_L_undef, num_fltr_LC_undef, num_fltr_LCL_undef = GetFltrDistr(
                 num_undef_sources
                 )
 
@@ -804,7 +804,7 @@ function check_parameters(
         end
 
         # invoke PFE
-        parameters = layout_cabels(CM, num_sources, num_loads, parameters, verbosity)
+        parameters = LayoutCabels(CM, num_sources, num_loads, parameters, verbosity)
 
     else
         num_def_cables = length(parameters["cable"])
@@ -841,7 +841,7 @@ function check_parameters(
         # Solve PFE for all cables which do not have complete parameters
         if !isempty(cable_from_pfe_idx)
             println("START PFE")
-            parameters = layout_cabels(CM, num_sources, num_loads, parameters, verbosity)
+            parameters = LayoutCabels(CM, num_sources, num_loads, parameters, verbosity)
         end
 
         if num_undef_cables > 0
@@ -923,7 +923,7 @@ Sample parameters for the LCL filter.
 function _sample_fltr_LCL(grid_properties)
     source = _sample_source(grid_properties, "LCL")
 
-    Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = Filter_Design(
+    Lf_1, Lf_2, Cf, fc, R_1, R_2, R_C, i_limit, v_limit = FilterDesign(
         source["pwr"],
         grid_properties["fs"],
         source["fltr"];
@@ -956,7 +956,7 @@ Sample parameters for the LC filter.
 function _sample_fltr_LC(grid_properties)
     source = _sample_source(grid_properties, "LC")
 
-    Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = Filter_Design(
+    Lf_1, Cf, fc, R_1, R_C, i_limit, v_limit = FilterDesign(
         source["pwr"],
         grid_properties["fs"],
         source["fltr"];
@@ -987,7 +987,7 @@ Sample parameters for the L filter.
 function _sample_fltr_L(grid_properties)
     source = _sample_source(grid_properties, "L")
 
-    Lf_1, R_1, i_limit = Filter_Design(
+    Lf_1, R_1, i_limit = FilterDesign(
         source["pwr"],
         grid_properties["fs"],
         source["fltr"];
@@ -1021,9 +1021,9 @@ function _sample_load_RLC(grid_properties, num_loads)
     pf1 = round(rand(Uniform(.95, .99)), digits=3)
     pf2 = round(rand(Uniform(.95, .99)), digits=3)
 
-    R1, L, _, _= Parallel_Load_Impedance(S1, pf1, grid_properties["v_rms"],
+    R1, L, _, _= ParallelLoadImpedance(S1, pf1, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign="L")
-    R2, C, _, _= Parallel_Load_Impedance(S2, -pf2, grid_properties["v_rms"],
+    R2, C, _, _= ParallelLoadImpedance(S2, -pf2, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign="C")
 
     load["impedance"] = "RLC"
@@ -1048,9 +1048,9 @@ function _sample_load_LC(grid_properties, num_loads)
     S1 = grid_properties["pwr"] / num_loads * 0.7 * a
     S2 = grid_properties["pwr"] / num_loads * 0.7 * b
 
-    _, L, _, _= Parallel_Load_Impedance(S1, 0, grid_properties["v_rms"],
+    _, L, _, _= ParallelLoadImpedance(S1, 0, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign="L")
-    _, C, _, _= Parallel_Load_Impedance(S2, -0, grid_properties["v_rms"],
+    _, C, _, _= ParallelLoadImpedance(S2, -0, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign="C")
 
     load["impedance"] = "LC"
@@ -1071,7 +1071,7 @@ function _sample_load_RL(grid_properties, num_loads)
     pf = round(rand(Uniform(.95, .99)), digits=3)
     S = grid_properties["pwr"]/num_loads * 0.7
 
-    R, L, _, _= Parallel_Load_Impedance(S, pf, grid_properties["v_rms"],
+    R, L, _, _= ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
 
     load["impedance"] = "RL"
@@ -1092,7 +1092,7 @@ function _sample_load_RC(grid_properties, num_loads)
     pf = round(rand(Uniform(.9, .98)), digits=3)
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    R, C, _, _= Parallel_Load_Impedance(S, -pf, grid_properties["v_rms"],
+    R, C, _, _= ParallelLoadImpedance(S, -pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
 
     load["impedance"] = "RC"
@@ -1114,7 +1114,7 @@ function _sample_load_L(grid_properties, num_loads)
     pf = 0
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    _, L, _, _= Parallel_Load_Impedance(S, pf, grid_properties["v_rms"],
+    _, L, _, _= ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign=load["impedance"])
 
     load["L"] = L
@@ -1134,7 +1134,7 @@ function _sample_load_C(grid_properties, num_loads)
     pf = 0
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    _, C, _, _= Parallel_Load_Impedance(S, -pf, grid_properties["v_rms"],
+    _, C, _, _= ParallelLoadImpedance(S, -pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"],  type_sign=load["impedance"])
 
     load["C"] = C
@@ -1153,7 +1153,7 @@ function _sample_load_R(grid_properties, num_loads)
     pf = 1
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    R, _, _, _= Parallel_Load_Impedance(S, pf, grid_properties["v_rms"],
+    R, _, _, _= ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
 
     load["impedance"] = "R"
@@ -2499,13 +2499,13 @@ function Load_Setup(num_loads, total_gen; gen_load_ratio=6, random=nothing, Vrms
         load = Dict()
 
         if random == 0 || isnothing(random)
-            R_load, L_load, _, _ = Parallel_Load_Impedance(avg_load, 0.8, Vrms)
+            R_load, L_load, _, _ = ParallelLoadImpedance(avg_load, 0.8, Vrms)
             load["impedance"] = "RL"
             load["R"] = R_load
             load["L"] = L_load
             load["S"] = avg_load
         else
-            R_load, L_load, _, _ = Parallel_Load_Impedance(pwrs[i], pfs[i], Vrms)
+            R_load, L_load, _, _ = ParallelLoadImpedance(pwrs[i], pfs[i], Vrms)
             load["impedance"] = "RL"
             load["R"] = R_load
             load["L"] = L_load
@@ -2624,7 +2624,7 @@ function MG_Setup(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=2
     for i in 1:num_static_loads
 
         load = Dict()
-        R_load, L_load, _, _ = Parallel_Load_Impedance(avg_static_load, 1.0, Vrms)
+        R_load, L_load, _, _ = ParallelLoadImpedance(avg_static_load, 1.0, Vrms)
         load["impedance"] = "R"
         load["R"] = R_load
         load["L"] = L_load

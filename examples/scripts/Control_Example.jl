@@ -1,4 +1,4 @@
-using Dare
+using JEG
 
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -158,7 +158,7 @@ push!(source_list, source) =#
 #-------------------------------------------------------------------------------
 # Loads
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(10e3, 0.95, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(10e3, 0.95, 230)
 
 load_list = []
 load = Dict()

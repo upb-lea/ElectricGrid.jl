@@ -1,12 +1,12 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using Stipple, StippleUI, StipplePlotly, PlotlyBase, DataFrames, Graphs, GraphPlot, LinearAlgebra, GenieAutoReload
 import Genie.Renderer.Html.div
 
 register_mixin(@__MODULE__)
 
-include(srcdir("nodeconstructor.jl"))
+include(srcdir("node_constructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))

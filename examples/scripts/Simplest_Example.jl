@@ -1,4 +1,4 @@
-using Dare
+using JEG
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -30,7 +30,7 @@ CM = [ 0. 0. 1.
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = Parallel_Load_Impedance(100e3, 0.99, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.99, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[

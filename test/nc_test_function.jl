@@ -1,11 +1,11 @@
 using Test
 using MAT
-using Dare
+using JEG
 using LinearAlgebra
 
-@testset "get_fltr_distr" begin
+@testset "GetFltrDistr" begin
     for i in [1,14,17,42]
-        @test i == sum(get_fltr_distr(i))
+        @test i == sum(GetFltrDistr(i))
     end
 end
 

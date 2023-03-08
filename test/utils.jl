@@ -1,5 +1,5 @@
 # Use this file to include utility functions that you want to be available in tests
-using Dare 
+using JEG 
 using JuMP
 
 const DEFAULT_PARAMS = Dict{Any, Any}(
@@ -11,7 +11,7 @@ const DEFAULT_PARAMS = Dict{Any, Any}(
 
 function PopulateParams(power, pf, Vrms=230)
 
-    R_load, L_load, _, _ = Parallel_Load_Impedance(power, pf, Vrms)
+    R_load, L_load, _, _ = ParallelLoadImpedance(power, pf, Vrms)
 
     # if haskey(params, "load")
     #     pop!(params, "load")

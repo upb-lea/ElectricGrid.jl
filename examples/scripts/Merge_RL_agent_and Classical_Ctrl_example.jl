@@ -1,15 +1,15 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using PlotlyJS
 
-include(srcdir("nodeconstructor.jl"))
+include(srcdir("node_constructor.jl"))
 include(srcdir("env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("Classical_Control.jl"))
-include(srcdir("Power_System_Theory.jl"))
+include(srcdir("power_system_theory.jl"))
 include(srcdir("MultiAgentGridController.jl"))
 
 
@@ -107,7 +107,7 @@ fs = 1/ts
 source["pwr"] = 200e3
 #source["vdc"] = 800
 source["fltr"] = "LC"
-Lf, Cf, _ = Filter_Design(source["pwr"], fs)
+Lf, Cf, _ = FilterDesign(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf
@@ -122,7 +122,7 @@ source = Dict()
 source["pwr"] = 100e3
 source["vdc"] = 600
 source["fltr"] = "LC"
-Lf, Cf, _ = Filter_Design(source["pwr"], fs)
+Lf, Cf, _ = FilterDesign(source["pwr"], fs)
 source["R1"] = 0.4
 source["R_C"] = 0.0006
 source["L1"] = Lf

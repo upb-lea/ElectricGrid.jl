@@ -991,11 +991,11 @@ function Source_Interface(Animo::Classical_Policy, env::SimEnv)
             Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
         end
 
-        Source.p_q_inv[ns, :] =  p_q_theory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
+        Source.p_q_inv[ns, :] =  pqTheory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
 
         if Source.filter_type[ns] != "L"
 
-            Source.p_q_poc[ns, :] =  p_q_theory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end])
+            Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end])
         else
 
             Source.p_q_poc[ns, :] =  Source.p_q_inv[ns, :]
@@ -1183,7 +1183,7 @@ function PQ_Control_Mode(Source::Classical_Controls, num_source, pq0)
     ω = 2π*Source.fpll[num_source, 1, end]
 
     Filtering(Source, num_source, θ)
-    #Source.V_dq0_inv[num_source, :] = DQ0_Transform(Source.V_filt_poc[num_source, :, end], θ) # for when filter becomes unstable
+    #Source.V_dq0_inv[num_source, :] = DQ0Transform(Source.V_filt_poc[num_source, :, end], θ) # for when filter becomes unstable
 
     if Source.steps*Source.ts > Source.process_start
 
@@ -1343,7 +1343,7 @@ function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = Sou
         err_new = 1*((v_abc[1] - v_abc[2])*cos(-θ)
         + (v_abc[3] - v_abc[2])*cos(-θ - 2π/3)) # this is magic
 
-        v_αβγ = Clarke_Transform(v_abc)
+        v_αβγ = ClarkeTransform(v_abc)
         if norm(v_αβγ) != 0
             v_αβγ = v_αβγ./norm(v_αβγ)
         end
@@ -1392,7 +1392,7 @@ function Phase_Locked_Loop_3ph(Source::Classical_Controls, num_source; ωn = Sou
     err_t = Source.pll_err_t[num_source, 1]
     err = Source.pll_err[num_source, 1, :]
 
-    v_αβγ = Clarke_Transform(v_abc)
+    v_αβγ = ClarkeTransform(v_abc)
 
     if norm(v_αβγ) != 0
         v_αβγ = sqrt(3)*v_αβγ./norm(v_αβγ)
@@ -1463,7 +1463,7 @@ function Phase_Locked_Loop_1ph(Source::Classical_Controls, num_source; Kp = 0.00
     #----
 
     α_β_0 = [vd_new; qvd_new; 0]
-    d_q_0 = Park_Transform(α_β_0, θ - π)
+    d_q_0 = ParkTransform(α_β_0, θ - π)
 
     vq = d_q_0[1]
 
@@ -1524,7 +1524,7 @@ function Synchronverter_Control(Source::Classical_Controls, num_source; pq0_ref 
 
     ωsys = Source.fsys*2π # nominal grid frequency
     Vn = sqrt(2)*Vrms # nominal peak POC voltage
-    Vg = sqrt(2)*Clarke_mag(Source.V_filt_cap[num_source, :, end]) # peak measured voltage
+    Vg = sqrt(2)*ClarkeMag(Source.V_filt_cap[num_source, :, end]) # peak measured voltage
 
     #---- Integrate eq_new to find Mfif_new
 
@@ -1595,9 +1595,9 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
 
     #-------------------------------------------------------------
 
-    V_αβγ = Inv_Park_Transform(Source.V_dq0_inv[num_source, :], θ)
+    V_αβγ = InvParkTransform(Source.V_dq0_inv[num_source, :], θ)
     I_αβγ_ref = Inv_p_q_v(V_αβγ, pq0_ref)
-    Source.I_ref_dq0[num_source, :] = Park_Transform(I_αβγ_ref, θ)
+    Source.I_ref_dq0[num_source, :] = ParkTransform(I_αβγ_ref, θ)
 
     Ip_ref = sqrt(2/3)*norm(Source.I_ref_dq0[num_source, :]) # peak set point
 
@@ -1607,17 +1607,17 @@ function PQ_Control(Source::Classical_Controls, num_source, θ; pq0_ref = [Sourc
     end
 
     #-------------------------------------------------------------
-    I_αβγ = Clarke_Transform(Source.I_filt_inv[num_source, :, end])
+    I_αβγ = ClarkeTransform(Source.I_filt_inv[num_source, :, end])
 
     V_αβγ_ref = Inv_p_q_i(I_αβγ, pq0_ref)
 
-    V_dq0_ref = Park_Transform(V_αβγ_ref, θ)
+    V_dq0_ref = ParkTransform(V_αβγ_ref, θ)
 
     if sqrt(2/3)*norm(V_dq0_ref) > Source.v_max[num_source]
         V_dq0_ref = V_dq0_ref.*((Source.v_max[num_source])/(sqrt(2/3)*norm(V_dq0_ref) ))
     end
 
-    Source.V_ref[num_source, :] = Inv_DQ0_Transform(V_dq0_ref, θ)
+    Source.V_ref[num_source, :] = InvDQ0Transform(V_dq0_ref, θ)
 
     Source.V_ref_dq0[num_source, :] = V_dq0_ref
 
@@ -1630,7 +1630,7 @@ function PV_Control(Source::Classical_Controls, num_source; pq0_ref = [Source.P[
     
     Vn = sqrt(2)*Source.V_pu_set[num_source, 1]*Source.Vrms[num_source] #peak
     #Vg = sqrt(2/3)*norm(Source.V_dq0_inv[num_source, :]) #peak
-    Vg = sqrt(2/3)*norm(DQ0_Transform(Source.V_filt_cap[num_source, :, end], 0))
+    Vg = sqrt(2/3)*norm(DQ0Transform(Source.V_filt_cap[num_source, :, end], 0))
 
     Kp = 200000*Source.V_kp[num_source]
     Ki = 5000*Source.V_ki[num_source]
@@ -1716,9 +1716,9 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     Kp = Source.I_kp[num_source]
     Ki = Source.I_ki[num_source]
 
-    Source.I_ref[num_source, :] = Inv_DQ0_Transform(Source.I_ref_dq0[num_source, :], θ)
-    Source.I_dq0[num_source, :] = DQ0_Transform(Source.I_filt_inv[num_source, :, end], θ)
-    Source.V_dq0[num_source, :] = DQ0_Transform(Source.V_filt_cap[num_source, :, end], θ)
+    Source.I_ref[num_source, :] = InvDQ0Transform(Source.I_ref_dq0[num_source, :], θ)
+    Source.I_dq0[num_source, :] = DQ0Transform(Source.I_filt_inv[num_source, :, end], θ)
+    Source.V_dq0[num_source, :] = DQ0Transform(Source.V_filt_cap[num_source, :, end], θ)
     V_dq0 = Source.V_dq0[num_source, :]
 
     I_dq0 = Source.I_dq0[num_source, :]
@@ -1750,7 +1750,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     (Source.Lf_1[num_source]*ω*I_dq0[1] + V_dq0[2])*2/Source.Vdc[num_source]
 
     # ---- Limiting Output (Saturation)
-    Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2)*Clarke_mag(Source.s_lim[num_source,:]) # peak set point
+    Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2)*ClarkeMag(Source.s_lim[num_source,:]) # peak set point
 
     if Vp_ref > Source.v_max[num_source]
         Source.s_dq0_avg[num_source, :]  = Source.s_lim[num_source, :]*Source.v_max[num_source]/Vp_ref
@@ -1758,7 +1758,7 @@ function Current_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
         Source.s_dq0_avg[num_source, :]  = Source.s_lim[num_source, :]
     end
 
-    Source.Vd_abc_new[num_source, :, end] = Inv_DQ0_Transform(Source.s_dq0_avg[num_source, :] , θ)
+    Source.Vd_abc_new[num_source, :, end] = InvDQ0Transform(Source.s_dq0_avg[num_source, :] , θ)
 
     #= Theory:
         The switching functions s_abc(t) is generated by comparing the normalized
@@ -1785,10 +1785,10 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     Kp = Source.V_kp[num_source]
     Ki = Source.V_ki[num_source]
 
-    Source.V_ref_dq0[num_source, :] = DQ0_Transform(Source.V_ref[num_source, :], θ)
-    Source.V_dq0[num_source, :] = DQ0_Transform(Source.V_filt_cap[num_source, :, end], θ)
+    Source.V_ref_dq0[num_source, :] = DQ0Transform(Source.V_ref[num_source, :], θ)
+    Source.V_dq0[num_source, :] = DQ0Transform(Source.V_filt_cap[num_source, :, end], θ)
 
-    I_dq0_poc = DQ0_Transform(Source.I_filt_poc[num_source, :, end], θ)
+    I_dq0_poc = DQ0Transform(Source.I_filt_poc[num_source, :, end], θ)
     V_dq0 = Source.V_dq0[num_source, :]
     V_ref_dq0 = Source.V_ref_dq0[num_source, :]
 
@@ -1819,7 +1819,7 @@ function Voltage_Controller(Source::Classical_Controls, num_source, θ, ω; Kb =
     + Source.Cf[num_source]*ω*V_dq0[1] 
 
     # ---- Limiting Output (Saturation)
-    Ip_ref = sqrt(2)*Clarke_mag(Source.I_lim[num_source,:]) # peak set point
+    Ip_ref = sqrt(2)*ClarkeMag(Source.I_lim[num_source,:]) # peak set point
 
     if Ip_ref > 0.98*Source.i_max[num_source]
         Source.I_ref_dq0[num_source, :] = Source.I_lim[num_source, :]*0.98*Source.i_max[num_source]/Ip_ref
@@ -1982,7 +1982,7 @@ function Filtering(Source::Classical_Controls, num_source, θ)
     V_inv = (Source.Vdc[num_source]/2)*Source.Vd_abc_new[num_source, :, end]
 
     Source.V_pre_dq0[num_source, :, 1:end-1] = Source.V_pre_dq0[num_source, :, 2:end]
-    Source.V_pre_dq0[num_source, :, end] = DQ0_Transform(V_inv, θ)
+    Source.V_pre_dq0[num_source, :, end] = DQ0Transform(V_inv, θ)
 
     Source.V_dq0_inv[num_source, :] = First_Order_LPF(100, Source.V_pre_dq0[num_source, :, :], 
     Source.V_dq0_inv[num_source, :], Source.ts)
@@ -2009,11 +2009,11 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         I_poc_DQ0 = [0.; 0.; 0.]
         V_cap_DQ0 = [0.; 0.; 0.]
 
-        y_DQ0 = DQ0_Transform(Source.I_filt_inv[ns, :, end], θ + 0.5*Source.ts*ω)
+        y_DQ0 = DQ0Transform(Source.I_filt_inv[ns, :, end], θ + 0.5*Source.ts*ω)
 
-        vₚ_DQ0 = DQ0_Transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
-        yₚ_DQ0 = DQ0_Transform(Source.I_filt_inv[ns, :, end - 1], θ - 0.5*Source.ts*ω)
-        eₚ_DQ0 = DQ0_Transform(Source.V_filt_poc[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+        vₚ_DQ0 = DQ0Transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
+        yₚ_DQ0 = DQ0Transform(Source.I_filt_inv[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+        eₚ_DQ0 = DQ0Transform(Source.V_filt_poc[ns, :, end - 1], θ - 0.5*Source.ts*ω)
 
         #----------------------------------------------------------------------
         # Zero component
@@ -2051,8 +2051,8 @@ function Luenberger_Observer(Source::Classical_Controls, num_source)
         
         #----------------------------------------------------------------------   
         
-        Source.I_filt_poc[ns, :, end] = Inv_DQ0_Transform(I_poc_DQ0, θ + 0.5*Source.ts*ω)
-        Source.V_filt_cap[ns, :, end] = Inv_DQ0_Transform(V_cap_DQ0, θ + 0.5*Source.ts*ω)
+        Source.I_filt_poc[ns, :, end] = InvDQ0Transform(I_poc_DQ0, θ + 0.5*Source.ts*ω)
+        Source.V_filt_cap[ns, :, end] = InvDQ0Transform(V_cap_DQ0, θ + 0.5*Source.ts*ω)
 
         if any(isnan.(Source.I_filt_poc[ns, :, end]))
 
@@ -2222,7 +2222,7 @@ function Measurements(Source::Classical_Controls)
         V_poc = Source.V_filt_cap[ns, :, end]
         I_poc = Source.I_filt_poc[ns, :, end]
 
-        Source.p_q_inst[ns, :] = p_q_theory(V_poc, I_poc) # real and imaginary powers
+        Source.p_q_inst[ns, :] = pqTheory(V_poc, I_poc) # real and imaginary powers
 
         Source.p_inst[ns, :] = V_poc.*I_poc
 

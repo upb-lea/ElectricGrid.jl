@@ -56,12 +56,12 @@ end
 # Description
 Scaled L2 norm in αβγ coordinates - intantaneous approximation of rms for 3 phase systems
 """
-function Clarke_mag(i_abc)
+function ClarkeMag(i_abc)
 
-    return sqrt(1/3)*norm(Clarke_Transform(i_abc)[1:3])
+    return sqrt(1/3)*norm(ClarkeTransform(i_abc)[1:3])
 end
 
-function Clarke_Transform(v_abc)
+function ClarkeTransform(v_abc)
     #= Also known as the alpha-beta-(gamma), αβγ transformation. Implementing
     below is the the power invariant version, such that the matrix is unitary.
     This feature is very suitable when the focus is put on the analysis of
@@ -92,12 +92,12 @@ function Clarke_Transform(v_abc)
     return v_αβγ = sqrt(2/3)*[1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)]*v_abc
 end
 
-function Inv_Clarke_Transform(v_αβγ)
+function InvClarkeTransform(v_αβγ)
 
     return v_abc = sqrt(2/3)*[1 0 1/sqrt(2);-1/2 sqrt(3)/2 1/sqrt(2);-1/2 -sqrt(3)/2 1/sqrt(2)]*v_αβγ
 end
 
-function Park_Transform(v_αβγ, θ)
+function ParkTransform(v_αβγ, θ)
     #=
     The αβγ to dq0 function performs a transformation of αβγ Clarke components
     in a fixed reference frame to dq0 Park components in a rotating reference
@@ -123,13 +123,13 @@ function Park_Transform(v_αβγ, θ)
     return v_dq0 = [cos(θ) sin(θ) 0; -sin(θ) cos(θ) 0; 0 0 1]*v_αβγ
 end
 
-function Inv_Park_Transform(v_dq0, θ)
+function InvParkTransform(v_dq0, θ)
     return v_αβγ = [cos(θ) -sin(θ) 0; sin(θ) cos(θ) 0; 0 0 1]*v_dq0
 end
 
-function DQ0_Transform(v_abc,θ)
+function DQ0Transform(v_abc,θ)
 
-    #v_dq0 = Park_Transform(Clarke_Transform(v_abc), θ)
+    #v_dq0 = ParkTransform(ClarkeTransform(v_abc), θ)
     v_dq0 = sqrt(2/3)*[cos(θ) cos(θ - 2π/3) cos(θ + 2π/3);
                     -sin(θ) -sin(θ - 2π/3) -sin(θ + 2π/3);
                     sqrt(2)/2 sqrt(2)/2 sqrt(2)/2]*v_abc
@@ -137,9 +137,9 @@ function DQ0_Transform(v_abc,θ)
     return v_dq0
 end
 
-function Inv_DQ0_Transform(v_dq0, θ)
+function InvDQ0Transform(v_dq0, θ)
 
-    #v_abc  = Inv_Clarke_Transform(Inv_Park_Transform(v_dq0, θ))
+    #v_abc  = InvClarkeTransform(InvParkTransform(v_dq0, θ))
     v_abc = sqrt(2/3)*[cos(θ) -sin(θ) sqrt(2)/2;
                         cos(θ - 2π/3) -sin(θ - 2π/3) sqrt(2)/2;
                         cos(θ + 2π/3) -sin(θ + 2π/3) sqrt(2)/2]*v_dq0
@@ -147,7 +147,7 @@ function Inv_DQ0_Transform(v_dq0, θ)
     return v_abc
 end
 
-function p_q_theory(V_abc, I_abc)
+function pqTheory(V_abc, I_abc)
 
     #= Theory:
         For a three-phase system with or without a neutral conductor in the steady-
@@ -253,8 +253,8 @@ function p_q_theory(V_abc, I_abc)
         but also to the energy oscillation between the source and load as well.
     =#
 
-    V_αβγ = Clarke_Transform(V_abc)
-    I_αβγ = Clarke_Transform(I_abc)
+    V_αβγ = ClarkeTransform(V_abc)
+    I_αβγ = ClarkeTransform(I_abc)
 
     #pq0 = [I_αβγ[1] I_αβγ[2] 0; -I_αβγ[2] I_αβγ[1] 0; 0 0 I_αβγ[3]]*V_αβγ # also works
 
@@ -322,7 +322,7 @@ function Inv_p_q_i(I_αβγ, pq0)
     return v_αβγ
 end
 
-function Series_Load_Impedance(S, pf, vrms; fsys = 50)
+function SeriesLoadImpedance(S, pf, vrms; fsys = 50)
 
     ω = 2*π*fsys
 
@@ -356,7 +356,7 @@ function Series_Load_Impedance(S, pf, vrms; fsys = 50)
 end
 
 """
-R, L_C, X, Z = Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
+R, L_C, X, Z = ParallelLoadImpedance(S, pf, vrms; fsys = 50, type_sign = nothing)
 
 # Arguments
 - `S::Float`: 3 phase Apparent Power [VA]
@@ -377,7 +377,7 @@ R, L_C, X, Z = Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothi
 Converts a Resistance-Inductance Load, or a Resistance-Capacitance Load
 from power to circuit values, where the components are placed in parallel.
 """
-function Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
+function ParallelLoadImpedance(S, pf, vrms; fsys = 50, type_sign = nothing)
 
     ω = 2*π*fsys
 
@@ -414,7 +414,7 @@ function Parallel_Load_Impedance(S, pf, vrms; fsys = 50, type_sign = nothing)
 end
 
 """
-    Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+    FilterDesign(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
 
 # Description
 Designs the filter inductances and capacitances for the sources
@@ -430,7 +430,7 @@ Designs the filter inductances and capacitances for the sources
 - `ΔILf_ILf::Float`: current ripple ratio
 - `ΔVCf_VCf::Float`: voltage ripple ratio
 """
-function Filter_Design(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
+function FilterDesign(Sr, fs, fltr; Vrms = 230, Vdc = 800, ΔILf_ILf = 0.15, ΔVCf_VCf = 0.01537)
 
     #= Theory:
         The filtering capacitors C should be chosen such that the resonant frequency
@@ -565,7 +565,7 @@ end
 #############################
 # Helper functions for cable_layout
 
-function set_bounds(variable, start_value, low_bound, up_bound)
+function SetBounds(variable, start_value, low_bound, up_bound)
     if !is_fixed(variable)
         set_lower_bound(variable, low_bound)
         set_upper_bound(variable, up_bound)
@@ -574,7 +574,7 @@ function set_bounds(variable, start_value, low_bound, up_bound)
 end
 
 
-function get_degree(CM = CM) # how many cables are connected to a node? maybe remove function if not used
+function GetDegree(CM = CM) # how many cables are connected to a node? maybe remove function if not used
     result = zeros(Int, size(CM)[1])
 
     for i=1:size(CM)[1]
@@ -584,7 +584,7 @@ function get_degree(CM = CM) # how many cables are connected to a node? maybe re
     result
 end
 
-function get_cable_connections(CM = CM) # which cables are connected to which nodes
+function GetCableConnections(CM = CM) # which cables are connected to which nodes
 
     result = Vector{Vector{Int64}}(undef, size(CM)[1])
 
@@ -595,7 +595,7 @@ function get_cable_connections(CM = CM) # which cables are connected to which no
     return result
 end
 
-function get_node_connections(CM = CM) # which nodes are connected to each other, including the self-connections
+function GetNodeConnections(CM = CM) # which nodes are connected to each other, including the self-connections
 
     result = Vector{Vector{Int64}}(undef, size(CM)[1])
 
@@ -616,7 +616,7 @@ and the total power provided by the sources.
 Thereby, steady state is assumed.
 
 # Arguments
-- `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/nodeconstructor.
+- `parameters::Dict`: Completly filled parameter dict which defines the electrical power grid used in the env/node_constructor.
 - `num_source::Int`: number of sources in the grid (todo: calulate based on parameter dict?)
 - `num_load::Int`: number of num_load in the grid (todo: calulate based on parameter dict?)
 - `CM::Matrix`: connectivity matrix describing the connections in the grid
@@ -670,7 +670,7 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 end
 
 optimizer_status = Dict()
-function get_optimizer_status(model)
+function GetOptimizerStatus(model)
     
     status = Dict(
                     "termination_status" => termination_status(model),
@@ -681,7 +681,7 @@ function get_optimizer_status(model)
     return status
 end
 
-function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
+function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
 
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
@@ -751,8 +751,8 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
                     fix(nodes[i, "theta"], (π/180)*parameters["source"][i]["v_δ_set"])
 
-                    set_bounds(nodes[i, "P"], (total_P_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # come from parameter dict/user?
-                    set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    SetBounds(nodes[i, "P"], (total_P_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # come from parameter dict/user?
+                    SetBounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_p_mean_cal, i)
                     push!(idx_q_mean_cal, i)
 
@@ -761,43 +761,43 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "Q"], parameters["source"][i]["q_set"]/parameters["grid"]["phase"])
 
-                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
-                    set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+                    SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
 
                 elseif parameters["source"][i]["mode"] in ["PV", 9]
 
                     fix(nodes[i, "P"], parameters["source"][i]["p_set"]/parameters["grid"]["phase"])
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
-                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
-                    set_bounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    SetBounds(nodes[i, "Q"], (total_Q_load) / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_q_mean_cal, i)
 
                 elseif parameters["source"][i]["mode"] in ["Semi-Synchronverter", 6]
 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
-                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
-                    set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
-                    set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    SetBounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
+                    SetBounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
                     push!(idx_p_mean_cal, i)
                     push!(idx_q_mean_cal, i)
 
                 else
 
                     # all variable -
-                    set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
-                    set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
-                    set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
-                    set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+                    SetBounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
+                    SetBounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
                     push!(idx_p_mean_cal, i)
                     push!(idx_q_mean_cal, i)
                 end
 
             else
                 # all variable -
-                set_bounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
-                set_bounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
-                set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
-                set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+                SetBounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
+                SetBounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
                 push!(idx_p_mean_cal, i)
                 push!(idx_q_mean_cal, i)
             end
@@ -810,13 +810,13 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
             fix(nodes[i, "P"], -P)
             fix(nodes[i, "Q"], -sqrt(S^2 - P^2))
 
-            set_bounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
-            set_bounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+            SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+            SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
         end
     end
 
-    cable_cons = get_cable_connections(CM)
-    node_cons = get_node_connections(CM)
+    cable_cons = GetCableConnections(CM)
+    node_cons = GetNodeConnections(CM)
 
     G = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
     B = Array{NonlinearExpression, 2}(undef, num_nodes, num_nodes) # should be symmetric
@@ -843,10 +843,10 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
     for i=1:num_cables
 
         radius_max = 60*(4.1148e-3)/2
-        set_bounds(cables[i, "radius"], 25*(3e-3)/2, (2.05232e-3)/2, radius_max) #m
-        # set_bounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m
+        SetBounds(cables[i, "radius"], 25*(3e-3)/2, (2.05232e-3)/2, radius_max) #m
+        # SetBounds(cables[i, "radius"], (3e-3)/2, (3e-3)/2, (3e-3)/2) #m
         # assumption: min value of D-to-neutral : 3 * max radius
-        set_bounds(cables[i, "D-to-neutral"], 2* 0.7788 * radius_max, 0.7788 * radius_max, 2.00 ) #m
+        SetBounds(cables[i, "D-to-neutral"], 2* 0.7788 * radius_max, 0.7788 * radius_max, 2.00 ) #m
         # assumption to line to line(neutral) --  for low voltages
         #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
@@ -968,7 +968,7 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
         primal_status      = $(primal_status(model))
         objective_value    = $(objective_value(model))
         """)
-        global optimizer_status = get_optimizer_status(model)
+        global optimizer_status = GetOptimizerStatus(model)
         @show optimizer_status["termination_status"]
 
 
@@ -1111,7 +1111,7 @@ function layout_cabels(CM, num_source, num_load, parameters, verbosity = 0)
 end
 
 """
-    R, L = Fault_Level(S, X_R, Vrms; fsys = 50, phase = 3)
+    R, L = FaultLevel(S, X_R, Vrms; fsys = 50, phase = 3)
 
 # Arguments
 - `S::Float`: 3 phase Fault Level [VA]
@@ -1135,7 +1135,7 @@ ratios are in the range of 0.5 to 1.5, for distribution networks. Transmission n
 at higher voltages tend to have higher X/R ratios.
 
 """
-function fault_level(S, X_R, Vrms; fsys = 50, phase = 3)
+function FaultLevel(S, X_R, Vrms; fsys = 50, phase = 3)
 
     rad = atan(X_R)
 

@@ -1,5 +1,5 @@
 using Test
-using Dare
+using JEG
 using MAT
 using ReinforcementLearning
 
@@ -51,17 +51,17 @@ using ReinforcementLearning
 
     idx_end = 300
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]
-    X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
 
     #=println("MATLAB:")
     display(X_malab["X_matlab"][1:idx_end,:])
     println()
-    println("DARE:")
-    display(X_dare)
+    println("JEG:")
+    display(X_JEG)
     println() =#
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
 end
 
 
@@ -105,10 +105,10 @@ end
 
     idx_end = 300
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_source2_v_C_filt_a", "next_state_source2_i_L2_a","next_state_source2_v_C_cables_a", "next_state_cable2_i_L_a",]
-    X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_2source_1load1e6.mat")
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=.001   # 1e-6
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=.001   # 1e-6
 
 end
 
@@ -145,10 +145,10 @@ end
 
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source2_i_L1_a",   "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_source2_v_C_cables_a"]
     idx_end = 300
-    X_dare = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_2source1e6.mat")
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=0.01   # 1e-6
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=0.01   # 1e-6
 end;
 
 @testset "env_3source_2load" begin
@@ -221,17 +221,17 @@ end;
     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source2_v_C_cables_a", "next_state_source3_i_L1_a", "next_state_load1_i_L_a", "next_state_source2_i_L1_a", "next_state_cable1_i_L_a", "load1_v_C_total_a",   "next_state_cable5_i_L_a"]
 
     idx_end = 300
-    X_dare = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
+    X_JEG = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_3source_2load1e6.mat")
 
     #=
     println("MATLAB:")
     display(X_malab["X_matlab"][1:idx_end,:])
     println()
-    println("DARE:")
-    display(X_dare)
+    println("JEG:")
+    display(X_JEG)
     println()
     =#
 
-    @test X_dare≈X_malab["X_matlab"][1:idx_end,:] atol=14 # such high, since the steady state current is very high, so talking about a toleranz below 1 % of max values
+    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=14 # such high, since the steady state current is very high, so talking about a toleranz below 1 % of max values
 end

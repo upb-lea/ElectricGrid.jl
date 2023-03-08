@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using IntervalSets
@@ -8,7 +8,7 @@ using ControlSystems
 using CUDA
 using Plots
 
-include(srcdir("nodeconstructor.jl"))
+include(srcdir("node_constructor.jl"))
 include(srcdir("env.jl"));
 include(srcdir("sin_policy.jl"))
 include(srcdir("data_hook.jl"))

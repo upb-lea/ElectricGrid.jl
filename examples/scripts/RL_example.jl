@@ -1,11 +1,11 @@
-using Dare
+using JEG
 using ReinforcementLearning
 using StableRNGs
 using Flux
 using Flux.Losses
 using IntervalSets
 
-R_load, L_load, X, Z = Parallel_Load_Impedance(100e3, 1, 230)
+R_load, L_load, X, Z = ParallelLoadImpedance(100e3, 1, 230)
 
 # define grid using CM
 CM = [0. 1.
@@ -60,14 +60,14 @@ env = SimEnv(
     reward_function = reward_function,
     action_delay = 0)
 
-#agent = create_agent_ddpg(na = length(env.agent_dict["user_def"]["action_ids"]), ns = length(state(env, "user_def")), use_gpu = false)
+#agent = create_agent_ddpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]), ns = length(state(env, "my_ddpg")), use_gpu = false)
 
 
 rng = StableRNG(1)
 init = glorot_uniform(rng)
 
-ns = length(env.agent_dict["user_def"]["state_ids"])
-na = length(env.agent_dict["user_def"]["action_ids"])
+ns = length(env.agent_dict["my_ddpg"]["state_ids"])
+na = length(env.agent_dict["my_ddpg"]["action_ids"])
 
 create_actor() = Chain(
     Dense(ns, 30, relu; init = init),
@@ -121,7 +121,7 @@ agent = Agent(
 controllers = setup_agents(env, Dict("my_ddpg" => agent))
 
 
-#run(ma["dare_ddpg_1"]["policy"], env)
+#run(ma["JEG_ddpg_1"]["policy"], env)
 
 learn(controllers, env, num_episodes = 5)
 

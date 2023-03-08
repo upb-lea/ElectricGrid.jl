@@ -1,4 +1,4 @@
-using Dare
+using JEG
 using ReinforcementLearning
 using IntervalSets
 using Statistics
@@ -36,7 +36,7 @@ C_1 = 1e-5;
 S_load = 100e3
 pf_load = 0.98
 v_rms = 230
-R_load, L_load, X, Z = Parallel_Load_Impedance(S_load, pf_load, v_rms)
+R_load, L_load, X, Z = ParallelLoadImpedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[

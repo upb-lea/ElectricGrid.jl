@@ -249,7 +249,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_mag_inv
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_mag = Clarke_mag((Classical_Policy.Source.Vdc[s_idx]/2)*Classical_Policy.Source.Vd_abc_new[s_idx, :, end])
+                v_mag = ClarkeMag((Classical_Policy.Source.Vdc[s_idx]/2)*Classical_Policy.Source.Vd_abc_new[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_mag_inv" => v_mag)
                 #insertcols!(hook.tmp, "source$(idx)_vrms_a" => Classical_Policy.Source.V_ph[s_idx, 1, 2])
             end
@@ -258,7 +258,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_mag_cap
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_mag = Clarke_mag(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
+                v_mag = ClarkeMag(Classical_Policy.Source.V_filt_cap[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_mag_cap" => v_mag)
                 #insertcols!(hook.tmp, "source$(idx)_vrms_a" => Classical_Policy.Source.V_ph[s_idx, 1, 2])
             end
@@ -267,7 +267,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_mag_inv
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_mag = Clarke_mag(Classical_Policy.Source.I_filt_inv[s_idx, :, end])
+                i_mag = ClarkeMag(Classical_Policy.Source.I_filt_inv[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_mag_inv" => i_mag)
                 #insertcols!(hook.tmp, "source$(idx)_irms_a" => Classical_Policy.Source.I_ph[s_idx, 1, 2])
             end
@@ -276,7 +276,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_mag_poc
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_mag = Clarke_mag(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
+                i_mag = ClarkeMag(Classical_Policy.Source.I_filt_poc[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_mag_poc" => i_mag)
                 #insertcols!(hook.tmp, "source$(idx)_irms_a" => Classical_Policy.Source.I_ph[s_idx, 1, 2])
             end
@@ -314,7 +314,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_sat
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*Clarke_mag(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
+                i_sat = sqrt(2)*(Classical_Policy.Source.Vdc[s_idx]/2)*ClarkeMag(Classical_Policy.Source.s_dq0_avg[s_idx, :] .- Classical_Policy.Source.s_lim[s_idx, :])/Classical_Policy.Source.v_max[s_idx]
                 insertcols!(hook.tmp, "source$(idx)_i_sat" => i_sat)
             end
         end
@@ -322,7 +322,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_err = Clarke_mag(Classical_Policy.Source.I_err[s_idx, :, end])
+                i_err = ClarkeMag(Classical_Policy.Source.I_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_i_err" => i_err)
             end
         end
@@ -330,7 +330,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err_t
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                i_err_t = Clarke_mag(Classical_Policy.Source.I_err_t[s_idx, :])
+                i_err_t = ClarkeMag(Classical_Policy.Source.I_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_i_err_t" => i_err_t)
             end
         end
@@ -338,7 +338,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_sat
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_sat = sqrt(2)*Clarke_mag(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
+                v_sat = sqrt(2)*ClarkeMag(Classical_Policy.Source.I_ref_dq0[s_idx, :] .- Classical_Policy.Source.I_lim[s_idx, :])/(0.98*Classical_Policy.Source.i_max[s_idx])
                 insertcols!(hook.tmp, "source$(idx)_v_sat" => v_sat)
             end
         end
@@ -346,7 +346,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_err
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_err = Clarke_mag(Classical_Policy.Source.V_err[s_idx, :, end])
+                v_err = ClarkeMag(Classical_Policy.Source.V_err[s_idx, :, end])
                 insertcols!(hook.tmp, "source$(idx)_v_err" => v_err)
             end
         end
@@ -354,7 +354,7 @@ function (hook::data_hook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_err_t
             s_idx = findfirst(x -> x == idx, Classical_Policy.Source_Indices)
             if s_idx !== nothing
-                v_err_t = Clarke_mag(Classical_Policy.Source.V_err_t[s_idx, :])
+                v_err_t = ClarkeMag(Classical_Policy.Source.V_err_t[s_idx, :])
                 insertcols!(hook.tmp, "source$(idx)_v_err_t" => v_err_t)
             end
         end

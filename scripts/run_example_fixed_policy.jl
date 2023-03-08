@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "dare"
+@quickactivate "JEG"
 
 using ReinforcementLearning
 using IntervalSets
@@ -9,7 +9,7 @@ using CUDA
 #using Plots
 using PlotlyJS
 
-include(srcdir("nodeconstructor.jl"))
+include(srcdir("node_constructor.jl"))
 include(srcdir("env.jl"));
 include(srcdir("data_hook.jl"))
 include(srcdir("sin_policy.jl"))
