@@ -196,7 +196,7 @@ parameters["grid"] = grid
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
+env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
 
 #_______________________________________________________________________________
 # Setting up data hooks

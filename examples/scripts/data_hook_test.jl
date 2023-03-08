@@ -32,7 +32,7 @@ parameters = Dict{Any, Any}(
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, action_delay = 3)
+env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, action_delay = 3)
 
 #_______________________________________________________________________________
 # Setting up data hooks

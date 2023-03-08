@@ -63,7 +63,7 @@ parameters = Dict{Any, Any}(
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = ElectricGridEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
 # initialising the agents 

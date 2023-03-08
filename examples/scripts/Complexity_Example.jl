@@ -35,7 +35,7 @@ parameters["grid"] = Dict("v_rms" => 230, "ramp_end" => 0.04, "process_start" =>
 #_______________________________________________________________________________
 # Defining the environment
 
-env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
+env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
 # Setting up data hooks

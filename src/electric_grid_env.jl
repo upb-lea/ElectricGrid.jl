@@ -1,4 +1,4 @@
-mutable struct SimEnv <: AbstractEnv
+mutable struct ElectricGridEnv <: AbstractEnv
     verbosity
     nc
     sys_d
@@ -37,7 +37,7 @@ end
 
 
 """
-    SimEnv(...)
+    ElectricGridEnv(...)
 
 # Description
 Returns an environment consisting of an electrical power grid as control plant,
@@ -52,14 +52,14 @@ https://juliareinforcementlearning.org/
 - `action_space::Space`: Defines the valide space per action.
 - `state_space::Space`: Defines the valide space per state. Default is [-1, 1] since the
     states of the env will be normalized.
-- `prepare_action::function(env::SimEnv)`: Function to adjust, change, prepare the actions
+- `prepare_action::function(env::ElectricGridEnv)`: Function to adjust, change, prepare the actions
     before they are applied to the env during a step(). Per default it returns the action
     without changes.
-- `featurize::function(x:Vector, t:Float; env::SimEnv, name::String)`: Function to adjust
+- `featurize::function(x:Vector, t:Float; env::ElectricGridEnv, name::String)`: Function to adjust
    the state before it is returned by the env. For example here
    reference values can be added to provide the to an RL agent or other feature engineering
    to improve the learning.
-- `reward_function::function(env::SimEnv, name::String) )`: Function to define the reward
+- `reward_function::function(env::ElectricGridEnv, name::String) )`: Function to define the reward
     for a (named) policy. Return 0 per default.
 - `CM::Matrix`: Conectivity matrix to define the structure of the electric power grid
     (for more details see NodeConstructor)
@@ -90,31 +90,31 @@ https://juliareinforcementlearning.org/
 - `Multi_Agent::MultiAgentGridController`: (optional)
 
 """
-function SimEnv(;
-    maxsteps = 500,
-    ts = 1/10_000,
-    action_space = nothing,
-    state_space = nothing,
-    prepare_action = nothing,
-    featurize = nothing,
-    reward_function = nothing,
-    CM = nothing,
-    num_sources = nothing,
-    num_loads = nothing,
-    parameters = nothing,
-    x0 = nothing,
-    t0 = 0.0,
-    state_ids = nothing,
-    convert_state_to_cpu = true,
-    use_gpu = false,
-    reward = nothing,
-    action = nothing,
-    action_ids = nothing,
-    action_delay = 1,
-    t_end = nothing,
-    verbosity = 0,
-    agent_dict = nothing
-)
+function ElectricGridEnv(;
+        maxsteps = 500,
+        ts = 1/10_000,
+        action_space = nothing,
+        state_space = nothing,
+        prepare_action = nothing,
+        featurize = nothing,
+        reward_function = nothing,
+        CM = nothing,
+        num_sources = nothing,
+        num_loads = nothing,
+        parameters = nothing,
+        x0 = nothing,
+        t0 = 0.0,
+        state_ids = nothing,
+        convert_state_to_cpu = true,
+        use_gpu = false,
+        reward = nothing,
+        action = nothing,
+        action_ids = nothing,
+        action_delay = 1,
+        t_end = nothing,
+        verbosity = 0,
+        agent_dict = nothing
+    )
 
     if !(isnothing(t_end))
         maxsteps = floor(t_end/ts) + 1
@@ -414,7 +414,7 @@ function SimEnv(;
 
     y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
 
-    SimEnv(verbosity, nc, sys_d, action_space, state_space,
+    ElectricGridEnv(verbosity, nc, sys_d, action_space, state_space,
     false, inner_featurize, featurize, prepare_action, reward_function,
     x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
     v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
@@ -422,18 +422,18 @@ function SimEnv(;
     A, B, C, D, state_parameters, y, agent_dict)
 end
 
-RLBase.action_space(env::SimEnv) = env.action_space
-RLBase.state_space(env::SimEnv) = env.state_space
-RLBase.reward(env::SimEnv) =  env.reward
+RLBase.action_space(env::ElectricGridEnv) = env.action_space
+RLBase.state_space(env::ElectricGridEnv) = env.state_space
+RLBase.reward(env::ElectricGridEnv) =  env.reward
 
-function RLBase.reward(env::SimEnv, name::String)
+function RLBase.reward(env::ElectricGridEnv, name::String)
     return env.reward_function(env, name)
 end
 
-RLBase.is_terminated(env::SimEnv) = env.done
-RLBase.state(env::SimEnv) = env.state
+RLBase.is_terminated(env::ElectricGridEnv) = env.done
+RLBase.state(env::ElectricGridEnv) = env.state
 
-function RLBase.state(env::SimEnv, name::String)
+function RLBase.state(env::ElectricGridEnv, name::String)
     return env.inner_featurize(;env = env, name = name)
 end
 
@@ -443,7 +443,7 @@ end
 Resets the environment. The state is set to x0, the time to t0, reward to zero and done to
 false.
 """
-function RLBase.reset!(env::SimEnv)
+function RLBase.reset!(env::ElectricGridEnv)
     env.state = env.convert_state_to_cpu ? Array(env.inner_featurize(env.x0, env.t0)) : env.inner_featurize(env.x0, env.t0)
     env.x = env.x0
     env.y = fill!(env.y, 0.0) #TODO: y0
@@ -471,7 +471,7 @@ the system defined by the linear state-space system using that action.
     multiplied with vdc and can be interpreted as modulation index.
 
 """
-function (env::SimEnv)(action)
+function (env::ElectricGridEnv)(action)
     env.steps += 1
     t = [env.t, env.t + env.ts]
     env.t = t[2]

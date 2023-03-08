@@ -22,7 +22,7 @@ parameters = Dict{Any, Any}(
     Checks if the env puts done = true if limit is exceeded
     """
     
-    env = SimEnv(CM = CM, parameters = parameters, verbosity = 0, action_delay = 0)
+    env = ElectricGridEnv(CM = CM, parameters = parameters, verbosity = 0, action_delay = 0)
     reset!(env)
     env([1,1,1])
     env([1,1,1])
@@ -32,7 +32,7 @@ end
 
 @testset "env_state_space" begin
 
-    env = SimEnv(CM = CM, parameters = parameters, verbosity = 0, action_delay = 0)
+    env = ElectricGridEnv(CM = CM, parameters = parameters, verbosity = 0, action_delay = 0)
     @test length(env.state_space) == 15
 end
 
@@ -40,6 +40,6 @@ end
     """
     Checks if it is possible to define an env least amount of arguments and checks the length of action space based on default values on case of 1 source
     """
-    env = SimEnv(num_sources = 1, num_loads = 1)
+    env = ElectricGridEnv(num_sources = 1, num_loads = 1)
     @test length(env.action_space) == 3
 end

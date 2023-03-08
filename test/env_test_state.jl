@@ -31,7 +31,7 @@ using ReinforcementLearning
     )
 
 
-    env = SimEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
+    env = ElectricGridEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
 
     plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
     plt_action_ids = ["source1_u_a"]
@@ -87,7 +87,7 @@ end
     "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
     )
 
-    env = SimEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1, verbosity = 0)
+    env = ElectricGridEnv(ts = 1e-6, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 300, action_delay = 1, verbosity = 0)
 
     hook = data_hook(collect_sources = [1,2], collect_loads = [1], collect_cables = [1,2])
 
@@ -126,7 +126,7 @@ end
                         ],
         "grid" => Dict{Any, Any}("ramp_end" => 0.0)
     )
-    env = SimEnv(ts = 1e-6, CM = CM, parameters = parameters, verbosity = 0, maxsteps = 600, action_delay = 1)
+    env = ElectricGridEnv(ts = 1e-6, CM = CM, parameters = parameters, verbosity = 0, maxsteps = 600, action_delay = 1)
 
     hook = data_hook(collect_sources  = [1 2],
                     collect_cables = [1])
@@ -196,7 +196,7 @@ end;
     #__________________________________________________________________
     # Defining the environment
 
-    env = SimEnv(ts = 1e-6, CM = CM, parameters = parameters, maxsteps=300,  verbosity = 0)
+    env = ElectricGridEnv(ts = 1e-6, CM = CM, parameters = parameters, maxsteps=300,  verbosity = 0)
 
     #_______________________________________________________________________________
     # Setting up data hooks

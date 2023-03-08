@@ -5,7 +5,7 @@ using ReinforcementLearning
 using PlotlyJS
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("Classical_Control.jl"))
@@ -161,7 +161,7 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 # Define the environment
 V_source = 800
 
-env = SimEnv(reward_function = reward, featurize = featurize, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
+env = ElectricGridEnv(reward_function = reward, featurize = featurize, ts = ts, use_gpu = env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
 maxsteps = 1000, action_delay = 0)
 
 state_ids = GetStateIds(env.nc)
@@ -172,7 +172,7 @@ action_ids_agent = filter(x -> split(x, "_")[1] == "source1", action_ids)
 state_ids_classic = filter(x -> split(x, "_")[1] == "source2", state_ids)
 action_ids_classic = filter(x -> split(x, "_")[1] == "source2", action_ids)
 
-function RLBase.action_space(env::SimEnv, name::String)
+function RLBase.action_space(env::ElectricGridEnv, name::String)
     if name == "agent"
         return Space(fill(-1.0..1.0, size(action_ids_agent)))
     else

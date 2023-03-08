@@ -99,7 +99,7 @@ end
 
 
 
-env = SimEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
+env = ElectricGridEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
 
 #_______________________________________________________________________________
 # Setting up data hooks

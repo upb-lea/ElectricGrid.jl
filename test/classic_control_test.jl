@@ -194,7 +194,7 @@ using Distributions
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
 
         #_______________________________________________________________________________
         # Setting up data hooks
@@ -320,7 +320,7 @@ end
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
 
         #_______________________________________________________________________________
         # Setting up data hooks
@@ -511,7 +511,7 @@ end
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0)
 
         #_______________________________________________________________________________
         # Setting up data hooks
@@ -716,7 +716,7 @@ end
         #_______________________________________________________________________________
         # Defining the environment
 
-        env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0, action_delay = 1)
+        env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0, action_delay = 1)
 
         #_______________________________________________________________________________
         # initialising the agents 

@@ -24,8 +24,8 @@ parameters = Dict{Any, Any}(
     )
 
 
-#env = SimEnv(CM = CM, parameters = parameters, verbosity = 2)
-env = SimEnv(num_sources = 2, num_loads = 1)
+#env = ElectricGridEnv(CM = CM, parameters = parameters, verbosity = 2)
+env = ElectricGridEnv(num_sources = 2, num_loads = 1)
 
 #env.nc.parameters["cable"][1]["i_limit"] = 10e3
 
@@ -58,7 +58,7 @@ plot_hook_results(hook = hook,
                     actions_to_plot = [])
 #env.state_ids
 
-#env = SimEnv(num_sources = 1, num_loads = 1)
+#env = ElectricGridEnv(num_sources = 1, num_loads = 1)
 
 #reset!(env)
 #env([1])

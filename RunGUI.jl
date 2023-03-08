@@ -7,7 +7,7 @@ import Genie.Renderer.Html.div
 register_mixin(@__MODULE__)
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("GUI", "agent_page.jl"))

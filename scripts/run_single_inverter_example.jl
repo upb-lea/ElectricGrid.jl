@@ -5,7 +5,7 @@ using ReinforcementLearning
 using PlotlyJS
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 
@@ -98,7 +98,7 @@ ts = 1e-4
 
 V_source = 300
 
-env = SimEnv(reward_function = reward, featurize = featurize, 
+env = ElectricGridEnv(reward_function = reward, featurize = featurize, 
 v_dc=V_source, ts=ts, use_gpu=env_cuda, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters,
 maxsteps=1000)
 

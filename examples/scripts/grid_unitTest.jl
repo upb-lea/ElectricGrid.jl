@@ -32,7 +32,7 @@ parameters = Dict{Any, Any}(
 )
 
 
-env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
+env = ElectricGridEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = length(t), action_delay = 1)
 
 #_______________________________________________________________________________
 #%% Setting up data hooks

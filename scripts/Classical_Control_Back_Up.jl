@@ -1,4 +1,4 @@
-include("./env.jl")
+include("./electric_grid_env.jl")
 
 mutable struct Classical_Controls
 
@@ -482,7 +482,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
     action_ids = nothing
 end
 
-function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing} = nothing)
+function (Animo::Classical_Policy)(env::ElectricGridEnv, name::Union{String, Nothing} = nothing)
 
     if isnothing(name)
         Action = Classical_Control(Animo, env)

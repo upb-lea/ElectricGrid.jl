@@ -6,7 +6,7 @@ function reward(env)
 end
 
 function prepare_env()
-    global env = SimEnv(CM=CM, num_sources=length(parameters["source"]), num_loads=length(parameters["load"]), parameters=parameters,
+    global env = ElectricGridEnv(CM=CM, num_sources=length(parameters["source"]), num_loads=length(parameters["load"]), parameters=parameters,
                         reward_function = reward, maxsteps=600)
 
     ns = length(env.sys_d.A[1,:])

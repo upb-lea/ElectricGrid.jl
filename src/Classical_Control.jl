@@ -698,7 +698,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
         new(action_space, Source, state_ids, action_ids, Source_Indices)
     end
 
-    function Classical_Policy(env::SimEnv)
+    function Classical_Policy(env::ElectricGridEnv)
 
         Source_Indices = Array{Int64, 1}(undef, 0)
         Modes = Array{Any, 1}(undef, 0)
@@ -778,7 +778,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
     end
 end
 
-function (Animo::Classical_Policy)(env::SimEnv, name::Union{String, Nothing})
+function (Animo::Classical_Policy)(env::ElectricGridEnv, name::Union{String, Nothing})
 
     Action = Classical_Control(Animo, env)
 
@@ -873,13 +873,13 @@ function reset_policy(Animo::Classical_Policy)
 end
 
 """
-    Classical_Control(Classical_Policy, SimEnv)
+    Classical_Control(Classical_Policy, ElectricGridEnv)
 
 # Description
 Loops through all of the sources, obtaining measurments from the environment and 
 calculating the actions.
 """
-function Classical_Control(Animo::Classical_Policy, env::SimEnv)
+function Classical_Control(Animo::Classical_Policy, env::ElectricGridEnv)
     
     Source = Animo.Source
     Source_Interface(Animo, env)
@@ -930,12 +930,12 @@ function Classical_Control(Animo::Classical_Policy, env::SimEnv)
 end
 
 """
-    Source_Interface(Classical_Policy, SimEnv)
+    Source_Interface(Classical_Policy, ElectricGridEnv)
 
 # Description
 "Measures" or "Observes" the relevant quantities necessary for control.
 """
-function Source_Interface(Animo::Classical_Policy, env::SimEnv)
+function Source_Interface(Animo::Classical_Policy, env::ElectricGridEnv)
 
     Source = Animo.Source
     Source.steps = env.steps + 1

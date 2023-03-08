@@ -10,7 +10,7 @@ using CUDA
 using PlotlyJS
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"));
+include(srcdir("electric_grid_env.jl"));
 include(srcdir("data_hook.jl"))
 include(srcdir("sin_policy.jl"))
 
@@ -64,7 +64,7 @@ parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230);
 
 ts = 1e-4
-env = SimEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
+env = ElectricGridEnv(reward_function = reward,  v_dc=300, ts=ts, use_gpu=false
 , CM = CM, num_sources = 1, num_loads = 1, parameters = parameters, maxsteps = 500)
 
 

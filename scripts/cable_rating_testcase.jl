@@ -41,7 +41,7 @@ parameters = Dict{Any, Any}(
 )
 
 
-env = SimEnv(num_sources = 5, num_loads = 4, CM = nothing, parameters = parameters, maxsteps=600)
+env = ElectricGridEnv(num_sources = 5, num_loads = 4, CM = nothing, parameters = parameters, maxsteps=600)
 
 #################################
 # 2 Calulate characteristic impedance Z_0 of cables

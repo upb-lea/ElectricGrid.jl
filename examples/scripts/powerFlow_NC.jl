@@ -6,7 +6,7 @@ using ReinforcementLearning
 using PlotlyJS
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("Classical_Control.jl"))
@@ -73,7 +73,7 @@ parameters_nc = Dict{Any, Any}(
                     Dict{Any, Any}("len"=>3)
                     ]
 )
-env = SimEnv(ts = 1e-4, use_gpu = false, CM = CM, num_sources = num_source, num_loads = num_load, parameters = parameters_nc, maxsteps = 100, action_delay = 1)
+env = ElectricGridEnv(ts = 1e-4, use_gpu = false, CM = CM, num_sources = num_source, num_loads = num_load, parameters = parameters_nc, maxsteps = 100, action_delay = 1)
 
 println("########################################################################")
 println()

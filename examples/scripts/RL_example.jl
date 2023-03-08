@@ -52,7 +52,7 @@ function reward_function(env, name = nothing)
     end
 end
 
-env = SimEnv(
+env = ElectricGridEnv(
     CM = CM,
     parameters = parameters,
     t_end = 0.1,

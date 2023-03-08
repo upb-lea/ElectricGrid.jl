@@ -32,7 +32,7 @@ parameters["grid"] = Dict("fs" => fs, "phase" => 3, "v_rms" => 230)
 num_sources = 2
 num_loads = 1
 
-env = SimEnv(ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
+env = ElectricGridEnv(ts = ts, use_gpu = false, CM = CM, num_sources = num_sources, num_loads = num_loads, 
 parameters = parameters, maxsteps = length(t), action_delay = 1)
 
 

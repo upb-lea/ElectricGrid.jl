@@ -10,7 +10,7 @@ using PlotlyJS
 
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"));
+include(srcdir("electric_grid_env.jl"));
 include(srcdir("sin_policy.jl"))
 include(srcdir("data_hook.jl"))
 include(srcdir("SolarModule.jl"))
@@ -79,7 +79,7 @@ parameters["load"] = load_list;
 parameters["grid"] = Dict("fs" => 10000.0, "phase" => 1, "v_rms" => 230);
 
 ts = 1e-4
-env = SimEnv(reward_function = reward, ts=ts, use_gpu=false
+env = ElectricGridEnv(reward_function = reward, ts=ts, use_gpu=false
 , CM = CM, num_sources = 2, num_loads = 1, parameters = parameters, maxsteps = 500)
 
 

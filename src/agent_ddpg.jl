@@ -5,8 +5,8 @@ import CUDA: device
 using MacroTools: @forward
 
 #functions to make the training flag work for the whole RL framework
-(agent::Agent)(env::SimEnv, training::Bool) = agent.policy(env, training)
-(p::NamedPolicy)(env::SimEnv, training::Bool) = p.policy(env, p.name, training)
+(agent::Agent)(env::ElectricGridEnv, training::Bool) = agent.policy(env, training)
+(p::NamedPolicy)(env::ElectricGridEnv, training::Bool) = p.policy(env, p.name, training)
 (policy::AbstractPolicy)(env, training::Bool) = policy(env)
 (policy::AbstractPolicy)(env, name::Union{Nothing, String}, training::Bool) = policy(env, name)
 (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, training::Bool) = policy(stage, env)
@@ -17,7 +17,7 @@ using MacroTools: @forward
 function RLBase.update!(
     trajectory::AbstractTrajectory,
     policy::AbstractPolicy,
-    env::SimEnv,
+    env::ElectricGridEnv,
     ::PostEpisodeStage,
 )
     # Note that for trajectories like `CircularArraySARTTrajectory`, data are
@@ -152,7 +152,7 @@ function (::JEGDDPGPolicy)(::AbstractStage, ::AbstractEnv)
     nothing
 end
 
-function (p::JEGDDPGPolicy)(env::SimEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
+function (p::JEGDDPGPolicy)(env::ElectricGridEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
     p.update_step += 1
 
     if p.update_step <= p.start_steps

@@ -13,7 +13,7 @@ Base.@kwdef mutable struct Classical_Policy <: AbstractPolicy
 
 end
 
-function (p::Classical_Policy)(env::SimEnv, name::Union{String, Nothing} = nothing)
+function (p::Classical_Policy)(env::ElectricGridEnv, name::Union{String, Nothing} = nothing)
     p.t = p.t + p.ts
     #u = [230 * sin.(50*2*pi*p.t .+ 2/3*pi*(i-1)) for i = 1:length(p.action_space)]
     u = [.5 for i = 1:length(p.action_space)]

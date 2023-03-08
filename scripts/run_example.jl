@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate "JEG"
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"))
+include(srcdir("electric_grid_env.jl"))
 include(srcdir("agent_ddpg.jl"))
 include(srcdir("data_hook.jl"))
 
@@ -51,7 +51,7 @@ parameters = Dict{Any, Any}(
 )
 
 
-env = SimEnv(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, reward_function = reward, maxsteps=600, use_gpu=env_cuda)
+env = ElectricGridEnv(num_sources = 2, num_loads = 1, CM = CM, parameters = parameters, reward_function = reward, maxsteps=600, use_gpu=env_cuda)
 
 ns = length(env.sys_d.A[1,:])
 na = length(env.sys_d.B[1,:])

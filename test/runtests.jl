@@ -17,7 +17,7 @@ end
     include("./env_test_basics.jl")
     include("./env_test_state.jl")
 
-    #env = SimEnv()
+    #env = ElectricGridEnv()
     #@test size(env.A)              == (33,33)
     #@test size(env.state_space)    == (33,)
     #@test size(env.action_space)   == (6,)
@@ -29,7 +29,7 @@ end
 end
 
 @testset "Agent" begin
-    #env = SimEnv()
+    #env = ElectricGridEnv()
     #agent = create_agent_ddpg(na = length(env.action_space), ns = length(env.state_space), use_gpu = false)
 
     #@test length(agent(env)) == length(env.action_space)

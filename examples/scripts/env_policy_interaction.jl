@@ -9,7 +9,7 @@ using CUDA
 using Plots
 
 include(srcdir("node_constructor.jl"))
-include(srcdir("env.jl"));
+include(srcdir("electric_grid_env.jl"));
 include(srcdir("sin_policy.jl"))
 include(srcdir("data_hook.jl"))
 
@@ -71,7 +71,7 @@ A, B, C, D = GetSystem(power_grid)
 ns = length(A[1,:]) # get num of states
 ni = length(B[1,:]) # get num of inputs
 x0 = [0.0 for i = 1:ns]
-env = SimEnv(A=A, B=B, C=C, D=D, x0=x0, state_ids=GetStateIds(power_grid), rewardfunction = reward)
+env = ElectricGridEnv(A=A, B=B, C=C, D=D, x0=x0, state_ids=GetStateIds(power_grid), rewardfunction = reward)
 
 
 #######################################################################################

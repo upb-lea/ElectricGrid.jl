@@ -36,7 +36,7 @@ using Test
 
 
             # Defining the environment
-            env = SimEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
+            env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end)
 
             #_______________________________________________________________________________
             # Setting up data hooks

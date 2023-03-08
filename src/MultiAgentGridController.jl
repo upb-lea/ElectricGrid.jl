@@ -79,7 +79,7 @@ function reset_policy(::AbstractPolicy) end
 Initialises up the agents that will be controlling the electrical network.
 
 # Arguments
-- `env::SimEnv`: mutable struct containing the environment.
+- `env::ElectricGridEnv`: mutable struct containing the environment.
 
 # Return Values
 - `Multi_Agent::MultiAgentGridController`: the struct containing the initialised agents
@@ -134,7 +134,7 @@ function setup_agents(env, custom_agents = nothing)
         Agents[name] = RL_policy
     end
 
-    @eval function action_space(env::SimEnv, name::String)
+    @eval function action_space(env::ElectricGridEnv, name::String)
         for (pname, config) in env.agent_dict
             if name == pname
                 return Space(fill(-1.0..1.0, length(env.agent_dict[name]["action_ids"])))
