@@ -13,7 +13,7 @@ include(srcdir("node_constructor.jl"))
 include(srcdir("env.jl"));
 include(srcdir("sin_policy.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("pv_module.jl"))
+include(srcdir("SolarModule.jl"))
 
 function reward(env)
     #implement your reward function here

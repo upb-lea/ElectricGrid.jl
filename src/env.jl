@@ -289,15 +289,15 @@ function SimEnv(;
                     vdc_fixed += 1
                 end
             elseif source["source_type"] == "pv"
-                #v_dc[source_number] = :(get_V(pv_array, env.x[1]*env.action, G, T))
+                #v_dc[source_number] = :(GetV(SolarArray, env.x[1]*env.action, G, T))
                 #TODO : how to calculate i_dc in 3-phase grid? Which current of env to use?
                 #TODO : $source_number does only fit if all L filters! Otherwise how to
                 #       define the offet for $source_number?!?!?
                 # TODO built pv module from parameter dict - where to define? In env?
-                pv_m = PV_module()
-                pv_array = PV_array(;pv_module=pv_m)
+                pv_m = SolarModule()
+                SolarArray = SolarArray(;SolarModule=pv_m)
                 # find(x -> .... source$source_number_i_L in state_ids)
-                fun = (env, G, T) -> get_V(:($pv_array),
+                fun = (env, G, T) -> GetV(:($SolarArray),
                                             env.x[:($source_number)]*env.action, G, T)
                 push!(v_dc_arr, fun)
 
@@ -483,7 +483,7 @@ function (env::SimEnv)(action)
         env.action = action
     end
 
-    # TODO V2: define G and T via data_set or stochastic process next to pv_array
+    # TODO V2: define G and T via data_set or stochastic process next to SolarArray
     G = 1000
     T = 27
     env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr]
@@ -529,7 +529,7 @@ function (env::SimEnv)(action)
     env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action)) ) .* (env.state_parameters)
 end
 
-function get_vDC_PV(I)
+function GetVDC_PV(I)
 
     V_dc = I *N_cell * P_cell
 

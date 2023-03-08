@@ -28,7 +28,7 @@ using StatsBase
 include("./power_system_theory.jl")
 include("./node_constructor.jl")
 include("./custom_control.jl")
-include("./pv_module.jl")
+include("./solar_module.jl")
 include("./env.jl")
 include("./agent_ddpg.jl")
 include("./Classical_Control.jl")

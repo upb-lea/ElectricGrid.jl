@@ -13,7 +13,7 @@ include(srcdir("node_constructor.jl"))
 include(srcdir("env.jl"));
 include(srcdir("sin_policy.jl"))
 include(srcdir("data_hook.jl"))
-include(srcdir("pv_module.jl"))
+include(srcdir("solar_module.jl"))
 
 CM = [ 0. 0. 1.
      0. 0. 2
