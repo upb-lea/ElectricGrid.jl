@@ -104,7 +104,7 @@ maxsteps=1000)
 
 ns = length(env.state_space)
 na = length(env.action_space)
-agent = create_agent_ddpg(na = na, ns = ns, use_gpu = agent_cuda)
+agent = CreateAgentDdpg(na = na, ns = ns, use_gpu = agent_cuda)
 
 #plt_state_ids = ["u_f1", "i_f1"]
 #plt_action_ids = ["u_v1"]

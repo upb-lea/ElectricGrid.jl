@@ -56,7 +56,7 @@ env = ElectricGridEnv(num_sources = 2, num_loads = 1, CM = CM, parameters = para
 ns = length(env.sys_d.A[1,:])
 na = length(env.sys_d.B[1,:])
 
-agent = create_agent_ddpg(na = na, ns = ns, use_gpu = env_cuda)
+agent = CreateAgentDdpg(na = na, ns = ns, use_gpu = env_cuda)
 
 hook = data_hook(save_best_NNA = true, plot_rewards = true)
 

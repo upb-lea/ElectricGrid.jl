@@ -181,7 +181,7 @@ function RLBase.action_space(env::ElectricGridEnv, name::String)
 end
 
 na = length(env.action_space)
-agent = create_agent_ddpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
+agent = CreateAgentDdpg(na = length(action_ids_agent), ns = length(state(env,agentname)), use_gpu = agent_cuda)
 agent = Agent(policy = NamedPolicy(agentname, agent.policy), trajectory = agent.trajectory)
 
 #agent = NamedPolicy(agentname, Classical_Policy(action_space = Space([-1.0..1.0 for i in 1:length(action_ids_agent)]), t_final = ts*1001, fs = fs, num_sources = 1, state_ids = state_ids_agent, action_ids = action_ids_agent))
@@ -204,7 +204,7 @@ fs = fs, num_sources = 1, state_ids = state_ids_classic, action_ids = action_ids
 Source_Initialiser(env, Animo, [2])
 
 #TODO: entfernen!!!
-#Animo = create_agent_ddpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
+#Animo = CreateAgentDdpg(na = length(action_ids_classic), ns = length(state(env,classicname)), use_gpu = agent_cuda)
 
 #Animo = Agent(policy = NamedPolicy(classicname, Animo.policy), trajectory = Animo.trajectory)
 

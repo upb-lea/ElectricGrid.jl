@@ -60,7 +60,7 @@ env = ElectricGridEnv(
     reward_function = reward_function,
     action_delay = 0)
 
-#agent = create_agent_ddpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]), ns = length(state(env, "my_ddpg")), use_gpu = false)
+#agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]), ns = length(state(env, "my_ddpg")), use_gpu = false)
 
 
 rng = StableRNG(1)
@@ -69,13 +69,13 @@ init = glorot_uniform(rng)
 ns = length(env.agent_dict["my_ddpg"]["state_ids"])
 na = length(env.agent_dict["my_ddpg"]["action_ids"])
 
-create_actor() = Chain(
+CreateActor() = Chain(
     Dense(ns, 30, relu; init = init),
     Dense(30, 30, relu; init = init),
     Dense(30, 1, tanh; init = init),
 ) |> gpu
 
-create_critic() = Chain(
+CreateCritic() = Chain(
     Dense(ns + na, 30, relu; init = init),
     Dense(30, 30, relu; init = init),
     Dense(30, 1; init = init),
@@ -84,19 +84,19 @@ create_critic() = Chain(
 agent = Agent(
     policy = DDPGPolicy(
         behavior_actor = NeuralNetworkApproximator(
-            model = create_actor(),
+            model = CreateActor(),
             optimizer = ADAM(),
         ),
         behavior_critic = NeuralNetworkApproximator(
-            model = create_critic(),
+            model = CreateCritic(),
             optimizer = ADAM(),
         ),
         target_actor = NeuralNetworkApproximator(
-            model = create_actor(),
+            model = CreateActor(),
             optimizer = ADAM(),
         ),
         target_critic = NeuralNetworkApproximator(
-            model = create_critic(),
+            model = CreateCritic(),
             optimizer = ADAM(),
         ),
         γ = 0.99f0,

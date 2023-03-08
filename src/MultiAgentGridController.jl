@@ -110,7 +110,7 @@ function setup_agents(env, custom_agents = nothing)
     for (name, config) in env.agent_dict
 
         if config["mode"] == "JEG_ddpg"
-            agent = create_agent_ddpg(na = length(env.agent_dict[name]["action_ids"]),
+            agent = CreateAgentDdpg(na = length(env.agent_dict[name]["action_ids"]),
                                         ns = length(state(env, name)),
                                         use_gpu = false)
 

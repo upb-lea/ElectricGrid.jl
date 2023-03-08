@@ -15,11 +15,11 @@ using MacroTools: @forward
 
 #re-definition needed to use JEG-internal action-space functions
 function RLBase.update!(
-    trajectory::AbstractTrajectory,
-    policy::AbstractPolicy,
-    env::ElectricGridEnv,
-    ::PostEpisodeStage,
-)
+        trajectory::AbstractTrajectory,
+        policy::AbstractPolicy,
+        env::ElectricGridEnv,
+        ::PostEpisodeStage,
+    )
     # Note that for trajectories like `CircularArraySARTTrajectory`, data are
     # stored in a SARSA format, which means we still need to generate a dummy
     # action at the end of an episode.
@@ -40,36 +40,36 @@ function RLBase.update!(
 end
 
 
-Base.@kwdef struct JEGNeuralNetworkApproximator{M,O} <: AbstractApproximator
+Base.@kwdef struct CustomNeuralNetworkApproximator{M,O} <: AbstractApproximator
     model::M
     optimizer::O = nothing
 end
 
 # some model may accept multiple inputs
-(app::JEGNeuralNetworkApproximator)(args...; kwargs...) = app.model(args...; kwargs...)
+(app::CustomNeuralNetworkApproximator)(args...; kwargs...) = app.model(args...; kwargs...)
 
-@forward JEGNeuralNetworkApproximator.model Flux.testmode!,
+@forward CustomNeuralNetworkApproximator.model Flux.testmode!,
 Flux.trainmode!,
 Flux.params,
 device
 
-functor(x::JEGNeuralNetworkApproximator) =
-    (model=x.model,), y -> JEGNeuralNetworkApproximator(y.model, x.optimizer)
+functor(x::CustomNeuralNetworkApproximator) =
+    (model=x.model,), y -> CustomNeuralNetworkApproximator(y.model, x.optimizer)
 
-RLBase.update!(app::JEGNeuralNetworkApproximator, gs) =
+RLBase.update!(app::CustomNeuralNetworkApproximator, gs) =
     Flux.Optimise.update!(app.optimizer, Flux.params(app), gs)
 
-Base.copyto!(dest::JEGNeuralNetworkApproximator, src::JEGNeuralNetworkApproximator) =
+Base.copyto!(dest::CustomNeuralNetworkApproximator, src::CustomNeuralNetworkApproximator) =
     Flux.loadparams!(dest.model, Flux.params(src))
 
-mutable struct JEGDDPGPolicy{
-    BA<:JEGNeuralNetworkApproximator,
-    BC<:JEGNeuralNetworkApproximator,
-    TA<:JEGNeuralNetworkApproximator,
-    TC<:JEGNeuralNetworkApproximator,
-    P,
-    R<:AbstractRNG,
-} <: AbstractPolicy
+mutable struct CustomDDPGPolicy{
+        BA<:CustomNeuralNetworkApproximator,
+        BC<:CustomNeuralNetworkApproximator,
+        TA<:CustomNeuralNetworkApproximator,
+        TC<:CustomNeuralNetworkApproximator,
+        P,
+        R<:AbstractRNG,
+    } <: AbstractPolicy
 
     behavior_actor::BA
     behavior_critic::BC
@@ -92,7 +92,7 @@ mutable struct JEGDDPGPolicy{
     critic_loss::Float32
 end
 
-Flux.functor(x::JEGDDPGPolicy) = (
+Flux.functor(x::CustomDDPGPolicy) = (
     ba = x.behavior_actor,
     bc = x.behavior_critic,
     ta = x.target_actor,
@@ -106,27 +106,27 @@ y -> begin
     x
 end
 
-function JEGDDPGPolicy(;
-    behavior_actor,
-    behavior_critic,
-    target_actor,
-    target_critic,
-    start_policy,
-    γ = 0.99f0,
-    ρ = 0.995f0,
-    na = 1,
-    batch_size = 32,
-    start_steps = 10000,
-    update_after = 1000,
-    update_freq = 50,
-    act_limit = 1.0,
-    act_noise = 0.1,
-    update_step = 0,
-    rng = Random.GLOBAL_RNG,
-)
+function CustomDDPGPolicy(;
+        behavior_actor,
+        behavior_critic,
+        target_actor,
+        target_critic,
+        start_policy,
+        γ = 0.99f0,
+        ρ = 0.995f0,
+        na = 1,
+        batch_size = 32,
+        start_steps = 10000,
+        update_after = 1000,
+        update_freq = 50,
+        act_limit = 1.0,
+        act_noise = 0.1,
+        update_step = 0,
+        rng = Random.GLOBAL_RNG,
+    )
     copyto!(behavior_actor, target_actor)  # force sync
     copyto!(behavior_critic, target_critic)  # force sync
-    JEGDDPGPolicy(
+    CustomDDPGPolicy(
         behavior_actor,
         behavior_critic,
         target_actor,
@@ -148,11 +148,11 @@ function JEGDDPGPolicy(;
     )
 end
 
-function (::JEGDDPGPolicy)(::AbstractStage, ::AbstractEnv)
+function (::CustomDDPGPolicy)(::AbstractStage, ::AbstractEnv)
     nothing
 end
 
-function (p::JEGDDPGPolicy)(env::ElectricGridEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
+function (p::CustomDDPGPolicy)(env::ElectricGridEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
     p.update_step += 1
 
     if p.update_step <= p.start_steps
@@ -173,18 +173,18 @@ function (p::JEGDDPGPolicy)(env::ElectricGridEnv, name::Union{Nothing, String} =
 end
 
 function RLBase.update!(
-    p::JEGDDPGPolicy,
-    traj::CircularArraySARTTrajectory,
-    ::AbstractEnv,
-    ::PreActStage,
-)
+        p::CustomDDPGPolicy,
+        traj::CircularArraySARTTrajectory,
+        ::AbstractEnv,
+        ::PreActStage,
+    )
     length(traj) > p.update_after || return
     p.update_step % p.update_freq == 0 || return
     inds, batch = sample(p.rng, traj, BatchSampler{SARTS}(p.batch_size))
     RLBase.update!(p, batch)
 end
 
-function RLBase.update!(p::JEGDDPGPolicy, batch::NamedTuple{SARTS})
+function RLBase.update!(p::CustomDDPGPolicy, batch::NamedTuple{SARTS})
     s, a, r, t, s′ = send_to_device(device(p), batch)
 
     A = p.behavior_actor
@@ -237,35 +237,35 @@ end
 global rngg = StableRNG(123)
 global initt = Flux.glorot_uniform(rngg)
 
-global create_actor(na, ns) = Chain(
+global CreateActor(na, ns) = Chain(
     Dense(ns, 20, relu; init = initt),
     Dense(20, 10, relu; init = initt),
     Dense(10, na, tanh; init = initt),
 )
 
-global create_critic(na, ns) = Chain(
+global CreateCritic(na, ns) = Chain(
     Dense(ns + na, 20, relu; init = initt),
     Dense(20, 10, relu; init = initt),
     Dense(10, 1; init = initt),
 )
 
-function create_agent_ddpg(;na, ns, batch_size = 32, use_gpu = true)
+function CreateAgentDdpg(;na, ns, batch_size = 32, use_gpu = true)
     Agent(
-        policy = JEGDDPGPolicy(
-            behavior_actor = JEGNeuralNetworkApproximator(
-                model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
+        policy = CustomDDPGPolicy(
+            behavior_actor = CustomNeuralNetworkApproximator(
+                model = use_gpu ? CreateActor(na, ns) |> gpu : CreateActor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
-            behavior_critic = JEGNeuralNetworkApproximator(
-                model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
+            behavior_critic = CustomNeuralNetworkApproximator(
+                model = use_gpu ? CreateCritic(na, ns) |> gpu : CreateCritic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
-            target_actor = JEGNeuralNetworkApproximator(
-                model = use_gpu ? create_actor(na, ns) |> gpu : create_actor(na, ns),
+            target_actor = CustomNeuralNetworkApproximator(
+                model = use_gpu ? CreateActor(na, ns) |> gpu : CreateActor(na, ns),
                 optimizer = Flux.ADAM(),
             ),
-            target_critic = JEGNeuralNetworkApproximator(
-                model = use_gpu ? create_critic(na, ns) |> gpu : create_critic(na, ns),
+            target_critic = CustomNeuralNetworkApproximator(
+                model = use_gpu ? CreateCritic(na, ns) |> gpu : CreateCritic(na, ns),
                 optimizer = Flux.ADAM(),
             ),
             γ = 0.999f0,

@@ -30,7 +30,7 @@ end
 
 @testset "Agent" begin
     #env = ElectricGridEnv()
-    #agent = create_agent_ddpg(na = length(env.action_space), ns = length(env.state_space), use_gpu = false)
+    #agent = CreateAgentDdpg(na = length(env.action_space), ns = length(env.state_space), use_gpu = false)
 
     #@test length(agent(env)) == length(env.action_space)
 end

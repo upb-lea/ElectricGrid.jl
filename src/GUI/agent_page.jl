@@ -12,7 +12,7 @@ function prepare_env()
     ns = length(env.sys_d.A[1,:])
     na = length(env.sys_d.B[1,:])
     
-    global agent = create_agent_ddpg(na = na, ns = ns)
+    global agent = CreateAgentDdpg(na = na, ns = ns)
 
     global hook = data_hook(save_best_NNA = true, plot_rewards = false)
 
