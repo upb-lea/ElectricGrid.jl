@@ -2,6 +2,8 @@ using Test
 using JEG
 using JuMP
 
+import JEG
+
 include("utils.jl")
 
 # Simple one source - one load model that optimiser can solve feasibly
