@@ -54,7 +54,7 @@ db/*.sqlite
 
 # Jupyter Nodebook
 */.ipynb_checkpoints/
-examples/notebooks/.ipynb_checkpoints/*
+**/.ipynb_checkpoints/
 
 # pre_investigations
 pre_investigations/*
