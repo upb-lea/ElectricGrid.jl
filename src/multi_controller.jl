@@ -30,7 +30,7 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
     for agent in values(A.agents)
-        action[findall(x -> x in agent["action_ids"], A.action_ids)] = agent["policy"](env, training)
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training)
     end
 
     return action

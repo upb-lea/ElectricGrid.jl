@@ -425,6 +425,7 @@ end
 RLBase.action_space(env::ElectricGridEnv) = env.action_space
 RLBase.state_space(env::ElectricGridEnv) = env.state_space
 RLBase.reward(env::ElectricGridEnv) =  env.reward
+RLBase.DynamicStyle(env::ElectricGridEnv) =  RLBase.Simultaneous
 
 function RLBase.reward(env::ElectricGridEnv, name::String)
     return env.reward_function(env, name)
