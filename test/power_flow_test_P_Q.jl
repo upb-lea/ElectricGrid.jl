@@ -1,12 +1,13 @@
 using JEG
 using Test
+using LinearAlgebra
+using Distributions
 
 import JEG
 
-
-Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-t_end = 0.8     # total run time, seconds
-num_eps = 1       # number of episodes to run
+Timestep = 100e-6   # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+t_end = 0.8         # total run time, seconds
+num_eps = 1         # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -15,8 +16,10 @@ num_eps = 1       # number of episodes to run
 #         0. 0. 2.
 #         -1. -2. 0.]
 
-CM = [0.0 1.0
-    -1.0 0.0]
+CM =[
+        0.0 1.0
+       -1.0 0.0
+    ]
 
 #-------------------------------------------------------------------------------
 # Parameters
@@ -28,33 +31,34 @@ CM = [0.0 1.0
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-
 R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.95, 230)
 
 parameters = Dict{Any,Any}(
     "source" => Any[
         Dict{Any,Any}(
-            "pwr" => 200e3,
-            "mode" => 1,
-            "fltr" => "L",
-            "L1" => 1e-6,
-            "R1" => 1e-6,
-            "v_pu_set" => 1.0,
-            "v_δ_set" => 0.0,
+            "pwr"       => 200e3,
+            "mode"      => 1,
+            "fltr"      => "L",
+            "L1"        => 1e-6,
+            "R1"        => 1e-6,
+            "v_pu_set"  => 1.0,
+            "v_δ_set"   => 0.0,
         ),
     ],
 
     "load" => Any[
         Dict{Any,Any}(
             "impedance" => "RL", 
-            "R" => R_load, 
-            "L" => L_load
+            "R"         => R_load, 
+            "L"         => L_load
         ),
     ],
 
-    "grid" => Dict{Any,Any}(
-                "ramp_end" => 0.04,
-                "phase" => 3)
+    "grid" => 
+        Dict{Any,Any}(
+            "ramp_end"  => 0.04,
+            # "phase"     => 3
+        )
 )
 #_______________________________________________________________________________
 # Defining the environment
@@ -87,30 +91,24 @@ RenderHookResults(hook=hook,
 
 @testset "Power flow equations: power balance" begin
 
-    # TODO: Compare P Q values 
-    # Time domain : p, q
-    # Freq domain : P, Q
-    # Collect steady state values from DataHook
-    # p q values from DataHook
-    
-    num_sources = env.nc.num_sources
-    num_loads = env.nc.num_loads
-    parameters = env.nc.parameters
+    # Compare p q values from DataHook with the values calculated from the power flow equations 
+    # (i.e. check that the power flow equations are correct)
 
     p_test = 0
     q_test = 0
 
     for i in 1:env.nc.num_sources
-        p_test += hook.df[!, "source$(i)_p_inv"][end]
-        q_test += hook.df[!, "source$(i)_q_inv"][end]
+        p_test += mean(hook.df[!, "source$(i)_p_inv"][end-50:end])
+        q_test += mean(hook.df[!, "source$(i)_q_inv"][end-50:end])
     end
 
-    @show p_test, q_test
+    @show p_test
+    @show q_test
+    @show norm(p_test, q_test)
 
-    # total_P_load, total_Q_load, s_load_total, total_S_source = CheckPowerBalance(parameters, num_sources, num_loads, CM)
-
-    @show 3*[JEG.P_source, JEG.Q_source]
+    @show 3 * sum(JEG.P_source) 
+    @show 3*  sum(JEG.Q_source)
     
-    @test (p_test - 3 * JEG.P_source[1]) < 1e1 
-    # @test q_test ≈ 3 * JEG.Q_source 
+    @test p_test - 3 * sum(JEG.P_source) < 1e1 
+    # @test q_test - 3 * sum(JEG.Q_source) < 1e1 
 end
