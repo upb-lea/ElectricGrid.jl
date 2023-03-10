@@ -2,7 +2,7 @@ using JEG
 using Test
 using Logging
 
-global_logger(CustomLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = false, log_level = Logging.Error, log_level_file = Logging.Debug))
+global_logger(CustomLogger(file_name=split(string(@__FILE__), "\\")[end], add_timestamp=false, log_file=false, log_level=Logging.Error, log_level_file=Logging.Debug))
 
 
 @testset "NodeConstructor" begin
@@ -45,10 +45,14 @@ end
 
 end
 
-# Need to define where this should go
 @testset "Optimizer" begin
     include("./env_test_optimizer_status.jl")
 end
+
+@testset " P Q Test" begin
+    include("./power_flow_test_P_Q.jl")
+end
+
 
 #@testset "env_run_1" begin
 #    @test 1==1
