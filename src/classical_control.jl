@@ -1694,25 +1694,6 @@ Inner current control with anti-windup.
 """
 function CurrentController(Source::ClassicalControls, num_source, θ, ω; Kb = 0.5)
 
-    #= Theory:
-        When a grid-connected inverter is controlled as a current supply, the output
-        voltage is mainted by the grid and the inverter only regulates current exchanged
-        with the grid. Some simplified synchronizing methods can be adopted and no
-        extra effort is needed to design the synchronizing unit. Because of the
-        simplified control structure and the reduced demand on the synchronization
-        unit, it is well known that it is much easier to control a grid-connected inverter
-        as a current supply than to control it as a voltage supply. However, when an
-        inverter is controlled as a current supply, it causes undesirable problems.
-        For example, the controller needs to be changed when the inverter is disconnected
-        from the grid to operate in the standalone mode or when the grid is weak because,
-        it does not have the capability of regulating the voltage. A current-controlled
-        inverter may also continue injecting currents into the grid when there is
-        a fault on the grid, which might cause excessively high voltage. Moreover, for
-        a current-controlled inverter is difficult to take part in the regulation of
-        the grid frequency and voltage, which is a must when the penetration of
-        renewable energy exceeds a certain level.
-    =#
-
     Kp = Source.I_kp[num_source]
     Ki = Source.I_ki[num_source]
 

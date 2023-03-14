@@ -3,12 +3,12 @@ using JEG
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
-# Network Configuration 
+# Network Configuration
 
 #-------------------------------------------------------------------------------
 # Time simulation
 
-t_end    = 0.5     # total run time, seconds
+t_end    = 0.08     # total run time, seconds
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -30,33 +30,36 @@ CM = [ 0. 0. 1.
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.99, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(50e3, 0.99, 230)
+R_load₂, C_load, _, _ = ParallelLoadImpedance(50e3, -0.99, 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 400e3, 
+                        Dict{Any, Any}("pwr" => 400e3,
                                         "mode" => "VSG",
+                                        "fltr" => "LC",
                                         "v_δ_set" => 4),
-                        Dict{Any, Any}("pwr" => 100e3, 
-                                        "fltr" => "L",
-                                        "mode" => "PQ", 
-                                        "p_set" => 50e3, 
-                                        "q_set" => 10e3, 
+                        Dict{Any, Any}("pwr" => 100e3,
+                                        "fltr" => "LCL",
+                                        "mode" => "PQ",
+                                        "p_set" => 50e3,
+                                        "q_set" => 10e3,
                                         "v_pu_set" => 1.0,
                                         "v_δ_set" => 1),
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", 
-                                        "R" => R_load, 
+                        Dict{Any, Any}("impedance" => "RLC",
+                                        "R" => R_load + R_load₂,
                                         "L" => L_load,
+                                        "C" => C_load,
                                         "v_limit" => 10e3),
                         ],
         "cable"   => Any[
-                        Dict{Any, Any}("R" => 0.1, 
-                                        "L" => 0.0025e-3, 
+                        Dict{Any, Any}("R" => 0.1,
+                                        "L" => 0.0025e-3,
                                         "C" => 0.001e-4),
-                        Dict{Any, Any}("R" => 0.1, 
-                                        "L" => 0.0025e-3, 
+                        Dict{Any, Any}("R" => 0.1,
+                                        "L" => 0.0025e-3,
                                         "C" => 0.001e-4),
                         ],
     )
@@ -66,34 +69,37 @@ parameters = Dict{Any, Any}(
 env = ElectricGridEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity = 2)
 
 #_______________________________________________________________________________
-# initialising the agents 
+# initialising the agents
 
 Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
-# running the time simulation 
+# running the time simulation
 
 hook = Simulate(Multi_Agent, env)
 
 #_______________________________________________________________________________
 # Plotting
 
-RenderHookResults(hook = hook, 
-                    states_to_plot  = [], 
-                    actions_to_plot = [],  
-                    power_p_inv     = [2], 
-                    power_q_inv     = [2], 
-                    power_p_poc     = [], 
-                    power_q_poc     = [], 
-                    v_mag_inv       = [], 
-                    v_mag_cap       = [1 2], 
+p = RenderHookResults(hook = hook,
+                    states_to_plot  = ["source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"],
+                    actions_to_plot = [],
+                    power_p_inv     = [],
+                    power_q_inv     = [],
+                    power_p_poc     = [],
+                    power_q_poc     = [],
+                    v_mag_inv       = [],
+                    v_mag_cap       = [],
                     i_mag_inv       = [],
                     i_mag_poc       = [],
                     i_sat           = [],
                     i_dq            = [],
                     v_dq            = [],
-                    freq            = [1 2],
-                    angles          = [1 2])
+                    freq            = [],
+                    angles          = [],
+                    return_plot = true)
+
+#PlotlyJS.savefig(p, "plotlyjs_test.png")
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
