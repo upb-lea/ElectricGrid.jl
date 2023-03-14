@@ -31,7 +31,7 @@ CM =[
     4 -> "Synchronverter" - enhanced droop control
 =#
 
-R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.95, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(100e3, 0.95, 230)  #kVA, PF, Vrms
 
 parameters = Dict{Any,Any}(
     "source" => Any[
@@ -39,8 +39,8 @@ parameters = Dict{Any,Any}(
             "pwr"       => 200e3,
             "mode"      => 1,
             "fltr"      => "L",
-            "L1"        => 1e-6,
-            "R1"        => 1e-6,
+            "L1"        => 1e-6, #very small
+            "R1"        => 1e-6, #very small
             "v_pu_set"  => 1.0,
             "v_δ_set"   => 0.0,
         ),
@@ -93,6 +93,8 @@ RenderHookResults(hook=hook,
 
     # Compare p q values from DataHook with the values calculated from the power flow equations 
     # (i.e. check that the power flow equations are correct)
+
+    # multiply current phasor with filter impedance --> add it to Q_source (!)
 
     p_test = 0
     q_test = 0
