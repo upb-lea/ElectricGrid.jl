@@ -1,4 +1,5 @@
 using JEG
+using PlotlyJS
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -83,7 +84,7 @@ hook = Simulate(Multi_Agent, env)
 # Plotting
 
 p = RenderHookResults(hook = hook,
-                    states_to_plot  = ["source2_i_L1_a", "source2_i_L1_b", "source2_i_L1_c"],
+                    states_to_plot  = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c"],
                     actions_to_plot = [],
                     power_p_inv     = [],
                     power_q_inv     = [],
@@ -100,6 +101,8 @@ p = RenderHookResults(hook = hook,
                     angles          = [],
                     return_plot = true)
 
-#PlotlyJS.savefig(p, "plotlyjs_test.png")
+
+PlotlyJS.savefig(p, "VSG_voltages.png", width = 800, height = 550)
+#PlotlyJS.savefig(p, "VSG_voltages.png")
 
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
