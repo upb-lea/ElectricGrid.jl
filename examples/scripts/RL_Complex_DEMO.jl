@@ -2,9 +2,12 @@ using JEG
 using ReinforcementLearning
 
 """
-This scipt contains the content of the RL_Classical_Controllers_Merge_DEMO.ipynb notebook.
+This scipt contains the content of the RL_Complex_DEMO.ipynb notebook.
 For comments and more documentation see refering notebookin examples/notebooks
 """
+CM = [0.0   1.0  0
+     -1.0   0.0  2.0
+     0  -2.0  0.0]
 
 parameters =
 Dict{Any, Any}(
@@ -18,17 +21,21 @@ Dict{Any, Any}(
                         "pwr" => 200e3,
                         "fltr" => "LC",
                         "control_type" =>
-                        "classic", "mode" => 1),
+                        "RL", "mode" => "my_ddpg"),
+                    Dict{Any, Any}(
+                        "pwr" => 200e3,
+                        "fltr" => "L",
+                        "control_type" =>
+                        "RL", "mode" => "my_ddpg"),
                     ],
     "grid" => Dict{Any, Any}(
-        "phase" => 3,
+        "phase" => 1,
         "ramp_end" => 0.04,)
 )
 
 function reference(t)
-    θ = 2*pi*50*t
-    θph = [θ; θ - 120π/180; θ + 120π/180]
-    return -10 * cos.(θph)
+
+    return [-10, 230, -15]
 end
 
 featurize_ddpg = function(state, env, name)
@@ -40,9 +47,9 @@ end
 
 function reward_function(env, name = nothing)
     if name == "my_ddpg"
-        state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1_a", env.state_ids)]
-        state_to_control_2 = env.state[findfirst(x -> x == "source1_i_L1_b", env.state_ids)]
-        state_to_control_3 = env.state[findfirst(x -> x == "source1_i_L1_c", env.state_ids)]
+        state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1", env.state_ids)]
+        state_to_control_2 = env.state[findfirst(x -> x == "source2_v_C_filt", env.state_ids)]
+        state_to_control_3 = env.state[findfirst(x -> x == "source3_i_L1", env.state_ids)]
 
         state_to_control = [state_to_control_1, state_to_control_2, state_to_control_3]
 
@@ -62,6 +69,7 @@ function reward_function(env, name = nothing)
 end
 
 env = ElectricGridEnv(
+    CM = CM,
     parameters = parameters,
     t_end = 1,
     featurize = featurize_ddpg,
