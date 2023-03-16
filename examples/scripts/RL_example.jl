@@ -123,7 +123,7 @@ controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
 #run(ma["JEG_ddpg_1"]["policy"], env)
 
-Learn(controllers, env, num_episodes = 5)
+Learn(controllers, env, num_episodes = 80)
 
 #Learn(agent, env)
 
