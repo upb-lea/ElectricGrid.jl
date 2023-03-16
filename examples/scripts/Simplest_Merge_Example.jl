@@ -40,15 +40,15 @@ R_load, L_load, X, Z = ParallelLoadImpedance(S_load, pf_load, v_rms)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
-                        Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "fltr" => "L"),
-                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "RL"),
+                        #Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "fltr" => "L"),
+                        Dict{Any, Any}("pwr" => 200e3, "fltr" => "L", "control_type" => "RL"),
                         Dict{Any, Any}("pwr" => 200e3, "fltr" => "LC", "control_type" => "classic", "mode" => 1),
                         #Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "sac", "fltr" => "L"),
                         #Dict{Any, Any}("pwr" => 200e3, "control_type" => "RL", "mode" => "ddpg2", "fltr" => "L"),
                         ],
-         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load,"v_limit"=>1e4, "i_limit"=>10e4),
-                        ],
+         #"load"   => Any[
+         #               Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load,"v_limit"=>1e4, "i_limit"=>10e4),
+         #               ],
         #"cable"   => Any[
         #                Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-8, "i_limit" => 10e8,"v_limit"=>1000, ),
          #               ],
@@ -99,7 +99,7 @@ end
 
 
 
-env = ElectricGridEnv(ts = Timestep, num_sources = 3, num_loads = 1, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
+env = ElectricGridEnv(ts = Timestep, num_sources = 2, num_loads = 0, parameters = parameters, t_end = t_end, verbosity = 2, reward_function = reward, action_delay = 0)
 
 #_______________________________________________________________________________
 # Setting up data hooks
