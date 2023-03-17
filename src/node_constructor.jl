@@ -785,6 +785,8 @@ function CheckParameters(
 
         load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) *
             parameters["grid"]["phase"]
+
+        load["i_limit"] = sqrt(2)*0.9*parameters["grid"]["v_rms"] / abs(load["Z"])
     end
 
     # check cables
