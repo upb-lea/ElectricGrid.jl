@@ -38,7 +38,7 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
 
     v_dq = []
     v_mag_inv = []
-    v_mag_cap = []
+    v_mag_poc = []
     i_dq = []
     i_mag_inv = []
     i_mag_poc = []
@@ -251,7 +251,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
             end
         end
 
-        for idx in hook.v_mag_cap
+        for idx in hook.v_mag_poc
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 v_mag = ClarkeMag(ClassicalPolicy.Source.V_filt_cap[s_idx, :, end])

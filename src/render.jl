@@ -141,7 +141,7 @@ end
                         power_p_poc = [],
                         power_q_poc = [],
                         v_mag_inv   = [],
-                        v_mag_cap   = [],
+                        v_mag_poc   = [],
                         i_mag_inv   = [],
                         i_mag_poc   = [],
                         freq        = [],
@@ -163,7 +163,7 @@ end
 - `power_p_poc::Vector{Int}`: instantaneousreal power at the point of connection of the source [W]
 - `power_q_poc::Vector{Int}`: instantaneous imaginary power at the point of connection of the source [VAi]
 - `v_mag_inv::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase voltages at the terminals of the source [V]
-- `v_mag_cap::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase voltages at the filter capacitor of the source [V]
+- `v_mag_poc::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase voltages at the node just after the first filter inductor and resistor of the source [V]
 - `i_mag_inv::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase currents at the terminals of the source [A]
 - `i_mag_poc::Vector{Int}`: scaled L₂ norm in αβγ coordinates of the 3 phase currents flowing into the external network of the source [A]
 - `freq::Vector{Int}`: angular velocity of the 3 phase voltages over the capacior nearest to the source [Hz]
@@ -183,7 +183,7 @@ function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = n
     plot_reward = false, plot_reference = false, episode = 1, vdc_to_plot = [],
     power_p_inv = [], power_q_inv = [],
     power_p_poc = [], power_q_poc = [],
-    v_mag_inv = [], v_mag_cap = [],
+    v_mag_inv = [], v_mag_poc = [],
     i_mag_inv = [], i_mag_poc = [],
     freq = [], angles = [],
     i_sat = [], i_err = [], i_err_t = [],
@@ -283,7 +283,7 @@ function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = n
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag_inv"), mode="lines", name = "source$(idx)_v_mag_inv"))
         end
 
-        for idx in v_mag_cap #hook.collect_vrms_ids #
+        for idx in v_mag_poc #hook.collect_vrms_ids #
             push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag_cap"), mode="lines", name = "source$(idx)_v_mag_cap"))
         end
 
