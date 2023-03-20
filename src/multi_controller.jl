@@ -14,6 +14,22 @@ mutable struct MultiController <: AbstractPolicy
     hook
 end
 
+"""
+MultiController(agents, action_ids)
+
+# Description
+Constructs the MultiController providing different subfunctions mappen the correct env
+indices to the corresponding controllers and agents.
+
+# Arguments
+- `agents::Dict(NamedPolicy, ids)`: Contains all the agents as named policys with there
+    corresponding ids.
+- `action_ids::Vector{String}`: All env action indices.
+
+# Return Values
+- `Multi_Agent::MultiController`: the struct containing the initialised agents
+
+"""
 function MultiController(agents, action_ids)
     hook = DataHook(is_inner_hook_RL = true, plot_rewards = true)
 
@@ -30,7 +46,7 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
     for agent in values(A.agents)
-        action[findall(x -> x in agent["action_ids"], A.action_ids)] = agent["policy"](env, training)
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training)
     end
 
     return action
@@ -62,7 +78,7 @@ function ResetPolicy(A::MultiController)
     end
 end
 
-function ResetPolicy(np::NamedPolicy) 
+function ResetPolicy(np::NamedPolicy)
     ResetPolicy(np.policy)
 end
 
@@ -70,13 +86,17 @@ function ResetPolicy(::AbstractPolicy) end
 
 
 """
-    SetupAgents(env, hook; num_episodes = 1, return_Agents = false)
+    SetupAgents(env, custom_agents)
 
 # Description
 Initialises up the agents that will be controlling the electrical network.
+It depends on the control_type and mode in the parameter dict.
+Handles to connect the different controllers to the correcponding sources represended by
+there indices (for states and actions).
 
 # Arguments
 - `env::ElectricGridEnv`: mutable struct containing the environment.
+- `custom_agents::Dict{Agent}`: Dict of Agents. The key is used as name in the MultiController.
 
 # Return Values
 - `Multi_Agent::MultiController`: the struct containing the initialised agents
@@ -169,6 +189,24 @@ function SetupAgents(env, custom_agents = nothing)
 
 end
 
+
+"""
+hook = Simulate(controllers, env, num_episodes = 1 hook=hook)
+
+# Description
+Executed the given controllers in the environments for num_episodes. Fills thereby the hook.
+In case of RL agents deterministic actions are chosen, e.g., no action noise is used.
+
+# Arguments
+- `controllers::MultiController`: Contains controllers and agents
+- `env::ElectricGridEnv`: mutable struct containing the environment.
+- `num_episodes::Int`: Number of episodes simulated.
+- `hook::DataHook`: Stores the data to measure in a DataFrame.
+
+# Return Values
+- `hook::DataHook`: Measured data.
+
+"""
 function Simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
@@ -182,6 +220,23 @@ function Simulate(Multi_Agent, env; num_episodes = 1, hook = nothing)
     return hook
 end
 
+"""
+hook = Learn(controllers, env, num_episodes = 1 hook=hook)
+
+# Description
+Executed the given controllers in the environments for num_episodes. Fills thereby the hook.
+Here the RL agents are training and e.g. action noise is applied.
+
+# Arguments
+- `controllers::MultiController`: Contains controllers and agents
+- `env::ElectricGridEnv`: mutable struct containing the environment.
+- `num_episodes::Int`: Number of episodes simulated.
+- `hook::DataHook`: Stores the data to measure in a DataFrame.
+
+# Return Values
+- `hook::DataHook`: Measured data.
+
+"""
 function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     if isnothing(hook) # default hook
@@ -194,6 +249,7 @@ function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
 
     return hook
 end
+
 
 """
 which signals are the default ones if the user does not define a data hook for plotting
@@ -228,6 +284,10 @@ function DefaultDataHook(Multi_Agent, env)
     return hook
 end
 
+"""
+Wrapps the Run function form https://juliareinforcementlearning.org/ to enable turning off
+the action noise.
+"""
 function CustomRun(policy, env, stop_condition, hook, training = false)
 
     hook(PRE_EXPERIMENT_STAGE, policy, env, training)
