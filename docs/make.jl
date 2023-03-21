@@ -8,10 +8,10 @@ makedocs(
         "Welcome" => "index.md",
         "Guide" => [
             "Quick Start" => "quickstart.md",
-            "Configuring the Environment" => "quickstart.md",
-            "Set up Classical Controllers" => "quickstart.md",
-            "Set up Agents" => "quickstart.md",
-            "The Nodeconstructor" => "quickstart.md",
+            "Configuring the Environment" => "environment.md",
+            "Set up Classical Controllers" => "classical.md",
+            "Set up Agents" => "agents.md",
+            "The Nodeconstructor" => "nodeconstructor.md",
         ],
         "References" => "references.md",
     ]
