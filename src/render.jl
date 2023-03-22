@@ -284,7 +284,7 @@ function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = n
         end
 
         for idx in v_mag_poc #hook.collect_vrms_ids #
-            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag_cap"), mode="lines", name = "source$(idx)_v_mag_cap"))
+            push!(traces, scatter(df, x = :time, y = Symbol("source$(idx)_v_mag_poc"), mode="lines", name = "source$(idx)_v_mag_poc"))
         end
 
         for idx in i_mag_inv #hook.collect_irms_ids #

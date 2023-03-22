@@ -89,7 +89,7 @@ source["mode"]     = 2
 source["fltr"]     = "L"   # Filter type
 
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
-source["p_set"]    = -30e3   # Real Power Set Point, Watt
+source["p_set"]    = 30e3   # Real Power Set Point, Watt
 source["q_set"]    = -10e3   # Imaginary Power Set Point, VAi
 
 source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
@@ -238,15 +238,15 @@ for eps in 1:num_eps
                       states_to_plot  = [],
                       actions_to_plot = [],
                       power_p_inv     = [2],
-                      power_p_poc     = [2],
+                      power_p_poc     = [],
                       power_q_inv     = [2],
-                      power_q_poc     = [2],
-                      v_mag_inv       = [1 2],
-                      v_mag_poc       = [1 2],
+                      power_q_poc     = [],
+                      v_mag_inv       = [],
+                      v_mag_poc       = [],
                       i_mag_inv       = [],
                       i_mag_poc       = [],
-                      freq            = [1 2],
-                      angles          = [1 2],
+                      freq            = [],
+                      angles          = [],
                       i_sat           = [],
                       v_sat           = [],
                       i_err_t         = [],

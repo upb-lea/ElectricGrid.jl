@@ -498,7 +498,7 @@ function CheckParameters(
                     source["pf"] = source["p_set"] / source["pwr"]
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
                     s_set = sqrt(source["p_set"]^2 + source["q_set"]^2) *
-                        sign(source["p_set"] * source["q_set"])
+                        sign(source["q_set"])
                     if s_set == 0
                         source["pf"] = 1 / sqrt(2)
                     else

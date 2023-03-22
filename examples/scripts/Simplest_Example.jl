@@ -91,7 +91,7 @@ p = RenderHookResults(hook = hook,
                     power_p_poc     = [1 2],
                     power_q_poc     = [],
                     v_mag_inv       = [],
-                    v_mag_poc       = [],
+                    v_mag_poc       = [1],
                     i_mag_inv       = [],
                     i_mag_poc       = [],
                     i_sat           = [],
@@ -99,10 +99,8 @@ p = RenderHookResults(hook = hook,
                     v_dq            = [],
                     freq            = [],
                     angles          = [],
-                    return_plot = true)
+                    return_plot     = true)
 
-
-#PlotlyJS.savefig(p, "VSG_voltages.png", width = 800, height = 550)
 #PlotlyJS.savefig(p, "VSG_voltages.png")
-DrawGraph(env.nc)
+#DrawGraph(env.nc)
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

@@ -255,7 +255,7 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 v_mag = ClarkeMag(ClassicalPolicy.Source.V_filt_cap[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_v_mag_cap" => v_mag)
+                insertcols!(hook.tmp, "source$(idx)_v_mag_poc" => v_mag)
                 #insertcols!(hook.tmp, "source$(idx)_vrms_a" => ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
             end
         end
