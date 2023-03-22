@@ -1,6 +1,6 @@
 using Test
 using JEG
-using ReinforcementLearning
+
 CM = [0. 1.
     -1. 0.]
 
