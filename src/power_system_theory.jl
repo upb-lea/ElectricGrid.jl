@@ -671,12 +671,12 @@ end
 
 optimizer_status = Dict()
 function GetOptimizerStatus(model)
-    
+
     status = Dict(
                     "termination_status" => termination_status(model),
                     "primal_status"      => (primal_status(model)),
                     "objective_value"    => (objective_value(model))
-                )           
+                )
 
     return status
 end
@@ -1079,6 +1079,10 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
 
             if !haskey(parameters["cable"][i], "i_limit")
                 parameters["cable"][i]["i_limit"] = abs(Iₗ)
+            end
+
+            if !haskey(parameters["cable"][i], "v_limit")
+                parameters["cable"][i]["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
             end
 
             #=

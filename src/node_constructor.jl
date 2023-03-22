@@ -48,7 +48,7 @@ it can be generated automatically. `S2S_p` is the probability that a source is c
 another source and `S2L_p` is the probability that a source is connected to a load.
 """
 function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothing,
-    S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, ts=10000, verbosity=0)
+    S2S_p=0, S2L_p=1, L2L_p=0, ts=10000, verbosity=0)
     tot_ele = num_sources + num_loads
     cntr = 0
     num_connections = 0
@@ -797,7 +797,6 @@ function CheckParameters(
         for c in 1:num_connections
             push!(cable_list, SampleCable())
         end
-
         parameters["cable"] = cable_list
 
         if parameters["grid"]["pwr"] > 1e6
@@ -1177,7 +1176,8 @@ function SampleCable()
     cable["R"] = 0.208   # Ω, line resistance
     cable["L"] = 0.00025 # H, line inductance
     cable["C"] = 0.4e-3  # F, line capacitance
-    cable["i_limit"] = 10e12   # A, line current limit
+    #cable["i_limit"] = 10e12   # A, line current limit
+    #cable["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
 
     cable["Rb"] = 0.722 / cable["len"]
     cable["Cb"] = 0.4e-6 / cable["len"]
