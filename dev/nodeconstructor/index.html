@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>The Nodeconstructor · Julia Electric Grid</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.svg" alt="Julia Electric Grid logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">Julia Electric Grid</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Welcome</a></li><li><span class="tocitem">Guide</span><ul><li><a class="tocitem" href="../quickstart/">Quick Start</a></li><li><a class="tocitem" href="../environment/">Configuring the Environment</a></li><li><a class="tocitem" href="../classical/">Set up Classical Controllers</a></li><li><a class="tocitem" href="../agents/">Set up Agents</a></li><li class="is-active"><a class="tocitem" href>The Nodeconstructor</a><ul class="internal"><li><a class="tocitem" href="#Introduction"><span>Introduction</span></a></li><li><a class="tocitem" href="#Modelling-a-physical-grid"><span>Modelling a physical grid</span></a></li><li><a class="tocitem" href="#Automatic-generation-of-grids"><span>Automatic generation of grids</span></a></li><li><a class="tocitem" href="#Automatic-generation-of-the-grids"><span>Automatic generation of the grids</span></a></li><li><a class="tocitem" href="#Three-phase-simulation"><span>Three-phase simulation</span></a></li><li><a class="tocitem" href="#Access-to-the-different-states"><span>Access to the different states</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Guide</a></li><li class="is-active"><a href>The Nodeconstructor</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>The Nodeconstructor</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/docs/src/nodeconstructor.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="NodeConstructor-Demo"><a class="docs-heading-anchor" href="#NodeConstructor-Demo">NodeConstructor Demo</a><a id="NodeConstructor-Demo-1"></a><a class="docs-heading-anchor-permalink" href="#NodeConstructor-Demo" title="Permalink"></a></h1><p>The NodeConstructor has the goal to convert the physical system, here the grid, into a mathematical model. This mathematical model can then be used to simulate the behavior of the network. This notebook addresses the following points:</p><ul><li><h3>Introduction to the NodeConstructor</h3></li><li><h3>Representation of the physical grid</h3></li><li><h3>Building of the state-space matrices</h3></li></ul><h2 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h2><p><img src="../assets/OverviewJEG.png" alt="Illustration of where the NodeConstructor is located"/></p><p>The NodeConstructor is part of the enviroment (see graphic). Its function is to create the mathematical model of the grid to be simulated. The inputs for the NodeConstructor are the specifications of the grid, which will be discussed in more detail subsequently. Within the NodeConstructor, an ordinary differential equation (ODE) system is created based on the underlying physical models and properties of the individual components. Based on this ODE system, the necessary matrices can be extracted.</p><p>In the following, we will discuss how the mathematical model of an electrical power grid can be generated using the NodeConstructor.</p><h2 id="Modelling-a-physical-grid"><a class="docs-heading-anchor" href="#Modelling-a-physical-grid">Modelling a physical grid</a><a id="Modelling-a-physical-grid-1"></a><a class="docs-heading-anchor-permalink" href="#Modelling-a-physical-grid" title="Permalink"></a></h2><p>The following graphic shows a simple example grid:</p><p><img src="../assets/ExampleGrid.png" alt="Illustration of a simple network and its electrical equivalent circuit diagram."/></p><p>Two sources (wind turbine on the left and PV arrays on the right), as well as a load (exemplary of a household which is composed of various objects) can be seen in this. In addition, the sources are connected to the load via cables. For the sources, we assume that the voltage is provided by a DC link, so we can assume that the voltage can be modeled by a voltage source and a filter. Loads are divided into active loads, which, based on an internal function, can take power from the network, and passive loads, which are described by their resistive, capacitive and/or inductive components and thus dissipate a certain power. Cable modeling relies on the Pi equivalent circuit like depicted in the fiure below.</p><p>If you abstract the above figure and insert the respective components according to the description, you get the following single-phase circuit:</p><p><img src="../assets/ExampleGridCurcuit.png" alt="Abstraction of the previously presented example grid."/></p><p>With the help of this example, we will now discuss the derivation of a mathematical model and what information the NodeConstructor will later need to generate this model automatically.</p><h3 id="Fundamentals-of-electrical-engineering"><a class="docs-heading-anchor" href="#Fundamentals-of-electrical-engineering">Fundamentals of electrical engineering</a><a id="Fundamentals-of-electrical-engineering-1"></a><a class="docs-heading-anchor-permalink" href="#Fundamentals-of-electrical-engineering" title="Permalink"></a></h3><p>If we annotate the above equivalent circuit, we get the following representation:</p><p><img src="../assets/ExampleGridCurcuit_Annotations_Kirchhof.png" alt="Equivalent curcuit with annotations."/></p><p>In this, the components are annotated and the currents are noted with the technical flow direction. For the sake of clarity, the voltages are only indicated by green arrows, but have the same name as the corresponding component to which they are applied.</p><p>Based on the components within the equivalent circuit diagram, we can now construct the differential equations. Togehter with Kirchhoff&#39;s laws</p>$<p>\begin{align}     \sum<em>k^n i</em>k(t) &amp;= 0,\
+    \sum<em>k^n u</em>n(t) &amp;= 0 \end{align} $</p><p>and the component equations</p>$<p>\begin{align}     u(t) &amp;= R i(t),\
+    i(t) &amp;= C\dot u(t),\
+    u(t) &amp;= L\dot i(t). \end{align} $</p><p>This gives the following equation system:</p>$<p>\begin{align}     \text{M1:}\;&amp; 0 = u<em>{in1}  - u</em>{R11} - u<em>{L11} - u</em>{C11} - u<em>{RC1}, \tag{1}\label{equ:1}\
+    \text{M2:}\;&amp; 0 = u</em>{C11} + u<em>{RC1} - u</em>{Cb11},\tag{2}\label{equ:2}\
+    \text{M3:}\;&amp; 0 = u<em>{Cb11} - u</em>{Rb1} - u<em>{Lb1} - u</em>{Cb21},\tag{3}\label{equ:3}\
+    \text{M4:}\;&amp; 0 = u<em>{RL} - u</em>{LL}, \tag{4}\label{equ:4}\
+    \text{M5:}\;&amp; 0 = u<em>{Cb22} + u</em>{Rb2} + u<em>{Lb2} - u</em>{Cb12}, \tag{5}\label{equ:5}\
+    \text{M6:}\;&amp; 0 = u<em>{Cb12} + u</em>{R22} + u<em>{L22} - u</em>{C12} - u<em>{RC2}, \tag{6}\label{equ:6}\
+    \text{M7:}\;&amp; 0 = u</em>{RC2} + u<em>{C12} + u</em>{L12} + u<em>{R12} - u</em>{in2}, \tag{7}\label{equ:7}\
+    \text{N1:}\;&amp; 0 = i<em>{11} - i</em>{RC1} - i<em>{Cb11} - i</em>{Rb1}, \tag{8}\label{equ:8}\
+    \text{N2:}\;&amp; 0 = i<em>{Rb1} - i</em>{Cb21} - i<em>{CL} - i</em>{RL} - i<em>{LL} - i</em>{Cb22} + i<em>{Rb2}, \tag{9}\label{equ:9}\
+    \text{N3:}\;&amp; 0 = i</em>{22} - i<em>{Rb2} - i</em>{Cb21}, \tag{10}\label{equ:10}\
+    \text{N4:}\;&amp; 0 = i<em>{12} - i</em>{RC2} - i_{22}. \tag{11}\label{equ:11} \end{align} $</p><p>For the sake of clarity, the time dependencies are omitted here. For node 2 the connected capacitances are summed up, because there are several capacitors connected in parallel, e.g.:</p><p>\begin{equation}     C<em>{SL} = C</em>{b1} + C<em>L + C</em>{b2} \end{equation}</p><p>We then call this capacitor <span>$C_{SL}$</span> through which the current <span>$i_{CSL}$</span> flows and the voltage <span>$u_{CSL}$</span> is applied. Now we insert the component equations into the equations \ref{equ:1} to \ref{equ:11} and rearrange them,  so that an ODE system is obtained:</p><p>\begin{align}     \dot i<em>{11} &amp;= \frac{1}{L</em>{11}} \left( u<em>{in1}  - R</em>{11} i<em>{11} - R</em>{RC1} i<em>{RC1} - u</em>{C12} \right), \
+    \dot u<em>{C11} &amp;= \frac{1}{C</em>{11}R<em>{C11}} \left(u</em>{Cb11} - u<em>{RC1} \right), \
+    \dot i</em>{Rb1} &amp;= \frac{1}{L<em>{b1}} \left( u</em>{Cb11} - i<em>{Rb1} R</em>{b1} \right),\
+    \dot i<em>{LL} &amp;= \frac{1}{L</em>{L}} u<em>{CL}\
+    \dot i</em>{Rb2} &amp;= \frac{1}{L<em>{b2}} \left( u</em>{Cb12} - i<em>{Rb2} R</em>{b2} - u<em>{Cb22}\right),\
+    \dot i</em>{22} &amp;= \frac{1}{L<em>{22}} \left( u</em>{C12}  - i<em>{22} (R</em>{C2}+R<em>{22}) - R</em>{RC1} i<em>{RC2} - u</em>{Cb12} \right), \
+    \dot i<em>{12} &amp;= \frac{1}{L</em>{12}} \left( u<em>{in2}  - i</em>{12} (R<em>{12} + R</em>{RC1}) - R<em>{RC1} i</em>{C1} - u<em>{C12} \right), \
+    \dot u</em>{Cb11} &amp;= \frac{1}{C<em>{b1}} \left(i</em>{11} - i<em>{Rb1} - \frac{1}{R</em>{C1}} u<em>{Cb11} + \frac{1}{R</em>{C1}} u<em>{C11}\right)\
+    \dot u</em>{CSL} &amp;= \frac{1}{C<em>{SL}} \left( i</em>{Rb1} + i<em>{Rb2} - \frac{1}{R</em>{L}} u<em>{CSL} - i</em>{LL} \right)\
+    \dot u<em>{Cb12} &amp;= \frac{1}{C</em>{b2}} \left(i<em>{22} - i</em>{Rb2}\right).\
+    \dot u<em>{C12} &amp;= \frac{1}{C</em>{12}} \left(i<em>{12} - i</em>{22}\right).\
+\end{align}</p><p>These differential equations describe the system completely and could be solved for exampled using numerical solvers like Forward Euler or Runge-Kutta. </p><h3 id="Forming-the-system-matrices-from-the-ODEs"><a class="docs-heading-anchor" href="#Forming-the-system-matrices-from-the-ODEs">Forming the system matrices from the ODEs</a><a id="Forming-the-system-matrices-from-the-ODEs-1"></a><a class="docs-heading-anchor-permalink" href="#Forming-the-system-matrices-from-the-ODEs" title="Permalink"></a></h3><p>The differential equations found are now to be converted into the common state-space representation:</p><p>\begin{align}     \dot{\vec{x}}(t) &amp;= \mathbf{A} \vec{x}(t) + \mathbf{B} \vec{u}(t)\
+    \vec{y}(t) &amp;= \mathbf{C} \vec{x}(t) + \mathbf{D} \vec{u}(t) \end{align}</p><p>Since we are interested in how our grid evolves over time, the first equation is most relevant to our application. <span>$x(t)$</span> describes in general the state vector, <span>$\dot x(t)$</span> the changes of this state vector. The change of the system is described on the one hand by the system dynamics, which is expressed by the matrix <span>$\mathbf{A}$</span> and on the other hand by the input signals <span>$u(t)$</span> acting on the system combined with the matrix <span>$\mathbf{B}$</span>.</p><p>For our example, we can find the following state vector:</p><p>\begin{equation}     \vec{x}(t) =      \begin{pmatrix}         i<em>{11} &amp; u</em>{C11} &amp; u<em>{Cb11}  &amp; i</em>{12} &amp; u<em>{C12} &amp; i</em>{22} &amp; u<em>{Cb12} &amp; i</em>{Rb1} &amp; i<em>{Rb2} &amp; u</em>{CSL} &amp; i_{LL}     \end{pmatrix}^\top \end{equation}</p><p>and the following input vector:</p><p>\begin{equation}     \vec{u}(t) =      \begin{pmatrix}         u<em>{in1} &amp; u</em>{in2}     \end{pmatrix}^\top. \end{equation}</p><p>It should be noted that the order of the states here is first sources, then cables and finally the loads. </p><p>This leads for the investigated example to the following matrices:</p><p>\begin{equation}     \mathbf{A} =      \begin{pmatrix}         -\frac{R<em>{11}}{L</em>{11}} &amp; 0 &amp; -\frac{1}{L<em>{11}} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0\
+        0 &amp; -\frac{1}{C</em>{11} R<em>{C1}} &amp; \frac{1}{C</em>{11} R<em>{C1}} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0\
+        \frac{1}{C</em>{b1}} &amp; \frac{1}{C<em>{b1} R</em>{C1}} &amp; -\frac{1}{C<em>{b1} R</em>{C1}} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; -\frac{1}{C<em>{b1}} &amp; 0 &amp; 0 &amp; 0\
+        0 &amp; 0 &amp; 0 &amp; -\frac{R</em>{12} + R<em>{C2}}{L</em>{12}} &amp; -\frac{1}{L<em>{12}} &amp; \frac{R</em>{C2}}{L<em>{12}} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0\
+        0 &amp; 0 &amp; 0 &amp; \frac{1}{C</em>{12}} &amp; 0 &amp; -\frac{1}{C<em>{12}} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0\
+        0 &amp; 0 &amp; 0 &amp; \frac{R</em>{C2}}{L<em>{22}} &amp; \frac{1}{L</em>{22}} &amp; -\frac{R<em>{22} + R</em>{C2}}{L<em>{22}} &amp; -\frac{1}{L</em>{22}} &amp;0&amp;0&amp;0&amp;0\
+        0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{1}{C<em>{b2}} &amp; 0 &amp; 0 &amp; -\frac{1}{C</em>{b2}} &amp; 0 &amp; 0\
+        0 &amp; 0 &amp; \frac{1}{L<em>{b1}} &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; -\frac{R</em>{b1}}{L<em>{b1}} &amp; 0 &amp; -\frac{1}{L</em>{b1}} &amp; 0\
+        0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{1}{L<em>{b2}} &amp; 0 &amp; -\frac{R</em>{b2}}{L<em>{b1}} &amp; -\frac{1}{L</em>{b2}} &amp; 0\
+        0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{1}{C<em>{SL}} &amp; \frac{1}{C</em>{SL}} &amp; -\frac{1}{R<em>{L} C</em>{SL}} &amp; -\frac{1}{C<em>{SL}}\
+        0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \frac{1}{L</em>{L}} &amp; 0\
+    \end{pmatrix} \end{equation}</p><p>and</p><p>\begin{equation}     \mathbf{B} =      \begin{pmatrix}         \frac{1}{L<em>{11}} &amp; 0 \
+        0 &amp; 0 \
+        0 &amp; 0 \
+        0 &amp; \frac{1}{L</em>{12}} \
+        0 &amp; 0 \
+        0 &amp; 0 \
+        0 &amp; 0 \
+        0 &amp; 0 \
+        0 &amp; 0 \
+        0 &amp; 0 \
+        0 &amp; 0 \
+    \end{pmatrix} \end{equation}</p><h3 id="Solving-the-ODE-system"><a class="docs-heading-anchor" href="#Solving-the-ODE-system">Solving the ODE system</a><a id="Solving-the-ODE-system-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-ODE-system" title="Permalink"></a></h3><p>Theory of exact discritization</p><p>We now have the state-space matrices we need to simulate the grid.  There are several tools to solve the differential equations. We use the <code>ControlSystem</code> package (<a href="https://juliacontrol.github.io/ControlSystems.jl/latest/man/creating_systems/#ss-Creating-State-Space-Systems">Source</a>), to be more precise the <code>lsim()</code> function. (AST Lecture 3, Slide A_d 47 folgende, Quelle)</p><pre><code class="language-julia hljs">using ControlSystemsBase
+using LinearAlgebra
+using PlotlyJS</code></pre><p>Next we define some the values of the components:</p><pre><code class="language-julia hljs"># Source
+R = 1.1e-3
+L = 70e-6
+R_c = 7e-3
+C = 250e-6
+
+# Cable
+C_b = 1e-4/2
+L_b = 1e-4
+R_b = 1e-3
+
+# Load
+R_l = 100
+C_l = 1e-2
+L_l = 1e-2;</code></pre><p>Now we construct the matrices:</p><pre><code class="language-julia hljs">A = zeros((11,11))
+A[1,1] = -R/L
+A[1,3] = -1/L
+A[2,2] = -1/(C*R_c)
+A[2,3] = 1/(C*R_c)
+A[3,1] = 1/C_b
+A[3,2] = 1/(R_c*C_b)
+A[3,3] = -1/(R_c*C_b)
+A[3,8] = -1/C_b
+A[4,4] = -(R+R_c)/L
+A[4,5] = -1/L
+A[4,6] = R_c/L
+A[5,4] = 1/C
+A[5,6] = -1/C
+A[6,4] = R_c/L
+A[6,5] = 1/L
+A[6,6] = -(R+R_c)/L
+A[6,7] = -1/L
+A[7,6] = 1/C_b
+A[7,9] = -1/C_b
+A[8,3] = 1/L_b
+A[8,8] = -R_b/L_b
+A[8,10] = -1/L_b
+A[9,7] = 1/L_b
+A[9,9] = -R_b/L_b
+A[9,10] = -1/L_b
+
+C_SL = C_b + C_l + C_b
+
+A[10,8] = 1/C_SL
+A[10,9] = 1/C_SL
+A[10,10] = -1/(R_l*C_SL)
+A[10,11] = -1/C_SL
+A[11,10] = 1/L_l;</code></pre><pre><code class="language-julia hljs">B = zeros((11,2))
+
+B[1,1] = 1/L
+B[4,2] = 1/L;</code></pre><pre><code class="language-julia hljs">C = Diagonal(ones(11));</code></pre><pre><code class="language-julia hljs">D = 0;</code></pre><p>We convert the matrices into the discrete time domain and create a discrete StateSpace object with the help of <code>ControlSystems</code>. This object can then represent the dynamics of the system for a given time interval using the function <code>lsim()</code>.</p><pre><code class="language-julia hljs">ts = 1e-5
+Ad = exp(A*ts)
+Bd = A \ (Ad - C) * B
+sys_d = StateSpace(Ad, Bd, C, D, ts);</code></pre><pre><code class="language-julia hljs">ns = length(A[1,:]) # get num of states
+ni = length(B[1,:]) # get num of inputs
+t = collect(0:ts:0.1)
+x0 = [0.0 for i = 1:ns]
+u = [230.0 for i = 1:length(t)]
+uu = [u for i = 1:ni ]
+uuu = mapreduce(permutedims, vcat, uu);</code></pre><p>To use <code>lsim()</code> you need defined initial states <code>x0</code>, a time vector <code>t</code> and a input signal <code>u</code>. In our case we apply a jump to 230 V to the system.</p><pre><code class="language-julia hljs">xout, _, _, _ = lsim(sys_d,uuu,t,x0=x0);</code></pre><pre><code class="language-julia hljs">layout = Layout(xaxis_title=&quot;Time in µs&quot;, yaxis_title=&quot;v_C / V&quot;)
+p = plot(t, xout[5,:], layout)</code></pre><h2 id="Automatic-generation-of-grids"><a class="docs-heading-anchor" href="#Automatic-generation-of-grids">Automatic generation of grids</a><a id="Automatic-generation-of-grids-1"></a><a class="docs-heading-anchor-permalink" href="#Automatic-generation-of-grids" title="Permalink"></a></h2><p>The creation of a grid always follows a certain pattern and can therefore be automated. In this way, you can avoid errors that may arise from the handwritten rearrangement of the equations. It is therefore obvious to write an automatism for the generation, which generates the matrices on the basis of input parameters.</p><p>In this part of the notebook the above example shall be reproduced with the help of the NodeConstructor.</p><p>An important point is the information about how the components are connected by which cable. To pass this information to the NodeConstructor we introduce the connection matrix (<code>CM</code>).</p><h3 id="Connection-matrix"><a class="docs-heading-anchor" href="#Connection-matrix">Connection matrix</a><a id="Connection-matrix-1"></a><a class="docs-heading-anchor-permalink" href="#Connection-matrix" title="Permalink"></a></h3><p>The connection matrix specifies how the elements of the grid are connected. In our grid there are two basic elements: sources and loads, which are then connected via cables.</p><p>To get a better understanding of the CM, the CM of the previous example is shown below:</p><table><tr><th style="text-align: left">From\To</th><th style="text-align: center">Source 1</th><th style="text-align: center">Source 2</th><th style="text-align: center">Load 1</th></tr><tr><td style="text-align: left"><strong>Source 1</strong></td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">1</td></tr><tr><td style="text-align: left"><strong>Source 2</strong></td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">2</td></tr><tr><td style="text-align: left"><strong>Load 1</strong></td><td style="text-align: center">-1</td><td style="text-align: center">-2</td><td style="text-align: center">0</td></tr></table><p>The first column of the above matrix indicates which element we start from. The sources are considered first and after that the loads. The first row of the matrix indicates the elements to which we can connect. The number and order is identical to the first column.</p><p>Since our grid elements cannot be connected to themselves, there are always zeros on the main diagonal. In the second row of the table we can now identify the connections of the first source. This source is not connected to the second source but to the first load, which is why we find a &quot;1&quot; in this cell. We can read this entry as: &quot;Source 1 is connected to load 1 by cable 1&quot;. In the third row of the table above, all connections are made from source 2, which is connected to load 1 via cable 2. The fourth line contains the connections of the 1 load. As shown before, it is connected to source 1 and source 2, but the entries have a negative sign. The negative sign indicates that the flow direction of the current is assumed to be negative. The sign of the entries is taken into account when constructing the DGLs, but has no influence on the subsequent current flow in the simulation. The matrix is antisymmetric, which means that we have a mirroring of the matrix along the main diagonal with the sign of the entries reversed.</p><p>In Julia, this matrix then looks like this:</p><pre><code class="language-julia hljs">CM = [ 0  0  1
+       0  0  2
+      -1 -2  0];</code></pre><p>We now import the JuliaElectricGrid package:</p><pre><code class="language-julia hljs"># Import the package
+using JEG</code></pre><p>To reproduce the above example exactly, the important parameters must be passed through the parameter dict: </p><pre><code class="language-julia hljs"># Source
+R = 1.1e-3
+L = 70e-6
+R_c = 7e-3
+C = 250e-6
+
+# Cable
+C_b = 1e-4/2
+L_b = 1e-4
+R_b = 1e-3
+
+# Load
+R_l = 100
+C_l = 1e-2
+L_l = 1e-2;</code></pre><pre><code class="language-julia hljs">parameters = Dict()
+
+grid_properties = Dict()
+grid_properties[&quot;fs&quot;] =  10e3
+grid_properties[&quot;v_rms&quot;] = 230
+grid_properties[&quot;phase&quot;] = 1;
+parameters[&quot;grid&quot;] = grid_properties
+
+source1 = Dict()
+source2 = Dict()
+source_list = []
+
+source1[&quot;fltr&quot;] = &quot;LCL&quot;
+source1[&quot;R1&quot;] = R
+source1[&quot;L1&quot;] = L
+source1[&quot;C&quot;] = C
+source1[&quot;R_C&quot;] = R_c
+source1[&quot;R2&quot;] = R
+source1[&quot;L2&quot;] = L
+
+source2[&quot;fltr&quot;] = &quot;LC&quot;
+source2[&quot;R1&quot;] = R
+source2[&quot;L1&quot;] = L
+source2[&quot;C&quot;] = C
+source2[&quot;R_C&quot;] = R_c
+push!(source_list, source1, source2)
+
+parameters[&quot;source&quot;] = source_list
+
+cable = Dict()
+cable[&quot;R&quot;] = R_b
+cable[&quot;L&quot;] = L_b
+cable[&quot;C&quot;] = C_b
+cable_list = []
+
+push!(cable_list, cable, cable);
+parameters[&quot;cable&quot;] = cable_list
+
+load1 = Dict()
+load_list = []
+
+load1[&quot;impedance&quot;] = &quot;RLC&quot;
+load1[&quot;R&quot;] = R_l;
+load1[&quot;L&quot;] = L_l;
+load1[&quot;C&quot;] = C_l;
+
+push!(load_list, load1);
+parameters[&quot;load&quot;] = load_list;</code></pre><p>Now the NodeConstructor is called. In addition to the number of sources and loads, this also receives the CM and the parameter dict:</p><pre><code class="language-julia hljs">S2_L1 = NodeConstructor(num_sources=2, num_loads=1, parameters=parameters, CM=CM);</code></pre><p>With the function <code>DrawGraph()</code> the topology of the grid can now be displayed. Here, the color orange corresponds to a source and the color blue corresponds to a load.</p><pre><code class="language-julia hljs">DrawGraph(S2_L1)</code></pre><p>After the grid has been created it can be passed to the function <code>GetSystem()</code>, which then returns the matrices for the state space representation in the continous time domain.</p><pre><code class="language-julia hljs">A, B, C, D = GetSystem(S2_L1);</code></pre><p>We convert the matrices into the discrete time domain and create a discrete StateSpace object with the help of <code>ControlSystems</code>. This object can then represent the dynamics of the system for a given time interval using the function <code>lsim()</code>.</p><pre><code class="language-julia hljs">ts = 1e-5
+Ad = exp(A*ts)
+Bd = A \ (Ad - C) * B
+sys_d = StateSpace(Ad, Bd, C, D, ts);</code></pre><p>To use <code>lsim()</code> you need defined initial states <code>x0</code>, a time vector <code>t</code> and a input signal <code>u</code>. In our case we apply a jump to 250 V to the system.</p><pre><code class="language-julia hljs">ns = length(A[1,:]) # get num of states
+ni = length(B[1,:]) # get num of inputs
+t = collect(0:ts:0.1)
+x0 = [0.0 for i = 1:ns]
+u = [250.0 for i = 1:length(t)]
+uu = [u for i = 1:ni ]
+uuu = mapreduce(permutedims, vcat, uu);</code></pre><p><code>lsim()</code> now solves the difference equations for the given time steps and we can observe how the states evolve.</p><pre><code class="language-julia hljs">xout, _, _, _ = lsim(sys_d,uuu,t,x0=x0);</code></pre><p>Here we plot the voltage across the capacitor in the first source.</p><pre><code class="language-julia hljs">layout = Layout(xaxis_title=&quot;Time in µs&quot;, yaxis_title=&quot;v_C / V&quot;)
+p = plot(t, xout[2,:], layout)</code></pre><pre><code class="language-julia hljs"></code></pre><pre><code class="language-julia hljs"></code></pre><pre><code class="language-julia hljs"></code></pre><pre><code class="language-julia hljs"></code></pre><p>Manuell parameterization</p><p>.... Split up here .....</p><p>Automatic generation</p><h2 id="Automatic-generation-of-the-grids"><a class="docs-heading-anchor" href="#Automatic-generation-of-the-grids">Automatic generation of the grids</a><a id="Automatic-generation-of-the-grids-1"></a><a class="docs-heading-anchor-permalink" href="#Automatic-generation-of-the-grids" title="Permalink"></a></h2><p>An important feature is the creation of random node structures, where the parameters of the elements are chosen randomly. For fully connected structures, this can be generated, for example, using the parameters <code>S2S_p</code>, <code>L2L_p</code> and <code>S2L_p</code>. These indicate the connection probability of a source/load with any other source/load. If these parameters are set to 1, a fully connected node is generated.</p><pre><code class="language-julia hljs">S2_L2_FC = NodeConstructor(num_sources=2, num_loads=2, S2S_p=1, S2L_p=1);</code></pre><p>Let&#39;s check the CM matrix.</p><pre><code class="language-julia hljs">S2_L2_FC.CM</code></pre><p>With a look into the parameter dict we also see that the parameters of the individual elements were randomly generated. The current policy for the sources is that an LC filter is always taken and the other filter types are chosen randomly.</p><pre><code class="language-julia hljs">S2_L2_FC.parameters[&quot;source&quot;]</code></pre><p>For larger networks, of course, only the number of sources and loads can be handed over, so that the network structures are created on the basis of the default values. An important point here is that it is ensured that no subnets are created. By default, it is ensured that each element of the network has at least one connection to the other components of the network, so that no subnetworks are created.</p><p>Internally, this is done by checking for connections for each element. If these are not present, they are automatically created. For smaller networks it is advisable to specify a CM matrix, because otherwise usually too many connections are made than necessary. However, this is no longer noticeable with more than 10+ elements.</p><pre><code class="language-julia hljs">S5_L15 = NodeConstructor(num_sources=5, num_loads=15);</code></pre><h2 id="Three-phase-simulation"><a class="docs-heading-anchor" href="#Three-phase-simulation">Three-phase simulation</a><a id="Three-phase-simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Three-phase-simulation" title="Permalink"></a></h2><p>Until now, only single-phase grids have been created with NodeConstructor. However, the default value for the number of phases is 3, so we will now also consider the three-phase variant.</p><pre><code class="language-julia hljs">S5_L15 = NodeConstructor(num_sources=1, num_loads=2);</code></pre><pre><code class="language-julia hljs">S5_L15.parameters[&quot;grid&quot;][&quot;phase&quot;]</code></pre><pre><code class="language-julia hljs">A, B, C, D = GetSystem(S5_L15)
+ts = 1e-4
+Ad = exp(A*ts)
+Bd = A \ (Ad - C) * B
+sys_d = StateSpace(Ad, Bd, C, D, ts);</code></pre><p>We then collect a few useful variables and set the time horizon for the simulation.</p><pre><code class="language-julia hljs">ns = S5_L15.num_spp  # get num of states per phase
+ni = S5_L15.num_sources # get num of inputs per phase
+t = collect(0:ts:1);</code></pre><p>Next we want to generate the three-phase input signals and repeat it for the number of sources:</p><pre><code class="language-julia hljs"># Stepfunction
+u = sqrt(2)*[230, 0, -230]
+uu = repeat(u, inner=ni) .* ones(length(t))&#39;;</code></pre><pre><code class="language-julia hljs"># Sin wave
+u = [230 * sin.(2*pi*t .- 2/3*pi*(i-1)) for i = 1:3]
+uu = transpose(hcat(repeat(u[1], inner=[1,ni]),repeat(u[2], inner=[1,ni]),repeat(u[3], inner=[1,ni])));</code></pre><p>Lets have a look:</p><pre><code class="language-julia hljs">layout = Layout(xaxis_title=&quot;Time in µs&quot;, yaxis_title=&quot;U in V&quot;)
+input = 1
+
+phase_a = scatter(x=t, y=uu[input+ni*0,:], mode=&quot;lines&quot;, name=&quot;Phase A&quot;)
+phase_b = scatter(x=t, y=uu[input+ni*1,:], mode=&quot;lines&quot;, name=&quot;Phase B&quot;)
+phase_c = scatter(x=t, y=uu[input+ni*2,:], mode=&quot;lines&quot;, name=&quot;Phase C&quot;)
+
+plot([phase_a, phase_b, phase_c], layout)</code></pre><p>Again, the discretized matrices can now be used to model the grid.</p><pre><code class="language-julia hljs">x0 = [0.0 for i = 1:ns*3]
+xout, _, _, _ = lsim(sys_d,uu,t,x0=x0);</code></pre><p>Now a state can be selected and the corresponding trajectories can be plotted.</p><pre><code class="language-julia hljs">state_list = GetStateIds(S5_L15)</code></pre><pre><code class="language-julia hljs">state = 3
+state_list = GetStateIds(S5_L15)
+
+layout = Layout(xaxis_title=&quot;Time in µs&quot;, yaxis_title=&quot;$(state_list[state]) in V&quot;)
+
+phase_a = scatter(x=t, y=xout[state+ns*0,:], mode=&quot;lines&quot;, name=&quot;Phase A&quot;)
+phase_b = scatter(x=t, y=xout[state+ns*1,:], mode=&quot;lines&quot;, name=&quot;Phase B&quot;)
+phase_c = scatter(x=t, y=xout[state+ns*2,:], mode=&quot;lines&quot;, name=&quot;Phase C&quot;)
+
+plot([phase_a, phase_b, phase_c], layout)
+</code></pre><h2 id="Access-to-the-different-states"><a class="docs-heading-anchor" href="#Access-to-the-different-states">Access to the different states</a><a id="Access-to-the-different-states-1"></a><a class="docs-heading-anchor-permalink" href="#Access-to-the-different-states" title="Permalink"></a></h2><p>A way to get the different states of our NodeConstructor is to use the function <code>GetStateIds()</code>.</p><pre><code class="language-julia hljs">state_list = GetStateIds(S5_L15)</code></pre><p>The IDs created here are unique and can be used to access particular states. When creating the IDs, the sources are checked first in the order LCL, LC and then L. Then the cables are listed, which are also arranged in order. For the loads the order is RLC, LC, RL, L, RC, C and then R.</p><p>For the three-phase case, the state IDs are repeated and the respective phase is added.</p><p>These can then be accessed as follows:</p><pre><code class="language-julia hljs">state = 3
+println(state_list[state+ns*0])
+println(state_list[state+ns*1])
+println(state_list[state+ns*2])</code></pre><p>Or:</p><pre><code class="language-julia hljs">state = &quot;source1_i_L1&quot;
+idx_of_state = findall(x-&gt;occursin(state, x), state_list)
+idx = idx_of_state</code></pre><pre><code class="language-julia hljs">state = &quot;source1_i_L1_a&quot;
+idx_of_state = findall(x-&gt;occursin(state, x), state_list)
+idx = idx_of_state</code></pre><p>The actions in the grid are also assigned unique IDs, here the sources are sorted in order. The IDs are output via the function <code>GetActionIds()</code>.</p><pre><code class="language-julia hljs">GetActionIds(S5_L15)</code></pre><pre><code class="language-julia hljs"></code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../agents/">« Set up Agents</a><a class="docs-footer-nextpage" href="../references/">References »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Wednesday 22 March 2023 16:49">Wednesday 22 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
