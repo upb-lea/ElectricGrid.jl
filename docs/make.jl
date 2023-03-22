@@ -16,3 +16,7 @@ makedocs(
         "References" => "references.md",
     ]
     )
+
+deploydocs(
+        repo = "github.com/upb-lea/JuliaElectricGrid.jl.git",
+    )
