@@ -793,9 +793,8 @@ function CheckParameters(
     if !haskey(parameters, "cable")
         # no cable params defined -- invoke PFE from here ??
         cable_list = []
-
         for c in 1:num_connections
-            push!(cable_list, SampleCable())
+            push!(cable_list, SampleCable(parameters))
         end
         parameters["cable"] = cable_list
 
@@ -847,7 +846,7 @@ function CheckParameters(
 
         if num_undef_cables > 0
             for c in 1:num_undef_cables
-                push!(parameters["cable"], SampleCable())
+                push!(parameters["cable"], SampleCable(parameters))
             end
         end
     end
@@ -1169,15 +1168,15 @@ end
 
 Sample parameters for the cable.
 """
-function SampleCable()
+function SampleCable(parameters)
     cable = Dict()
     cable["len"] = 1.0#rand(Uniform(1e-3, 1e1))
 
     cable["R"] = 0.208   # Ω, line resistance
     cable["L"] = 0.00025 # H, line inductance
     cable["C"] = 0.4e-3  # F, line capacitance
-    #cable["i_limit"] = 10e12   # A, line current limit
-    #cable["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
+    cable["i_limit"] = 10e12   # limits will be overwritten if PFE is solved
+    cable["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
 
     cable["Rb"] = 0.722 / cable["len"]
     cable["Cb"] = 0.4e-6 / cable["len"]
