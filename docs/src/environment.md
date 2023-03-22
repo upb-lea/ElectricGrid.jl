@@ -10,7 +10,7 @@ It interacts step-wise with the agent/controller like shown in the figure below.
 Based on the input/action `u` at timestep `k` the state `x` is calculated.
 
   
-![](./assets/RL_env.png)
+![](assets/RL_env.png)
 
 
 To use the JEG tool the JEG package has to be loaded:
@@ -80,7 +80,7 @@ No
 This creates an environment consisting of an electrical power grid with two sources `num_sources = 2` (which could be for example an inverter fed by a PV plant or a wind turbine or battery) - supplying one load `num_sources = 1`.
 An easy exemplary example is shown in the figure below, where a load (household) is supplied by 2 sources (inverters, fed PV plant and wind turbine) via two transmission lines.
 
-![](./assets/ExampleGrid.png)
+![](assets/ExampleGrid.png)
 
 For better visuablilty an exemplary shaded electircal circut in the background is displayed as single phase diagram.
 (By default a three-phase four wire system is created).
@@ -244,7 +244,7 @@ For example, this information can be used to control the current through the fil
 An example for a single phase 3 Bus grid consisting of 2 sources (LC and LCL filter), 3 cables and 1 RLC load is shown in the following figure highligthing some of the defineable parameters and states.
 This example only shows the equivalent electrical circuit diagramm but is similar to the example with the PV, windturbine and electric car. The only difference here is that the two sources are connected, too. 
 
-![](./assets/ExampleGrid3.png)
+![](assets/ExampleGrid3.png)
 
 A few states are labeled in red, while a few parameters defined in the parameter dict are marked in green.
 
