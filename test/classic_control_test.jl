@@ -390,7 +390,7 @@ end
         # Time simulation
 
         Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
-        t_end    = 15     # total run time, seconds
+        t_end    = 20     # total run time, seconds
         num_eps  = 1       # number of episodes to run
 
         #-------------------------------------------------------------------------------
@@ -466,7 +466,7 @@ end
         source["std_asy"]      = 5e3   # Asymptotic Standard Deviation
         source["σ"]            = 25e3    # Brownian motion scale i.e. ∝ diffusion, volatility parameter
         source["Δt"]           = 0.01   # Time Step, seconds
-        source["X₀"]           = 30e3   # Initial Process Values, Watt
+        source["X₀"]           = 50e3   # Initial Process Values, Watt
         source["k"]            = 1      # Interpolation degree
         source["γ"]            = 50e3   # Asymptotoic Mean
 
@@ -570,7 +570,7 @@ end
 
         s3_L1 = 0.0006830651506262048
         s3_R1 = 0.13661303012524095
-        
+
         step = Int(parameters["source"][3]["Δt"]/Timestep)
         start = Int(parameters["grid"]["process_start"]/Timestep) + 1 + step
 
@@ -601,11 +601,11 @@ end
 
         @test s3_L1 ≈ env.nc.parameters["source"][3]["L1"] atol = 0.00001
         @test s3_R1 ≈ env.nc.parameters["source"][3]["R1"] atol = 0.00001
-      
+
         #= println("stats.μ = ", stats.μ)
         println("γ = ", parameters["source"][3]["γ"])
         println("stats.σ = ", stats.σ)
-        println("std_asy = ", parameters["source"][3]["std_asy"])  
+        println("std_asy = ", parameters["source"][3]["std_asy"])
         println()
         println(env.nc.parameters["source"][1]["L1"])
         println(env.nc.parameters["source"][1]["R1"])
@@ -628,7 +628,7 @@ end
 @testset "Droop_frequency_v_mag" begin
 
         #_______________________________________________________________________________
-        # Network Configuration 
+        # Network Configuration
 
         #-------------------------------------------------------------------------------
         # Time simulation
@@ -666,52 +666,52 @@ end
 
         parameters = Dict{Any, Any}(
                 "source" => Any[
-                                Dict{Any, Any}("pwr" => 200e3, 
-                                                "mode" => "VSG", 
+                                Dict{Any, Any}("pwr" => 200e3,
+                                                "mode" => "VSG",
                                                 "v_pu_set" => 1.0,
-                                                "vdc" => 800, 
+                                                "vdc" => 800,
                                                 "τv"       => 0.02,  # Time constant of the voltage loop, seconds
-                                                "τf"       => 0.02,  # Time constant of the frequency loop, seconds 
+                                                "τf"       => 0.02,  # Time constant of the frequency loop, seconds
                                                 "i_rip" => 0.02),
-                                Dict{Any, Any}("pwr" => 150e3, 
-                                                "mode" => "Droop", 
+                                Dict{Any, Any}("pwr" => 150e3,
+                                                "mode" => "Droop",
                                                 "v_pu_set" => 1.0,
-                                                "vdc" => 800, 
+                                                "vdc" => 800,
                                                 "τv"       => 0.02,  # Time constant of the voltage loop, seconds
-                                                "τf"       => 0.002,  # Time constant of the frequency loop, seconds 
+                                                "τf"       => 0.002,  # Time constant of the frequency loop, seconds
                                                 "i_rip" => 0.02),
-                                Dict{Any, Any}("pwr" => 100e3, 
-                                                "mode" => "PQ", 
-                                                "p_set" => 40e3, 
+                                Dict{Any, Any}("pwr" => 100e3,
+                                                "mode" => "PQ",
+                                                "p_set" => 40e3,
                                                 "q_set" => 20e3,
                                                 "i_rip" => 0.1),
                                 ],
                 "load"   => Any[
-                                Dict{Any, Any}("impedance" => "RL", 
-                                                "R" => R_load, 
+                                Dict{Any, Any}("impedance" => "RL",
+                                                "R" => R_load,
                                                 "L" => L_load),
                                 ],
                 "cable"   => Any[
-                                Dict{Any, Any}("R" => 0.1, 
-                                                "L" => 0.25e-4, 
-                                                "C" => 0.1e-5, 
+                                Dict{Any, Any}("R" => 0.1,
+                                                "L" => 0.25e-4,
+                                                "C" => 0.1e-5,
                                                 "i_limit" => 10e4),
-                                Dict{Any, Any}("R" => 0.1, 
-                                                "L" => 0.25e-4, 
-                                                "C" => 0.1e-5, 
+                                Dict{Any, Any}("R" => 0.1,
+                                                "L" => 0.25e-4,
+                                                "C" => 0.1e-5,
                                                 "i_limit" => 10e4,),
-                                Dict{Any, Any}("R" => 0.1, 
-                                                "L" => 0.25e-4, 
-                                                "C" => 0.1e-5, 
+                                Dict{Any, Any}("R" => 0.1,
+                                                "L" => 0.25e-4,
+                                                "C" => 0.1e-5,
                                                 "i_limit" => 10e4,),
                                 ],
-                "grid" => Dict{Any, Any}("ramp_end" => 0.04, 
-                                        "f_grid" => 60, 
-                                        "process_start" => 1.0, 
+                "grid" => Dict{Any, Any}("ramp_end" => 0.04,
+                                        "f_grid" => 60,
+                                        "process_start" => 1.0,
                                         "v_rms" => 100,
                                         "Δfmax" => 0.5, # The drop (increase) in frequency that causes a 100% increase (decrease) in active power (from nominal)
                                         "ΔEmax" => 10, # The drop (increase) in rms voltage that causes a 100% increase (decrease) in reactive power (from nominal)
-                                        ) 
+                                        )
         )
         #_______________________________________________________________________________
         # Defining the environment
@@ -719,13 +719,13 @@ end
         env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 0, action_delay = 1)
 
         #_______________________________________________________________________________
-        # initialising the agents 
+        # initialising the agents
 
         Multi_Agent = SetupAgents(env)
         Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
         #_______________________________________________________________________________
-        # running the time simulation 
+        # running the time simulation
 
         hook = Simulate(Multi_Agent, env, num_episodes = num_eps)
 
@@ -733,15 +733,15 @@ end
         #_______________________________________________________________________________
         # Plotting
 
-        #= RenderHookResults(hook = hook, 
-                        states_to_plot  = [], 
-                        actions_to_plot = [],  
-                        power_p_inv     = [1 2 3], 
-                        power_q_inv     = [1 2 3], 
-                        power_p_poc     = [1 2 3], 
+        #= RenderHookResults(hook = hook,
+                        states_to_plot  = [],
+                        actions_to_plot = [],
+                        power_p_inv     = [1 2 3],
+                        power_q_inv     = [1 2 3],
+                        power_p_poc     = [1 2 3],
                         power_q_poc     = [1 2 3],
-                        v_mag_inv       = [1 2 3], 
-                        v_mag_cap       = [1 2 3], 
+                        v_mag_inv       = [1 2 3],
+                        v_mag_cap       = [1 2 3],
                         i_mag_inv       = [],
                         i_mag_poc       = [],
                         freq            = [1 2 3],
@@ -819,21 +819,20 @@ end
         @test freq_Δ_2/dP_2 ≈ 1 atol = 0.001
         @test vrms_Δ_2/dQ_2 ≈ 1 atol = 0.001
 
-        @test freq_end_1/env.nc.parameters["grid"]["f_grid"] > 0.99 
-        @test freq_end_1/env.nc.parameters["grid"]["f_grid"] < 1.01 
+        @test freq_end_1/env.nc.parameters["grid"]["f_grid"] > 0.99
+        @test freq_end_1/env.nc.parameters["grid"]["f_grid"] < 1.01
 
-        @test freq_end_2/env.nc.parameters["grid"]["f_grid"] > 0.99 
-        @test freq_end_2/env.nc.parameters["grid"]["f_grid"] < 1.01 
+        @test freq_end_2/env.nc.parameters["grid"]["f_grid"] > 0.99
+        @test freq_end_2/env.nc.parameters["grid"]["f_grid"] < 1.01
 
-        @test vrms_end_1/env.nc.parameters["grid"]["v_rms"] > 0.99 
-        @test vrms_end_1/env.nc.parameters["grid"]["v_rms"] < 1.01 
+        @test vrms_end_1/env.nc.parameters["grid"]["v_rms"] > 0.99
+        @test vrms_end_1/env.nc.parameters["grid"]["v_rms"] < 1.01
 
-        @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] > 0.99 
-        @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] < 1.01 
+        @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] > 0.99
+        @test vrms_end_2/env.nc.parameters["grid"]["v_rms"] < 1.01
 
         @test hook.df[!,"source3_p_inv"][total_steps]/Source.pq0_set[3, 1] ≈ 1 atol = 0.001
         @test hook.df[!,"source3_q_inv"][total_steps]/Source.pq0_set[3, 2] ≈ 1 atol = 0.001
 
         return nothing
 end
-
