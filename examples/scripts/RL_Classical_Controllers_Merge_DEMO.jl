@@ -1,5 +1,5 @@
 using JEG
-using ReinforcementLearning
+#using ReinforcementLearning
 
 """
 This scipt contains the content of the RL_Classical_Controllers_Merge_DEMO.ipynb notebook.
@@ -14,6 +14,11 @@ Dict{Any, Any}(
                         "control_type" => "RL",
                         "mode" => "my_ddpg",
                         "fltr" => "L"),
+                    Dict{Any, Any}(
+                        "pwr" => 200e3,
+                        "fltr" => "LC",
+                        "control_type" =>
+                        "classic", "mode" => 1),
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "fltr" => "LC",

@@ -1259,7 +1259,7 @@ function GenerateCM(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
     end
 
     # make sure that no objects disappear or subnets are formed
-    if S2L_p < 1
+    if (S2L_p < 1) || (num_loads == 0)
         for i in 1:tot_ele
             # save rows and columns entries
             Col = CM[1:i-1, i]
