@@ -5,6 +5,7 @@
 
 | [**Reference docs**](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/)
 
+[![Build Status](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml)](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/LICENSE)
 
 Julia Electric Grid - JEG - provides a environment for simulating the dynamics of power electronic systems.
