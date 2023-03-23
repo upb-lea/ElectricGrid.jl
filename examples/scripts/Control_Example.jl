@@ -3,7 +3,7 @@ using JEG
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
-# Network Parameters 
+# Network Parameters
 
 #-------------------------------------------------------------------------------
 # Time simulation
@@ -89,7 +89,7 @@ source["mode"]     = 2
 source["fltr"]     = "L"   # Filter type
 
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
-source["p_set"]    = -30e3   # Real Power Set Point, Watt
+source["p_set"]    = 30e3   # Real Power Set Point, Watt
 source["q_set"]    = -10e3   # Imaginary Power Set Point, VAi
 
 source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
@@ -106,11 +106,11 @@ source["τf"]       = 0.002  # Time constant of the frequency loop, seconds
 
 source["Observer"] = true   # Discrete Luenberger Observer
 
-#= 
+#=
 source["Dp"]       = 202 # frequency droop coefficient
 source["Dq"]       = 6148 # voltage droop coefficient =#
 
-#= 
+#=
 source["I_kp"]     = 0.0032 # V/A
 source["I_ki"]     = 0.3497 # V/As
 
@@ -119,7 +119,7 @@ source["V_ki"]     = 5.856 # A/Vs =#
 
 push!(source_list, source)
 
-#= 
+#=
 source["Dp"]           = 202 # frequency droop coefficient
 source["Dq"]           = 6148 # voltage droop coefficient
 source["I_kp"]         = 0.0032 # V/A
@@ -179,7 +179,7 @@ grid = Dict()
 grid["v_rms"] = 230
 grid["ramp_end"] = 0.04
 grid["process_start"] = 0.04
-grid["f_grid"] = 60 
+grid["f_grid"] = 60
 grid["Δfmax"] = 0.5 # The % drop (increase) in frequency that causes a 100% increase (decrease) in power
 grid["ΔEmax"] = 5 # The % drop (increase) in voltage that causes a 100% increase (decrease) in reactive power (from nominal)
 
@@ -202,9 +202,9 @@ env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t
 # Setting up data hooks
 
 hook = DataHook(v_mag_inv   = [1 2],
-                v_mag_cap    = [1 2], 
-                i_mag_inv    = [1 2], 
-                i_mag_poc    = [1 2], 
+                v_mag_poc    = [1 2],
+                i_mag_inv    = [1 2],
+                i_mag_poc    = [1 2],
                 power_pq_inv = [1 2],
                 power_pq_poc = [1 2],
                 freq         = [1 2],
@@ -218,13 +218,13 @@ hook = DataHook(v_mag_inv   = [1 2],
                 debug        = [])
 
 #_______________________________________________________________________________
-# initialising the agents 
+# initialising the agents
 
 Multi_Agent = SetupAgents(env)
 Source = Multi_Agent.agents["classic"]["policy"].policy.Source
 
 #_______________________________________________________________________________
-# running the time simulation 
+# running the time simulation
 
 hook = Simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
@@ -233,20 +233,20 @@ hook = Simulate(Multi_Agent, env, num_episodes = num_eps, hook = hook)
 
 for eps in 1:num_eps
 
-    RenderHookResults(hook = hook, 
+    RenderHookResults(hook = hook,
                       episode = eps,
-                      states_to_plot  = [], 
-                      actions_to_plot = [],  
-                      power_p_inv     = [2], 
-                      power_p_poc     = [2],
-                      power_q_inv     = [2], 
-                      power_q_poc     = [2],
-                      v_mag_inv       = [1 2], 
-                      v_mag_cap       = [1 2], 
+                      states_to_plot  = [],
+                      actions_to_plot = [],
+                      power_p_inv     = [2],
+                      power_p_poc     = [],
+                      power_q_inv     = [2],
+                      power_q_poc     = [],
+                      v_mag_inv       = [],
+                      v_mag_poc       = [],
                       i_mag_inv       = [],
                       i_mag_poc       = [],
-                      freq            = [1 2],
-                      angles          = [1 2],
+                      freq            = [],
+                      angles          = [],
                       i_sat           = [],
                       v_sat           = [],
                       i_err_t         = [],
