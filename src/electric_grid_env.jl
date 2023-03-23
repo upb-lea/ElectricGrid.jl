@@ -463,6 +463,17 @@ function RLBase.reset!(env::ElectricGridEnv)
     return nothing
 end
 
+action_space(env::ElectricGridEnv) = RLBase.action_space(env)
+state_space(env::ElectricGridEnv) = RLBase.state_space(env)
+reward(env::ElectricGridEnv) = RLBase.reward(env)
+DynamicStyle(env::ElectricGridEnv) = RLBase.DynamicStyle(env)
+reward(env::ElectricGridEnv, name::String) = RLBase.reward(env, name)
+is_terminated(env::ElectricGridEnv) = RLBase.is_terminated(env)
+state(env::ElectricGridEnv) = RLBase.state(env)
+state(env::ElectricGridEnv, name::String) = RLBase.state(env, name)
+reset!(env::ElectricGridEnv) = RLBase.reset!(env)
+
+
 """
     env(action)
 

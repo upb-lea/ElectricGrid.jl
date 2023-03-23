@@ -48,7 +48,7 @@ it can be generated automatically. `S2S_p` is the probability that a source is c
 another source and `S2L_p` is the probability that a source is connected to a load.
 """
 function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothing,
-    S2S_p=0.1, S2L_p=0.8, L2L_p=0.3, ts=10000, verbosity=0)
+    S2S_p=0, S2L_p=1, L2L_p=0, ts=10000, verbosity=0)
     tot_ele = num_sources + num_loads
     cntr = 0
     num_connections = 0
@@ -793,11 +793,9 @@ function CheckParameters(
     if !haskey(parameters, "cable")
         # no cable params defined -- invoke PFE from here ??
         cable_list = []
-
         for c in 1:num_connections
-            push!(cable_list, SampleCable())
+            push!(cable_list, SampleCable(parameters))
         end
-
         parameters["cable"] = cable_list
 
         if parameters["grid"]["pwr"] > 1e6
@@ -848,7 +846,7 @@ function CheckParameters(
 
         if num_undef_cables > 0
             for c in 1:num_undef_cables
-                push!(parameters["cable"], SampleCable())
+                push!(parameters["cable"], SampleCable(parameters))
             end
         end
     end
@@ -1170,14 +1168,15 @@ end
 
 Sample parameters for the cable.
 """
-function SampleCable()
+function SampleCable(parameters)
     cable = Dict()
     cable["len"] = 1.0#rand(Uniform(1e-3, 1e1))
 
     cable["R"] = 0.208   # Ω, line resistance
     cable["L"] = 0.00025 # H, line inductance
     cable["C"] = 0.4e-3  # F, line capacitance
-    cable["i_limit"] = 10e12   # A, line current limit
+    cable["i_limit"] = 10e12   # limits will be overwritten if PFE is solved
+    cable["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
 
     cable["Rb"] = 0.722 / cable["len"]
     cable["Cb"] = 0.4e-6 / cable["len"]
@@ -1259,7 +1258,7 @@ function GenerateCM(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
     end
 
     # make sure that no objects disappear or subnets are formed
-    if S2L_p < 1
+    if (S2L_p < 1) || (num_loads == 0)
         for i in 1:tot_ele
             # save rows and columns entries
             Col = CM[1:i-1, i]
