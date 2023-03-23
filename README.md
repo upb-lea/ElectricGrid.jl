@@ -3,10 +3,9 @@
 
   ![JEG Logo](docs/logo.png)
 
-| |doc|
+| [**Reference docs**](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/)
 
-.. |doc| image:: https://img.shields.io/badge/doc-success-success
-    :target: https://upb-lea.github.io/JuliaElectricGrid.jl/dev/
+[![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/LICENSE)
 
 Julia Electric Grid - JEG - provides a environment for simulating the dynamics of power electronic systems.
 The environment can be utilized to interact with and train reinforcement learning agents. 
@@ -14,7 +13,7 @@ Common toolboxes like [juliareinforcementlearning.jl](https://juliareinforcement
 ADditionally JEG provides classic controllers from the domain of electrical engineering in power elctronics.
 They can be used for comarison or to train RL agents in a classicaly controlled grid.
 
-![JEG Framework](docs/scr/assets/OverviewJEG.png)
+![JEG Framework](docs/src/assets/OverviewJEG.png)
 
 
 ## Instantiating and managing the "JEG" julia environment
