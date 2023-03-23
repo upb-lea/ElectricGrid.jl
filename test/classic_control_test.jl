@@ -761,8 +761,8 @@ end
     freq_end_1 = hook.df[!,"source1_freq"][total_steps]
     freq_Δ_1 = 100*(freq_start_1 - freq_end_1)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
-    vrms_start_1 = hook.df[!,"source1_v_mag_cap"][step_start]
-    vrms_end_1 = hook.df[!,"source1_v_mag_cap"][total_steps]
+    vrms_start_1 = hook.df[!,"source1_v_mag_poc"][step_start]
+    vrms_end_1 = hook.df[!,"source1_v_mag_poc"][total_steps]
     vrms_Δ_1 = 100*(vrms_start_1 - vrms_end_1)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"]*env.nc.parameters["source"][1]["v_pu_set"])
 
     p_start_1 = hook.df[!,"source1_p_poc"][step_start]
@@ -782,8 +782,8 @@ end
     freq_end_2 = hook.df[!,"source2_freq"][total_steps]
     freq_Δ_2 = 100*(freq_start_2 - freq_end_2)/(env.nc.parameters["grid"]["Δfmax"]*env.nc.parameters["grid"]["f_grid"])
 
-    vrms_start_2 = hook.df[!,"source2_v_mag_cap"][step_start]
-    vrms_end_2 = hook.df[!,"source2_v_mag_cap"][total_steps]
+    vrms_start_2 = hook.df[!,"source2_v_mag_poc"][step_start]
+    vrms_end_2 = hook.df[!,"source2_v_mag_poc"][total_steps]
     vrms_Δ_2 = 100*(vrms_start_2 - vrms_end_2)/(env.nc.parameters["grid"]["ΔEmax"]*env.nc.parameters["grid"]["v_rms"]*env.nc.parameters["source"][2]["v_pu_set"])
 
     p_start_2 = hook.df[!,"source2_p_poc"][step_start]
