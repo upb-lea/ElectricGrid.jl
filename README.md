@@ -4,17 +4,67 @@
   ![JEG Logo](docs/logo.png)
 
 | [**Reference docs**](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/)
+| [**Install guide**](#installation)
+| [**Quickestart**](#getting-started)
+| [**Release notes**]
 
 [![Build Status](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/LICENSE)
 
-Julia Electric Grid - JEG - provides a environment for simulating the dynamics of power electronic systems.
-The environment can be utilized to interact with and train reinforcement learning agents. 
-Common toolboxes like [juliareinforcementlearning.jl](https://juliareinforcementlearning.org/) can be used as well as self written agents.
-ADditionally JEG provides classic controllers from the domain of electrical engineering in power elctronics.
-They can be used for comarison or to train RL agents in a classicaly controlled grid.
+
+
+
+JuliaElectricGrid, or JEG for short, is a library for setting up realistic electric grid simulations with extensive support for control options. With JEG you can
+- create a simulation environment for an electric grid by defining its sources, loads and cable connections
+- set detailled parameters of your electric components - or let them be auto-generated
+- choose different control modes for each source in your system
+- use the agent architecture of [ReinforcementLearning.jl](https://juliareinforcementlearning.org/) to either train RL agents as controllers or write your own ones
+
 
 ![JEG Framework](docs/src/assets/OverviewJEG.png)
+
+## Installation
+- Installation using the julia package manager (recommended):
+In a julia terminal run the follwing:
+```
+]
+activate .
+add JEG
+```
+
+- Install from Github source:
+  - Clone the git and naviagte to the directory
+```
+git clone https://github.com/upb-lea/JuliaElectricGrid.jl.git
+```
+  - activate Julia
+
+  - activate the project by pressing `]`to access pkg mode and then `activate path/to/JEG` or `activate .` if you started julia in your JuliaElectricGrid directory
+  - run `instantiate`
+
+## Getting Started
+
+To get started with the JEG framework we recomment the follwoing notebook:
+* [Create an environment with JEG](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb)
+It refers to the corresponding, follwoing notebooks.
+
+For a simple example with the following few lines of code can be executed:
+
+```
+using JEG
+
+env =  ElectricGridEnv(num_sources = 1, num_loads = 1)
+Multi_Agent =  SetupAgents(env)
+hook =  Simulate(Multi_Agent, env)
+RenderHookResults(hook = hook)
+```
+
+This is a minimal example of a full JuliaElectricGrid setup. 
+There should also appear a plot that looks like this:
+![output of the minimal example](docs/src/assets/output1.png)
+
+
+
 
 
 ## Instantiating and managing the "JEG" julia environment
