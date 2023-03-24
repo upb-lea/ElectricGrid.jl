@@ -1,12 +1,83 @@
 
-  
+# Julia Electric Grid - JEG  
 
   ![JEG Logo](docs/logo.png)
 
-# Instantiating and managing the "JEG" julia environment
+| [**Reference docs**](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/)
+| [**Install guide**](#installation)
+| [**Quickstart**](#getting-started)
+| [**Release notes**](https://github.com/upb-lea/JuliaElectricGrid.jl/releases/new)
+
+[![Build Status](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml)
+[![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/LICENSE)
 
 
-## Setting up the project with VSCode
+
+
+JuliaElectricGrid, or JEG for short, is a library for setting up realistic electric grid simulations with extensive support for control options. With JEG you can
+- create a simulation environment for an electric grid by defining its sources, loads and cable connections
+- set detailled parameters of your electric components - or let them be auto-generated
+- choose different control modes for each source in your system
+- use the agent architecture of [ReinforcementLearning.jl](https://juliareinforcementlearning.org/) to either train RL agents as controllers or write your own ones
+
+
+![JEG Framework](docs/src/assets/OverviewJEG.png)
+
+## Installation
+- Installation using the julia package manager (recommended):
+In a julia terminal run the follwing:
+```
+]
+activate .
+add JEG
+```
+
+- Install from Github source:
+  - Clone the git and naviagte to the directory
+```
+git clone https://github.com/upb-lea/JuliaElectricGrid.jl.git
+```
+  - activate Julia
+
+  - activate the project by pressing `]`to access pkg mode and then `activate path/to/JEG` or `activate .` if you started julia in your JuliaElectricGrid directory
+  - run `instantiate`
+
+## Getting Started
+
+To get started with JEG  the follwoing interactive notebook are usefull. They show how to use the JEG framework to build and simulate the dynamics of an electric power grid controlled via classic controllers or train common RL agents for different control tasks:
+* [Create an environment with JEG](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb)
+* [Theroy behind JEG - Modelling Dynamics using Linear State-Space Systems](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb)
+* [Classic Controlled Electric Power Grids - State of the Art](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Classical_Controllers_Introduction.ipynb)
+* [Use RL Agents in the JEG Framework](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Single_Agent_DEMO.ipynb)
+
+An overview of all parameters defining the experiment setting with regards to the electric grid can be found here:
+* [Default Parameters](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Default_Parameters.ipynb)
+
+
+To run a simple example the following few lines of code can be executed:
+
+```
+using JEG
+
+env =  ElectricGridEnv(num_sources = 1, num_loads = 1)
+Multi_Agent =  SetupAgents(env)
+hook =  Simulate(Multi_Agent, env)
+RenderHookResults(hook = hook)
+```
+
+This is a minimal example of a full JuliaElectricGrid setup. 
+There should also appear a plot that looks like this:
+![output of the minimal example](docs/src/assets/output1.png)
+
+
+
+
+
+
+## Instantiating and managing the "JEG" julia environment
+
+
+### Setting up the project with VSCode
 It's recommended to work in this project with Visual Studio Code.
 
 - In VSCode, use "Open Folder" and select the "JEG" folder that contains the `Project.toml`. This way, VSCode should automatically recognize the julia environment called `JEG` - or it should ask you for selecting an environment and `path/to/JEG` will be in the list to choose.
@@ -22,7 +93,7 @@ It gets the information about the required packages from the `Project.toml` and 
 It might take some time to precompile packages (which is only done once as long as package versions don't change) and also to precompile parts of your code (which has to be done any time you run in a new REPL).
 
 
-## Adding, removing or changing packages in development
+### Adding, removing or changing packages in development
 - To **add** a package to the `JEG` environment while developing, go to an active julia console, access the package manager with `]`, make sure the `JEG` environment is activated (**Important!** Instructions in the paragraph above) and then run `add PackageName`. \
 ![add a package](docs/dev_readme/addpackage.png) \
 The julia package manager (which is called `Pkg`) then automatically adds the package to the `Project.toml` so the information gets stored in the git.
@@ -39,7 +110,7 @@ If you want to add a specific fork of a package or a package that is not officia
 - If you pulled changes from the git and need to update your `JEG` environment according to the updated `Project.toml`, just access Pkg, make sure the `JEG` environment is activated, and run `instantiate`.
 **Do not use `update` for that.** `update` will try to update every package to the newest version and will also overwrite the `Project.toml`. While this is fine in most cases, it might break things if there are changes in the package structures that our code relies on. We will try to run `update` in the development branch itself from time to time in the course of the project.
 
-## How to fix a broken environment
+### How to fix a broken environment
 Sometimes you can end up with a messed up environment which should generally be no problem and easy to fix. Here are some things to try:
 
 - Delete your `Manifest.toml` and run `instantiate` again. The `Manifest.toml` will be freshly regenerated.
