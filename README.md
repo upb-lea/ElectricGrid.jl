@@ -5,7 +5,7 @@
 
 | [**Reference docs**](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/)
 | [**Install guide**](#installation)
-| [**Quickestart**](#getting-started)
+| [**Quickstart**](#getting-started)
 | [**Release notes**](https://github.com/upb-lea/JuliaElectricGrid.jl/releases/new)
 
 [![Build Status](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml)
