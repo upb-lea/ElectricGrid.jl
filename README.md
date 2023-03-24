@@ -6,7 +6,7 @@
 | [**Reference docs**](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/)
 | [**Install guide**](#installation)
 | [**Quickestart**](#getting-started)
-| [**Release notes**]
+| [**Release notes**](https://github.com/upb-lea/JuliaElectricGrid.jl/releases/new)
 
 [![Build Status](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/upb-lea/JuliaElectricGrid.jl/actions/workflows/CI.yml)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/LICENSE)
@@ -44,11 +44,17 @@ git clone https://github.com/upb-lea/JuliaElectricGrid.jl.git
 
 ## Getting Started
 
-To get started with the JEG framework we recomment the follwoing notebook:
+To get started with JEG  the follwoing interactive notebook are usefull. They show how to use the JEG framework to build and simulate the dynamics of an electric power grid controlled via classic controllers or train common RL agents for different control tasks:
 * [Create an environment with JEG](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb)
-It refers to the corresponding, follwoing notebooks.
+* [Theroy behind JEG - Modelling Dynamics using Linear State-Space Systems](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb)
+* [Classic Controlled Electric Power Grids - State of the Art](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Classical_Controllers_Introduction.ipynb)
+* [Use RL Agents in the JEG Framework](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Single_Agent_DEMO.ipynb)
 
-For a simple example with the following few lines of code can be executed:
+An overview of all parameters defining the experiment setting with regards to the electric grid can be found here:
+* [Default Parameters](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Default_Parameters.ipynb)
+
+
+To run a simple example the following few lines of code can be executed:
 
 ```
 using JEG
@@ -62,6 +68,7 @@ RenderHookResults(hook = hook)
 This is a minimal example of a full JuliaElectricGrid setup. 
 There should also appear a plot that looks like this:
 ![output of the minimal example](docs/src/assets/output1.png)
+
 
 
 
