@@ -16,6 +16,7 @@ makedocs(
             "Train an RL againt in the JEG framework - 1" => "RL_Single_Agent.md",
             "Train an RL againt interacting with a stable grid" => "RL_Classical_Controllers_Merge.md",
             "Train an RL againt in the JEG framework - 2" => "RL_Complex.md",
+            "Contributing" => "dev.md"
         ],
         "References" => "references.md",
     ]
