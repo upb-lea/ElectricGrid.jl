@@ -35,6 +35,18 @@ bibliography: paper.bib
 
 # Summary
 
+The Julia Electric Grid (JEG) toolbox provides a transient simulation framework
+for energy grids based on power electronic converters. 
+With only a few lines of code, an arbitrarily detailed parameterized energy grid can be initialized in Julia. 
+By means of a linear state-space system, the system response is determined in the time domain. 
+
+OpenModelica is used as the
+backend, allowing users to set up arbitrary electric grid designs via its well-known graphical
+user interface in a plug-and-play fashion (Fritzson et al., 2018). Simulations can be configured
+using a python interface, making it easy to integrate software modules for the realization and
+testing of closed control loops. In addition, the OpenAI Gym interface is provided to connect
+data-driven reinforcement learning algorithms for investigating intelligent microgrid control
+approaches (Brockman et al., 2016).
 Text with refs [@OpenAI2016]. 
 
 ![\label{fig:jed}](OverviewJEG.png)
