@@ -1,9 +1,8 @@
 
 # Julia Electric Grid - JEG  
 
-  ![JEG Logo](docs/logo.png)
+<img align="right" width="150" height="200" src="docs/logo.png">
 
-<p style="text-align: rigth"><img src="docs/logo.png"></p>
 | [**Reference docs**](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/)
 | [**Install guide**](#installation)
 | [**Quickstart**](#getting-started)
