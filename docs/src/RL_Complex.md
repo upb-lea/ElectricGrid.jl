@@ -11,7 +11,7 @@ The experiment is shown in the figure below. Two sources will be feeded by a neg
 The sources and loads (here no loads are availabe) shown as colored circles connected via cables.
 This is similar like the usage of the GUI, where the sources, loads and cables can be parameterized and connected interactivly.
 
-![](./assets//RL_Complex_Demo.png)
+![](./assets/RL_Complex_Demo.png)
 
 
 
