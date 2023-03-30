@@ -18,6 +18,15 @@ makedocs(
             "Train an RL againt in the JEG framework - 2" => "RL_Complex.md",
             "Contributing" => "dev.md"
         ],
+        "Environment" => [
+            "Configuring the Environment" => "Env_Create.md",
+            "Interaction with the Environment" => "Env_Interaction.md"
+        ],
+        "Reinforcement Learning" => [
+            "Reinforcement Learning using JEG" => "RL_Single_Agent.md",
+            "Multicontroller" => "RL_Classical_Controllers_Merge.md",
+            "Reinforcement Learning in Larger Grids " => "RL_Complex.md",
+        ],
         "References" => "references.md",
     ]
     )
