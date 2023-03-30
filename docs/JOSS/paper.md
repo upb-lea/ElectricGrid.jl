@@ -9,21 +9,22 @@ tags:
   - Testing
   - Control
 authors:
+ - name: Oliver Wallscheid
+ orcid: 0000-0001-9362-8777
+ affiliation: 1
+  - name: Sebastian Peitz
+    orcid: 0009
+    affiliation: 2
+  - name: Jan Stenner
+    affiliation: 2
   - name: Daniel Weber
     orcid: 0000-0003-3367-5998 
     affiliation: 1
-  - name: Jan Stenner
-    affiliation: 2
   - name: Septimus Boschhoff
-    affiliation: 3
+    affiliation: 1
   - name: Marvin Meyer
-    affiliation: 4
-  - name: Oliver Wallscheid
-    orcid: 0000-0001-9362-8777
-    affiliation: 5
-  - name: Sebastian Peitz
-    orcid: 0009
-    affiliation: 6
+    affiliation: 1
+  
 affiliations:
  - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
    index: 1
@@ -71,6 +72,15 @@ This applies in particular to data-driven control approaches such as reinforceme
 
 # State of field 
 
+JEG is a Julia package...
+
+Dynamic simulation
+Most static (PFE)
+
+----------
+
+
+
 Old from OMG:
 ``OMG`` is a Python-based package for the modeling and simulation of microgrids based on power electronic energy conversion.
 The OpenModelica [@Fritzson2018] library enables the user to define their microgrid (i.e. a local electricity grid containing arbitrary sources, storages and loads) in a flexible and scalable way or to use certain predefined example grids. 
@@ -79,6 +89,9 @@ This is an essential difference to already available open-source solutions for t
 
 
 # Interfaces for control and reinforcement learning  
+
+The API is designed to provide a user-friendly interface to connect ...
+RL.jl, classic controllers, PLL, transforms, mulicontroller
 
 Old from OMG:
 The API is designed to provide a user-friendly interface to connect a modeled microgrid (the simulation environment) with a wide range of control methods such as classical linear feedback control or model predictive control techniques (cf. Fig. 1). Moreover, the standardized OpenAI Gym interface [@OpenAI2016] is also available for training data-driven control approaches like RL. 
@@ -90,7 +103,9 @@ To highlight the challenges of data-driven control approaches in safety-critical
 
 # Intended use and targeted audience
 Old from OMG:
-``JEG`` is designed to be used by students, academics, and industrial researchers in the field of control and energy engineering and data science. The primary objective of the toolbox is to facilitate entry for new users into the modeling, control, and testing of microgrids and to provide a platform on which different control methods (including RL) can be compared under defined conditions (benchmarks).
+``JEG`` is designed to be used by students, academics, and industrial researchers in the field of control and energy engineering and data science. 
+The primary objective of the toolbox is to facilitate entry for new users into the modeling, control, and testing of
+microgrids and to provide a platform on which different control methods (including RL) can be compared under defined conditions (benchmarks).
 
 
 
