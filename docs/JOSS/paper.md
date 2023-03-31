@@ -59,7 +59,7 @@ with state-of-the-art controllers.
 
 Decentralized, electrical energy networks have special demands on operating and control procedures 
 to ensure a continuous and efficient energy supply and
-at the same time play an important role in the integration of renewable energy sources. [@Guerrero2013] 
+simultaneously play an important role in the integration of renewable energy sources. [@Guerrero2013] 
 This applies both in connection with conventional power grids and for power supply in remote areas [@Lund2017].
 Due to their high efficiency and flexibility, the integration of power electronic converters 
 in electrical energy grid is increasing. 
@@ -74,8 +74,7 @@ electrical energy systems to be connected.
 Controlling (decentralized) electric grids is a challenging task due to their stochastic, heterogeneous 
 and volatile characteristics.
 At the same time, high requirements are made with regard to aspects such as safety, quality and availability.
-This results in high demand for comprehensive testing of new control 
-concepts during their development phase and comparisons with the state
+This results in high demand for comprehensive testing of new control concepts during their development phase and comparisons with the state
 of the art to ensure their feasibility.
 This applies in particular to data-driven control approaches such as 
 reinforcement learning (RL), the stability and operating behavior of
@@ -84,7 +83,7 @@ which cannot be evaluated a priori [@Garcia2015].
 
 # State of field 
 
-JEG is a Julia package for setting up realistic electric grid simulations with 
+``JEG`` is a Julia package for setting up realistic electric grid simulations with 
 extensive support for control options.
 The parametrisation can be arbitrarily detailed. 
 If no details are given, all parameters are calculated randomly on a physically meaningful basis.
@@ -152,10 +151,10 @@ The ``JEG`` toolbox provides the following key features:
 # Examples
 For illustration and interactive introduction, jupyter notebooks are available for each topic.
 These provide clear and easy-to-expand examples of: 
- - [how JEG can be used to set up a network](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb),
- - [the theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb),
- - [how the classic controllers work](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/1_Auxiliaries_OU_process.ipynb) and
- - [how to train an RL agent](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb).
+ - [Utilising JEG to build an energy grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb)
+ - [Theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb)
+ - [Applying classic controllers on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/1_Auxiliaries_OU_process.ipynb) and
+ - [Training an RL agent on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb).
 
 
 # Availability and installation
@@ -179,11 +178,11 @@ Following are shown the main fields of each individual contributor of OMG:
 
 * S. Boshoff: Application examples, classic controllers
 
-* M. Meyer: Application examples, theoretical ...
+* M. Meyer: Basic system architecture, application examples, unit tests
 
-* V.Chidananda:
+* V. Chidananda:
 
-* O.Schweins:
+* O. Schweins: Basic system architecture
 
 
 
