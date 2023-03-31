@@ -20,11 +20,14 @@ authors:
   - name: Daniel Weber
     orcid: 0000-0003-3367-5998 
     affiliation: 1
-  - name: Septimus Boschhoff
+  - name: Septimus Boshoff
     affiliation: 1
   - name: Marvin Meyer
     affiliation: 1
-  - SHK/WHB?
+  - Vikas Chidananda
+    affiliation: 2
+  - name: Oliver Schweins
+    affiliation: 1
   
 affiliations:
  - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
@@ -54,11 +57,12 @@ with state-of-the-art controllers.
 # Background on electric grids and their control
 
 
-Decentralized, electrical energy networks place special demands on operating and control procedures to ensure a continuous and efficient energy supply and
-at the same time play an important role in the integration of renewable energy sources. 
-This applies both in connection with conventional power grids and for power supply in remote areas [@Lund2017]. 
-Due to their high efficiency and flexibility, power electronic converters are largely used to
-drive modern MSG.
+Decentralized, electrical energy networks have special demands on operating and control procedures 
+to ensure a continuous and efficient energy supply and
+at the same time play an important role in the integration of renewable energy sources. [@Guerrero2013] 
+This applies both in connection with conventional power grids and for power supply in remote areas [@Lund2017].
+Due to their high efficiency and flexibility, the integration of power electronic converters 
+in electrical energy grid is increasing. 
 Power electronics describes the application of solid-state electronics to the control and
 conversion of electric power, which is largely performed with semiconductor switching 
 devices such as diodes or power transistors.
@@ -68,7 +72,7 @@ electrical energy systems to be connected.
 
 
 Controlling (decentralized) electric grids is a challenging task due to their stochastic, heterogeneous 
-and volatile characteristics
+and volatile characteristics.
 At the same time, high requirements are made with regard to aspects such as safety, quality and availability.
 This results in high demand for comprehensive testing of new control 
 concepts during their development phase and comparisons with the state
@@ -90,8 +94,8 @@ without any prior knowledge of electrical engineering.
 The experiments are based on dynamic simulations in the time domain which allows for accurate control
 and test investigations during transients and steady-state. 
 This is an essential difference to already available open-
-source solutions for the simulation of electrical energy grid, which, in contrast, usually perform the calculations 
-in a (quasi)-stationar state [@Coffrin2018], 
+source solutions for the simulation of electrical energy grids, which, in contrast, usually perform the calculations 
+in a (quasi)-stationar state [@Coffrin2018],
 which does not allow an evaluation of e.g. control on component level in case of load fluctuations in the grid.
 
 
@@ -99,7 +103,6 @@ which does not allow an evaluation of e.g. control on component level in case of
 
 # Interfaces for control and reinforcement learning  
 
-RL.jl, classic controllers, PLL, transforms, mulicontroller
 
 The API is designed to provide a user-friendly interface to connect a modeled electric energy grid 
 with a wide range of classic control methods like shown in the figure below.
@@ -136,8 +139,7 @@ can be compared under defined conditions (benchmarks).
 The ``JEG`` toolbox provides the following key features:
 
 
-* A library for the scalable and flexible design of local electricity grids in OpenModelica.
-Users can select between a wide range of different grid components and connect them in a plug-and-play approach.
+* Framework to set up an experiment with an arbitrarily detailed parameterized energy grid in a few lines of code, 
 
 * Dynamic simulation of local electricity grids on component level including single and multi-phase systems as well as AC and DC operation. 
 
@@ -179,7 +181,9 @@ Following are shown the main fields of each individual contributor of OMG:
 
 * M. Meyer: Application examples, theoretical ...
 
-* SHK/WHB?: 
+* V.Chidananda:
+
+* O.Schweins:
 
 
 
