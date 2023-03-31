@@ -74,6 +74,10 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             "Expect the CM matrix to be a square matrix,
             but got $(size(CM)[1]) columns and $(size(CM)[2]) rows.")
 
+        @assert(-transpose(CM .* LowerTriangular(ones(size(CM)))) ==
+            CM .* UpperTriangular(ones(size(CM))),
+            "Expect the CM matrix to be a antisymetric: transpose(CM) = -CM.")
+
         num_connections = Int(maximum(CM))
     end
 
