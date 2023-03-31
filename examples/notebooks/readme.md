@@ -30,3 +30,5 @@ Classic controllers:
 
 * [VSG mode - enhanced grid forming](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/4_Classical_Controllers_VSG.ipynb)
 
+Configuration:
+* [Default parameters - overview](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/develop/examples/notebooks/Default_Parameters.ipynb)
