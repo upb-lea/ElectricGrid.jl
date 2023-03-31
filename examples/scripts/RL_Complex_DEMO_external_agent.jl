@@ -1,5 +1,9 @@
 using JEG
-
+using ReinforcementLearning
+using StableRNGs
+using Flux
+using Flux.Losses
+using IntervalSets
 """
 This scipt contains the content of the RL_Complex_DEMO.ipynb notebook.
 For comments and more documentation see refering notebookin examples/notebooks
@@ -10,10 +14,7 @@ CM = [0.0   1.0  0
 
 
 
-S_load = 1e2
-pf_load = 1
-v_rms = 230
-R_load, L_load, X, Z = ParallelLoadImpedance(S_load, pf_load, v_rms)
+
 
 parameters =
 Dict{Any, Any}(
@@ -109,9 +110,68 @@ env = ElectricGridEnv(
 
 
 
-agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
-                          ns = length(state(env, "my_ddpg")),
-                          use_gpu = false)
+#agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
+#                          ns = length(state(env, "my_ddpg")),
+#                          use_gpu = false)
+
+
+
+rng = StableRNG(1)
+init = Flux.glorot_uniform(rng)
+
+ns = length(state(env, "my_ddpg"))#length(env.agent_dict["my_ddpg"]["state_ids"])
+na = length(env.agent_dict["my_ddpg"]["action_ids"])
+
+CreateActor() = Chain(
+    Dense(ns, 30, relu; init = init),
+    Dense(30, 30, relu; init = init),
+    Dense(30, na, tanh; init = init),
+) |> gpu
+
+CreateCritic() = Chain(
+    Dense(ns + na, 30, relu; init = init),
+    Dense(30, 30, relu; init = init),
+    Dense(30, 1; init = init),
+) |> gpu
+
+agent = Agent(
+    policy = DDPGPolicy(
+        behavior_actor = NeuralNetworkApproximator(
+            model = CreateActor(),
+            optimizer = ADAM(),
+        ),
+        behavior_critic = NeuralNetworkApproximator(
+            model = CreateCritic(),
+            optimizer = ADAM(),
+        ),
+        target_actor = NeuralNetworkApproximator(
+            model = CreateActor(),
+            optimizer = ADAM(),
+        ),
+        target_critic = NeuralNetworkApproximator(
+            model = CreateCritic(),
+            optimizer = ADAM(),
+        ),
+        γ = 0.99f0,
+        ρ = 0.995f0,
+        na = na,
+        batch_size = 64,
+        start_steps = 1000,
+        start_policy = RandomPolicy(-1.0..1.0; rng = rng),
+        update_after = 50,#1000,
+        update_freq = 1,
+        act_limit = 1.0,
+        act_noise = 0.001,
+        rng = rng,
+    ),
+    trajectory = CircularArraySARTTrajectory(
+        capacity = 10000,
+        state = Vector{Float32} => (ns,),
+        action = Float32 => (na, ),
+    ),
+)
+
+
 
 my_custom_agents = Dict("my_ddpg" => agent)
 
@@ -120,7 +180,7 @@ controllers = SetupAgents(env, my_custom_agents)
 hook_learn = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
-Learn(controllers, env, num_episodes = 1000, hook=hook_learn)
+Learn(controllers, env, num_episodes = 20, hook=hook_learn)
 
 RenderHookResults(hook = hook_learn,
                     episode = 1,
