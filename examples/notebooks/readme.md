@@ -12,13 +12,6 @@ Nodeconstructor:
 
 * [Overview of parameters usable for experiment configuration](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Default_Parameters.ipynb)
 
-Reinforcement Learning:
-* [Train an RL agent in the JEG framework](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb)
-
-* [Train an RL agent in a classicly controlled grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Classical_Controllers_Merge_DEMO.ipynb)
-
-* [Train an RL agent controlling the whole grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Complex_DEMO.ipynb)
-
 Classic controllers:
 * [Auxiliaries provided from the classic control side](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/1_Auxiliaries_OU_process.ipynb)
 
@@ -30,5 +23,13 @@ Classic controllers:
 
 * [VSG mode - enhanced grid forming](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/4_Classical_Controllers_VSG.ipynb)
 
-Configuration:
+Reinforcement Learning:
+* [Train an RL agent in the JEG framework](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb)
+
+* [Train an RL agent in a classicly controlled grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Classical_Controllers_Merge_DEMO.ipynb)
+
+* [Train an RL agent controlling the whole grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Complex_DEMO.ipynb)
+
+
+Miscellanous:
 * [Default parameters - overview](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/develop/examples/notebooks/Default_Parameters.ipynb)
