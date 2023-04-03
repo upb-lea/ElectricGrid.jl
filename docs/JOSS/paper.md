@@ -42,15 +42,15 @@ bibliography: paper.bib
 
 The Julia Electric Grid (JEG) toolbox provides a transient simulation framework
 for energy grids based on power electronic converters. 
-With a few lines of code, an arbitrarily detailed parameterized energy grid can 
+With a few lines of code, a parameterized energy grid can 
 be initialized in Julia. 
 An example is shown in the figure below.
 
 ![\label{fig:grid}](ExampleGrid.png)
 _Fig. 1:  Exemplary electric energy grid in single phase representation._
 
-By means of a state-space system, the system response is determined in the time domain which can 
-be used for synthetic data generation to test novel control methods and compare them 
+By means of a linear time invariant state-space system, the system is evolved, which can then be
+for synthetic data generation to test novel control methods and compare them 
 with state-of-the-art controllers.
 
 
@@ -62,7 +62,7 @@ to ensure a continuous and efficient energy supply and
 simultaneously play an important role in the integration of renewable energy sources. [@Guerrero2013] 
 This applies both in connection with conventional power grids and for power supply in remote areas [@Lund2017].
 Due to their high efficiency and flexibility, the integration of power electronic converters 
-in electrical energy grid is increasing. 
+in electrical energy grids is increasing. 
 Power electronics describes the application of solid-state electronics to the control and
 conversion of electric power, which is largely performed with semiconductor switching 
 devices such as diodes or power transistors.
@@ -74,7 +74,7 @@ electrical energy systems to be connected.
 Controlling (decentralized) electric grids is a challenging task due to their stochastic, heterogeneous 
 and volatile characteristics.
 At the same time, high requirements are made with regard to aspects such as safety, quality and availability.
-This results in high demand for comprehensive testing of new control concepts during their development phase and comparisons with the state
+This results in a high demand for comprehensive testing of new control concepts during their development phase and comparisons with the state
 of the art to ensure their feasibility.
 This applies in particular to data-driven control approaches such as 
 reinforcement learning (RL), the stability and operating behavior of
@@ -83,10 +83,7 @@ which cannot be evaluated a priori [@Garcia2015].
 
 # State of field 
 
-``JEG`` is a Julia package for setting up realistic electric grid simulations with 
-extensive support for control options.
-The parametrisation can be arbitrarily detailed. 
-If no details are given, all parameters are calculated randomly on a physically meaningful basis.
+``JEG`` is a Julia package for setting up realistic electric grid simulations with support for control options. A number of parameters are made avaible to the user to evaluate the various control options. If no details are given, all parameters are generated automatically, either through randomness on a physically meaningful basis or by verified design methods.
 This enables both experts from the field of electrical energy networks to test certain configurations and 
 experts from the field of artificial intelligence to test new control approaches
 without any prior knowledge of electrical engineering.
@@ -104,13 +101,12 @@ which does not allow an evaluation of e.g. control on component level in case of
 
 
 The API is designed to provide a user-friendly interface to connect a modeled electric energy grid 
-with a wide range of classic control methods like shown in the figure below.
+with a wide range of classical control methods like shown in the figure below.
 
 ![\label{fig:jeg}](OverviewJEG.png)
 _Fig. 2:  Overview of the functionality and interconnections of the JEG framework._
  
-Already provided classic controllers like linear feedback control methods can be used out of the box or 
-be extended by model predictive control techniques. 
+Already provided are classic controllers (i.e. industry standard contollers) like linear feedback Proportional Integral (PI) in the Direct-Quadrature-Zero (DQ0) rotating reference frame. These control methods can be used out of the box. 
 Many basic auxiliary functionalities for the essential operation of electric power grids are provided by JEG such
 as coordinate transformations for basic controller classes, data logging, 
 and phase-locked loops for frequency and phase angle extraction. 
@@ -138,13 +134,13 @@ can be compared under defined conditions (benchmarks).
 The ``JEG`` toolbox provides the following key features:
 
 
-* Framework to set up an experiment with an arbitrarily detailed parameterized energy grid in a few lines of code, 
+* Framework to set up an experiment with a parameterized energy grid in a few lines of code, 
 
 * Dynamic simulation of local electricity grids on component level including single and multi-phase systems as well as AC and DC operation. 
 
 * Calculation, evaluation and logging of every single time step covering states, action and auxiliary quantities. 
 
-* Large variety of predefined and parameterizable controllers (droop, VSG, voltage, current) available, easy implementation of user-defined control structures possible.
+* Large variety of predefined and parameterizable controllers (droop, VSG, swing, active-reactive) are available.
 
 * Interesting use cases applying data-driven learning.
 
@@ -166,7 +162,7 @@ examples are available on the GitHub repository (https://github.com/upb-lea/Juli
 
 # Individual contributions of the authors
 
-Following are shown the main fields of each individual contributor of OMG: 
+Following are shown the main fields of each individual contributor of JEG: 
 
 * O. Wallscheid: Concept design and idea generation, testing and technical feedback, administrative project management
 
@@ -176,7 +172,7 @@ Following are shown the main fields of each individual contributor of OMG:
 
 * D. Weber: Application examples, API environment framework, unit tests
 
-* S. Boshoff: Application examples, classic controllers
+* S. Boshoff: Application examples, primary controllers in DQ0 frame, decentralised secondary controllers, unit tests 
 
 * M. Meyer: Basic system architecture, application examples, unit tests
 
