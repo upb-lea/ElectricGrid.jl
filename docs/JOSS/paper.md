@@ -106,9 +106,9 @@ with a wide range of classical control methods like shown in the figure below.
 ![\label{fig:jeg}](OverviewJEG.png)
 _Fig. 2:  Overview of the functionality and interconnections of the JEG framework._
  
-Already provided are classic controllers (i.e. industry standard contollers) like linear feedback Proportional Integral (PI) in the Direct-Quadrature-Zero (DQ0) rotating reference frame. These control methods can be used out of the box. 
+Already provided are classic controllers (i.e. industry standard contollers) like linear feedback Proportional Integral (PI) in the Direct-Quadrature-Zero (DQ0) rotating reference frame. These control methods can be used out of the box. That is, the controllers are automatically tuned with Luenberger observers. 
 Many basic auxiliary functionalities for the essential operation of electric power grids are provided by JEG such
-as coordinate transformations for basic controller classes, data logging, 
+as coordinate transformations for basic controller classes, data logging, measurement of real and imaginary powers, 
 and phase-locked loops for frequency and phase angle extraction. 
 The interface provided by [@Tian2020Reinforcement] is also available for training 
 data-driven control approaches like RL.
@@ -172,7 +172,7 @@ Following are shown the main fields of each individual contributor of JEG:
 
 * D. Weber: Application examples, API environment framework, unit tests
 
-* S. Boshoff: Application examples, primary controllers in DQ0 frame, decentralised secondary controllers, Luenberger observers, unit tests 
+* S. Boshoff: Application examples, primary controllers in DQ0 frame, decentralised secondary controllers, Luenberger observers, stochastic processes, unit tests 
 
 * M. Meyer: Basic system architecture, application examples, unit tests
 
