@@ -172,7 +172,7 @@ Following are shown the main fields of each individual contributor of JEG:
 
 * D. Weber: Application examples, API environment framework, unit tests
 
-* S. Boshoff: Application examples, primary controllers in DQ0 frame, decentralised secondary controllers, Luenberger observers, stochastic processes, unit tests 
+* S. Boshoff: Application examples, primary controllers in DQ0 frame, decentralised secondary controllers, Luenberger observers, stochastic processes, inverter filter design, cable design, unit tests 
 
 * M. Meyer: Basic system architecture, application examples, unit tests
 
