@@ -31,7 +31,7 @@ using ReinforcementLearning
     )
 
 
-    env = ElectricGridEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
+    env = ElectricGridEnv(ts = ts, use_gpu = false, CM = CM, num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
 
     plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
     plt_action_ids = ["source1_u_a"]
