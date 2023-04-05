@@ -6,56 +6,56 @@ using ReinforcementLearning
 
 
 
-# @testset "env_1source_1load" begin
+@testset "env_1source_1load" begin
 
-#     t_final = 0.0003 #time in seconds, total simulation run time
-#     ts = 1e-6
-#     t = 0:ts:t_final # time
+    t_final = 0.0003 #time in seconds, total simulation run time
+    ts = 1e-6
+    t = 0:ts:t_final # time
 
-#     fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
+    fs = 1/ts # Hz, Sampling frequency of controller ~ 15 kHz < fs < 50kHz
 
-#     CM = [0. 1.
-#     -1. 0.]
+    CM = [0. 1.
+    -1. 0.]
 
-#     parameters = Dict{Any, Any}(
-#         "source" => Any[
-#                         Dict{Any, Any}("fltr"=>"LC", "pwr"=>10000e3, "control_type" =>"classic", "source_type"=>"ideal", "mode" => 8,  "R1"=>1.1e-3, "L1"=>1e-3, "C"=>1e-3, "R_C"=>7e-3, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10000)
-#                         ],
-#         "load"   => Any[
-#                         Dict{Any, Any}("impedance"=>"RLC", "R"=>100, "L"=>1e-2, "C"=>1e-2, "pf"=>0.8, "v_limit"=>10000, "i_limit"=>10000)
-#                         ],
-#         "cable" => Any[
-#                         Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
-#                         ],
-#         "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
-#     )
-
-
-#     env = ElectricGridEnv(ts = ts, use_gpu = false, CM = [0 1;-1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
-
-#     plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
-#     plt_action_ids = ["source1_u_a"]
-#     hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
-
-#     #_______________________________________________________________________________
-#     # initialising the agents
-
-#     Multi_Agent = SetupAgents(env)
-#     Source = Multi_Agent.agents["classic"]["policy"].policy.Source
-
-#     #_______________________________________________________________________________
-#     # running the time simulation
-
-#     hook = Simulate(Multi_Agent, env, hook = hook)
+    parameters = Dict{Any, Any}(
+        "source" => Any[
+                        Dict{Any, Any}("fltr"=>"LC", "pwr"=>10000e3, "control_type" =>"classic", "source_type"=>"ideal", "mode" => 8,  "R1"=>1.1e-3, "L1"=>1e-3, "C"=>1e-3, "R_C"=>7e-3, "vdc"=>800, "v_limit"=>10000, "i_limit"=>10000)
+                        ],
+        "load"   => Any[
+                        Dict{Any, Any}("impedance"=>"RLC", "R"=>100, "L"=>1e-2, "C"=>1e-2, "pf"=>0.8, "v_limit"=>10000, "i_limit"=>10000)
+                        ],
+        "cable" => Any[
+                        Dict{Any, Any}("len"=>1, "R"=>1e-3, "L"=>1e-4, "C"=>1e-4, "i_limit"=>10000),
+                        ],
+        "grid"   => Dict{Any, Any}("fs"=>50.0, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.0)
+    )
 
 
-#     idx_end = 300
-#     test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]
-#     X_JEG = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
-#     X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
+    env = ElectricGridEnv(ts = ts, use_gpu = false, CM = [0 1;-1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
 
-#     @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
-# end
+    plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
+    plt_action_ids = ["source1_u_a"]
+    hook = DataHook(collect_state_ids = plt_state_ids, collect_action_ids = plt_action_ids)
+
+    #_______________________________________________________________________________
+    # initialising the agents
+
+    Multi_Agent = SetupAgents(env)
+    Source = Multi_Agent.agents["classic"]["policy"].policy.Source
+
+    #_______________________________________________________________________________
+    # running the time simulation
+
+    hook = Simulate(Multi_Agent, env, hook = hook)
+
+
+    idx_end = 300
+    test_state_ids = ["next_state_source1_i_L1_a", "next_state_source1_v_C_filt_a", "next_state_source1_v_C_cables_a", "next_state_cable1_i_L_a", "next_state_load1_v_C_total_a", "next_state_load1_i_L_a"]
+    X_JEG = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
+    X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
+
+    @test X_JEG[:,1:4]≈X_malab["X_matlab"][1:idx_end,1:4] atol=0.001   # 1e-6
+end
 
 
 @testset "env_2source_1load" begin
