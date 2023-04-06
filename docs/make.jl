@@ -23,7 +23,20 @@ makedocs(
             "Reinforcement Learning in Larger Grids " => "RL_Complex.md",
         ],
         "References" => "references.md",
-    ]
+    ],
+    format = Documenter.HTML(
+        mathengine = MathJax3(Dict(
+            :loader => Dict("load" => ["[tex]/physics"]),
+            :tex => Dict(
+                "inlineMath" => [["\$","\$"], ["\\(","\\)"]],
+                "tags" => "ams",
+                "packages" => ["base", "ams", "autoload", "physics"],
+            ),
+        )),
+        assets = [
+            #asset("https://cdn.plot.ly/plotly-2.3.0.min.js")
+        ],
+    ),
     )
 
 deploydocs(
