@@ -66,7 +66,7 @@ env = ElectricGridEnv(
 rng = StableRNG(1)
 init = glorot_uniform(rng)
 
-ns = length(env.agent_dict["my_ddpg"]["state_ids"])
+ns = length(state(env, "my_ddpg"))#length(env.agent_dict["my_ddpg"]["state_ids"])
 na = length(env.agent_dict["my_ddpg"]["action_ids"])
 
 CreateActor() = Chain(
@@ -123,7 +123,7 @@ controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
 #run(ma["JEG_ddpg_1"]["policy"], env)
 
-Learn(controllers, env, num_episodes = 5)
+Learn(controllers, env, num_episodes = 80)
 
 #Learn(agent, env)
 

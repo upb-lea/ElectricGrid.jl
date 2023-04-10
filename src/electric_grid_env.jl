@@ -203,16 +203,19 @@ function ElectricGridEnv(;
                 else
                     name = nc.parameters["source"][ns]["mode"]
                 end
-                agent_dict[name] = Dict(
-                    "source_number" => ns,
-                    "mode" => nc.parameters["source"][ns]["mode"],
-                    )
-
                 ssa = "source$ns"
-
-                agent_dict[name]["state_ids"] = filter(x -> split(x, "_")[1] == ssa, state_ids)
-
-                agent_dict[name]["action_ids"] = filter(x -> split(x, "_")[1] == ssa, action_ids)
+                if haskey(agent_dict, name)
+                    push!(agent_dict[name]["source_number"], ns)
+                    append!(agent_dict[name]["state_ids"], filter(x -> split(x, "_")[1] == ssa, state_ids)[:])
+                    append!(agent_dict[name]["action_ids"], filter(x -> split(x, "_")[1] == ssa, action_ids)[:])
+                else
+                    agent_dict[name] = Dict(
+                        "source_number" => [ns],
+                        "mode" => nc.parameters["source"][ns]["mode"],
+                        )
+                    agent_dict[name]["state_ids"] = filter(x -> split(x, "_")[1] == ssa, state_ids)
+                    agent_dict[name]["action_ids"] = filter(x -> split(x, "_")[1] == ssa, action_ids)
+                end
             end
         end
     end
@@ -425,6 +428,7 @@ end
 RLBase.action_space(env::ElectricGridEnv) = env.action_space
 RLBase.state_space(env::ElectricGridEnv) = env.state_space
 RLBase.reward(env::ElectricGridEnv) =  env.reward
+RLBase.DynamicStyle(env::ElectricGridEnv) =  RLBase.Simultaneous
 
 function RLBase.reward(env::ElectricGridEnv, name::String)
     return env.reward_function(env, name)
@@ -458,6 +462,17 @@ function RLBase.reset!(env::ElectricGridEnv)
     env.done = false
     return nothing
 end
+
+action_space(env::ElectricGridEnv) = RLBase.action_space(env)
+state_space(env::ElectricGridEnv) = RLBase.state_space(env)
+reward(env::ElectricGridEnv) = RLBase.reward(env)
+DynamicStyle(env::ElectricGridEnv) = RLBase.DynamicStyle(env)
+reward(env::ElectricGridEnv, name::String) = RLBase.reward(env, name)
+is_terminated(env::ElectricGridEnv) = RLBase.is_terminated(env)
+state(env::ElectricGridEnv) = RLBase.state(env)
+state(env::ElectricGridEnv, name::String) = RLBase.state(env, name)
+reset!(env::ElectricGridEnv) = RLBase.reset!(env)
+
 
 """
     env(action)
