@@ -57,10 +57,26 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
         cntr, CM = GenerateCM(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
         num_connections = cntr
     else
-        if size(CM)[1] != tot_ele
-            throw("Expect the number of elements in the node to match the specified
-                structure in the CM, but got $tot_ele and $(size(CM)[1])")
-        end
+        # if size(CM)[1] != tot_ele
+        #     throw("Expect the number of elements in the node to match the specified
+        #         structure in the CM, but got $tot_ele and $(size(CM)[1])")
+        # end
+
+        @assert(size(CM)[1] == tot_ele,
+            "Expect the number of elements in the grid to match the specified
+            structure in the CM, but got $tot_ele and $(size(CM)[1]).")
+
+        @assert(sum(CM) == 0,
+            "Expect the checksum over the CM matrix to be 0,
+            but got $(sum(CM)).")
+
+        @assert(size(CM)[1] == size(CM)[2],
+            "Expect the CM matrix to be a square matrix,
+            but got $(size(CM)[1]) columns and $(size(CM)[2]) rows.")
+
+        @assert(-transpose(CM .* LowerTriangular(ones(size(CM)))) ==
+            CM .* UpperTriangular(ones(size(CM))),
+            "Expect the CM matrix to be a antisymetric: transpose(CM) = -CM.")
 
         num_connections = Int(maximum(CM))
     end
@@ -498,7 +514,7 @@ function CheckParameters(
                     source["pf"] = source["p_set"] / source["pwr"]
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
                     s_set = sqrt(source["p_set"]^2 + source["q_set"]^2) *
-                        sign(source["p_set"] * source["q_set"])
+                        sign(source["q_set"])
                     if s_set == 0
                         source["pf"] = 1 / sqrt(2)
                     else
@@ -793,9 +809,8 @@ function CheckParameters(
     if !haskey(parameters, "cable")
         # no cable params defined -- invoke PFE from here ??
         cable_list = []
-
         for c in 1:num_connections
-            push!(cable_list, SampleCable())
+            push!(cable_list, SampleCable(parameters))
         end
         parameters["cable"] = cable_list
 
@@ -847,7 +862,7 @@ function CheckParameters(
 
         if num_undef_cables > 0
             for c in 1:num_undef_cables
-                push!(parameters["cable"], SampleCable())
+                push!(parameters["cable"], SampleCable(parameters))
             end
         end
     end
@@ -1169,15 +1184,15 @@ end
 
 Sample parameters for the cable.
 """
-function SampleCable()
+function SampleCable(parameters)
     cable = Dict()
     cable["len"] = 1.0#rand(Uniform(1e-3, 1e1))
 
     cable["R"] = 0.208   # Ω, line resistance
     cable["L"] = 0.00025 # H, line inductance
     cable["C"] = 0.4e-3  # F, line capacitance
-    #cable["i_limit"] = 10e12   # A, line current limit
-    #cable["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
+    cable["i_limit"] = 10e12   # limits will be overwritten if PFE is solved
+    cable["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
 
     cable["Rb"] = 0.722 / cable["len"]
     cable["Cb"] = 0.4e-6 / cable["len"]
@@ -1259,7 +1274,7 @@ function GenerateCM(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
     end
 
     # make sure that no objects disappear or subnets are formed
-    if S2L_p < 1
+    if (S2L_p < 1) || (num_loads == 0)
         for i in 1:tot_ele
             # save rows and columns entries
             Col = CM[1:i-1, i]

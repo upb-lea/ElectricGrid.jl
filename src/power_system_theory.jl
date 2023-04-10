@@ -1173,7 +1173,7 @@ end
     R, L = FaultLevel(S, X_R, Vrms; fsys = 50, phase = 3)
 
 # Arguments
-- `S::Float`: 3 phase Fault Level [VA]
+- `S::Float`: 3 phase short-circuit power [VA]
 - `X/R::Float`: the (Short Circuit) ratio of reactance to resistance
 - `Vrms::Float`: Line to Neutral rms voltage of external network [V]
 

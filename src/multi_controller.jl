@@ -266,7 +266,7 @@ function DefaultDataHook(Multi_Agent, env)
                     collect_cables   = all_cables,
                     #collect_loads    = all_loads,
                     v_mag_inv        = all_class,
-                    v_mag_cap        = all_class,
+                    v_mag_poc        = all_class,
                     i_mag_inv        = all_class,
                     i_mag_poc        = all_class,
                     v_dq             = all_class,
