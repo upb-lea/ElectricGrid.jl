@@ -1019,13 +1019,13 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
         @show optimizer_status["termination_status"]
 
         global P_source, Q_source = GetPQ(nodes, num_source)
-        @show P_source
-        @show Q_source
+        # @show P_source
+        # @show Q_source
 
         println()
         println()
         println(value.(nodes))
-        println("asdasdasd")
+        
         println()
         println(value.(cables))
         @show value.(nodes[1, "P"])
