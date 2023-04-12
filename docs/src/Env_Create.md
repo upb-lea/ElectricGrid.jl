@@ -16,7 +16,7 @@ The interactive content related to the section described here can be found in th
 To create an environment consisting of an electrical power grid with two sources `num_sources = 2` (which could be for example an inverter fed by a PV plant or a wind turbine or battery) - supplying one load `num_sources = 1` two lines of code are sufficient like will be shown in the following.
 An easy example is shown in the figure below, where a load (household) is supplied by 2 sources (inverters, fed PV plant and wind turbine) via two cables.
 
-![](./assets/ExampleGrid.png "")
+![](./assets/ExampleGrid.png)
 
 A partially visible electrical circuit is displayed in the background as single phase diagram. 
 By default a three-phase four wire system is created, for better visuablilty only one phase is shown here.
@@ -98,7 +98,7 @@ For example the first state is called `"source1_i_L1_a"`. That tells, it belongs
 For example, this information can be used to control the current through the filter inductance (or to learn this control task).
 All states of phase `a` of the example in the figure above (PV, wind turbine and houshold) are labeled in the circuit below (currents in red, voltages in green).
 
-![](./assets/S2_L1_states.png "")
+![](./assets/S2_L1_states.png)
 
 The `action_ids` follow a similar concept:
 

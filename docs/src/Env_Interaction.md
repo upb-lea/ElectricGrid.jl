@@ -142,7 +142,7 @@ The interaction of the different components (env, agent, classic controllers, wr
 
 
 
-![](./assets/DareOverview.png "")
+![](./assets/DareOverview.png)
 
 
 The depicted multiagent ensures that the states and actions for every source are exchanged with the correct agent or classic controller. This is depending on the `control_types` and `mode`s.
@@ -253,7 +253,7 @@ RenderHookResults(hook = hook,
 ```
 
 
-![](./assets/env_interaction_DC.png "")
+![](./assets/env_interaction_DC.png)
 
 
 As can be seen, the state `"source1_i_L1_a"` (belonging to the left y-axis) and the action `"source1_u_a"` (right y-axis) are plotted over the 500 timesteps while one timestep takes `ts = 1e-4` s resulting in an episode time of 0.05 s.
@@ -300,7 +300,7 @@ RenderHookResults(hook = hook,
                   states_to_plot  = states_to_plot)
 ```
 
-![](./assets/env_interaction_AC.png "")
+![](./assets/env_interaction_AC.png)
 
 
 Based on this introduction, more enhanced environments can be created consisting of more sources and loads connected to each other, e.g.,
