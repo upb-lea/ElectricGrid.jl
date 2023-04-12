@@ -80,7 +80,7 @@ function reward_function(env, name=nothing)
             refs = reference(env.t)
             refs[1] = refs[1] / env.nc.parameters["source"][1]["i_limit"]
             refs[2] = refs[2] / env.nc.parameters["source"][2]["v_limit"]
-            refs[2] = refs[2] / env.nc.parameters["source"][3]["i_limit"]
+            refs[3] = refs[3] / env.nc.parameters["source"][3]["i_limit"]
 
             r = 1-1/3*(sum((abs.(refs - state_to_control)/2).^0.5))
 
@@ -120,7 +120,7 @@ controllers = SetupAgents(env, my_custom_agents)
 hook_learn = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
-Learn(controllers, env, num_episodes = 100, hook=hook_learn)
+Learn(controllers, env, num_episodes = 1000, hook=hook_learn)
 
 RenderHookResults(hook = hook_learn,
                     episode = 1,

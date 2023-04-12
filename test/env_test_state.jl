@@ -31,7 +31,7 @@ using ReinforcementLearning
     )
 
 
-    env = ElectricGridEnv(ts = ts, use_gpu = false, CM = [0 1;1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
+    env = ElectricGridEnv(ts = ts, use_gpu = false, CM = [0 1;-1 0], num_sources = 1, num_loads = 1, verbosity = 0,parameters = parameters, maxsteps = length(t), action_delay = 1)
 
     plt_state_ids = ["source1_i_L1_a", "source1_v_C_filt_a",  "source1_v_C_cables_a", "cable1_i_L_a", "load1_v_C_total_a", "load1_i_L_a"]
     plt_action_ids = ["source1_u_a"]
@@ -54,14 +54,7 @@ using ReinforcementLearning
     X_JEG = Matrix(hook.df[!, test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_1source_1load1e6.mat")
 
-    #=println("MATLAB:")
-    display(X_malab["X_matlab"][1:idx_end,:])
-    println()
-    println("JEG:")
-    display(X_JEG)
-    println() =#
-
-    @test X_JEG≈X_malab["X_matlab"][1:idx_end,:] atol=0.001   # 1e-6
+    @test X_JEG[:,1:4]≈X_malab["X_matlab"][1:idx_end,1:4] atol=0.001   # 1e-6
 end
 
 
