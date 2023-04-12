@@ -24,6 +24,15 @@ function process_file(filepath::AbstractString)
             end
 
             #check for beginning of unencapsulated html blocks
+            if occursin(r"<html", line)
+                if !occursin("```@raw html", prev_line)
+                    edit_html_block = true
+                    push!(output_lines, "```@raw html")
+                end
+                html_divs = 1 + length(collect(eachmatch(r"<div", line)))
+            end
+
+            #check for beginning of unencapsulated div blocks
             if occursin(r"<div", line)
                 if !occursin("```@raw html", prev_line) && html_divs == 0
                     edit_html_block = true
@@ -76,10 +85,21 @@ function process_file(filepath::AbstractString)
             push!(output_lines, line)
 
 
-            #check for end of unencapsulated html blocks
+            #check for end of unencapsulated div blocks
             if occursin(r"</div", line)
                 if html_divs > 0
                     html_divs -= length(collect(eachmatch(r"</div", line)))
+                    if html_divs <= 0 && edit_html_block
+                        push!(output_lines, "```")
+                        edit_html_block = false
+                    end
+                end
+            end
+
+            #check for end of unencapsulated html blocks
+            if occursin(r"</html", line)
+                if html_divs > 0
+                    html_divs -= 1 + length(collect(eachmatch(r"</div", line)))
                     if html_divs <= 0 && edit_html_block
                         push!(output_lines, "```")
                         edit_html_block = false
