@@ -68,7 +68,7 @@ function process_file(filepath::AbstractString)
                     edit_plotlyjs_block = false
                 end
             end
-            
+
 
 
             #remove julia logger artifacts
@@ -81,7 +81,7 @@ function process_file(filepath::AbstractString)
             #change  "") to )
             line = replace(line, " \"\")" => ")")
 
-            
+
             push!(output_lines, line)
 
 
@@ -128,7 +128,7 @@ function process_file(filepath::AbstractString)
     end
 end
 
-dirpath = string(@__DIR__) * "./src"
+dirpath = string(@__DIR__) * "/src"
 md_files = glob("*.md", dirpath)
 
 for file in md_files

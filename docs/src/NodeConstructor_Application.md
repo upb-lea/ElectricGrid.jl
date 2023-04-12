@@ -45,6 +45,7 @@ using JEG
 ```
 
 
+```@raw html
 <div style="padding: 1em; background-color: #f8d6da; border: 1px solid #f5c6cb; font-weight: bold;">
 <p>The WebIO Jupyter extension was not detected. See the
 <a href="https://juliagizmos.github.io/WebIO.jl/latest/providers/ijulia/" target="_blank">
@@ -52,6 +53,7 @@ using JEG
 </a>
 for more information.
 </div>
+```
 
 
 
@@ -143,6 +145,7 @@ DrawGraph(S2_L1)
 ```
 
 
+```@raw html
 <html>
 <head><meta charset="utf-8" /></head>
 <body>
@@ -192,6 +195,7 @@ if (window.MathJax) {MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}
 
 </body>
 </html>
+```
 
 
 After the grid has been created it can be passed to the function `GetSystem()`, which then returns the system matrices for the state space representation in the continous time domain.
@@ -347,6 +351,7 @@ S5_L15 = NodeConstructor(num_sources=5, num_loads=15);
 
 Until now, only single-phase grids have been created with NodeConstructor. However, the default value for the number of phases is 3, so we will now also consider the three-phase variant. For the simulation of the grid in 3 phases the system matrix is extended:
 
+```math
 \begin{equation}
 A_{all} = \begin{pmatrix}
         A_{a} & 0 & 0 \\
@@ -354,6 +359,7 @@ A_{all} = \begin{pmatrix}
         0 & 0 & A_{c} 
     \end{pmatrix}
 \end{equation}
+```
 
 Lets see how this looks like in Julia.
 
