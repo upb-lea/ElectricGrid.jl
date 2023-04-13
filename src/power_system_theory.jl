@@ -659,6 +659,11 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
                     p_load_total = p_load_total + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
                 end
             end
+
+            if haskey(parameters["source"][i], "load")
+                p_load_total += -parameters["source"][i]["pwr"]/parameters["grid"]["phase"]*1/3   #TODO: V2 setdepending on setpoints
+                q_load_total += -parameters["source"][i]["pwr"]/parameters["grid"]["phase"]*1/100
+            end
         else
 
             p_load_total = p_load_total + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
@@ -685,6 +690,8 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
 
     model = Model(Ipopt.Optimizer)
     #set_optimizer_attributes(model, "tol" => 1e-1)
+    set_optimizer_attribute(model, "max_iter", 3_000)
+    set_optimizer_attribute(model, "print_level", 0)
 
     zero_expression = @NLexpression(model, 0.0)
 
@@ -793,13 +800,29 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
                 end
 
             else
-                # all variable -
-                SetBounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
-                SetBounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
-                SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
-                SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
-                push!(idx_p_mean_cal, i)
-                push!(idx_q_mean_cal, i)
+                if !haskey(parameters["source"][i], "load")
+                    parameters["source"][i]["load"] = false
+                end
+                if parameters["source"][i]["load"]
+                    P = parameters["source"][i]["pwr"]/parameters["grid"]["phase"]*1/3
+                    Q = parameters["source"][i]["pwr"]/parameters["grid"]["phase"]*1/100
+                    fix(nodes[i, "P"], -P)  # TODO: exchange in V2 via setpoints!
+                    fix(nodes[i, "Q"], -Q)
+
+                    #total_P_load += -P
+                    #total_Q_load += -Q
+
+                    SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+                else
+                    # all variable -
+                    SetBounds(nodes[i, "P"], total_P_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"])
+                    SetBounds(nodes[i, "Q"], total_Q_load / num_source, -parameters["source"][i]["pwr"]/parameters["grid"]["phase"], parameters["source"][i]["pwr"]/parameters["grid"]["phase"]) # P and Q are the average from power, excluding cable losses
+                    SetBounds(nodes[i, "theta"], 0.0, -0.25*pi/2, 0.25*pi/2) # same as above
+                    SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95*parameters["grid"]["v_rms"], 1.05*parameters["grid"]["v_rms"])
+                    push!(idx_p_mean_cal, i)
+                    push!(idx_q_mean_cal, i)
+                end
             end
             #end
         else
