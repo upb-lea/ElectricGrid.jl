@@ -6,23 +6,32 @@ makedocs(
     modules = [JEG],
     pages = [
         "Welcome" => "index.md",
-        "Guide" => [
-            "Quick Start" => "quickstart.md",
-            "The Nodeconstructor - Theory" => "NodeConstructor_Theory.md",
-            "The Nodeconstructor - Application" => "NodeConstructor_Application.md",
-            "Set up Classical Controllers" => "classical.md",
-            "Contributing" => "dev.md"
-        ],
+        "Quick Start" => "quickstart.md",
         "Environment" => [
             "Configuring the Environment" => "Env_Create.md",
             "Interaction with the Environment" => "Env_Interaction.md"
+        ],
+        "Classical Controllers" => [
+            "Swing Mode" => "Classical_Controllers_Swing.md",
+            "PQ Mode" => "Classical_Controllers_PQ.md",
+            "Droop Controllers" => "Classical_Controllers_Droop.md",
+            "Virtual Synchronous Generator" => "Classical_Controllers_VSG.md",
+            "Auxiliaries" => "Auxiliaries_OU_process.md",
         ],
         "Reinforcement Learning" => [
             "Reinforcement Learning using JEG" => "RL_Single_Agent.md",
             "Multicontroller" => "RL_Classical_Controllers_Merge.md",
             "Reinforcement Learning in Larger Grids " => "RL_Complex.md",
         ],
+        "Nodeconstructor" => [
+            "The Nodeconstructor - Theory" => "NodeConstructor_Theory.md",
+            "The Nodeconstructor - Application" => "NodeConstructor_Application.md"
+        ],
+        "Miscellanous" => [
+            "Default Parameters" => "Default_Parameters.md"
+        ],
         "References" => "references.md",
+        "Contributing" => "dev.md",
     ],
     format = Documenter.HTML(
         mathengine = MathJax3(Dict(
