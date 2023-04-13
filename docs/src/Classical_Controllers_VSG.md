@@ -24,15 +24,19 @@ The specific VSG mode that is available to users is the "Synchronverter" mode. T
 
 Similar to the droop mode, if the user does not specify $D_p$ and $D_q$, then they are automatically tuned based on the converter power rating and the network's maximum allowable frequency and voltage deviations, i.e. $Δfmax$ and $ΔEmax$. The formulas to compute the droop coefficients are the same as for the droop mode and given by,
 
-$$
+```math
+
   D_p = \frac{S_{rated}}{{ω_{set}}^2 Δfmax}, \quad D_q = \frac{S_{rated}}{V_{set}*\sqrt{2}*ΔEmax},
-$$
+```
+
 
 The two new quantities that correspond to the "inertia" are computed as follows,
 
-$$
+```math
+
   J = τf*D_p, \quad K = τv*ω_{set}*D_q.
-$$
+```
+
 
 ![](assets/VSG_mode.jpg)
 

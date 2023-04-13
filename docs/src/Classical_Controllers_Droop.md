@@ -33,9 +33,11 @@ The "droop" control sitting on top of the voltage control loop, provides the ref
 
 If the user does not specify $D_p$ and $D_q$, then they are automatically tuned based on the converter power rating and the network's maximum allowable frequency and voltage deviations, i.e., $Δfmax$ and $ΔEmax$. The formulas that are implemented to calculate the droop coefficients are as follows,
 
-$$
+```math
+
   D_p = \frac{S_{rated}}{{ω_{set}}^2 Δfmax}, \quad D_q = \frac{S_{rated}}{V_{set}*\sqrt{2}*ΔEmax}.
-$$
+```
+
 
 ![](assets/Droop_mode.jpg)
 

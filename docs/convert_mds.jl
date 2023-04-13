@@ -5,6 +5,7 @@ function process_file(filepath::AbstractString)
     edit_latex_block = false
     edit_html_block = false
     edit_plotlyjs_block = false
+    latex_dollar = false
     plotly_div_name = ""
     html_divs = 0
     original_lines = []
@@ -20,6 +21,24 @@ function process_file(filepath::AbstractString)
                 if !occursin("```math", prev_line)
                     edit_latex_block = true
                     push!(output_lines, "```math")
+                end
+            end
+
+            if occursin("\$\$", line)
+                if !latex_dollar
+                    latex_dollar = true
+                    if !occursin("```math", prev_line)
+                        edit_latex_block = true
+                        line = ""
+                        push!(output_lines, "```math")
+                    end
+                else
+                    latex_dollar = false
+                    if edit_latex_block
+                        line = ""
+                        push!(output_lines, "```")
+                        edit_latex_block = false
+                    end
                 end
             end
 
