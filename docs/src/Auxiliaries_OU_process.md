@@ -12,9 +12,11 @@
 - This notebooks will show you how to add stochastic reference signals via Ornstein–Uhlenbeck processes.
 
 The Ornstein-Uhlenbeck process is described by the following stochastic differential equation (SDE):
-$$
+```math
+
   dX_t = κ(γ-X_t)dt + σdW_t
-$$
+```
+
 Here, $γ$ is the long term mean, $κ$ is the mean reversion parameter, $W_t$ denotes a Wiener process, and $σ$ scales the random impact. 
 
 
