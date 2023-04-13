@@ -16,12 +16,8 @@
 - One source, an ideal oscillating voltage source, which is generating a 3-phase AC signal while connected to a static load through a cable.
 - Plotting of the simulation results.
 
-<br>
-```@raw html
-<div>
-<img src="assets/Swing_mode.jpg" width="500"/>
-</div>
-```
+
+![](assets/Swing_mode.jpg)
 
 
 ```julia
@@ -80,7 +76,7 @@ env = ElectricGridEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:329
     ┌ Info: Time simulation run time: 0.1 [s] ~> 1001 steps
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:330
-
+    
 
 _______________________________________________________________________________
 ### Initialising the Controller 
@@ -99,7 +95,7 @@ agent = SetupAgents(env);
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains.
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2707
-
+    
 
 _______________________________________________________________________________
 ### Running the Time Domain Simulation 
@@ -129,9 +125,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = URVp0zQIuc2c > </div>
+id = J9WKeXBkZI4G > </div>
 <script>
-gd = 'URVp0zQIuc2c'
+gd = 'J9WKeXBkZI4G'
 require(['plotly'], function(plotly) {
 
 
@@ -195,9 +191,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = gBMd9vNjsWff > </div>
+id = 89cyrVtYdmDx > </div>
 <script>
-gd = 'gBMd9vNjsWff'
+gd = '89cyrVtYdmDx'
 require(['plotly'], function(plotly) {
 
 
