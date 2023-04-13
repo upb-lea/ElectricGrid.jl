@@ -168,7 +168,7 @@ Following are shown the main fields of each individual contributor of JEG:
 
 * S. Peitz: Administrative project management, concept-oriented feedback
 
-* J. Stenner: API RL framework
+* J. Stenner: API RL framework, API environment framework, basic system architecture
 
 * D. Weber: Application examples, API environment framework, unit tests
 
@@ -176,7 +176,7 @@ Following are shown the main fields of each individual contributor of JEG:
 
 * M. Meyer: Basic system architecture, application examples, unit tests
 
-* V. Chidananda:
+* V. Chidananda: System analytics, unit tests
 
 * O. Schweins: Basic system architecture
 
