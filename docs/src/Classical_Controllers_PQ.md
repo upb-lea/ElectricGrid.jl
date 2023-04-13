@@ -21,22 +21,14 @@
 
 An inverter in the PQ mode is effectively controlled as a current supply, only ever regulating the current exchanged with the grid. This current control loop operates in the direct-quadrature-zero (DQ0) frame, and employs over voltage and current limitations to simulate the protection of the switches (not depicted). This limitations cause non-linear saturation effects when the inverter is pushed to extreme. 
 
-<br>
-```@raw html
-<div>
-<img src="assets/current_control.jpg" width="500"/>
-</div>
-```
+
+![](assets/current_control.jpg)
 
 The main disadvantage of an inverter in this mode is that the output voltage is maintained by the external network, which means that the inverter needs to synchronize to the network by making use of a phase-locked-loop (PLL). The PLL extracts the angle (and frequency) of the positive phase sequence voltage measured after the first filter inductor. 
 
 A possible disadvantage to the PQ mode is that the inverter may continue injecting currents into the grid when there is a network fault, leading to excessively high voltages. By the same token, when the network voltage is low, the inverter will continue drawing the same amount of power, further deteriorating the voltage profile. Other modes, such as the "Droop" and in particular the "VSG" mode can alleviate some of these issues, providing control structures which regulate both the grid frequency and voltage.  
-<br><br>
-```@raw html
-<div>
-<img src="assets/PQ_mode.jpg" width="500"/>
-</div>
-```
+
+![](assets/PQ_mode.jpg)
 
 
 
@@ -106,7 +98,7 @@ hook = Simulate(agents, env);
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: 1 source has been set up in PQ mode.
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
-
+    
 
 _______________________________________________________________________________
 ### Low-Level Rendering
@@ -122,9 +114,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = IBmEkj7QW2pi > </div>
+id = 61SPR3ru6GKu > </div>
 <script>
-gd = 'IBmEkj7QW2pi'
+gd = '61SPR3ru6GKu'
 require(['plotly'], function(plotly) {
 
 
@@ -182,9 +174,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = EnBvZrCYJ8mG > </div>
+id = msoFhyc252Iq > </div>
 <script>
-gd = 'EnBvZrCYJ8mG'
+gd = 'msoFhyc252Iq'
 require(['plotly'], function(plotly) {
 
 

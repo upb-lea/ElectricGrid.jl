@@ -142,7 +142,7 @@ The interaction of the different components (env, agent, classic controllers, wr
 
 
 
-![](./assets/DareOverview.png)
+![](./assets/OverviewJEG.png)
 
 
 The depicted multiagent ensures that the states and actions for every source are exchanged with the correct agent or classic controller. This is depending on the `control_types` and `mode`s.

@@ -25,21 +25,11 @@ The droop control method can be referred to as an independent, autonomous concep
 This mode works quite well when high frequency harmonics and switching ripples are neglected (as they presently are in the set-up). An inverter in "Droop" mode is capable of other negative oscillatory behaviour, similar to the hunting effect in synchronous generators. In fact, the droop mode is a simplified version of the Virtual Synchronous Generator (VSG) mode with a low-pass filtering characteristic on the measured real and imaginary powers. Unlike the PQ mode, a source in droop mode has to have some energy storage available. 
 
 The voltage control loop has a very similar structure to the inner current control loop, also operating in the DQ0 frame and with PI controllers. 
-<br><br>
-```@raw html
-<div>
-<img src="assets/voltage_control.jpg" width="500"/>
-</div>
-```
+![](assets/voltage_control.jpg)
 
 The "droop" control sitting on top of the voltage control loop, provides the reference voltage signals. The droop mode for every inverter has two coefficients, $D_p$ and $D_q$, that determine its behaviour. $D_p$ is associated with the real power and frequency, while $D_q$ corresponds to the voltage magnitude and the imaginary power. These coefficients can by tuned either heuristically or via more advanced optimisation algorithms.
 
-<br>
-```@raw html
-<div>
-<img src="assets/Droop_control.jpg" width="500"/>
-</div>
-```
+![](assets/Droop_control.jpg)
 
 If the user does not specify $D_p$ and $D_q$, then they are automatically tuned based on the converter power rating and the network's maximum allowable frequency and voltage deviations, i.e., $Δfmax$ and $ΔEmax$. The formulas that are implemented to calculate the droop coefficients are as follows,
 
@@ -47,12 +37,7 @@ $$
   D_p = \frac{S_{rated}}{{ω_{set}}^2 Δfmax}, \quad D_q = \frac{S_{rated}}{V_{set}*\sqrt{2}*ΔEmax}.
 $$
 
-<br>
-```@raw html
-<div>
-<img src="assets/Droop_mode.jpg" width="700"/>
-</div>
-```
+![](assets/Droop_mode.jpg)
 
 
 ```julia
@@ -120,7 +105,7 @@ hook = Simulate(agents, env);
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: 2 sources have automatically calculated proportional and integral gains for their current control loops.
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2720
-
+    
 
 _______________________________________________________________________________
 ### Low-Level Rendering
@@ -136,9 +121,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = l978WxqPC6ql > </div>
+id = oxfhEZUl2jZ1 > </div>
 <script>
-gd = 'l978WxqPC6ql'
+gd = 'oxfhEZUl2jZ1'
 require(['plotly'], function(plotly) {
 
 
@@ -198,9 +183,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = TYZS7BS1GczV > </div>
+id = ZvGpqSu4vIRy > </div>
 <script>
-gd = 'TYZS7BS1GczV'
+gd = 'ZvGpqSu4vIRy'
 require(['plotly'], function(plotly) {
 
 

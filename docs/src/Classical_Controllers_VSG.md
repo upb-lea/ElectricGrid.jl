@@ -20,12 +20,7 @@
 
 The specific VSG mode that is available to users is the "Synchronverter" mode. The mode aims to mimic a synchronous generator, and thereby has two more coefficients, two time constants $τv$ and $τf$, which are used to calculate the virtual mass moment of inertia, $J$ and integral gain $K$. The mode provides additional flexibility over the droop mode, in that real and imaginary power set points can be provided. Unlike the PQ mode these set points are more akin to biases, because the inverter will not necessarily output these powers. For example, the real power set point will only be reached if the VSG is connected to a swing supply with a fixed frequency. Moreover, an inverter in VSG mode may present with unwanted oscillatory behaviour similar to the hunting effect in synchronous generators.
 
-<br>
-```@raw html
-<div>
-<img src="assets/VSG_control.jpg" width="500"/>
-</div>
-```
+![](assets/VSG_control.jpg)
 
 Similar to the droop mode, if the user does not specify $D_p$ and $D_q$, then they are automatically tuned based on the converter power rating and the network's maximum allowable frequency and voltage deviations, i.e. $Δfmax$ and $ΔEmax$. The formulas to compute the droop coefficients are the same as for the droop mode and given by,
 
@@ -39,12 +34,7 @@ $$
   J = τf*D_p, \quad K = τv*ω_{set}*D_q.
 $$
 
-<br>
-```@raw html
-<div>
-<img src="assets/VSG_mode.jpg" width="700"/>
-</div>
-```
+![](assets/VSG_mode.jpg)
 
 
 ```julia
@@ -110,7 +100,7 @@ hook = Simulate(agents, env);
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2707
     ┌ Info: 1 source has been set up with a Luenberger discrete Observer.
     └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2737
-
+    
 
 _______________________________________________________________________________
 ### Low-Level Rendering
@@ -126,9 +116,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = ofRq4CdUk4Fd > </div>
+id = U3JGKw5tghl5 > </div>
 <script>
-gd = 'ofRq4CdUk4Fd'
+gd = 'U3JGKw5tghl5'
 require(['plotly'], function(plotly) {
 
 
@@ -188,9 +178,9 @@ RenderHookResults(hook = hook,
 
 ```@raw html
 <div
-id = uhSaRfukVVRr > </div>
+id = Y1mwz15Dz4hv > </div>
 <script>
-gd = 'uhSaRfukVVRr'
+gd = 'Y1mwz15Dz4hv'
 require(['plotly'], function(plotly) {
 
 
