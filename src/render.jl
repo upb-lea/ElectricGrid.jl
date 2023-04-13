@@ -15,7 +15,7 @@ function plot_rewards_3d(hook)
             margin=attr(l=10, r=10, b=10, t=60, pad=10)
         )
 
-    p = plot(scatter3d(hook.df, x = :time, y = :episode, z = :reward,
+    p = Plot(scatter3d(hook.df, x = :time, y = :episode, z = :reward,
                         marker=attr(size=2, color=:reward, colorscale=[[0, "rgb(255,0,0)"], [1, "rgb(0,255,0)"]]),
                         mode = "markers"),
             config = PlotConfig(scrollZoom=true),
@@ -107,7 +107,7 @@ function plot_best_results(;agent, env, hook, states_to_plot = nothing, actions_
 
     traces = Array{GenericTrace}(traces)
 
-    p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
+    p = Plot(traces, layout, config = PlotConfig(scrollZoom=true))
     display(p)
 
     if isa(agent, MultiController)
@@ -343,7 +343,7 @@ function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = n
 
     traces = Array{GenericTrace}(traces)
 
-    p = plot(traces, layout, config = PlotConfig(scrollZoom=true))
+    p = Plot(traces, layout, config = PlotConfig(scrollZoom=true))
     display(p)
 
     if return_plot
@@ -410,7 +410,7 @@ function RenderPSource(;env, hook, episode, source_ids)
 
     powers = Array{GenericTrace}(powers)
 
-    p = PlotlyJS.plot(powers, layout, config = PlotConfig(scrollZoom=true))
+    p = Plot(powers, layout, config = PlotConfig(scrollZoom=true))
     display(p)
 
 
@@ -522,7 +522,7 @@ function RenderPLoad(;env, hook, episode, load_ids)
 
     powers = Array{GenericTrace}(powers)
 
-    p = PlotlyJS.plot(powers, layout, config = PlotConfig(scrollZoom=true))
+    p = Plot(powers, layout, config = PlotConfig(scrollZoom=true))
     display(p)
 
 end
