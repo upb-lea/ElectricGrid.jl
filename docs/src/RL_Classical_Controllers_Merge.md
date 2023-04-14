@@ -19,7 +19,7 @@ For more details about how the classic control works, see `Classical_Controllers
 The use case is shown in the figure below.
 This environment consists of a 3-phase electrical power grid with 2 sources connected via a cable (for improved clarity, only one phase is shown in the following figure).
 
-![](./assets/RL_classic_swing.png "")
+![](./assets/RL_classic_swing.png)
 
 The first source is controlled by the RL agent `my_ddpg` which should learn to draw power from the grid, therefore act like an active load.
 The second source is controlled by a classic controller in open-loop mode. 
@@ -166,7 +166,7 @@ controllers = SetupAgents(env, my_custom_agents);
 
 Like shown in the following figure, the `controllers` struct consists of 2 agents now - one per source.
 
-![](./assets/Multiagent_classic_RL.png "")
+![](./assets/Multiagent_classic_RL.png)
 
 Since 2 sources are defined in the env here, one controlled classically and the other by RL, the `MultiController` hands over the correct indices of the environment to the controllers.
 This enables each controller, e.g., to find the correct subset of states in the entire environment state set.

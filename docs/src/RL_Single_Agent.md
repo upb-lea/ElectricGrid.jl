@@ -18,7 +18,7 @@ It will be shown how the agent can learn and be applied to an simple electrical 
 
 The use case is shown in the figure below.
 
-![](./assets/RL_single_agent.png "")
+![](./assets/RL_single_agent.png)
 
 First the environment with the configuration shown in the figure has to be defined. 
 It consists of a single phase electrical power grid with 1 source and 1 load connected via a cable.
