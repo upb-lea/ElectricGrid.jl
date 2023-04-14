@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 using ReinforcementLearning
 using StableRNGs
 using Flux
@@ -119,7 +119,7 @@ env = ElectricGridEnv(
 rng = StableRNG(1)
 init = Flux.glorot_uniform(rng)
 
-ns = length(JEG.state(env, "my_ddpg"))#length(env.agent_dict["my_ddpg"]["state_ids"])
+ns = length(ElectricGrid.state(env, "my_ddpg"))#length(env.agent_dict["my_ddpg"]["state_ids"])
 na = length(env.agent_dict["my_ddpg"]["action_ids"])
 
 CreateActor() = Chain(

@@ -1,4 +1,4 @@
 ```@autodocs
-Modules = [JEG]
+Modules = [ElectricGrid]
 Order   = [:function, :type]
 ```

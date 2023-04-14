@@ -1,11 +1,11 @@
 
-using JEG
+using ElectricGrid
 
 #=
  File to prepare all functions needed in #24
  Most of the developed function will have to be shifted to the NodeConstructor or power_system_theory.jl
 
-Based on documentation can be found in https://github.com/upb-lea/JEG/issues/24 
+Based on documentation can be found in https://github.com/upb-lea/ElectricGrid/issues/24 
 =#
 
 

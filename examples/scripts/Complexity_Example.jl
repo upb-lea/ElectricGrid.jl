@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 using Graphs
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")

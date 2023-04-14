@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 
 """
 This scipt contains the content of the RL_Complex_DEMO.ipynb notebook.

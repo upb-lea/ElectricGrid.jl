@@ -1,13 +1,13 @@
 # Interaction with the ElectricGridEnv
 
-In the previous [section](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/Env_Create/) it was shown how to set up an environment.
+In the previous [section](https://upb-lea.github.io/ElectricGrid.jl/dev/Env_Create/) it was shown how to set up an environment.
 This section is intended to show how to interact with the environment and, above all, how to extract, store the data and covers the following topics:
 
 - ### Apply actions,
 - ### Data hook (how to tap the simulated data stream),
 - ### AC grid example.
 
-The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Interaction_DEMO.ipynb).
+The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/Env_Interaction_DEMO.ipynb).
 
 ## Basic interaction with the environment
 
@@ -18,7 +18,7 @@ Based on the input/action `u` at timestep `k` the state `x` is calculated.
 ![](./assets/RL_env.png)
 
 Based on that action `u_k` and the internal state-space model, the system response is evolved for one timestep and the new states `x_k+1` are calulated.
-The state-space model is defined depending on the electric components - for more information about the ordinary differential equations behind,... see [The Nodecontructor - Theory](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/NodeConstructor_Theory/).
+The state-space model is defined depending on the electric components - for more information about the ordinary differential equations behind,... see [The Nodecontructor - Theory](https://upb-lea.github.io/ElectricGrid.jl/dev/NodeConstructor_Theory/).
 
 In the following will be described how to use the described parameter dict to define a simple, small example `env` to learn how to interact with it.
 This environment consists of a single phase electrical power grid with 1 source and 1 load as shown in the figure below. For reasons of clarity, only phase a is shown:
@@ -27,14 +27,14 @@ This environment consists of a single phase electrical power grid with 1 source 
 
 To get an `env` consisting of that specific setting with the correct filter type and load, the parameter dict is defined in beforehand and handed over to the `env`.
 Instead of `num_sorces` and `num_loads`, now the parameter dict and the connection matrix `CM` is used which defines if there is a connection between two nodes (e.g., source <-> load) or not. 
-If there is a connetion the corresponding matrix entry is not zero, if there is no connection the entry is `0`. For more information about the CM matrix see [The Nodecontructor - Application](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/NodeConstructor_Application/).
+If there is a connetion the corresponding matrix entry is not zero, if there is no connection the entry is `0`. For more information about the CM matrix see [The Nodecontructor - Application](https://upb-lea.github.io/ElectricGrid.jl/dev/NodeConstructor_Application/).
 
 To create a usefull example we first calulate a load which fits in case of power rating to the power of the source.
-Therefore, the function `ParallelLoadImpedance()` provied by the `JEG` package is used which calulates the passive parameters for a load for specified apparant power.
+Therefore, the function `ParallelLoadImpedance()` provied by the `ElectricGrid` package is used which calulates the passive parameters for a load for specified apparant power.
 
 
 ```julia
-using JEG
+using ElectricGrid
 
 S_source = 200e3
 
@@ -126,11 +126,11 @@ env.state[1:5]  # print states after 3 steps
      0.020386045162012048
 
 
-The `control_type` of the source is chosen as classic in `mode => Step`. That means it is open loop and a step is given to the input resulting in an input voltage of `env.nc.parameters["grid"]["v_rms"]`. For more information about possible control modes, see `ClassicalController_Notebook` or [documentation](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/classical/).
+The `control_type` of the source is chosen as classic in `mode => Step`. That means it is open loop and a step is given to the input resulting in an input voltage of `env.nc.parameters["grid"]["v_rms"]`. For more information about possible control modes, see `ClassicalController_Notebook` or [documentation](https://upb-lea.github.io/ElectricGrid.jl/dev/classical/).
 
 ## The MultiController
 
-The `JEG` toolbox provides a more enhanced method to run an experiment with a specific number of steps and even more episodes.
+The `ElectricGrid` toolbox provides a more enhanced method to run an experiment with a specific number of steps and even more episodes.
 It is based in the `run` command provided by the [ReinforcementLeaning.jl/run](https://github.com/JuliaReinforcementLearning/ReinforcementLearning.jl/blob/master/src/ReinforcementLearningCore/src/core/run.jl) toolbox and, therefore, can be used to `learn` a control task or to `simulate` a fixed setup.
 
 First we take a look onto simulating the behaviour of an env without learning. Therefore, the `Simulate()` function from the `MultiController` is used. 
@@ -171,7 +171,7 @@ If not defined in beforehand and handed over to the `Simulate()` methode, it ret
 ## Data-Hook (how to tap the simulated data stream)
 
 To collect the data - so how the states evolved over time by the chosen actions - hooks ([ReinforcmentLearning.jl/data-hooks](https://juliareinforcementlearning.org/docs/How_to_use_hooks/)) are used which will be executed at different stages of the experiment.
-Via theses hooks the data to be collected is stored in a `DataFrame` labeled via the state and action IDs. This all happens using the `DataHook` provided by the `JEG` package.
+Via theses hooks the data to be collected is stored in a `DataFrame` labeled via the state and action IDs. This all happens using the `DataHook` provided by the `ElectricGrid` package.
 
 This `DataFrame` can be seen in the output of the upper cell. It contains 500 rows - one for each simulated step.
 In the different colons the information about the simulation is stored, e.g., the number of the episode, time, states, actions...
@@ -239,11 +239,11 @@ hook.df
 
 
 Investigating the `DataFrame` we can see, that even more states then planned are logged.
-The `JEG` framework stores all information available with regards to the state we have chosen.
+The `ElectricGrid` framework stores all information available with regards to the state we have chosen.
 Here, additionally the voltage across the inductor and the state after the action is applied is stored as well. 
 For more detailed information, see `API-Doku -> DataHook`.
 
-After the experiment, the `RenderHookResults()` function provided by the `JEG` package can be used to show the results of the simulated episode.
+After the experiment, the `RenderHookResults()` function provided by the `ElectricGrid` package can be used to show the results of the simulated episode.
 States and actions which are logged with the `DataHook` can be selected to be plotted:
 
 
@@ -300,7 +300,7 @@ Here, the states and actions plotted/collected are not normalised.
 Above the `control_type` of the source is chosen as classic in `mode => Step`. 
 The implements an open-loop circuit.
 As action a step is given to the inputs resulting in an input voltage of `env.nc.parameters["grid"]["v_rms"]`. 
-For more information about possible control modes, see `ClassicalController_Notebook` or [documentation](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/classical/).
+For more information about possible control modes, see `ClassicalController_Notebook` or [documentation](https://upb-lea.github.io/ElectricGrid.jl/dev/classical/).
 
 ## AC grid example
 To run an AC grid where the source creates a sinusoidal voltage with the frequency of `env.nc.parameters["grid"]["f_grid"]` just the control mode has to be changed from `Step` to `Swing`.

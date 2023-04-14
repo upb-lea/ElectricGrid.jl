@@ -1,5 +1,5 @@
 using Test
-using JEG
+using ElectricGrid
 using JuMP
 
 include("utils.jl")
@@ -16,10 +16,10 @@ CM = [
     parameters = PopulateParams(100e3, 0.95)
 
     env = ElectricGridEnv(ts=0.0001, CM=CM, parameters=parameters, t_end=0.1, verbosity=2, action_delay=1)
-    # JEG.optimizer_status
+    # ElectricGrid.optimizer_status
 
-    @test JEG.optimizer_status["termination_status"] == LOCALLY_SOLVED  #add other feasible enums from https://jump.dev/JuMP.jl/stable/moi/reference/models/#MathOptInterface.TerminationStatusCode
-    @test JEG.optimizer_status["primal_status"] == FEASIBLE_POINT  # add other feasible status from above
+    @test ElectricGrid.optimizer_status["termination_status"] == LOCALLY_SOLVED  #add other feasible enums from https://jump.dev/JuMP.jl/stable/moi/reference/models/#MathOptInterface.TerminationStatusCode
+    @test ElectricGrid.optimizer_status["primal_status"] == FEASIBLE_POINT  # add other feasible status from above
 
 end
 
@@ -28,10 +28,10 @@ end
     parameters = PopulateParams(230e3, 0.95)
     
     env = ElectricGridEnv(ts=0.0001, CM=CM, parameters=parameters, t_end=0.1, verbosity=2, action_delay=1)
-    # JEG.optimizer_status
+    # ElectricGrid.optimizer_status
 
-    @test JEG.optimizer_status["termination_status"] == LOCALLY_INFEASIBLE  #add other feasible enums from https://jump.dev/JuMP.jl/stable/moi/reference/models/#MathOptInterface.TerminationStatusCode
-    @test JEG.optimizer_status["primal_status"] == INFEASIBLE_POINT  # add other feasible status from above
+    @test ElectricGrid.optimizer_status["termination_status"] == LOCALLY_INFEASIBLE  #add other feasible enums from https://jump.dev/JuMP.jl/stable/moi/reference/models/#MathOptInterface.TerminationStatusCode
+    @test ElectricGrid.optimizer_status["primal_status"] == INFEASIBLE_POINT  # add other feasible status from above
 
 end
    
@@ -45,10 +45,10 @@ end
                         ]
 
     env = ElectricGridEnv(ts=0.0001, CM=CM, parameters=parameters, t_end=0.1, verbosity=2, action_delay=1)
-    # JEG.optimizer_status
+    # ElectricGrid.optimizer_status
 
-    @test JEG.optimizer_status["termination_status"] == ALMOST_LOCALLY_SOLVED  
-    @test JEG.optimizer_status["primal_status"] == NEARLY_FEASIBLE_POINT  
+    @test ElectricGrid.optimizer_status["termination_status"] == ALMOST_LOCALLY_SOLVED  
+    @test ElectricGrid.optimizer_status["primal_status"] == NEARLY_FEASIBLE_POINT  
 
 end
 

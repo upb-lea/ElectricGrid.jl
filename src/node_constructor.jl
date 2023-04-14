@@ -549,7 +549,7 @@ function CheckParameters(
                 end
             elseif source["control_type"] ==  "RL"
                 if !haskey(source, "mode")
-                    source["mode"] = "JEG_ddpg"
+                    source["mode"] = "ElectricGrid_ddpg"
                 end
             else
                 @assert("Invalid control type, please choose RL or classic")

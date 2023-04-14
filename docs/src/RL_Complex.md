@@ -6,7 +6,7 @@ The following topics will be covered:
 - ### Featurize and reward for all three sources
 - ### Train an agent to control all three sources
  
-The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Complex_DEMO.ipynb).
+The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/RL_Complex_DEMO.ipynb).
 
 
 
@@ -18,7 +18,7 @@ This is similar like the usage of the GUI, where the sources, loads and cables c
 
 ![](./assets/RL_Complex_Demo.png)
 
-The environment is configured like described in [Configuring the Environment](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/Env_Create/) using the parameter dict.
+The environment is configured like described in [Configuring the Environment](https://upb-lea.github.io/ElectricGrid.jl/dev/Env_Create/) using the parameter dict.
 It can be noticed, that the control `mode` for all three sources is set to the same `my_ddpg` agent.
 As `reference(t)` function for simlicity, DC-values are used, one per source, since we are dealing with a single phase grid.
 The first an third reference values are negative, so these sources will draw power from the grid.
@@ -26,7 +26,7 @@ The secound reference value is positiv, so the secound source will provide power
 
 
 ```julia
-using JEG
+using ElectricGrid
 
 CM = [0.0   1.0  0
      -1.0   0.0  2.0

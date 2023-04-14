@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "JEG"
+@quickactivate "ElectricGrid"
 
 include(srcdir("node_constructor.jl"))
 include(srcdir("electric_grid_env.jl"))
