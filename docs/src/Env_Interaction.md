@@ -273,7 +273,7 @@ window.PlotlyConfig = {MathJaxConfig: 'local'};
         style="height:550; width:800;">
     </div>
     <script type="text/javascript">
-
+        require(["plotly"], function(Plotly) {
         window.PLOTLYENV = window.PLOTLYENV || {}
 
         if (document.getElementById('e880d042-b78f-4fd2-b830-1d391da05442')) {
@@ -285,7 +285,7 @@ window.PlotlyConfig = {MathJaxConfig: 'local'};
     )
 }
 
-
+    });
     </script>
 </div>
 
@@ -356,7 +356,7 @@ window.PlotlyConfig = {MathJaxConfig: 'local'};
         style="height:550; width:800;">
     </div>
     <script type="text/javascript">
-
+        require(["plotly"], function(Plotly) {
         window.PLOTLYENV = window.PLOTLYENV || {}
 
         if (document.getElementById('34416c71-bc23-4f71-99df-6443d8aa96e7')) {
@@ -368,7 +368,7 @@ window.PlotlyConfig = {MathJaxConfig: 'local'};
     )
 }
 
-
+    });
     </script>
 </div>
 
