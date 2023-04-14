@@ -11,7 +11,6 @@ using Distributions
 using Flux
 using Graphs
 using GraphPlot
-using IJulia
 using IntervalSets
 using Ipopt
 using JuMP
