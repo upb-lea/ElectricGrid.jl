@@ -166,7 +166,7 @@ controllers = SetupAgents(env, my_custom_agents);
 
 Like shown in the following figure, the `controllers` struct consists of 2 agents now - one per source.
 
-![](./assets/Multiagent_classic_RL.png)
+![](./assets/Overview_example.png)
 
 Since 2 sources are defined in the env here, one controlled classically and the other by RL, the `MultiController` hands over the correct indices of the environment to the controllers.
 This enables each controller, e.g., to find the correct subset of states in the entire environment state set.
