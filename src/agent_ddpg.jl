@@ -13,7 +13,7 @@ using MacroTools: @forward
 (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, action, training::Bool) = policy(stage, env, action)
 
 
-#re-definition needed to use JEG-internal action-space functions
+#re-definition needed to use ElectricGrid-internal action-space functions
 function RLBase.update!(
         trajectory::AbstractTrajectory,
         policy::AbstractPolicy,

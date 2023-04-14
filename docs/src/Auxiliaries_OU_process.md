@@ -8,7 +8,7 @@
 ## Summary
 
 - In practicality an energy network is always in flux. 
-- The stochastic nature of the the loads and renewable generation can be simulated with JEG. 
+- The stochastic nature of the the loads and renewable generation can be simulated with ElectricGrid.jl. 
 - This notebooks will show you how to add stochastic reference signals via Ornstein–Uhlenbeck processes.
 
 The Ornstein-Uhlenbeck process is described by the following stochastic differential equation (SDE):
@@ -22,7 +22,7 @@ Here, $γ$ is the long term mean, $κ$ is the mean reversion parameter, $W_t$ de
 
 
 ```julia
-using JEG;
+using ElectricGrid;
 ```
 
 _______________________________________________________________________________

@@ -33,7 +33,7 @@ A possible disadvantage to the PQ mode is that the inverter may continue injecti
 
 
 ```julia
-using JEG;
+using ElectricGrid;
 ```
 
 _______________________________________________________________________________
@@ -89,15 +89,15 @@ hook = Simulate(agents, env);
 ```
 
     ┌ Info: Normalization is done based on the defined parameter limits.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:329
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:329
     ┌ Info: Time simulation run time: 0.16 [s] ~> 1601 steps
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:330
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:330
     ┌ Info: 2 'classically' controlled sources have been initialised.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2686
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2686
     ┌ Info: 1 source has been set up in Swing mode.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: 1 source has been set up in PQ mode.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2695
     
 
 _______________________________________________________________________________

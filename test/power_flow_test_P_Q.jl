@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 using Test
 
 @testset "Layout cables with Power flow equations" begin

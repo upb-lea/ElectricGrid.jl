@@ -998,7 +998,6 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
         println()
         println()
         println(value.(nodes))
-        println("asdasdasd")
         println()
         println(value.(cables))
     end

@@ -43,7 +43,7 @@ If the user does not specify $D_p$ and $D_q$, then they are automatically tuned 
 
 
 ```julia
-using JEG;
+using ElectricGrid;
 ```
 
 _______________________________________________________________________________
@@ -96,17 +96,17 @@ hook = Simulate(agents, env);
 ```
 
     ┌ Info: Normalization is done based on the defined parameter limits.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:329
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:329
     ┌ Info: Time simulation run time: 0.08 [s] ~> 801 steps
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:330
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:330
     ┌ Info: 2 'classically' controlled sources have been initialised.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2686
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2686
     ┌ Info: 1 source has been set up in PQ mode.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: 1 source has been set up in Droop mode.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: 2 sources have automatically calculated proportional and integral gains for their current control loops.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2720
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2720
     
 
 _______________________________________________________________________________

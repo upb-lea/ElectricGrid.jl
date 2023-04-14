@@ -7,7 +7,7 @@ As example will show how to control one source with an RL agent learning a contr
  - ### MultiController,
  - ### Training an RL agent in a classicly controlled grid.
 
-The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Classical_Controllers_Merge_DEMO.ipynb).
+The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/RL_Classical_Controllers_Merge_DEMO.ipynb).
 
 
 ## Merging classic controllers and RL agents
@@ -25,9 +25,9 @@ The first source is controlled by the RL agent `my_ddpg` which should learn to d
 The second source is controlled by a classic controller in open-loop mode. 
 The swing mode is used to create a stable 3-phase grid to supply the load.
 
-The environment is configured like described in [Configuring the Environment](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/Env_Create/) using the parameter dict:
+The environment is configured like described in [Configuring the Environment](https://upb-lea.github.io/ElectricGrid.jl/dev/Env_Create/) using the parameter dict:
 ```julia
-using JEG
+using ElectricGrid
 
 parameters = 
 Dict{Any, Any}(

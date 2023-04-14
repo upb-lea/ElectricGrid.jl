@@ -36,12 +36,12 @@ CM = [ 0  0  1
       -1 -2  0];
 ```
 
-We now import the JuliaElectricGrid package:
+We now import the ElectricGrid package:
 
 
 ```julia
 # Import the package
-using JEG
+using ElectricGrid
 ```
 
 

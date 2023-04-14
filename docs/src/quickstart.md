@@ -2,7 +2,7 @@ Consider the following code snippet
 
 
 ```julia
-using JEG
+using ElectricGrid
 
 env =  ElectricGridEnv(num_sources = 1, num_loads = 1)
 Multi_Agent =  SetupAgents(env)
@@ -10,17 +10,17 @@ hook =  Simulate(Multi_Agent, env)
 RenderHookResults(hook = hook)
 ```
 
-This is a minimal example of a full JuliaElectricGrid setup. After running you should see some output in your terminal, created by Ipopt, an EPL licensed library JEG is using. There should also appear a plot that looks like this:
+This is a minimal example of a full ElectricGrid.jl setup. After running you should see some output in your terminal, created by Ipopt, an EPL licensed library ElectricGrid.jl is using. There should also appear a plot that looks like this:
 ![output of the minimal example](./assets/output1.png)
 
 Now what does this code snippet do exactly?
 
 _______________________________________________________________________________
 ```julia
-using JEG
+using ElectricGrid
 ```
 
-This line imports the JuliaElectricGrid Package and it's components to the workspace so that we are ready to work with it.
+This line imports the ElectricGrid.jl Package and it's components to the workspace so that we are ready to work with it.
 
 _______________________________________________________________________________
 ```julia
@@ -47,7 +47,7 @@ hook =  Simulate(Multi_Agent, env)
 
 This starts the simulation of our setup.
 Since we did not specify anything else the experiment will run for one episode. The step length and amount of timesteps for an episode are both part of the environment. We did not specify them, so default values were chosen (`maxsteps = 500` and `ts = 1/10_000`).
-After running the experiment we receive a struct of type `DataHook`. `DataHook` is once again designed to work as a hook object in the `ReinforcementLearning.jl` framework but with a lot of extra functionality to support data collection for cases that are relevant in JuliaElectricGrid.
+After running the experiment we receive a struct of type `DataHook`. `DataHook` is once again designed to work as a hook object in the `ReinforcementLearning.jl` framework but with a lot of extra functionality to support data collection for cases that are relevant in ElectricGrid.jl.
 
 _______________________________________________________________________________
 ```julia

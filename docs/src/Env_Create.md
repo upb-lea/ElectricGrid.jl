@@ -1,4 +1,4 @@
-# How to build an environment using JEG
+# How to build an environment using ElectricGrid
 
 In the following the functionality of the `ElectricGridEnv` which creates an environment for simulation of power electronics-driven microgrids with ad-hoc data generation is described. 
 It can be used to train and test reinforcement learing agents (e.g., from [juliareinforcementlearning.jl](https://juliareinforcementlearning.org/)), in particular for autonomous grid operation.
@@ -9,7 +9,7 @@ The following topics are covered:
 - ### Setup an RL-env, 
 - ### Detailed parameterisation.
 
-The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb).
+The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb).
 
 ## Create an Enviroment 
 
@@ -27,11 +27,11 @@ A full list of all parameters which can be used for parametrisation can be found
 After the initialization a step-wise interaction with the environment is possible.
 
 
-To use the JEG tool, the JEG package has to be loaded:
+To use the ElectricGrid.jl tool, the ElectricGrid package has to be loaded:
 
 
 ```julia
-using JEG
+using ElectricGrid
 
 env = ElectricGridEnv(num_sources = 2, num_loads = 1)
 ```
@@ -63,7 +63,7 @@ env.state[1:5]
 
 
 Since we have not yet interacted with the env, the `Current State` is still the initial - which by default is zero.
-To learn how to interact with the environment applying different actions, see [Interaction with the Environment](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/Env_Interaction/).
+To learn how to interact with the environment applying different actions, see [Interaction with the Environment](https://upb-lea.github.io/ElectricGrid.jl/dev/Env_Interaction/).
 
 
 If the state is not zero, the reset method can be used which sets the state to the internally defined `x0` (which consists of zeros per default).
@@ -73,10 +73,10 @@ The `Action Space` defines how many actions can be applied to the environment.
 Since per default the env produces a three-phase system in the example shown above one action per phase per source is needed. 
 This leads to 6 actions in total (2 sources with 3 phases each). 
 
-The states represent physical values from the energy grid (for more detailed information see [The Nodecontructor - Theroy](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/NodeConstructor_Theory/)) 
+The states represent physical values from the energy grid (for more detailed information see [The Nodecontructor - Theroy](https://upb-lea.github.io/ElectricGrid.jl/dev/NodeConstructor_Theory/)) 
 The environment stores a specific index (`string`) per state.
 That index highlights the physical context. 
-Later it will be used during the control procedure (for more detailed information see [Mutlicontroller](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/RL_Classical_Controllers_Merge/)).
+Later it will be used during the control procedure (for more detailed information see [Mutlicontroller](https://upb-lea.github.io/ElectricGrid.jl/dev/RL_Classical_Controllers_Merge/)).
 
 
 For the upper example the first five state indices for example are:
@@ -350,4 +350,4 @@ env.nc.parameters["cable"][1]
 For all information about the parameters which can be defined investigate the parameter dict itself or have a look into the documentation.
 
 The next step would be to interact with the env to run an experiment.
-To learn how to do this, see [Interaction with the Environment](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/Env_Interaction/).
+To learn how to do this, see [Interaction with the Environment](https://upb-lea.github.io/ElectricGrid.jl/dev/Env_Interaction/).

@@ -1,9 +1,9 @@
-using JEG
+using ElectricGrid
 using Documenter
 
 makedocs(
-    sitename="Julia Electric Grid",
-    modules = [JEG],
+    sitename="ElectricGrid.jl",
+    modules = [ElectricGrid],
     pages = [
         "Welcome" => "index.md",
         "Quick Start" => "quickstart.md",
@@ -19,7 +19,7 @@ makedocs(
             "Auxiliaries" => "Auxiliaries_OU_process.md",
         ],
         "Reinforcement Learning" => [
-            "Reinforcement Learning using JEG" => "RL_Single_Agent.md",
+            "Reinforcement Learning using ElectricGrid" => "RL_Single_Agent.md",
             "Multicontroller" => "RL_Classical_Controllers_Merge.md",
             "Reinforcement Learning in Larger Grids " => "RL_Complex.md",
         ],
@@ -49,5 +49,5 @@ makedocs(
     )
 
 deploydocs(
-        repo = "github.com/upb-lea/JuliaElectricGrid.jl.git",
+        repo = "github.com/upb-lea/ElectricGrid.jl.git",
     )

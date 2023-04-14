@@ -26,7 +26,7 @@ Classically controlled modes:
 
 
 ```julia
-using JEG
+using ElectricGrid
 ```
 
 

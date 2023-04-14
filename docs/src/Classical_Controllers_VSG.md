@@ -42,7 +42,7 @@ The two new quantities that correspond to the "inertia" are computed as follows,
 
 
 ```julia
-using JEG;
+using ElectricGrid;
 ```
 
 _______________________________________________________________________________
@@ -91,19 +91,19 @@ hook = Simulate(agents, env);
 ```
 
     ┌ Info: Normalization is done based on the defined parameter limits.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:329
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:329
     ┌ Info: Time simulation run time: 0.08 [s] ~> 801 steps
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:330
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:330
     ┌ Info: 2 'classically' controlled sources have been initialised.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2686
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2686
     ┌ Info: 1 source has been set up in PQ mode.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: 1 source has been set up in Synchronverter mode.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2707
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2707
     ┌ Info: 1 source has been set up with a Luenberger discrete Observer.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2737
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2737
     
 
 _______________________________________________________________________________

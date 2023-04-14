@@ -21,7 +21,7 @@
 
 
 ```julia
-using JEG;
+using ElectricGrid;
 ```
 
 _______________________________________________________________________________
@@ -73,9 +73,9 @@ env = ElectricGridEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity
 ```
 
     ┌ Info: Normalization is done based on the defined parameter limits.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:329
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:329
     ┌ Info: Time simulation run time: 0.1 [s] ~> 1001 steps
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\electric_grid_env.jl:330
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\electric_grid_env.jl:330
     
 
 _______________________________________________________________________________
@@ -90,11 +90,11 @@ agent = SetupAgents(env);
 ```
 
     ┌ Info: 1 'classically' controlled source has been initialised.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2684
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2684
     ┌ Info: 1 source has been set up in Swing mode.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2695
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2695
     ┌ Info: All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains.
-    └ @ JEG c:\Gitlab\JEG\JuliaElectricGrid.jl\src\classical_control.jl:2707
+    └ @ JEG c:\Gitlab\JEG\ElectricGrid.jl\src\classical_control.jl:2707
     
 
 _______________________________________________________________________________

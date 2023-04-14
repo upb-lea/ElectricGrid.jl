@@ -198,7 +198,7 @@ function ElectricGridEnv(;
         agent_dict = Dict()
         for ns in 1:nc.num_sources
             if nc.parameters["source"][ns]["control_type"] == "RL"
-                if nc.parameters["source"][ns]["mode"] == "JEG_ddpg"
+                if nc.parameters["source"][ns]["mode"] == "ElectricGrid_ddpg"
                     name = nc.parameters["source"][ns]["mode"] * "_$ns"
                 else
                     name = nc.parameters["source"][ns]["mode"]
