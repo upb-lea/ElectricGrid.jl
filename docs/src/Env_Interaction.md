@@ -265,7 +265,6 @@ RenderHookResults(hook = hook,
     <script type="text/javascript">
 window.PlotlyConfig = {MathJaxConfig: 'local'};
 </script>
-<script src="https://cdn.plot.ly/plotly-2.3.0.min.js"></script>
 
     <div
         id=e880d042-b78f-4fd2-b830-1d391da05442
@@ -348,7 +347,6 @@ RenderHookResults(hook = hook,
     <script type="text/javascript">
 window.PlotlyConfig = {MathJaxConfig: 'local'};
 </script>
-<script src="https://cdn.plot.ly/plotly-2.3.0.min.js"></script>
 
     <div
         id=34416c71-bc23-4f71-99df-6443d8aa96e7
