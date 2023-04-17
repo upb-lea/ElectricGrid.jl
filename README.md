@@ -21,7 +21,7 @@ ElectricGrid.jl is a library for setting up realistic electric grid simulations 
 - use the agent architecture of [ReinforcementLearning.jl](https://juliareinforcementlearning.org/) to either train RL agents as controllers or write your own ones
 
 
-![ElectricGrid Framework](docs/src/assets/OverviewJEG.png)
+![ElectricGrid Framework](docs/src/assets/Overview_EG.png)
 
 ## Installation
 - Installation using the julia package manager (recommended):
