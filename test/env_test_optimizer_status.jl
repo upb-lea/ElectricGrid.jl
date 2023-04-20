@@ -2,7 +2,7 @@ using Test
 using ElectricGrid
 using JuMP
 
-import JEG
+import ElectricGrid
 
 include("utils.jl")
 
