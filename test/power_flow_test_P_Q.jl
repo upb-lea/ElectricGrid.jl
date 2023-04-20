@@ -3,7 +3,7 @@ using Test
 using LinearAlgebra
 using Distributions
 
-import JEG
+import ElectricGrid
 
 Timestep = 100e-6   # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end = 0.8         # total run time, seconds
@@ -108,11 +108,11 @@ hook = Simulate(Multi_Agent, env)
     @show q_test
     @show norm(p_test, q_test)
 
-    @show 3 * sum(JEG.P_source) 
-    @show 3 * sum(JEG.Q_source)
+    @show 3 * sum(ElectricGrid.P_source) 
+    @show 3 * sum(ElectricGrid.Q_source)
     
-    @test p_test - 3 * sum(JEG.P_source) < 1e1 
-    # @test q_test - 3 * sum(JEG.Q_source) < 1e1
+    @test p_test - 3 * sum(ElectricGrid.P_source) < 1e1 
+    # @test q_test - 3 * sum(ElectricGrid.Q_source) < 1e1
 end
 
 #_______________________________________________________________________________
@@ -169,10 +169,10 @@ end
     @show q_test
     @show norm(p_test, q_test)
 
-    @show 3 * sum(JEG.P_source) 
-    @show 3 * sum(JEG.Q_source)
-    
-    # @test p_test - 3 * sum(JEG.P_source) < 1e1 
-    # @test q_test - 3 * sum(JEG.Q_source) < 1e1
+    @show 3 * sum(ElectricGrid.P_source) 
+    @show 3 * sum(ElectricGrid.Q_source)
+    # These tests don't pass
+    # @test p_test - 3 * sum(ElectricGrid.P_source) < 1e1 
+    # @test q_test - 3 * sum(ElectricGrid.Q_source) < 1e1
 
 end
