@@ -675,6 +675,19 @@ function CheckPowerBalance(parameters, num_source, num_load, CM)
 end
 
 optimizer_status = Dict()
+"""
+    optimizer_status = GetOptimizerStatus(model)
+
+# Description
+Returns the status of the optimizer after the optimization process.
+
+# Arguments
+- `model::JuMP.Model`: JuMP model of the optimization problem
+
+# Return Values
+- `optimizer_status::Dict`: Dictionary containing the termination status, the primal status and the objective value of the optimization problem.
+    
+"""
 function GetOptimizerStatus(model)
 
     status = Dict(
@@ -684,6 +697,36 @@ function GetOptimizerStatus(model)
                 )
 
     return status
+end
+
+P_source = []
+Q_source = []
+"""
+    P, Q = GetPQ(model)
+
+# Description
+Returns the active and reactive power of all nodes in the grid.
+
+# Arguments
+- `model::JuMP.Model`: JuMP model of the optimization problem
+
+# Return Values
+- `P::Vector`: Vector containing the active power of all nodes in the grid.
+- `Q::Vector`: Vector containing the reactive power of all nodes in the grid.
+    
+"""
+function GetPQ(nodes, num_source)
+    P = zeros(num_source)
+    Q = zeros(num_source)
+
+    @info "num_source = $num_source"
+    
+    for i = 1:num_source
+        P[i] = value.(nodes[i, "P"])
+        Q[i] = value.(nodes[i, "Q"])
+    end
+
+    return P, Q
 end
 
 function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
@@ -750,6 +793,7 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
 
     for i = 1:num_nodes
         if i <= num_source
+            # println("Setting up source bounds")
 
             if parameters["source"][i]["control_type"] == "classic"
 
@@ -826,10 +870,13 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
             end
             #end
         else
+            # println("Setting up load bounds")
             S = parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
-            P = S *parameters["load"][i-num_source]["pf"]
-            #println("P_LOAD = $(P)")
-            #println("Q_LOAD = $(sqrt(S^2 - P^2))")
+            P = S * parameters["load"][i-num_source]["pf"]
+            println("P_LOAD = $(3 * P)")
+            println("Q_LOAD = $(3 * sqrt(S^2 - P^2))")
+            println("S_LOAD = $(3 * S)")
+
             fix(nodes[i, "P"], -P)
             fix(nodes[i, "Q"], -sqrt(S^2 - P^2))
 
@@ -994,13 +1041,21 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
         global optimizer_status = GetOptimizerStatus(model)
         @show optimizer_status["termination_status"]
 
+        global P_source, Q_source = GetPQ(nodes, num_source)
+        # @show P_source
+        # @show Q_source
 
-        println()
-        println()
-        println(value.(nodes))
-        println()
-        println(value.(cables))
+        # println()
+        # println()
+        # println(value.(nodes))
+        # println()
+        # println(value.(cables))
+        # # @show value.(nodes[1, "P"])
     end
+
+    # GetPQ(model)
+
+    # println(value.(nodes))
     #= OPTIMAL, LOCALLY_SOLVED, INFEASIBLE, DUAL_INFEASIBLE, and TIME_LIMIT.
     if termination_status(model) == OPTIMAL
         println("Solution is optimal")

@@ -2,6 +2,8 @@ using Test
 using ElectricGrid
 using JuMP
 
+import ElectricGrid
+
 include("utils.jl")
 
 # Simple one source - one load model that optimiser can solve feasibly
