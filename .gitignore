@@ -1,3 +1,4 @@
+
 Manifest.toml
 
 # App
@@ -62,3 +63,6 @@ pre_investigations/*
 
 # # .github files
 # *.github
+
+Manifest.toml
+
