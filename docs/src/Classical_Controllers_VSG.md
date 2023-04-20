@@ -12,7 +12,7 @@
 ## Summary
 
 - The following example is intended to introduce you to a more advanced form of decentralised control.
-- The example also demonstrates a discrete Luenberger observer for when the supply's filter is "LCL".
+- The example also demonstrates a discrete Luenberger observer for when the energy supply's filter is "LCL".
 - A supply in "VSG" mode "communicates" with other inverters in the network through the voltage and frequency.
 - This mode is autonomous and provides a quantifiable measure of "inertia" to the network.
 
@@ -51,7 +51,7 @@ _______________________________________________________________________________
 - Two inverters are connected to each other through a cable.
 - The one inverter is placed in the familiar PQ mode, while the other is in VSG mode.
 - The VSG inverter will regulate the frequency and the PQ inverter will follow along.
-- If the inverter has an LCL filter then a discrete Luenberger observer can be implemented to estimate the two sets of currents through both inductor sets.
+- If the inverter has an LCL filter then a discrete Luenberger observer can be implemented to estimate the current through the second inductor and the voltage over the capacitor.
 - If not provided by the user, the proportional and integral gains for the PI controllers are tuned automatically via a loop-shaping method.
 
 

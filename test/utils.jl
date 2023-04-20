@@ -2,6 +2,7 @@
 using ElectricGrid 
 using JuMP
 
+# --------------------------------------------optimizer status--------------------------------------------
 const DEFAULT_PARAMS = Dict{Any, Any}(
                     "source"    => Any[
                                     Dict{Any, Any}("pwr" => 200e3, "mode" => 1),
@@ -13,11 +14,6 @@ function PopulateParams(power, pf, Vrms=230)
 
     R_load, L_load, _, _ = ParallelLoadImpedance(power, pf, Vrms)
 
-    # if haskey(params, "load")
-    #     pop!(params, "load")
-    # elseif haskey(params, "cable")
-    #     pop!(params, "cable")
-    # end
     params = copy(DEFAULT_PARAMS)
 
     params["load"] = Any[
@@ -26,3 +22,5 @@ function PopulateParams(power, pf, Vrms=230)
     
     return params
 end
+
+# --------------------------------------------power_flow_test_P_Q --------------------------------------------

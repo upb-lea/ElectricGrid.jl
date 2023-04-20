@@ -12,7 +12,7 @@
 
 ## Summary
 
-- This notebook is intended to introduce you to the simplest control mode available, i.e., "open-loop" control. 
+- This example is intended to introduce you to the simplest control mode available, i.e., "open-loop" control. 
 - One source, an ideal oscillating voltage source, which is generating a 3-phase AC signal while connected to a static load through a cable.
 - Plotting of the simulation results.
 

@@ -9,7 +9,7 @@
 
 - In practicality an energy network is always in flux. 
 - The stochastic nature of the the loads and renewable generation can be simulated with ElectricGrid.jl. 
-- This notebooks will show you how to add stochastic reference signals via Ornstein–Uhlenbeck processes.
+- This example will show you how to add stochastic reference signals via an Ornstein–Uhlenbeck processes.
 
 The Ornstein-Uhlenbeck process is described by the following stochastic differential equation (SDE):
 ```math
@@ -31,7 +31,7 @@ _______________________________________________________________________________
 The following grid example is configured with
 - Two inverters, a load, and two cables.
 - The one inverter is placed in the familiar PQ mode, while the other is in VSG mode.
-- The active and reactive power set points are confired as Ornstein–Uhlenbeck processes.
+- The active and reactive power set points are specified by an Ornstein–Uhlenbeck processes.
 - The simulation is run for multiple episodes.
 
 

@@ -14,12 +14,12 @@
 
 - The following example is intended to introduce you to the control mode which will enable the inverter to act like a controllable source or load.
 - The mode takes as input the active power (P, Watts) and the reactive power (Q, VAr) as set points.
-- Most solar photovoltaic resources, wind power plants and variable loads can be represented by this mode.
+- Most solar photovoltaic resources, and variable loads can be represented by this mode.
 - An inverter in this control mode must be placed in a network with other "grid-forming" sources (e.g., swing, droop, or VSG) as it is "grid following".
 
 ### Theory
 
-An inverter in the PQ mode is effectively controlled as a current supply, only ever regulating the current exchanged with the grid. This current control loop operates in the direct-quadrature-zero (DQ0) frame, and employs over voltage and current limitations to simulate the protection of the switches (not depicted). This limitations cause non-linear saturation effects when the inverter is pushed to extreme. 
+An inverter in the PQ mode is effectively controlled as a current supply, only ever regulating the current exchanged with the grid. This current control loop operates in the direct-quadrature-zero (DQ0) frame, and employs over voltage and current limitations to simulate the protection of the switches (not depicted). These limitations cause non-linear saturation effects when the inverter is pushed to extreme. 
 
 
 ![](assets/current_control.jpg)
@@ -44,8 +44,8 @@ The following example network structure is considered:
 - The "strength" of this external network is quantifiable by its _fault_ _level_.
 - The effective impedance of the external network can be computed from the short-circuit power, the X/R ratio, and the nominal rms voltage.
 - Setting I_kp and I_ki (the PI gains) is optional.
-- If not provided they will be automatically determined via a loop-shaping method.
-- The kp's and ki's for all PI controllers are equal.
+- If not provided PI gains will be automatically determined via a loop-shaping method.
+- The kp's and ki's for the three PI controllers corresponding to the D,Q, and 0 (not shown) directions are equal.
 
 With this configuration, a time domain simulation is conducted below.
 

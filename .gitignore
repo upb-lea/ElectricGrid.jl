@@ -1,3 +1,4 @@
+
 Manifest.toml
 
 # App
@@ -60,5 +61,8 @@ db/*.sqlite
 # pre_investigations
 pre_investigations/*
 
-# .github files
-*.github
+# # .github files
+# *.github
+
+
+
