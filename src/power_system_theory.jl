@@ -793,7 +793,7 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
 
     for i = 1:num_nodes
         if i <= num_source
-            println("Setting up source bounds")
+            # println("Setting up source bounds")
 
             if parameters["source"][i]["control_type"] == "classic"
 
@@ -870,7 +870,7 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
             end
             #end
         else
-            println("Setting up load bounds")
+            # println("Setting up load bounds")
             S = parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             P = S * parameters["load"][i-num_source]["pf"]
             println("P_LOAD = $(3 * P)")
@@ -1045,12 +1045,12 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
         # @show P_source
         # @show Q_source
 
-        println()
-        println()
-        println(value.(nodes))
-        println()
-        println(value.(cables))
-        @show value.(nodes[1, "P"])
+        # println()
+        # println()
+        # println(value.(nodes))
+        # println()
+        # println(value.(cables))
+        # # @show value.(nodes[1, "P"])
     end
 
     # GetPQ(model)

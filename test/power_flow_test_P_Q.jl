@@ -104,12 +104,12 @@ hook = Simulate(Multi_Agent, env)
         q_test += mean(hook.df[!, "source$(i)_q_poc"][end-50:end])
     end
 
-    @show p_test
-    @show q_test
-    @show norm(p_test, q_test)
+    # @show p_test
+    # @show q_test
+    # @show norm(p_test, q_test)
 
-    @show 3 * sum(ElectricGrid.P_source) 
-    @show 3 * sum(ElectricGrid.Q_source)
+    # @show 3 * sum(ElectricGrid.P_source) 
+    # @show 3 * sum(ElectricGrid.Q_source)
     
     @test p_test - 3 * sum(ElectricGrid.P_source) < 1e1 
     # @test q_test - 3 * sum(ElectricGrid.Q_source) < 1e1
@@ -165,13 +165,14 @@ end
         q_test += mean(hook.df[!, "source$(i)_q_poc"][end-50:end])
     end
 
-    @show p_test
-    @show q_test
-    @show norm(p_test, q_test)
+    # @show p_test
+    # @show q_test
+    # @show norm(p_test, q_test)
 
-    @show 3 * sum(ElectricGrid.P_source) 
-    @show 3 * sum(ElectricGrid.Q_source)
-    # These tests don't pass
+    # @show 3 * sum(ElectricGrid.P_source) 
+    # @show 3 * sum(ElectricGrid.Q_source)
+
+    # The tests on no load don't pass - investigate?
     # @test p_test - 3 * sum(ElectricGrid.P_source) < 1e1 
     # @test q_test - 3 * sum(ElectricGrid.Q_source) < 1e1
 
