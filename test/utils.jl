@@ -1,5 +1,5 @@
 # Use this file to include utility functions that you want to be available in tests
-using JEG 
+using ElectricGrid 
 using JuMP
 
 # --------------------------------------------optimizer status--------------------------------------------

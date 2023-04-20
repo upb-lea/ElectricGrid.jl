@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 using Test
 using Logging
 
@@ -24,7 +24,7 @@ end
 
     #start_state = env.state
     #env(ones(size(env.action_space)))
-    #JEG.RLBase.reset!(env)
+    #ElectricGrid.RLBase.reset!(env)
     #@test env.state                 == start_state
 end
 

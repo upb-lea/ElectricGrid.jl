@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 using ReinforcementLearning
 using StableRNGs
 using Flux
@@ -121,7 +121,7 @@ agent = Agent(
 controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
 
-#run(ma["JEG_ddpg_1"]["policy"], env)
+#run(ma["ElectricGrid_ddpg_1"]["policy"], env)
 
 Learn(controllers, env, num_episodes = 80)
 

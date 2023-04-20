@@ -1,6 +1,6 @@
-#using JEG   warum geht das nicht?
+#using ElectricGrid   warum geht das nicht?
 using DrWatson
-@quickactivate "JEG"
+@quickactivate "ElectricGrid"
 
 using ReinforcementLearning
 using PlotlyJS

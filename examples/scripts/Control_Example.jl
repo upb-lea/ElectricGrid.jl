@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 

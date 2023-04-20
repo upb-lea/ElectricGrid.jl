@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 using Logging
 
 global_logger(CustomLogger(file_name = split(string(@__FILE__), "\\")[end], add_timestamp = false, log_file = true, log_level = Logging.Info, log_level_file = Logging.Debug))

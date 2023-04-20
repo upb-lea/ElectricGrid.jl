@@ -87,7 +87,8 @@ https://juliareinforcementlearning.org/
 - `action_ids_RL::Vector{String}`: Action ids which are given to RL agents.
 
 # Return Values
-- `Multi_Agent::MultiController`: (optional)
+- `ElectricGridEnv::ElectricGridEnv`: Environment an agent can interact with
+
 
 """
 function ElectricGridEnv(;
@@ -198,7 +199,7 @@ function ElectricGridEnv(;
         agent_dict = Dict()
         for ns in 1:nc.num_sources
             if nc.parameters["source"][ns]["control_type"] == "RL"
-                if nc.parameters["source"][ns]["mode"] == "JEG_ddpg"
+                if nc.parameters["source"][ns]["mode"] == "ElectricGrid_ddpg"
                     name = nc.parameters["source"][ns]["mode"] * "_$ns"
                 else
                     name = nc.parameters["source"][ns]["mode"]

@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 
 """
 This scipt contains the content of the RL_Complex_DEMO.ipynb notebook.
@@ -23,7 +23,8 @@ Dict{Any, Any}(
                         "control_type" => "RL",
                         "mode" => "my_ddpg",
                         "fltr" => "L",
-                        "i_limit"      => 2000.),
+                        "i_limit"      => 2000.,
+                        "load" => true),
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "fltr" => "LC",
@@ -34,7 +35,8 @@ Dict{Any, Any}(
                         "fltr" => "L",
                         "control_type" =>
                         "RL", "mode" => "my_ddpg",
-                        "i_limit"      => 2000.),
+                        "i_limit"      => 2000.,
+                        "load" => true),
                     ],
         #"load"   => Any[
         #    Dict{Any, Any}("impedance" => "RLC", "R" => R_load, "v_limit" => 1e4, "i_limit" => 1e4)

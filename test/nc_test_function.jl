@@ -1,6 +1,6 @@
 using Test
 using MAT
-using JEG
+using ElectricGrid
 using LinearAlgebra
 
 @testset "GetFltrDistr" begin

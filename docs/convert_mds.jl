@@ -5,6 +5,7 @@ function process_file(filepath::AbstractString)
     edit_latex_block = false
     edit_html_block = false
     edit_plotlyjs_block = false
+    latex_dollar = false
     plotly_div_name = ""
     html_divs = 0
     original_lines = []
@@ -23,7 +24,34 @@ function process_file(filepath::AbstractString)
                 end
             end
 
+            if occursin("\$\$", line)
+                if !latex_dollar
+                    latex_dollar = true
+                    if !occursin("```math", prev_line)
+                        edit_latex_block = true
+                        line = ""
+                        push!(output_lines, "```math")
+                    end
+                else
+                    latex_dollar = false
+                    if edit_latex_block
+                        line = ""
+                        push!(output_lines, "```")
+                        edit_latex_block = false
+                    end
+                end
+            end
+
             #check for beginning of unencapsulated html blocks
+            if occursin(r"<html", line)
+                if !occursin("```@raw html", prev_line)
+                    edit_html_block = true
+                    push!(output_lines, "```@raw html")
+                end
+                html_divs = 1 + length(collect(eachmatch(r"<div", line)))
+            end
+
+            #check for beginning of unencapsulated div blocks
             if occursin(r"<div", line)
                 if !occursin("```@raw html", prev_line) && html_divs == 0
                     edit_html_block = true
@@ -59,7 +87,7 @@ function process_file(filepath::AbstractString)
                     edit_plotlyjs_block = false
                 end
             end
-            
+
 
 
             #remove julia logger artifacts
@@ -72,14 +100,25 @@ function process_file(filepath::AbstractString)
             #change  "") to )
             line = replace(line, " \"\")" => ")")
 
-            
+
             push!(output_lines, line)
 
 
-            #check for end of unencapsulated html blocks
+            #check for end of unencapsulated div blocks
             if occursin(r"</div", line)
                 if html_divs > 0
                     html_divs -= length(collect(eachmatch(r"</div", line)))
+                    if html_divs <= 0 && edit_html_block
+                        push!(output_lines, "```")
+                        edit_html_block = false
+                    end
+                end
+            end
+
+            #check for end of unencapsulated html blocks
+            if occursin(r"</html", line)
+                if html_divs > 0
+                    html_divs -= 1 + length(collect(eachmatch(r"</div", line)))
                     if html_divs <= 0 && edit_html_block
                         push!(output_lines, "```")
                         edit_html_block = false
@@ -108,7 +147,7 @@ function process_file(filepath::AbstractString)
     end
 end
 
-dirpath = string(@__DIR__) * "./src"
+dirpath = string(@__DIR__) * "/src"
 md_files = glob("*.md", dirpath)
 
 for file in md_files

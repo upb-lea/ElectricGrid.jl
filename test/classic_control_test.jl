@@ -1,4 +1,4 @@
-using JEG
+using ElectricGrid
 using Test
 using Logging
 using CSV
