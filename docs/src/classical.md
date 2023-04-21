@@ -26,7 +26,7 @@ Classically controlled modes:
 
 
 ```julia
-using JEG
+using ElectricGrid
 ```
 
 
@@ -77,8 +77,8 @@ _______________________________________________________________________________
 env = ElectricGridEnv(CM = CM, parameters = parameters, t_end = t_end, verbosity = 2);
 ```
 
-    [36m[1m[ [22m[39m[36m[1mInfo: [22m[39mNormalization is done based on the defined parameter limits.
-    [36m[1m[ [22m[39m[36m[1mInfo: [22m[39mTime simulation run time: 0.1 [s] ~> 1001 steps
+    [ Info: Normalization is done based on the defined parameter limits.
+    [ Info: Time simulation run time: 0.1 [s] ~> 1001 steps
     
 
 _______________________________________________________________________________
@@ -93,9 +93,9 @@ If not specified by the user, for all the classically controlled "agents", the f
 agent = SetupAgents(env);
 ```
 
-    [36m[1m[ [22m[39m[36m[1mInfo: [22m[39m1 'classically' controlled source has been initialised.
-    [36m[1m[ [22m[39m[36m[1mInfo: [22m[39m1 source has been set up in Swing mode.
-    [36m[1m[ [22m[39m[36m[1mInfo: [22m[39mAll 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains.
+    [ Info: 1 'classically' controlled source has been initialised.
+    [ Info: 1 source has been set up in Swing mode.
+    [ Info: All 'classically' controlled sources have been automatically set up with droop coeficients, and proportional and integral gains.
     
 
 _______________________________________________________________________________

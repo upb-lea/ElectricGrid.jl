@@ -1,5 +1,5 @@
 using Test
-using JEG
+using ElectricGrid
 
 CM = [0. 1.
     -1. 0.]

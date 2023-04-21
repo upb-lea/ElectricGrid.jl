@@ -57,10 +57,26 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
         cntr, CM = GenerateCM(num_sources, num_loads, S2L_p, S2S_p, L2L_p)
         num_connections = cntr
     else
-        if size(CM)[1] != tot_ele
-            throw("Expect the number of elements in the node to match the specified
-                structure in the CM, but got $tot_ele and $(size(CM)[1])")
-        end
+        # if size(CM)[1] != tot_ele
+        #     throw("Expect the number of elements in the node to match the specified
+        #         structure in the CM, but got $tot_ele and $(size(CM)[1])")
+        # end
+
+        @assert(size(CM)[1] == tot_ele,
+            "Expect the number of elements in the grid to match the specified
+            structure in the CM, but got $tot_ele and $(size(CM)[1]).")
+
+        @assert(sum(CM) == 0,
+            "Expect the checksum over the CM matrix to be 0,
+            but got $(sum(CM)).")
+
+        @assert(size(CM)[1] == size(CM)[2],
+            "Expect the CM matrix to be a square matrix,
+            but got $(size(CM)[1]) columns and $(size(CM)[2]) rows.")
+
+        @assert(-transpose(CM .* LowerTriangular(ones(size(CM)))) ==
+            CM .* UpperTriangular(ones(size(CM))),
+            "Expect the CM matrix to be a antisymetric: transpose(CM) = -CM.")
 
         num_connections = Int(maximum(CM))
     end
@@ -533,7 +549,7 @@ function CheckParameters(
                 end
             elseif source["control_type"] ==  "RL"
                 if !haskey(source, "mode")
-                    source["mode"] = "JEG_ddpg"
+                    source["mode"] = "ElectricGrid_ddpg"
                 end
             else
                 @assert("Invalid control type, please choose RL or classic")

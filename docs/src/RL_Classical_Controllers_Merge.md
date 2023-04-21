@@ -7,7 +7,7 @@ As example will show how to control one source with an RL agent learning a contr
  - ### MultiController,
  - ### Training an RL agent in a classicly controlled grid.
 
-The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/RL_Classical_Controllers_Merge_DEMO.ipynb).
+The interactive content related to the section described here can be found in the form of a notebook [here](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/RL_Classical_Controllers_Merge_DEMO.ipynb).
 
 
 ## Merging classic controllers and RL agents
@@ -19,15 +19,15 @@ For more details about how the classic control works, see `Classical_Controllers
 The use case is shown in the figure below.
 This environment consists of a 3-phase electrical power grid with 2 sources connected via a cable (for improved clarity, only one phase is shown in the following figure).
 
-![](./assets/RL_classic_swing.png "")
+![](./assets/RL_classic_swing.png)
 
 The first source is controlled by the RL agent `my_ddpg` which should learn to draw power from the grid, therefore act like an active load.
 The second source is controlled by a classic controller in open-loop mode. 
 The swing mode is used to create a stable 3-phase grid to supply the load.
 
-The environment is configured like described in [Configuring the Environment](https://upb-lea.github.io/JuliaElectricGrid.jl/dev/Env_Create/) using the parameter dict:
+The environment is configured like described in [Configuring the Environment](https://upb-lea.github.io/ElectricGrid.jl/dev/Env_Create/) using the parameter dict:
 ```julia
-using JEG
+using ElectricGrid
 
 parameters = 
 Dict{Any, Any}(
@@ -166,7 +166,7 @@ controllers = SetupAgents(env, my_custom_agents);
 
 Like shown in the following figure, the `controllers` struct consists of 2 agents now - one per source.
 
-![](./assets/Multiagent_classic_RL.png "")
+![](./assets/Overview_example.png)
 
 Since 2 sources are defined in the env here, one controlled classically and the other by RL, the `MultiController` hands over the correct indices of the environment to the controllers.
 This enables each controller, e.g., to find the correct subset of states in the entire environment state set.

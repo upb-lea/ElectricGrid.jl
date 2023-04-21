@@ -1,5 +1,5 @@
 
-using JEG
+using ElectricGrid
 
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
@@ -53,7 +53,7 @@ parameters = Dict{Any, Any}(
 
 env = ElectricGridEnv(ts = Timestep, CM = CM, parameters = parameters, t_end = t_end, verbosity = 2, action_delay = 1)
 
-JEG.optimizer_status
+ElectricGrid.optimizer_status
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
 num_source = 1
@@ -69,5 +69,5 @@ status = Dict{String, Any}()
 
 # function get_optim_status()
 LayoutCabels(CM, num_source, num_load, parameters, 2)
-JEG.optimizer_status
+ElectricGrid.optimizer_status
 

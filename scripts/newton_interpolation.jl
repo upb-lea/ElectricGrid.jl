@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "JEG"
+@quickactivate "ElectricGrid"
 
 include(srcdir("classical_control.jl"))
 
