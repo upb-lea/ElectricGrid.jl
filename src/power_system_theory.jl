@@ -23,8 +23,6 @@ function RMS(θ, t_signals)
         LS_inv = pinv(LS)
 
         for ph in 1:3
-
-            #println(t_signals[ph, i_range])
             AB = LS_inv*t_signals[:, ph]
             A0 = AB[1]
             A1 = AB[2]
@@ -686,7 +684,7 @@ Returns the status of the optimizer after the optimization process.
 
 # Return Values
 - `optimizer_status::Dict`: Dictionary containing the termination status, the primal status and the objective value of the optimization problem.
-    
+
 """
 function GetOptimizerStatus(model)
 
@@ -713,14 +711,14 @@ Returns the active and reactive power of all nodes in the grid.
 # Return Values
 - `P::Vector`: Vector containing the active power of all nodes in the grid.
 - `Q::Vector`: Vector containing the reactive power of all nodes in the grid.
-    
+
 """
 function GetPQ(nodes, num_source)
     P = zeros(num_source)
     Q = zeros(num_source)
 
     @info "num_source = $num_source"
-    
+
     for i = 1:num_source
         P[i] = value.(nodes[i, "P"])
         Q[i] = value.(nodes[i, "Q"])
@@ -793,10 +791,7 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
 
     for i = 1:num_nodes
         if i <= num_source
-            # println("Setting up source bounds")
-
             if parameters["source"][i]["control_type"] == "classic"
-
                 if parameters["source"][i]["mode"] in ["Swing", "Voltage", 1, 7]
 
                     fix(nodes[i, "v"], parameters["source"][i]["v_pu_set"] * parameters["grid"]["v_rms"])
@@ -870,12 +865,8 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
             end
             #end
         else
-            # println("Setting up load bounds")
             S = parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
             P = S * parameters["load"][i-num_source]["pf"]
-            println("P_LOAD = $(3 * P)")
-            println("Q_LOAD = $(3 * sqrt(S^2 - P^2))")
-            println("S_LOAD = $(3 * S)")
 
             fix(nodes[i, "P"], -P)
             fix(nodes[i, "Q"], -sqrt(S^2 - P^2))
@@ -918,7 +909,6 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
         # assumption: min value of D-to-neutral : 3 * max radius
         SetBounds(cables[i, "D-to-neutral"], 2* 0.7788 * radius_max, 0.7788 * radius_max, 2.00 ) #m
         # assumption to line to line(neutral) --  for low voltages
-        #println(parameters["cable"][i]["len"])
         L_cable[i] = @NLexpression(model, parameters["cable"][i]["len"] * 4e-7 * log(cables[i, "D-to-neutral"]/(0.7788 * cables[i, "radius"])))  # m* H/m
 
         # resistivity remains constant ρ_(T=50) = 1.973e-8
@@ -1042,33 +1032,13 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
         @show optimizer_status["termination_status"]
 
         global P_source, Q_source = GetPQ(nodes, num_source)
-        # @show P_source
-        # @show Q_source
-
-        # println()
-        # println()
-        # println(value.(nodes))
-        # println()
-        # println(value.(cables))
-        # # @show value.(nodes[1, "P"])
-    end
+        end
 
     # GetPQ(model)
 
-    # println(value.(nodes))
-    #= OPTIMAL, LOCALLY_SOLVED, INFEASIBLE, DUAL_INFEASIBLE, and TIME_LIMIT.
-    if termination_status(model) == OPTIMAL
-        println("Solution is optimal")
-    elseif termination_status(model) == TIME_LIMIT && has_values(model)
-        println("Solution is suboptimal due to a time limit, but a primal solution is available")
-    else
-        error("The model was not solved correctly.")
-    end
-    =#
     if termination_status(model) in [OPTIMAL, LOCALLY_SOLVED]
         # if solver was successful, we use the values
         for (index, cable) in enumerate(parameters["cable"])
-
             cable["L"] = value.(L_cable)[index]
             cable["Lb"] = cable["L"]/cable["len"]
 
@@ -1082,39 +1052,6 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
         for i in 1:num_cables
 
             j, k = Tuple(findfirst(x -> x == i, CM))
-
-            #= Legacy code
-                a =  sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-                #println(omega*value.(L_cable)[i])
-                println()
-                println()
-                println(value.(B)[j,j])
-                println(value.(G)[j,j])
-                println()
-                println()
-
-                Y = 1/(value.(R_cable)[i] + omega*value.(L_cable)[i])
-                V1 = value.(nodes[k, "v"]) *exp(1im*value.(nodes[k, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-                V2 = value.(nodes[j, "v"]) *exp(1im*value.(nodes[j, "theta"]) ) # theta should be replaced with either 0, δ₁ or δ₂
-                println()
-                println("Aparent power:")
-                println(conj(Y)*conj(V1-V2)*V1)
-
-                println()
-                println()
-
-                println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"])))/(omega*value.(L_cable)[i]))
-
-                println(value.(nodes[j, "v"]) * value.(nodes[k, "v"]) * (sin(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(B)[j,k])   +    cos(value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))/(value.(G)[j,k])))
-                println()
-                println()
-
-                dn = asin(mod(-a/(omega*value.(L_cable)[i]),2*pi))
-
-                I = min(value.(nodes[j, "v"]), value.(nodes[k, "v"])) * ((omega*value.(L_cable)[i])*sin(dn))
-                println(I)
-            =#
-
             Z = value.(R_cable)[i] + 1im*omega*value.(L_cable)[i]
             Zₘ = abs(Z)
             θᵧ = angle(Z)
@@ -1128,19 +1065,6 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
             vₛ = value.(nodes[j, "v"]) # magnitude of sending end voltage
 
             P = 3.0*vᵣ*vₛ*sqrt(value.(C_cable)[i]/value.(L_cable)[i])
-            #P = value.(nodes[j, "P"]) # maybe should be value.(nodes[k, "P"])
-            #Q = value.(nodes[j, "Q"])
-
-            # println(Zₘ)
-            # println(P)
-            # println(value.(C_cable))
-            # println(value.(L_cable))
-            # println(Aₘ)
-            # println(vᵣ)
-            # println(θᵧ)
-            # println(θₐ)
-            # println(vₛ)
-
 
             δ = -acos((P*Zₘ + Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ))/(vᵣ*vₛ)) + θᵧ
 
@@ -1152,8 +1076,6 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
 
             I₂ = ((Vs - A*Vr)/Z)
 
-            #println("Iₗ = ", abs(Iₗ), " This is our answer. The limit through the inductor")
-
             if !haskey(parameters["cable"][i], "i_limit")
                 parameters["cable"][i]["i_limit"] = abs(Iₗ)
             end
@@ -1161,25 +1083,6 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity = 0)
             if !haskey(parameters["cable"][i], "v_limit")
                 parameters["cable"][i]["v_limit"] = 1.15 * parameters["grid"]["v_rms"] * sqrt(2)
             end
-
-            #=
-            S = sqrt(P^2 + Q^2)
-            println("\nDebugging\n")
-            println("1. Cable = ", i)
-            println("2. δ = ", δ, " ?= ", value.(nodes[j, "theta"]) - value.(nodes[k, "theta"]))
-            println("3. S = ", S, " S₁ ?= ", abs(Vs*conj(Yₗ)*(Vr - Vs)), " ?= ", abs(Vr*conj(Yₗ)*(Vs - Vr)))
-            println("4. S = ", S, " S₂ ?= ", abs(Vs*Iₗ), " ?= ", abs(Vs*I₂), " ?= ", abs(Vr*Iₗ), " ?= ", abs(Vr*I₂))
-            println("5. |Iₗ| = ", abs(Iₗ), " angle = ", angle(Iₗ)*180/pi, " Iₗ = ", Iₗ, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)), " this is probably the right one")
-            println("6. |I₂| = ", abs(I₂), " angle = ", angle(I₂)*180/pi, " I₂ = ", I₂, " =? ", abs(conj(Yₗ)*(Vr - Vs)), " =? ", abs(conj(Yₗ)*(Vs - Vr)))
-            println("7. vᵣ = ", value.(nodes[j, "v"]))
-            println("8. vₛ = ", value.(nodes[k, "v"]))
-            println("9. P = ", P, " ?= ", vᵣ*vₛ*cos(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*cos(θᵧ - θₐ)/(Zₘ), " ?= ", real(Vs*I₂), " ?= ", real(Vr*I₂), " ?= ", real(Vs*Iₗ), " ?= ", real(Vr*Iₗ))
-            println("10. Q = ", Q, " ?= ", vᵣ*vₛ*sin(θᵧ - δ)/(Zₘ) - Aₘ*vᵣ*vᵣ*sin(θᵧ - θₐ)/(Zₘ), " ?= ", imag(Vs*I₂), " ?= ", imag(Vr*I₂), " ?= ", imag(Vs*Iₗ), " ?= ", imag(Vr*Iₗ))
-            println("11. R = ", value.(R_cable)[i] , " L = ", value.(L_cable)[i], " C = ", value.(C_cable)[i])
-            println("12. Vs = ", Vs , " Vr = ", Vr)
-            println()
-            =#
-
         end
     else
         if verbosity > 0
