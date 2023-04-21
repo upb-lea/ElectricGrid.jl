@@ -118,7 +118,7 @@ be implemented and tested with ``ElectricGrid.jl`` in a relatively short amount 
 # Intended use and targeted audience
 
 ``ElectricGrid.jl`` is designed to be used by students, academics, and industrial researchers 
-in the field of control and energy engineering and data science. 
+in the field of simulation and data-driven analysis of electrical energy systems. 
 The primary objective of the toolbox is to facilitate entry for new users into 
 the modeling, control, and testing of
 small to large scale electric power grids and to provide a platform on which different control methods (including RL) 
@@ -131,22 +131,22 @@ can be compared under defined conditions (benchmarks).
 The ``ElectricGrid.jl`` toolbox provides the following key features:
 
 
-* Framework to set up an experiment with a parameterized energy grid in a few lines of code. 
+* Framework to set up an experiment with a parameterised energy grid in a few lines of code. 
 
 * Dynamic simulation of electricity grids on component level including single and multi-phase systems as well as AC and DC operation. 
 
 * Calculation, evaluation and logging of every single time step covering states, action and auxiliary quantities. 
 
-* Large variety of predefined and parameterizable controllers (droop, VSG, swing, active-reactive) are available.
+* Large variety of predefined and parameterisable controllers (droop, VSG, swing, active-reactive) are available.
 
 * Interesting use cases applying data-driven learning.
 
 # Examples
 For illustration and interactive introduction, jupyter notebooks are available for each topic.
 These provide clear and easy-to-expand examples of: 
- - [Utilising ElectricGrid.jl to build an energy grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb)
- - [Theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb)
- - [Applying classic controllers on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/1_Auxiliaries_OU_process.ipynb) and
+ - [Utilising ElectricGrid.jl to build an energy grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb),
+ - [Theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb),
+ - [Applying classic controllers on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/1_Auxiliaries_OU_process.ipynb),
  - [Training an RL agent on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb).
 
 
@@ -159,7 +159,7 @@ The package should be installed using the julia package manager. In a julia term
 add ElectricGrid
 ```
 
-Alternatively it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]`to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` if you started julia in your ElectricGrid directory and afterwards run `instantiate`.
+Alternatively it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]`to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` If you started Julia in your ElectricGrid directory and afterwards run `instantiate`.
   
 The source code, guide and 
 examples are available on the GitHub repository (https://github.com/upb-lea/JuliaElectricGrid.jl). 
@@ -190,7 +190,7 @@ Following are shown the main fields of each individual contributor of ElectricGr
 # Acknowledgements
 
 The authors would also like to acknowledge 
-the funding and support of this work by the BMBF research grant. 
+the funding and support of this work by the Federal Ministry of Education and Research of Germany (grant number 011S21064).  
 
 # References
 
