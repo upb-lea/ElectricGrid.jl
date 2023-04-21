@@ -48,27 +48,24 @@ be initialised in Julia.
 An example is shown in the figure below.
 
 ![\label{fig:grid}](ExampleGrid.png)
-_Fig. 1:  Exemplary electric energy grid in single phase representation._
+_Fig. 1:  Exemplary electric energy grid in a simplified single phase representation._
 
-By means of linear time-invariant state-space models, electrical energy grids can be constructed and simulated in a short time, which can be utilised
-for synthetic data generation and to compare grid control methods.
+By means of  state-space models (set of first order ordinary differential equations), electrical energy grids can be constructed and simulated in a short time, which can be utilised
+for synthetic data generation (e.g., for data-driven meta-modelling) and to compare grid control methods.
 
 
 # Background on electric grids and their control
 
-
 Decentralised, electrical energy networks have special demands on operating and control procedures 
 to ensure a continuous and efficient energy supply and
-simultaneously play an important role in the integration of renewable energy sources. [@Guerrero2013] 
-This applies both in connection with conventional centralised power grids and for islanded microgrids in remote areas [@Lund2017].
-Due to their high efficiency and flexibility, the integration of power electronic converters 
-in electrical energy grids is increasing. 
+simultaneously play an important role in the integration of renewable energy sources [@Guerrero2013]. This applies both in connection with conventional centralised power grids and for islanded microgrids in remote areas [@Lund2017].
+Due to their high efficiency and flexibility, power electronic converters have become the standard tool for integrating renewable energy sources, energy storages and loads in 
+electrical energy grids. 
 Power electronics describes the application of solid-state electronics to the control and
 conversion of electric power, which is performed with semiconductor switching 
 devices such as diodes or power transistors.
 This includes energy conversion in terms of voltage and current amplitude, frequency
-and phase angle, as well as the number of phases between two or more
-electrical energy systems to be connected.
+and phase angle, as well as the number of phases between two or more electrical energy systems to be connected.
 
 
 Controlling (decentralised) electric grids is a challenging task due to their stochastic, heterogeneous 
