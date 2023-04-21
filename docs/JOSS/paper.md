@@ -103,7 +103,7 @@ which does not allow an evaluation of, e.g., control on component level in case 
 The API is designed to provide a user-friendly interface to connect a modeled electric energy grid 
 with a wide range of classical control methods like shown in the figure below.
 
-![\label{fig:jeg}](OverviewJEG.png)
+![\label{fig:jeg}](Overview_EG.png)
 _Fig. 2:  Overview of the functionality and interconnections of the ElectricGrid.jl framework._
  
 Already provided are classic controllers (i.e., industry standard contollers) like linear feedback proportional integral (PI) in the direct-quadrature-zero (DQ0) rotating reference frame. These control methods can be used out of the box including automatical tuning procedures. 
@@ -155,8 +155,15 @@ These provide clear and easy-to-expand examples of:
 
 # Availability and installation
 
-``ElectricGrid.jl`` is supported and tested on Linux and Windows. 
-The package should be installed ... @Jan -> #43: https://github.com/upb-lea/JuliaElectricGrid.jl/issues/43
+``ElectricGrid.jl`` is supported and tested on Linux, Windows and macOS.
+The package should be installed using the julia package manager. In a julia terminal run the follwing:
+```
+]
+add ElectricGrid
+```
+
+Alternatively it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]`to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` if you started julia in your ElectricGrid directory and afterwards run `instantiate`.
+  
 The source code, guide and 
 examples are available on the GitHub repository (https://github.com/upb-lea/JuliaElectricGrid.jl). 
 
