@@ -19,7 +19,9 @@ Base.@kwdef mutable struct DataHook2 <: AbstractHook
     collect_action_ids = []
 
     df = DataFrame()
-    tmp = Dict()
+    tmp = []
+    column_names = []
+    firstrun = true
     ep = 1
 
     plot_rewards = false
@@ -198,8 +200,10 @@ end
 function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
     @timeit to "Pre-Act" begin
 
-    push!(hook.tmp, :episode => hook.ep)
-    push!(hook.tmp, :time => Float32(env.t))
+    hook.firstrun && push!(hook.column_names, :episode)
+    push!(hook.tmp, hook.ep)
+    hook.firstrun && push!(hook.column_names, :time)
+    push!(hook.tmp, env.t)
 
     if length(hook.policy_names) != length(agent.agents)
         hook.policy_names = [s for s in keys(agent.agents)]
@@ -362,14 +366,16 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
     end
 
     for idx in hook.collect_vdc_ids
-        push!(hook.tmp, "source$(idx)_vdc" => env.v_dc[idx])
+        hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_vdc"))
+        push!(hook.tmp,  env.v_dc[idx])
     end
 
     if hook.collect_reference
         #push!(hook.tmp, :reference => reference(env.t))
         refs = reference(env.t)
         for i = 1:length(refs)
-            push!(hook.tmp, "reference_$i" => refs[i])
+            hook.firstrun && push!(hook.column_names, Symbol("reference_$i"))
+            push!(hook.tmp, refs[i])
         end
     end
 
@@ -386,33 +392,53 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
         @timeit to "Normal State" begin
-        push!(hook.tmp, state_id => (env.x[state_index]))
+            hook.firstrun && push!(hook.column_names, Symbol(state_id))
+            push!(hook.tmp, (env.x[state_index]))
         end
         @timeit to "Op State" begin
-        push!(hook.tmp, replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
+            hook.firstrun && push!(hook.column_names, Symbol(replace(state_id, "_i_" => "_v_", "_v_" => "_i_")))
+            push!(hook.tmp, opstates[state_index,1])
         end
 
         @timeit to "Extra States" begin
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
-                    push!(hook.tmp, hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                    push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
+
+                    hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][1]))
+                    push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
+
+                    hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
-                    push!(hook.tmp, hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                    push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
+
+                    hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][2]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
+
+                    hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
-                    push!(hook.tmp, hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                    push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
+
+                    hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][3]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
+
+                    hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
-                push!(hook.tmp, hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
-                push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
+                hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, (env.x[state_index]))
+
+                hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
-                push!(hook.tmp, hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
-                push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
+                hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, opstates[state_index,1])
+
+                hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
             extra_state_cntr+=1
         end
@@ -422,8 +448,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
 
 
 
-    push!(hook.tmp, :action => Ref(action))
-end
+    end
 end
 
 function (hook::DataHook2)(::PostActStage, agent, env, training = false)
@@ -435,29 +460,49 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
-        push!(hook.tmp, "next_state_"*state_id => (env.x[state_index]))
-        push!(hook.tmp, "next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
+        hook.firstrun && push!(hook.column_names, Symbol("next_state_"*state_id))
+        push!(hook.tmp, (env.x[state_index]))
+        hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_")))
+        push!(hook.tmp, opstates[state_index,1])
 
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
-                    push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                    push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
+
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][1]))
+                    push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
+
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
-                    push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                    push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
+
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][2]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
+
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
-                    push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                    push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
+
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][3]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
+
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
-                push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
-                push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, (env.x[state_index]))
+
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
-                push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
-                push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, opstates[state_index,1])
+
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
         extra_state_cntr+=1
         end
@@ -466,18 +511,23 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
     for action_id in hook.collect_action_ids
         action_index = findfirst(x -> x == action_id, env.action_ids)
 
-        push!(hook.tmp, action_id => (env.action[action_index]))
+        hook.firstrun && push!(hook.column_names, Symbol(action_id))
+        push!(hook.tmp, (env.action[action_index]))
     end
 
-    push!(hook.tmp, :reward => env.reward)
-    push!(hook.tmp, :done => env.done)
-
-    #workaround: replace keys in tmp that are not symbol with symbol ones
-    @timeit to "Key Change" begin
-    hook.tmp = Dict( (typeof(key) != Symbol ? Symbol(key) : key) => val for (key, val) in hook.tmp)
+    hook.firstrun && push!(hook.column_names, :reward)
+    push!(hook.tmp, env.reward)
+    hook.firstrun && push!(hook.column_names, :done)
+    push!(hook.tmp, env.done)
+    
+    if hook.firstrun
+        hook.tmp = [[i] for i in hook.tmp]
+        hook.df = DataFrame(hook.tmp, hook.column_names; copycols=false)
+        hook.firstrun = false
+    else
+        push!(hook.df, hook.tmp)
     end
-    push!(hook.df, hook.tmp, cols = :union)
-    hook.tmp = Dict()
+    hook.tmp = []
 
     if training
         if isa(agent, MultiController)
@@ -501,7 +551,8 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
             hook.reward[1] += env.reward
         end
     end
-end
+
+    end
 end
 
 function (hook::DataHook2)(::PostEpisodeStage, agent, env, training = false)
