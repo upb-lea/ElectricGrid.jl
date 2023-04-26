@@ -210,12 +210,12 @@ end
 parameters = Dict{Any, Any}(
         "source" => Any[
                         Dict{Any, Any}("pwr" => 400e3,
-                                        "control_type" => "RL"
+                                        "control_type" => "RL",
                                         "fltr" => "LC",
                                         "v_δ_set" => 4),
                         Dict{Any, Any}("pwr" => 100e3,
                                         "fltr" => "LCL",
-                                        "control_type" => "RL"
+                                        "control_type" => "RL",
                                         "p_set" => 50e3,
                                         "q_set" => 10e3,
                                         "v_pu_set" => 1.0,
