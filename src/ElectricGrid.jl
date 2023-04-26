@@ -24,6 +24,9 @@ using StableRNGs
 using SpecialFunctions
 using StatsBase
 using UnicodePlots
+using TimerOutputs
+
+to = TimerOutput()
 
 #export create_setup, ClassicalPolicy, CreateAgentDdpg, Source_Initialiser, MultiController, DataHook, RenderHookResults, plot_best_results, NodeConstructor, ElectricGrid_setup, ElectricGridEnv
 

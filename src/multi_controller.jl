@@ -290,26 +290,55 @@ the action noise.
 """
 function CustomRun(policy, env, stop_condition, hook, training = false)
 
-    hook(PRE_EXPERIMENT_STAGE, policy, env, training)
-    policy(PRE_EXPERIMENT_STAGE, env, training)
+    @timeit to "Hook" begin
+        hook(PRE_EXPERIMENT_STAGE, policy, env, training)
+    end
+    @timeit to "Policy" begin
+        @timeit to "Updates" begin
+            policy(PRE_EXPERIMENT_STAGE, env, training)
+        end
+    end
     is_stop = false
     while !is_stop
-        RLBase.reset!(env)
-        ResetPolicy(policy)
+        @timeit to "Hook" begin
+            RLBase.reset!(env)
+        end
+        @timeit to "Policy" begin
+            @timeit to "Updates" begin
+                ResetPolicy(policy)
 
-        policy(PRE_EPISODE_STAGE, env, training)
-        hook(PRE_EPISODE_STAGE, policy, env, training)
+                policy(PRE_EPISODE_STAGE, env, training)
+            end
+        end
+        @timeit to "Hook" begin
+            hook(PRE_EPISODE_STAGE, policy, env, training)
+        end
 
         while !is_terminated(env) # one episode
-            action = policy(env, training)
+            @timeit to "Policy" begin
+                @timeit to "Action" begin
+                    action = policy(env, training)
+                end
+                @timeit to "Updates" begin
+                    policy(PRE_ACT_STAGE, env, action, training)
+                end
+            end
+            @timeit to "Hook" begin
+                hook(PRE_ACT_STAGE, policy, env, action, training)
+            end
 
-            policy(PRE_ACT_STAGE, env, action, training)
-            hook(PRE_ACT_STAGE, policy, env, action, training)
+            @timeit to "Env" begin
+                env(action)
+            end
 
-            env(action)
-
-            policy(POST_ACT_STAGE, env, training)
-            hook(POST_ACT_STAGE, policy, env, training)
+            @timeit to "Policy" begin
+                @timeit to "Updates" begin
+                    policy(POST_ACT_STAGE, env, training)
+                end
+            end
+            @timeit to "Hook" begin
+                hook(POST_ACT_STAGE, policy, env, training)
+            end
 
             if stop_condition(policy, env)
                 is_stop = true
@@ -318,12 +347,24 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
         end # end of an episode
 
         if is_terminated(env)
-            policy(POST_EPISODE_STAGE, env, training)  # let the policy see the last observation
-            hook(POST_EPISODE_STAGE, policy, env, training)
+            @timeit to "Policy" begin
+                @timeit to "Updates" begin
+                    policy(POST_EPISODE_STAGE, env, training)  # let the policy see the last observation
+                end
+            end
+            @timeit to "Hook" begin
+                hook(POST_EPISODE_STAGE, policy, env, training)
+            end
         end
     end
 
-    policy(POST_EXPERIMENT_STAGE, env, training)
-    hook(POST_EXPERIMENT_STAGE, policy, env, training)
+    @timeit to "Policy" begin
+        @timeit to "Updates" begin
+            policy(POST_EXPERIMENT_STAGE, env, training)
+        end
+    end
+    @timeit to "Hook" begin
+        hook(POST_EXPERIMENT_STAGE, policy, env, training)
+    end
     return hook
 end
