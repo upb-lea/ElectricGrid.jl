@@ -40,6 +40,7 @@ include("./classical_control.jl")
 include("./multi_controller.jl")
 include("./render.jl")
 include("./data_hook.jl")
+include("./data_hook_2.jl")
 include("./logger.jl")
 
 #code to export all, taken from https://discourse.julialang.org/t/exportall/4970/18
