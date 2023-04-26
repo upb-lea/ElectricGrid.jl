@@ -19,7 +19,7 @@ Base.@kwdef mutable struct DataHook2 <: AbstractHook
     collect_action_ids = []
 
     df = DataFrame()
-    tmp = DataFrame()
+    tmp = Dict()
     ep = 1
 
     plot_rewards = false
@@ -198,8 +198,8 @@ end
 function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
     @timeit to "Pre-Act" begin
 
-    insertcols!(hook.tmp, :episode => hook.ep)
-    insertcols!(hook.tmp, :time => Float32(env.t))
+    push!(hook.tmp, :episode => hook.ep)
+    push!(hook.tmp, :time => Float32(env.t))
 
     if length(hook.policy_names) != length(agent.agents)
         hook.policy_names = [s for s in keys(agent.agents)]
@@ -211,38 +211,38 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
 
         for idx in hook.debug
 
-            insertcols!(hook.tmp, "debug_$(idx)" => ClassicalPolicy.Source.debug[idx])
+            push!(hook.tmp, "debug_$(idx)" => ClassicalPolicy.Source.debug[idx])
         end
 
         for idx in hook.v_dq
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_v_d" => ClassicalPolicy.Source.V_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_v_q" => ClassicalPolicy.Source.V_dq0[s_idx, 2])
+                push!(hook.tmp, "source$(idx)_v_d" => ClassicalPolicy.Source.V_dq0[s_idx, 1])
+                push!(hook.tmp, "source$(idx)_v_q" => ClassicalPolicy.Source.V_dq0[s_idx, 2])
             end
         end
 
         for idx in hook.i_dq
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_i_d" => ClassicalPolicy.Source.I_dq0[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_i_q" => ClassicalPolicy.Source.I_dq0[s_idx, 2])
+                push!(hook.tmp, "source$(idx)_i_d" => ClassicalPolicy.Source.I_dq0[s_idx, 1])
+                push!(hook.tmp, "source$(idx)_i_q" => ClassicalPolicy.Source.I_dq0[s_idx, 2])
             end
         end
 
         for idx in hook.power_pq_inv
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_p_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_q_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 2])
+                push!(hook.tmp, "source$(idx)_p_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 1])
+                push!(hook.tmp, "source$(idx)_q_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 2])
             end
         end
 
         for idx in hook.power_pq_poc
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_p_poc" => ClassicalPolicy.Source.p_q_poc[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_q_poc" => ClassicalPolicy.Source.p_q_poc[s_idx, 2])
+                push!(hook.tmp, "source$(idx)_p_poc" => ClassicalPolicy.Source.p_q_poc[s_idx, 1])
+                push!(hook.tmp, "source$(idx)_q_poc" => ClassicalPolicy.Source.p_q_poc[s_idx, 2])
             end
         end
 
@@ -250,8 +250,8 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 v_mag = ClarkeMag((ClassicalPolicy.Source.Vdc[s_idx]/2)*ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_v_mag_inv" => v_mag)
-                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                push!(hook.tmp, "source$(idx)_v_mag_inv" => v_mag)
+                #push!(hook.tmp, "source$(idx)_vrms_a" => ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
@@ -259,8 +259,8 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 v_mag = ClarkeMag(ClassicalPolicy.Source.V_filt_cap[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_v_mag_poc" => v_mag)
-                #insertcols!(hook.tmp, "source$(idx)_vrms_a" => ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                push!(hook.tmp, "source$(idx)_v_mag_poc" => v_mag)
+                #push!(hook.tmp, "source$(idx)_vrms_a" => ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
             end
         end
 
@@ -268,8 +268,8 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_inv[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_i_mag_inv" => i_mag)
-                #insertcols!(hook.tmp, "source$(idx)_irms_a" => ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                push!(hook.tmp, "source$(idx)_i_mag_inv" => i_mag)
+                #push!(hook.tmp, "source$(idx)_irms_a" => ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
             end
         end
 
@@ -277,8 +277,8 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_poc[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_i_mag_poc" => i_mag)
-                #insertcols!(hook.tmp, "source$(idx)_irms_a" => ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                push!(hook.tmp, "source$(idx)_i_mag_poc" => i_mag)
+                #push!(hook.tmp, "source$(idx)_irms_a" => ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
             end
         end
 
@@ -286,7 +286,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 freq = ClassicalPolicy.Source.f_source[s_idx, 1, end]
-                insertcols!(hook.tmp, "source$(idx)_freq" => freq)
+                push!(hook.tmp, "source$(idx)_freq" => freq)
             end
         end
 
@@ -307,7 +307,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
                 elseif θ_source < -180
                     θ_source = θ_source + 360
                 end
-                insertcols!(hook.tmp, "source$(idx)_θ" => θ_source)
+                push!(hook.tmp, "source$(idx)_θ" => θ_source)
             end
         end
 
@@ -315,7 +315,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 i_sat = sqrt(2)*(ClassicalPolicy.Source.Vdc[s_idx]/2)*ClarkeMag(ClassicalPolicy.Source.s_dq0_avg[s_idx, :] .- ClassicalPolicy.Source.s_lim[s_idx, :])/ClassicalPolicy.Source.v_max[s_idx]
-                insertcols!(hook.tmp, "source$(idx)_i_sat" => i_sat)
+                push!(hook.tmp, "source$(idx)_i_sat" => i_sat)
             end
         end
 
@@ -323,7 +323,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 i_err = ClarkeMag(ClassicalPolicy.Source.I_err[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_i_err" => i_err)
+                push!(hook.tmp, "source$(idx)_i_err" => i_err)
             end
         end
 
@@ -331,7 +331,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 i_err_t = ClarkeMag(ClassicalPolicy.Source.I_err_t[s_idx, :])
-                insertcols!(hook.tmp, "source$(idx)_i_err_t" => i_err_t)
+                push!(hook.tmp, "source$(idx)_i_err_t" => i_err_t)
             end
         end
 
@@ -339,7 +339,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 v_sat = sqrt(2)*ClarkeMag(ClassicalPolicy.Source.I_ref_dq0[s_idx, :] .- ClassicalPolicy.Source.I_lim[s_idx, :])/(0.98*ClassicalPolicy.Source.i_max[s_idx])
-                insertcols!(hook.tmp, "source$(idx)_v_sat" => v_sat)
+                push!(hook.tmp, "source$(idx)_v_sat" => v_sat)
             end
         end
 
@@ -347,7 +347,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 v_err = ClarkeMag(ClassicalPolicy.Source.V_err[s_idx, :, end])
-                insertcols!(hook.tmp, "source$(idx)_v_err" => v_err)
+                push!(hook.tmp, "source$(idx)_v_err" => v_err)
             end
         end
 
@@ -355,21 +355,21 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
                 v_err_t = ClarkeMag(ClassicalPolicy.Source.V_err_t[s_idx, :])
-                insertcols!(hook.tmp, "source$(idx)_v_err_t" => v_err_t)
+                push!(hook.tmp, "source$(idx)_v_err_t" => v_err_t)
             end
         end
 
     end
 
     for idx in hook.collect_vdc_ids
-        insertcols!(hook.tmp, "source$(idx)_vdc" => env.v_dc[idx])
+        push!(hook.tmp, "source$(idx)_vdc" => env.v_dc[idx])
     end
 
     if hook.collect_reference
-        #insertcols!(hook.tmp, :reference => reference(env.t))
+        #push!(hook.tmp, :reference => reference(env.t))
         refs = reference(env.t)
         for i = 1:length(refs)
-            insertcols!(hook.tmp, "reference_$i" => refs[i])
+            push!(hook.tmp, "reference_$i" => refs[i])
         end
     end
 
@@ -386,33 +386,33 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
         @timeit to "Normal State" begin
-        insertcols!(hook.tmp, state_id => (env.x[state_index]))
+        push!(hook.tmp, state_id => (env.x[state_index]))
         end
         @timeit to "Op State" begin
-        insertcols!(hook.tmp, replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
+        push!(hook.tmp, replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
         end
 
         @timeit to "Extra States" begin
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
-                    insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
+                    push!(hook.tmp, hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
+                    push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
-                    insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
+                    push!(hook.tmp, hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
+                    push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
-                    insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                    insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
+                    push!(hook.tmp, hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
+                    push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
-                insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
-                insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
+                push!(hook.tmp, hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
+                push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
-                insertcols!(hook.tmp, hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
-                insertcols!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
+                push!(hook.tmp, hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
+                push!(hook.tmp, replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
             extra_state_cntr+=1
         end
@@ -422,7 +422,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
 
 
 
-    insertcols!(hook.tmp, :action => Ref(action))
+    push!(hook.tmp, :action => Ref(action))
 end
 end
 
@@ -435,29 +435,29 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
-        insertcols!(hook.tmp, "next_state_"*state_id => (env.x[state_index]))
-        insertcols!(hook.tmp, "next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
+        push!(hook.tmp, "next_state_"*state_id => (env.x[state_index]))
+        push!(hook.tmp, "next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_") => opstates[state_index,1])
 
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
-                    insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
+                    push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][1] => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
+                    push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
-                    insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
+                    push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][2] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
+                    push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_") => (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
-                    insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                    insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
+                    push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr][3] => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
+                    push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_") => (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
-                insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
-                insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
+                push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => (env.x[state_index]))
+                push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
-                insertcols!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
-                insertcols!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
+                push!(hook.tmp, "next_state_"*hook.extra_state_names[extra_state_cntr] => opstates[state_index,1])
+                push!(hook.tmp, "next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_") => (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
         extra_state_cntr+=1
         end
@@ -466,14 +466,18 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
     for action_id in hook.collect_action_ids
         action_index = findfirst(x -> x == action_id, env.action_ids)
 
-        insertcols!(hook.tmp, action_id => (env.action[action_index]))
+        push!(hook.tmp, action_id => (env.action[action_index]))
     end
 
-    insertcols!(hook.tmp, :reward => env.reward)
-    insertcols!(hook.tmp, :done => env.done)
+    push!(hook.tmp, :reward => env.reward)
+    push!(hook.tmp, :done => env.done)
 
-    append!(hook.df, hook.tmp)
-    hook.tmp = DataFrame()
+    #workaround: replace keys in tmp that are not symbol with symbol ones
+    @timeit to "Key Change" begin
+    hook.tmp = Dict( (typeof(key) != Symbol ? Symbol(key) : key) => val for (key, val) in hook.tmp)
+    end
+    push!(hook.df, hook.tmp, cols = :union)
+    hook.tmp = Dict()
 
     if training
         if isa(agent, MultiController)
