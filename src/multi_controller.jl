@@ -304,9 +304,10 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
             RLBase.reset!(env)
         end
         @timeit to "Policy" begin
-            @timeit to "Updates" begin
+            @timeit to "Reset" begin
                 ResetPolicy(policy)
-
+            end
+            @timeit to "Updates" begin
                 policy(PRE_EPISODE_STAGE, env, training)
             end
         end
