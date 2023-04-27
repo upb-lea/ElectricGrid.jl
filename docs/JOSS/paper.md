@@ -35,7 +35,7 @@ affiliations:
    index: 1
 - name: Chair of Data Science for Engineering, Paderborn University, Paderborn, Germany
    index: 1
-date: XX April 2023
+date: 28 April 2023
 bibliography: paper.bib
 ---
 
@@ -45,7 +45,7 @@ The ElectricGrid.jl toolbox provides a transient simulation framework
 for electric energy grids based on power electronic converters. 
 With a few lines of code, a parameterised electric grid can 
 be initialised in Julia. 
-An example is shown in the figure below.
+An example grid is shown in the figure below.
 
 ![\label{fig:grid}](ExampleGrid.png)
 _Fig. 1:  Exemplary electric energy grid in a simplified single phase representation._
@@ -174,7 +174,7 @@ Following are shown the main fields of each individual contributor of ElectricGr
 
 * J. Stenner: API RL framework, API environment framework, basic system architecture
 
-* D. Weber: Application examples, API environment framework, unit tests
+* D. Weber: Application examples, API environment framework, basic system architecture, unit tests
 
 * S. Boshoff: Application examples, primary controllers in DQ0 frame, decentralised secondary controllers, Luenberger observers, stochastic processes, inverter filter design, cable design, unit tests 
 
