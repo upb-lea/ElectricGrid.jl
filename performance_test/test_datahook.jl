@@ -51,7 +51,7 @@ all_sources = collect(1:env.nc.num_sources)
 all_loads = collect(1:env.nc.num_loads)
 all_cables = collect(1:env.nc.num_connections)
 
-hook = DataHook2(collect_sources  = all_sources,
+hook = DataHook3(collect_sources  = all_sources,
                 collect_cables   = all_cables,
                 #collect_loads    = all_loads
                 )

@@ -1,4 +1,4 @@
-Base.@kwdef mutable struct DataHook2 <: AbstractHook
+Base.@kwdef mutable struct DataHook3 <: AbstractHook
 
     save_data_to_hd = false
     dir = "episode_data/"
@@ -21,7 +21,7 @@ Base.@kwdef mutable struct DataHook2 <: AbstractHook
     df = DataFrame()
     tmp = []
     column_names = []
-    list_iterator = 0
+    firstrun = true
     ep = 1
 
     plot_rewards = false
@@ -59,12 +59,7 @@ Base.@kwdef mutable struct DataHook2 <: AbstractHook
 
 end
 
-function append_tmp(hook, value)
-    hook.tmp[hook.list_iterator] = value
-    hook.list_iterator += 1
-end
-
-function (hook::DataHook2)(::PreExperimentStage, agent, env, training = false)
+function (hook::DataHook3)(::PreExperimentStage, agent, env, training = false)
     @timeit to "Pre-Experiment" begin
 
     # rest
@@ -202,43 +197,33 @@ function (hook::DataHook2)(::PreExperimentStage, agent, env, training = false)
 end
 end
 
-function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
+function (hook::DataHook3)(::PreActStage, agent, env, action, training = false)
 
-    if hook.list_iterator == 0
-        push!(hook.column_names, :episode)
-        push!(hook.tmp, hook.ep)
-        push!(hook.column_names, :time)
-        push!(hook.tmp, env.t)
-    else
-        append_tmp(hook, hook.ep)
-        append_tmp(hook, env.t)
-    end
+    hook.firstrun && push!(hook.column_names, :episode)
+    push!(hook.tmp, hook.ep)
+    hook.firstrun && push!(hook.column_names, :time)
+    push!(hook.tmp, env.t)
 
     if length(hook.policy_names) != length(agent.agents)
         hook.policy_names = [s for s in keys(agent.agents)]
     end
 
-    #TODO: append_tmp for Septimus Code
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
         ClassicalPolicy = agent.agents["classic"]["policy"].policy
 
         for idx in hook.debug
-            if hook.list_iterator == 0
-                push!(hook.column_names, Symbol("debug_$(idx)"))
-                push!(hook.tmp, ClassicalPolicy.Source.debug[idx])
-            else
-                append_tmp(hook, ClassicalPolicy.Source.debug[idx])
-            end
+            hook.firstrun && push!(hook.column_names, Symbol("debug_$(idx)"))
+            push!(hook.tmp, ClassicalPolicy.Source.debug[idx])
         end
 
         for idx in hook.v_dq
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_d"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_v_d"))
                 push!(hook.tmp, ClassicalPolicy.Source.V_dq0[s_idx, 1])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_q"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_v_q"))
                 push!(hook.tmp, ClassicalPolicy.Source.V_dq0[s_idx, 2])
             end
         end
@@ -246,10 +231,10 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
         for idx in hook.i_dq
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_d"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_i_d"))
                 push!(hook.tmp, ClassicalPolicy.Source.I_dq0[s_idx, 1])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_q"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_i_q"))
                 push!(hook.tmp, ClassicalPolicy.Source.I_dq0[s_idx, 2])
             end
         end
@@ -257,10 +242,10 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
         for idx in hook.power_pq_inv
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_p_inv"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_p_inv"))
                 push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 1])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_q_inv"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_q_inv"))
                 push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 2])
             end
         end
@@ -268,9 +253,9 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
         for idx in hook.power_pq_poc
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_p_poc"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_p_poc"))
                 push!(hook.tmp, ClassicalPolicy.Source.p_q_poc[s_idx, 1])
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_q_poc"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_q_poc"))
                 push!(hook.tmp, ClassicalPolicy.Source.p_q_poc[s_idx, 2])
             end
         end
@@ -280,10 +265,10 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_mag = ClarkeMag((ClassicalPolicy.Source.Vdc[s_idx]/2)*ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_mag_inv"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_v_mag_inv"))
                 push!(hook.tmp, v_mag)
 
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
+                #hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
                 #push!(hook.tmp, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
             end
         end
@@ -293,10 +278,10 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_mag = ClarkeMag(ClassicalPolicy.Source.V_filt_cap[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_mag_poc"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_v_mag_poc"))
                 push!(hook.tmp, v_mag)
 
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
+                #hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
                 #push!(hook.tmp, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
             end
         end
@@ -306,10 +291,10 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_inv[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_mag_inv"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_i_mag_inv"))
                 push!(hook.tmp, i_mag)
 
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_irms_a"))
+                #hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_irms_a"))
                 #push!(hook.tmp, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
             end
         end
@@ -319,10 +304,10 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_poc[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_mag_poc"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_i_mag_poc"))
                 push!(hook.tmp, i_mag)
 
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_irms_a"))
+                #hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_irms_a"))
                 #push!(hook.tmp, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
             end
         end
@@ -332,7 +317,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 freq = ClassicalPolicy.Source.f_source[s_idx, 1, end]
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_freq"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_freq"))
                 push!(hook.tmp, freq)
             end
         end
@@ -355,7 +340,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
                     θ_source = θ_source + 360
                 end
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_θ"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_θ"))
                 push!(hook.tmp, θ_source)
             end
         end
@@ -365,7 +350,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_sat = sqrt(2)*(ClassicalPolicy.Source.Vdc[s_idx]/2)*ClarkeMag(ClassicalPolicy.Source.s_dq0_avg[s_idx, :] .- ClassicalPolicy.Source.s_lim[s_idx, :])/ClassicalPolicy.Source.v_max[s_idx]
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_sat"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_i_sat"))
                 push!(hook.tmp, i_sat)
             end
         end
@@ -375,7 +360,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_err = ClarkeMag(ClassicalPolicy.Source.I_err[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_err"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_i_err"))
                 push!(hook.tmp, i_err)
             end
         end
@@ -385,7 +370,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_err_t = ClarkeMag(ClassicalPolicy.Source.I_err_t[s_idx, :])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_err_t"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_i_err_t"))
                 push!(hook.tmp, i_err_t)
             end
         end
@@ -395,7 +380,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_sat = sqrt(2)*ClarkeMag(ClassicalPolicy.Source.I_ref_dq0[s_idx, :] .- ClassicalPolicy.Source.I_lim[s_idx, :])/(0.98*ClassicalPolicy.Source.i_max[s_idx])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_sat"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_v_sat"))
                 push!(hook.tmp, v_sat)
             end
         end
@@ -405,7 +390,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_err = ClarkeMag(ClassicalPolicy.Source.V_err[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_err"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_v_err"))
                 push!(hook.tmp, v_err)
             end
         end
@@ -415,7 +400,7 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_err_t = ClarkeMag(ClassicalPolicy.Source.V_err_t[s_idx, :])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_err_t"))
+                hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_v_err_t"))
                 push!(hook.tmp, v_err_t)
             end
         end
@@ -423,26 +408,16 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
     end
 
     for idx in hook.collect_vdc_ids
-        if hook.list_iterator == 0
-            push!(hook.column_names, Symbol("source$(idx)_vdc"))
-            push!(hook.tmp,  env.v_dc[idx])
-        else
-            append_tmp(hook, env.v_dc[idx])
-        end 
-        
+        hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_vdc"))
+        push!(hook.tmp,  env.v_dc[idx])
     end
 
     if hook.collect_reference
         #push!(hook.tmp, :reference => reference(env.t))
         refs = reference(env.t)
         for i = 1:length(refs)
-            if hook.list_iterator == 0
-                push!(hook.column_names, Symbol("reference_$i"))
-                push!(hook.tmp, refs[i])
-            else 
-                append_tmp(hook, refs[i])
-            end 
-            
+            hook.firstrun && push!(hook.column_names, Symbol("reference_$i"))
+            push!(hook.tmp, refs[i])
         end
     end
 
@@ -455,90 +430,56 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
-        if hook.list_iterator == 0
-            push!(hook.column_names, Symbol(state_id))
-            push!(hook.tmp, (env.x[state_index]))
-            push!(hook.column_names, Symbol(replace(state_id, "_i_" => "_v_", "_v_" => "_i_")))
-            push!(hook.tmp, opstates[state_index,1])
-        else
-            append_tmp(hook, (env.x[state_index]))
-            append_tmp(hook, opstates[state_index,1])
-        end
-        
+        hook.firstrun && push!(hook.column_names, Symbol(state_id))
+        push!(hook.tmp, (env.x[state_index]))
+        hook.firstrun && push!(hook.column_names, Symbol(replace(state_id, "_i_" => "_v_", "_v_" => "_i_")))
+        push!(hook.tmp, opstates[state_index,1])
 
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
 
-                    if hook.list_iterator == 0
-                        push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][1]))
-                        push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                        push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_")))
-                        push!(hook.tmp, (env.x[state_index]))
-                    else
-                        append_tmp(hook, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                        append_tmp(hook, (env.x[state_index]))
-                    end
-                    
+                    hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][1]))
+                    push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
+
+                    hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
 
-                    if hook.list_iterator == 0 
-                        push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][2]))
-                        push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                        push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_")))
-                        push!(hook.tmp, (env.x[state_index]))
-                    else
-                        append_tmp(hook, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                        append_tmp(hook, (env.x[state_index]))
-                    end 
-                    
+                    hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][2]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
+
+                    hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
 
-                    if hook.list_iterator == 0
-                        push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][3]))
-                        push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                        push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_")))
-                        push!(hook.tmp, (env.x[state_index]))
-                    else
-                        append_tmp(hook, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                        append_tmp(hook, (env.x[state_index]))
-                    end 
+                    hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr][3]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
 
+                    hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
-                
-                if hook.list_iterator == 0 
-                    push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr]))
-                    push!(hook.tmp, (env.x[state_index]))
-                    push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
-                    push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
-                else
-                    append_tmp(hook, (env.x[state_index]))
-                    append_tmp(hook, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
-                end 
+                hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, (env.x[state_index]))
 
+                hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
-                
-                if hook.list_iterator == 0
-                    push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr]))
-                    push!(hook.tmp, opstates[state_index,1])
-                    push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
-                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
-                else 
-                    append_tmp(hook, opstates[state_index,1])
-                    append_tmp(hook, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
-                end 
-                
+                hook.firstrun && push!(hook.column_names, Symbol(hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, opstates[state_index,1])
+
+                hook.firstrun && push!(hook.column_names, Symbol(replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
             extra_state_cntr+=1
         end
     end
-
 end
 
-function (hook::DataHook2)(::PostActStage, agent, env, training = false)
+function (hook::DataHook3)(::PostActStage, agent, env, training = false)
 
     states_x = Vector( env.x )
     opstates = (hook.A * states_x + hook.B * (Vector(env.action)) ) .* (hook.collect_state_paras)
@@ -546,79 +487,49 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
     for state_id in hook.collect_state_ids
         state_index = findfirst(x -> x == state_id, env.state_ids)
 
-        if hook.list_iterator == 0 
-            push!(hook.column_names, Symbol("next_state_"*state_id))
-            push!(hook.tmp, (env.x[state_index]))
-            push!(hook.column_names, Symbol("next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_")))
-            push!(hook.tmp, opstates[state_index,1])
-        else 
-            append_tmp(hook, (env.x[state_index]))
-            append_tmp(hook, opstates[state_index,1])
-        end 
+        hook.firstrun && push!(hook.column_names, Symbol("next_state_"*state_id))
+        push!(hook.tmp, (env.x[state_index]))
+        hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(state_id, "_i_" => "_v_", "_v_" => "_i_")))
+        push!(hook.tmp, opstates[state_index,1])
 
         if state_index in hook.extra_state_ids
             if occursin("load",state_id)
                 if hook.extra_state_paras[extra_state_cntr][1] != 0
 
-                    if hook.list_iterator == 0 
-                        push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][1]))
-                        push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                        push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_")))
-                        push!(hook.tmp, (env.x[state_index]))
-                    else 
-                        append_tmp(hook, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
-                        append_tmp(hook, (env.x[state_index]))
-                    end 
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][1]))
+                    push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr][1]^(-1))
 
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][1], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][2] != 0
 
-                    if hook.list_iterator == 0 
-                        push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][2]))
-                        push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                        push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_")))
-                        push!(hook.tmp, (env.x[state_index]))
-                    else 
-                        append_tmp(hook, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
-                        append_tmp(hook, (env.x[state_index]))
-                    end 
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][2]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][2])
 
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][2], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
                 if  hook.extra_state_paras[extra_state_cntr][3] != 0
 
-                    if hook.list_iterator == 0 
-                        push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][3]))
-                        push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                        push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_")))
-                        push!(hook.tmp, (env.x[state_index]))
-                    else 
-                        append_tmp(hook, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
-                        append_tmp(hook, (env.x[state_index]))
-                    end 
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr][3]))
+                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr][3])
 
+                    hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr][3], "_i_" => "_v_")))
+                    push!(hook.tmp, (env.x[state_index]))
                 end
             elseif occursin("_i_", state_id)
-                if hook.list_iterator == 0 
-                    push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr]))
-                    push!(hook.tmp, (env.x[state_index]))
-                    push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
-                    push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
-                else 
-                    append_tmp(hook, (env.x[state_index]))
-                    append_tmp(hook, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
-                end 
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, (env.x[state_index]))
 
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (env.x[state_index])*hook.extra_state_paras[extra_state_cntr])
             else
-                if hook.list_iterator == 0 
-                    push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr]))
-                    push!(hook.tmp, opstates[state_index,1])
-                    push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
-                    push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
-                else 
-                    append_tmp(hook, opstates[state_index,1])
-                    append_tmp(hook, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
-                end 
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*hook.extra_state_names[extra_state_cntr]))
+                push!(hook.tmp, opstates[state_index,1])
 
+                hook.firstrun && push!(hook.column_names, Symbol("next_state_"*replace(hook.extra_state_names[extra_state_cntr], "_i_" => "_v_")))
+                push!(hook.tmp, (opstates[state_index,1])*hook.extra_state_paras[extra_state_cntr])
             end
         extra_state_cntr+=1
         end
@@ -627,32 +538,23 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
     for action_id in hook.collect_action_ids
         action_index = findfirst(x -> x == action_id, env.action_ids)
 
-        if hook.list_iterator == 0 
-            push!(hook.column_names, Symbol(action_id))
-            push!(hook.tmp, (env.action[action_index]))
-        else 
-            append_tmp(hook, (env.action[action_index]))
-        end 
+        hook.firstrun && push!(hook.column_names, Symbol(action_id))
+        push!(hook.tmp, (env.action[action_index]))
     end
 
-    if hook.list_iterator == 0 
-        push!(hook.column_names, :reward)
-        push!(hook.tmp, env.reward)
-        push!(hook.column_names, :done)
-        push!(hook.tmp, env.done)
-    else 
-        append_tmp(hook, env.reward)
-        append_tmp(hook, env.done)
-    end 
+    hook.firstrun && push!(hook.column_names, :reward)
+    push!(hook.tmp, env.reward)
+    hook.firstrun && push!(hook.column_names, :done)
+    push!(hook.tmp, env.done)
     
-    
-    if hook.list_iterator == 0
-        hook.df = DataFrame([[i] for i in hook.tmp], hook.column_names; copycols=false)
-        hook.list_iterator = 1
+    if hook.firstrun
+        hook.tmp = [[i] for i in hook.tmp]
+        hook.df = DataFrame(hook.tmp, hook.column_names; copycols=false)
+        hook.firstrun = false
     else
         push!(hook.df, hook.tmp)
-        hook.list_iterator = 1
     end
+    hook.tmp = []
 
     if training
         if isa(agent, MultiController)
@@ -678,7 +580,7 @@ function (hook::DataHook2)(::PostActStage, agent, env, training = false)
     end
 end
 
-function (hook::DataHook2)(::PostEpisodeStage, agent, env, training = false)
+function (hook::DataHook3)(::PostEpisodeStage, agent, env, training = false)
     @timeit to "Post-Episode" begin
 
     hook.ep += 1
@@ -722,7 +624,7 @@ function (hook::DataHook2)(::PostEpisodeStage, agent, env, training = false)
 end
 end
 
-function (hook::DataHook2)(::PostExperimentStage, agent, env, training = false)
+function (hook::DataHook3)(::PostExperimentStage, agent, env, training = false)
     @timeit to "Post-Experiment" begin
 
     if hook.save_data_to_hd
