@@ -36,6 +36,3 @@ end
 show(timer)
 
 
-function roll(matrix, ns)
-    @views matrix[ns, :, 1:end-1] = matrix[ns, :, 2:end]
-end

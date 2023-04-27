@@ -929,6 +929,18 @@ function ClassicalControl(Animo::ClassicalPolicy, env::ElectricGridEnv)
     return Action
 end
 
+function roll(matrix, ns = nothing)
+    if isnothing(ns)
+        @views matrix[:, 1:end-1] = matrix[:, 2:end]
+    else
+        @views matrix[ns, :, 1:end-1] = matrix[ns, :, 2:end]
+    end
+end
+
+function update_value(matrix, ns, vector)
+    @views matrix[ns, :, end] = vector
+end
+
 """
     SourceInterface(ClassicalPolicy, ElectricGridEnv)
 
@@ -954,48 +966,44 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
 
         #----------------------------------------------------------------------------------
         # Rolling Windows
-        Source.Vd_abc_new[ns, :, 1:end-1] = Source.Vd_abc_new[ns, :, 2:end]
-
-        Source.V_filt_poc[ns, :, 1:end-1] = Source.V_filt_poc[ns, :, 2:end]
-
-        Source.I_filt_inv[ns, :, 1:end-1] = Source.I_filt_inv[ns, :, 2:end]
+        roll(Source.Vd_abc_new, ns)
+        roll(Source.V_filt_poc, ns)
+        roll(Source.I_filt_inv, ns)
 
         #----------------------------------------------------------------------------------
         # New values from environment
-
-        Source.I_filt_inv[ns, :, end] = state[Source.I_inv_loc[:, ns]]
+        update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
 
         if Source.filter_type[ns] == "LCL"
 
             if Source.Observer[ns]
-
-                Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+                update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
                 LuenbergerObserver(Source, ns)
             else
 
-                Source.V_filt_poc[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+                update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
 
-                Source.I_filt_poc[ns, :, end] = state[Source.I_poc_loc[:, ns]]
-                Source.V_filt_cap[ns, :, end] = state[Source.V_cap_loc[:, ns]]
+                update_value(Source.I_filt_poc, ns, state[Source.I_poc_loc[:, ns]])
+                update_value(Source.V_filt_cap, ns, state[Source.V_cap_loc[:, ns]])
             end
 
-            icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
-            Source.V_filt_cap[ns, :, end] = Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap
+            @views icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
+            update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap)
 
         elseif Source.filter_type[ns] == "LC"
 
-            Source.V_filt_poc[ns, :, end] = Source.V_filt_cap[ns, :, end]
-            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
+            update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
+            update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
 
-            icap = env.y[Source.I_poc_loc[:, ns]]
-            Source.V_filt_cap[ns, :, end] = state[Source.V_cable_loc[:, ns]] .+ Source.Rf_C[ns]*icap
+            @views icap = env.y[Source.I_poc_loc[:, ns]]
+            update_value(Source.V_filt_cap, ns, state[Source.V_cable_loc[:, ns]] .+ Source.Rf_C[ns]*icap)
 
         elseif Source.filter_type[ns] == "L"
 
-            Source.V_filt_cap[ns, :, end] = state[Source.V_cable_loc[:, ns]]
+            update_value(Source.V_filt_cap, ns, state[Source.V_cable_loc[:, ns]])
 
-            Source.V_filt_poc[ns, :, end] = Source.V_filt_cap[ns, :, end]
-            Source.I_filt_poc[ns, :, end] = Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]]
+            update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
+            update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
         end
 
         Source.p_q_inv[ns, :] =  pqTheory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
@@ -1955,7 +1963,7 @@ function Filtering(Source::ClassicalControls, num_source, θ)
 
     V_inv = (Source.Vdc[num_source]/2)*Source.Vd_abc_new[num_source, :, end]
 
-    Source.V_pre_dq0[num_source, :, 1:end-1] = Source.V_pre_dq0[num_source, :, 2:end]
+    roll(Source.V_pre_dq0, num_source)
     Source.V_pre_dq0[num_source, :, end] = DQ0Transform(V_inv, θ)
 
     Source.V_dq0_inv[num_source, :] = FirstOrderLPF(100, Source.V_pre_dq0[num_source, :, :],
@@ -2223,8 +2231,8 @@ function Measurements(Source::ClassicalControls)
 
     # global metrics
 
-    Source.f_avg[:, 1:end-1] = Source.f_avg[:, 2:end]
-    Source.θ_avg[:, 1:end-1] = Source.θ_avg[:, 2:end]
+    roll(Source.f_avg)
+    roll(Source.θ_avg)
 
     grid_swing = findfirst(x->x == "Swing", Source.Source_Modes)
     grid_voltage = findfirst(x->x == "Voltage", Source.Source_Modes)

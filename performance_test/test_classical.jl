@@ -19,7 +19,7 @@ end
 parameters = Dict{Any, Any}(
         "source" => Any[
                         Dict{Any, Any}("pwr" => 400e3,
-                                        "mode" => "Swing",
+                                        "mode" => "VSG",
                                         "fltr" => "LC",
                                         "v_δ_set" => 4),
                         Dict{Any, Any}("pwr" => 100e3,
