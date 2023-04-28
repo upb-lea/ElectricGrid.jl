@@ -25,8 +25,6 @@ authors:
     affiliation: 1
   - name: Marvin Meyer
     affiliation: 1
-  - Vikas Chidananda
-    affiliation: 2
   - name: Oliver Schweins
     affiliation: 1
 affiliations:
