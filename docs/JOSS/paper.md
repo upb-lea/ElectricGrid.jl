@@ -18,11 +18,6 @@ authors:
     affiliation: 2
   - name: Jan Stenner
     affiliation: 2
-  - name: Daniel Weber
-    orcid: 0000-0003-3367-5998 
-    affiliation: 1
-  - name: Septimus Boshoff
-    affiliation: 1
 affiliations:
   - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
    index: 1
