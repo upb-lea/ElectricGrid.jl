@@ -602,26 +602,6 @@ end
     @test s3_L1 ≈ env.nc.parameters["source"][3]["L1"] atol = 0.00001
     @test s3_R1 ≈ env.nc.parameters["source"][3]["R1"] atol = 0.00001
 
-    #= println("stats.μ = ", stats.μ)
-    println("γ = ", parameters["source"][3]["γ"])
-    println("stats.σ = ", stats.σ)
-    println("std_asy = ", parameters["source"][3]["std_asy"])
-    println()
-    println(env.nc.parameters["source"][1]["L1"])
-    println(env.nc.parameters["source"][1]["R1"])
-    println(env.nc.parameters["source"][1]["L2"])
-    println(env.nc.parameters["source"][1]["R2"])
-    println(env.nc.parameters["source"][1]["C"])
-    println(env.nc.parameters["source"][1]["R_C"])
-    println()
-    println(env.nc.parameters["source"][2]["L1"])
-    println(env.nc.parameters["source"][2]["R1"])
-    println(env.nc.parameters["source"][2]["C"])
-    println(env.nc.parameters["source"][2]["R_C"])
-    println()
-    println(env.nc.parameters["source"][3]["L1"])
-    println(env.nc.parameters["source"][3]["R1"]) =#
-
     return nothing
 end
 

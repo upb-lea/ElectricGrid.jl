@@ -217,14 +217,5 @@ end;
     X_ElectricGrid = Matrix(hook.df[!,test_state_ids][1:idx_end,:])
     X_malab = matread("./test/env_test_state_3source_2load1e6.mat")
 
-    #=
-    println("MATLAB:")
-    display(X_malab["X_matlab"][1:idx_end,:])
-    println()
-    println("ElectricGrid:")
-    display(X_ElectricGrid)
-    println()
-    =#
-
     @test X_ElectricGrid≈X_malab["X_matlab"][1:idx_end,:] atol=14 # such high, since the steady state current is very high, so talking about a toleranz below 1 % of max values
 end
