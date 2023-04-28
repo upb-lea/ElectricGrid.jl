@@ -478,57 +478,38 @@ function FilterDesign(Sr, fs, fltr; Vrms=230, Vdc=800, ΔILf_ILf=0.15, ΔVCf_VCf
             C_filter = 250e-6
             =#
 
-    #____________________________________________________________
     # ratios
-
     r_p = 200
-
     f_p = 5
-
     Ir = ΔILf_ILf
     Vr = ΔVCf_VCf
-
     i_lim_r = 1.5
     v_lim_r = 1.5
 
-    #____________________________________________________________
     # Inductor Design
     Vorms = Vrms * 1.05
     Vop = Vorms * sqrt(2)
-
     Zl = 3 * Vorms * Vorms / Sr
-
     Iorms = Vorms / Zl
     Iop = Iorms * sqrt(2)
-
     ΔIlfmax = Ir * Iop
-
     Lf_1 = Vdc / (4 * fs * ΔIlfmax)
 
-    #____________________________________________________________
     # Capacitor Design
     Vorms = Vrms * 0.95
     Vop = Vorms * sqrt(2)
-
     Zl = 3 * Vorms^2 / Sr
-
     Iorms = Vorms / Zl
     Iop = Iorms * sqrt(2)
     Ir = Vdc / (4 * fs * Lf_1 * Iop)
     ΔIlfmax = Ir * Iop
     ΔVcfmax = Vr * Vop
-
     Cf = ΔIlfmax / (8 * fs * ΔVcfmax)
-
     fc = 1 / (2π * sqrt(Lf_1 * Cf))
 
-    #____________________________________________________________
     # Resistor Design
-
     R_1 = 200 * Lf_1
-
     ωc = 2π * fc
-
     R_C = 1 / (3 * ωc * Cf)
 
     # v_limit
@@ -730,7 +711,7 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity=0)
     set_optimizer_attribute(model, "max_iter", 3_000)
     set_optimizer_attribute(model, "print_level", 0)
 
-    zero_expression = @NLexpression(model, 0.0)
+    # zero_expression = @NLexpression(model, 0.0)
 
     # Constant values
     omega = 2π * parameters["grid"]["fs"]
@@ -745,42 +726,6 @@ function LayoutCabels(CM, num_source, num_load, parameters, verbosity=0)
 
     # cal total load[pwr]
     total_P_load, total_Q_load, s_load_total, total_S_source = CheckPowerBalance(parameters, num_source, num_load, CM)
-
-    #=
-    total_P_load = 0
-    total_Q_load = 0
-    total_S_source = 0
-
-
-    for i = 1:num_nodes
-
-        if i <= num_source
-
-            total_S_source = total_S_source + parameters["source"][i]["pwr"]/parameters["grid"]["phase"]
-
-            if parameters["source"][i]["mode"] in ["PQ Control", 3]
-
-                if parameters["source"][i]["p_set"] < 0
-                    total_P_load = total_P_load + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
-                end
-
-                if parameters["source"][i]["q_set"] < 0
-                    total_Q_load = total_Q_load + parameters["source"][i]["q_set"]/parameters["grid"]["phase"]
-                end
-
-            elseif parameters["source"][i]["mode"] in ["PV Control", 4]
-
-                if parameters["source"][i]["p_set"] < 0
-                    total_P_load = total_P_load + parameters["source"][i]["p_set"]/parameters["grid"]["phase"]
-                end
-            end
-        else
-
-            total_P_load = total_P_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
-            total_Q_load = total_Q_load + parameters["load"][i-num_source]["pwr"]/parameters["grid"]["phase"]
-        end
-    end
-    =#
 
     idx_p_mean_cal = []
     idx_q_mean_cal = []
