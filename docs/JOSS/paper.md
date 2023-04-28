@@ -23,10 +23,6 @@ authors:
     affiliation: 1
   - name: Septimus Boshoff
     affiliation: 1
-  - name: Marvin Meyer
-    affiliation: 1
-  - name: Oliver Schweins
-    affiliation: 1
 affiliations:
   - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
    index: 1
