@@ -31,9 +31,9 @@ authors:
     affiliation: 1
   
 affiliations:
- - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
+  - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
    index: 1
-- name: Chair of Data Science for Engineering, Paderborn University, Paderborn, Germany
+  - name: Chair of Data Science for Engineering, Paderborn University, Paderborn, Germany
    index: 1
 date: 28 April 2023
 bibliography: paper.bib
