@@ -10,7 +10,7 @@ tags:
   - Testing
   - Control
 authors:
- - name: Oliver Wallscheid
+  - name: Oliver Wallscheid
     orcid: 0000-0001-9362-8777
     affiliation: 1
   - name: Sebastian Peitz
