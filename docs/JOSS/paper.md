@@ -13,11 +13,6 @@ authors:
   - name: Oliver Wallscheid
     orcid: 0000-0001-9362-8777
     affiliation: 1
-  - name: Sebastian Peitz
-    orcid: 0009
-    affiliation: 2
-  - name: Jan Stenner
-    affiliation: 2
 affiliations:
   - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
    index: 1
