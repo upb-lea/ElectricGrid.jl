@@ -1,5 +1,5 @@
 ---
-title: 'ElectricGrid.jl'
+title: 'ElectricGrid.jl - A Julia-based modeling and simulation tool for power electronics-driven electric energy grids'
 tags:
   - Julia
   - Electric Grids
