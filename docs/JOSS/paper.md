@@ -29,7 +29,6 @@ authors:
     affiliation: 2
   - name: Oliver Schweins
     affiliation: 1
-  
 affiliations:
   - name: Chair of Power Electronics and Electrical Drives, Paderborn University, Paderborn, Germany
    index: 1
