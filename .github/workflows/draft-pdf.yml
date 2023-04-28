@@ -11,8 +11,7 @@ jobs:
         uses: openjournals/openjournals-draft-action@master
         with:
           journal: joss
-          # This should be the path to the paper within your repo.
-          paper-path: docs/JOSS/paper.md
+          paper-path: docs/JOSS/paper.md # This should be the path to the paper within your repo.
       - name: Upload
         uses: actions/upload-artifact@v1
         with:
