@@ -34,19 +34,3 @@ end
     @test ElectricGrid.optimizer_status["primal_status"] == INFEASIBLE_POINT  # add other feasible status from above
 
 end
-
-
-# @testset "Optimizer status: NEARLY_FEASIBLE" begin
-
-#     parameters = PopulateParams(210e3, 0.95)
-#     pop!(parameters, "load")
-#     parameters["load"] = Any[
-#                             Dict{Any, Any}("impedance" => "RL", "R" => 1.5, "L" => 1e-3),
-#                         ]
-
-#     env = ElectricGridEnv(ts=0.0001, CM=CM, parameters=parameters, t_end=0.1, verbosity=2, action_delay=1)
-
-#     @test ElectricGrid.optimizer_status["termination_status"] == ALMOST_LOCALLY_SOLVED
-#     @test ElectricGrid.optimizer_status["primal_status"] == NEARLY_FEASIBLE_POINT
-
-# end
