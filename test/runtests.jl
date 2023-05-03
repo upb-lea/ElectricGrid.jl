@@ -12,20 +12,10 @@ global_logger(CustomLogger(file_name=split(string(@__FILE__), "\\")[end], add_ti
 end
 
 @testset "Env" begin
-    #env_test_function.jl
 
     include("./env_test_basics.jl")
     include("./env_test_state.jl")
 
-    #env = ElectricGridEnv()
-    #@test size(env.A)              == (33,33)
-    #@test size(env.state_space)    == (33,)
-    #@test size(env.action_space)   == (6,)
-
-    #start_state = env.state
-    #env(ones(size(env.action_space)))
-    #ElectricGrid.RLBase.reset!(env)
-    #@test env.state                 == start_state
 end
 
 @testset "Agent" begin
@@ -52,9 +42,3 @@ end
 @testset " P Q Test" begin
     include("./power_flow_test_P_Q.jl")
 end
-
-
-#@testset "env_run_1" begin
-#    @test 1==1
-#end
-#@test π ≈ 3.14 atol=0.01
