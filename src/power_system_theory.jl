@@ -811,11 +811,11 @@ function LayoutCabels(CM, parameters, verbosity=0)
         S = parameters["load"][i]["pwr"] / parameters["grid"]["phase"]
         P = S * parameters["load"][i]["pf"]
 
-        fix(nodes[i, "P"], -P)
-        fix(nodes[i, "Q"], -sqrt(S^2 - P^2))
+        fix(nodes[i+num_source, "P"], -P)
+        fix(nodes[i+num_source, "Q"], -sqrt(S^2 - P^2))
 
-        SetBounds(nodes[i, "theta"], 0.0, -0.25 * pi / 2, 0.25 * pi / 2) # same as above
-        SetBounds(nodes[i, "v"], parameters["grid"]["v_rms"], 0.95 * parameters["grid"]["v_rms"], 1.05 * parameters["grid"]["v_rms"])
+        SetBounds(nodes[i+num_source, "theta"], 0.0, -0.25 * pi / 2, 0.25 * pi / 2) # same as above
+        SetBounds(nodes[i+num_source, "v"], parameters["grid"]["v_rms"], 0.95 * parameters["grid"]["v_rms"], 1.05 * parameters["grid"]["v_rms"])
     end
 
     cable_cons = GetCableConnections(CM)
