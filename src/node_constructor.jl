@@ -23,6 +23,7 @@ mutable struct NodeConstructor
     S2L_p
     L2L_p
     ts
+    invoke_pfe
     verbosity
 end
 
@@ -48,7 +49,7 @@ it can be generated automatically. `S2S_p` is the probability that a source is c
 another source and `S2L_p` is the probability that a source is connected to a load.
 """
 function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothing,
-    S2S_p=0, S2L_p=1, L2L_p=0, ts=10000, verbosity=0)
+    S2S_p=0, S2L_p=1, L2L_p=0, ts=10000, invoke_pfe=true, verbosity=0)
     tot_ele = num_sources + num_loads
     cntr = 0
     num_connections = 0
@@ -90,6 +91,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             num_connections,
             CM,
             ts,
+            invoke_pfe,
             verbosity
         )
 
@@ -148,7 +150,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
         (num_loads_RC + num_loads_C + num_loads_R)
 
     p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(
-        parameters, num_sources, num_loads, CM)
+        parameters)
 
     if s_load_total > s_source_total
         if verbosity > 0
@@ -182,6 +184,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
         S2L_p,
         L2L_p,
         ts,
+        invoke_pfe,
         verbosity
         )
 
@@ -245,7 +248,7 @@ Gets `parameters` and controls the entries based on the given inputs `num_source
 - `CM::Matrix`: connectivity matrix describing the connections in the grid
 """
 function CheckParameters(
-    parameters, num_sources, num_loads, num_connections, CM, ts, verbosity
+    parameters, num_sources, num_loads, num_connections, CM, ts, invoke_pfe, verbosity
     )
     # Variable generation of the parameter dicts
 
@@ -820,8 +823,9 @@ function CheckParameters(
         end
 
         # invoke PFE
-        parameters = LayoutCabels(CM, num_sources, num_loads, parameters, verbosity)
-
+        if invoke_pfe
+            parameters = LayoutCabels(CM, parameters, verbosity)
+        end
     else
         num_def_cables = length(parameters["cable"])
         num_undef_cables = num_connections - num_def_cables
@@ -857,7 +861,7 @@ function CheckParameters(
         # Solve PFE for all cables which do not have complete parameters
         if !isempty(cable_from_pfe_idx)
             println("START PFE")
-            parameters = LayoutCabels(CM, num_sources, num_loads, parameters, verbosity)
+            parameters = LayoutCabels(CM, parameters, verbosity)
         end
 
         if num_undef_cables > 0
