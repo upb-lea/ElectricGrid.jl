@@ -14,7 +14,7 @@ authors:
     orcid: 0000-0001-9362-8777
     affiliation: 1
   - name: Sebastian Peitz
-    orcid: 0009
+    orcid: 0000-0002-3389-793X
     affiliation: 2
   - name: Jan Stenner
     affiliation: 2
