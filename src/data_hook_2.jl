@@ -218,7 +218,6 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
         hook.policy_names = [s for s in keys(agent.agents)]
     end
 
-    #TODO: append_tmp for Septimus Code
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
 
         ClassicalPolicy = agent.agents["classic"]["policy"].policy
@@ -235,43 +234,60 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
         for idx in hook.v_dq
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_d"))
-                push!(hook.tmp, ClassicalPolicy.Source.V_dq0[s_idx, 1])
-
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_q"))
-                push!(hook.tmp, ClassicalPolicy.Source.V_dq0[s_idx, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_v_d"))
+                    push!(hook.tmp, ClassicalPolicy.Source.V_dq0[s_idx, 1])
+                    push!(hook.column_names, Symbol("source$(idx)_v_q"))
+                    push!(hook.tmp, ClassicalPolicy.Source.V_dq0[s_idx, 2])
+                else
+                    append_tmp(hook, ClassicalPolicy.Source.V_dq0[s_idx, 1])
+                    append_tmp(hook, ClassicalPolicy.Source.V_dq0[s_idx, 2])
+                end
             end
         end
 
         for idx in hook.i_dq
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_d"))
-                push!(hook.tmp, ClassicalPolicy.Source.I_dq0[s_idx, 1])
-
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_q"))
-                push!(hook.tmp, ClassicalPolicy.Source.I_dq0[s_idx, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_i_d"))
+                    push!(hook.tmp, ClassicalPolicy.Source.I_dq0[s_idx, 1])
+                    push!(hook.column_names, Symbol("source$(idx)_i_q"))
+                    push!(hook.tmp, ClassicalPolicy.Source.I_dq0[s_idx, 2])
+                else
+                    append_tmp(hook, ClassicalPolicy.Source.I_dq0[s_idx, 1])
+                    append_tmp(hook, ClassicalPolicy.Source.I_dq0[s_idx, 2])
+                end
             end
         end
 
         for idx in hook.power_pq_inv
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_p_inv"))
-                push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 1])
-
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_q_inv"))
-                push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_p_inv"))
+                    push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 1])
+                    push!(hook.column_names, Symbol("source$(idx)_q_inv"))
+                    push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 2])
+                else
+                    append_tmp(hook, ClassicalPolicy.Source.p_q_inv[s_idx, 1])
+                    append_tmp(hook, ClassicalPolicy.Source.p_q_inv[s_idx, 2])
+                end
             end
         end
 
         for idx in hook.power_pq_poc
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_p_poc"))
-                push!(hook.tmp, ClassicalPolicy.Source.p_q_poc[s_idx, 1])
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_q_poc"))
-                push!(hook.tmp, ClassicalPolicy.Source.p_q_poc[s_idx, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_p_poc"))
+                    push!(hook.tmp, ClassicalPolicy.Source.p_q_poc[s_idx, 1])
+                    push!(hook.column_names, Symbol("source$(idx)_q_poc"))
+                    push!(hook.tmp, ClassicalPolicy.Source.p_q_poc[s_idx, 2])
+                else
+                    append_tmp(hook, ClassicalPolicy.Source.p_q_poc[s_idx, 1])
+                    append_tmp(hook, ClassicalPolicy.Source.p_q_poc[s_idx, 2])
+                end
             end
         end
 
@@ -280,11 +296,15 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_mag = ClarkeMag((ClassicalPolicy.Source.Vdc[s_idx]/2)*ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_mag_inv"))
-                push!(hook.tmp, v_mag)
-
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
-                #push!(hook.tmp, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_v_mag_inv"))
+                    push!(hook.tmp, v_mag)
+                    #push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
+                    #push!(hook.tmp, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                else
+                    append_tmp(hook, v_mag)
+                    #append_tmp(hook, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                end
             end
         end
 
@@ -293,11 +313,15 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_mag = ClarkeMag(ClassicalPolicy.Source.V_filt_cap[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_mag_poc"))
-                push!(hook.tmp, v_mag)
-
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
-                #push!(hook.tmp, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_v_mag_poc"))
+                    push!(hook.tmp, v_mag)
+                    #push!(hook.column_names, Symbol("source$(idx)_vrms_a"))
+                    #push!(hook.tmp, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                else
+                    append_tmp(hook, v_mag)
+                    #append_tmp(hook, ClassicalPolicy.Source.V_ph[s_idx, 1, 2])
+                end
             end
         end
 
@@ -306,11 +330,15 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_inv[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_mag_inv"))
-                push!(hook.tmp, i_mag)
-
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_irms_a"))
-                #push!(hook.tmp, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_i_mag_inv"))
+                    push!(hook.tmp, i_mag)
+                    #push!(hook.column_names, Symbol("source$(idx)_irms_a"))
+                    #push!(hook.tmp, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                else
+                    append_tmp(hook, i_mag)
+                    #append_tmp(hook, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                end
             end
         end
 
@@ -319,11 +347,15 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_mag = ClarkeMag(ClassicalPolicy.Source.I_filt_poc[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_mag_poc"))
-                push!(hook.tmp, i_mag)
-
-                #hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_irms_a"))
-                #push!(hook.tmp, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_i_mag_poc"))
+                    push!(hook.tmp, i_mag)
+                    #push!(hook.column_names, Symbol("source$(idx)_irms_a"))
+                    #push!(hook.tmp, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                else
+                    append_tmp(hook, i_mag)
+                    #append_tmp(hook, ClassicalPolicy.Source.I_ph[s_idx, 1, 2])
+                end
             end
         end
 
@@ -332,8 +364,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 freq = ClassicalPolicy.Source.f_source[s_idx, 1, end]
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_freq"))
-                push!(hook.tmp, freq)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_freq"))
+                    push!(hook.tmp, freq)
+                else
+                    append_tmp(hook, freq)
+                end
             end
         end
 
@@ -355,8 +391,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
                     θ_source = θ_source + 360
                 end
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_θ"))
-                push!(hook.tmp, θ_source)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_θ"))
+                    push!(hook.tmp, θ_source)
+                else
+                    append_tmp(hook, θ_source)
+                end
             end
         end
 
@@ -365,8 +405,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_sat = sqrt(2)*(ClassicalPolicy.Source.Vdc[s_idx]/2)*ClarkeMag(ClassicalPolicy.Source.s_dq0_avg[s_idx, :] .- ClassicalPolicy.Source.s_lim[s_idx, :])/ClassicalPolicy.Source.v_max[s_idx]
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_sat"))
-                push!(hook.tmp, i_sat)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_i_sat"))
+                    push!(hook.tmp, i_sat)
+                else
+                    append_tmp(hook, i_sat)
+                end
             end
         end
 
@@ -375,8 +419,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_err = ClarkeMag(ClassicalPolicy.Source.I_err[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_err"))
-                push!(hook.tmp, i_err)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_i_err"))
+                    push!(hook.tmp, i_err)
+                else
+                    append_tmp(hook, i_err)
+                end
             end
         end
 
@@ -385,8 +433,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 i_err_t = ClarkeMag(ClassicalPolicy.Source.I_err_t[s_idx, :])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_i_err_t"))
-                push!(hook.tmp, i_err_t)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_i_err_t"))
+                    push!(hook.tmp, i_err_t)
+                else
+                    append_tmp(hook, i_err_t)
+                end
             end
         end
 
@@ -395,8 +447,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_sat = sqrt(2)*ClarkeMag(ClassicalPolicy.Source.I_ref_dq0[s_idx, :] .- ClassicalPolicy.Source.I_lim[s_idx, :])/(0.98*ClassicalPolicy.Source.i_max[s_idx])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_sat"))
-                push!(hook.tmp, v_sat)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_v_sat"))
+                    push!(hook.tmp, v_sat)
+                else
+                    append_tmp(hook, v_sat)
+                end
             end
         end
 
@@ -405,8 +461,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_err = ClarkeMag(ClassicalPolicy.Source.V_err[s_idx, :, end])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_err"))
-                push!(hook.tmp, v_err)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_v_err"))
+                    push!(hook.tmp, v_err)
+                else
+                    append_tmp(hook, v_err)
+                end
             end
         end
 
@@ -415,8 +475,12 @@ function (hook::DataHook2)(::PreActStage, agent, env, action, training = false)
             if s_idx !== nothing
                 v_err_t = ClarkeMag(ClassicalPolicy.Source.V_err_t[s_idx, :])
 
-                hook.list_iterator == 0 && push!(hook.column_names, Symbol("source$(idx)_v_err_t"))
-                push!(hook.tmp, v_err_t)
+                if hook.list_iterator == 0
+                    push!(hook.column_names, Symbol("source$(idx)_v_err_t"))
+                    push!(hook.tmp, v_err_t)
+                else
+                    append_tmp(hook, v_err_t)
+                end
             end
         end
 
