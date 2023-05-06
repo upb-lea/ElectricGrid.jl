@@ -3,6 +3,7 @@ using PlotlyJS
 using TimerOutputs
 using ReinforcementLearning
 
+#to = TimerOutput()
 reset_timer!(to)
 
 t_end    = 1.0     # total run time, seconds

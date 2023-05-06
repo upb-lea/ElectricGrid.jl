@@ -882,49 +882,62 @@ calculating the actions.
 function ClassicalControl(Animo::ClassicalPolicy, env::ElectricGridEnv)
 
     Source = Animo.Source
-    SourceInterface(Animo, env)
+
+    @timeit to "SourceInterface" begin
+        SourceInterface(Animo, env)
+    end
 
     ramp_end = Source.ramp_end
 
-    OrnsteinUhlenbeck(Source)
+    @timeit to "OrnsteinUhlenbeck" begin
+        OrnsteinUhlenbeck(Source)
+    end
 
-    Threads.@threads for ns in 1:Source.num_sources
+    @timeit to "Loop Sources" begin
+    #Threads.@threads
+        for ns in 1:Source.num_sources
 
-        if Source.Source_Modes[ns] == "Swing"
+            if Source.Source_Modes[ns] == "Swing"
 
-            SwingMode(Source, ns, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Voltage"
+                SwingMode(Source, ns, t_end = ramp_end)
+            elseif Source.Source_Modes[ns] == "Voltage"
 
-            VoltageControlMode(Source, ns, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "PQ"
+                VoltageControlMode(Source, ns, t_end = ramp_end)
+            elseif Source.Source_Modes[ns] == "PQ"
 
-            PQControlMode(Source, ns, Source.pq0_set[ns, :])
-        elseif Source.Source_Modes[ns] == "PV"
+                PQControlMode(Source, ns, Source.pq0_set[ns, :])
+            elseif Source.Source_Modes[ns] == "PV"
 
-            PVControlMode(Source, ns, Source.pq0_set[ns, :])
-        elseif Source.Source_Modes[ns] == "Droop" || Source.Source_Modes[ns] == "Semi-Droop"
+                PVControlMode(Source, ns, Source.pq0_set[ns, :])
+            elseif Source.Source_Modes[ns] == "Droop" || Source.Source_Modes[ns] == "Semi-Droop"
 
-            DroopControlMode(Source, ns, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Synchronverter"
+                DroopControlMode(Source, ns, t_end = ramp_end)
+            elseif Source.Source_Modes[ns] == "Synchronverter"
 
-            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 1, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Semi-Synchronverter"
+                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 1, t_end = ramp_end)
+            elseif Source.Source_Modes[ns] == "Semi-Synchronverter"
 
-            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Step"
+                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+            elseif Source.Source_Modes[ns] == "Step"
 
-            StepMode(Source, ns, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Not Used 2"
+                StepMode(Source, ns, t_end = ramp_end)
+            elseif Source.Source_Modes[ns] == "Not Used 2"
 
-            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
-        elseif Source.Source_Modes[ns] == "Not Used 3"
+                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+            elseif Source.Source_Modes[ns] == "Not Used 3"
 
-            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+            end
         end
     end
 
-    Action = EnvInterface(Source)
-    Measurements(Source)
+    @timeit to "EnvInterface" begin
+        Action = EnvInterface(Source)
+    end
+
+    @timeit to "Measurements" begin
+        Measurements(Source)
+    end
 
     return Action
 end
@@ -956,7 +969,8 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
 
     state = env.x[findall(x -> x in Animo.state_ids, env.state_ids)]
 
-    Threads.@threads for ns in 1:Source.num_sources
+    #Threads.@threads
+    for ns in 1:Source.num_sources
 
         #= # for single phase measurements
         Source.θ_source[ns, :, 1:end-1] = Source.θ_source[ns, :, 2:end]
@@ -965,55 +979,63 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
         =#
 
         #----------------------------------------------------------------------------------
+
+        @timeit to "Rolling Windows" begin
         # Rolling Windows
-        roll(Source.Vd_abc_new, ns)
-        roll(Source.V_filt_poc, ns)
-        roll(Source.I_filt_inv, ns)
+            roll(Source.Vd_abc_new, ns)
+            roll(Source.V_filt_poc, ns)
+            roll(Source.I_filt_inv, ns)
+
+        end
 
         #----------------------------------------------------------------------------------
         # New values from environment
-        update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
+        @timeit to "New values" begin
+            update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
 
-        if Source.filter_type[ns] == "LCL"
+            if Source.filter_type[ns] == "LCL"
 
-            if Source.Observer[ns]
-                update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
-                LuenbergerObserver(Source, ns)
-            else
+                if Source.Observer[ns]
+                    update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
+                    LuenbergerObserver(Source, ns)
+                else
 
-                update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
+                    update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
 
-                update_value(Source.I_filt_poc, ns, state[Source.I_poc_loc[:, ns]])
-                update_value(Source.V_filt_cap, ns, state[Source.V_cap_loc[:, ns]])
+                    update_value(Source.I_filt_poc, ns, state[Source.I_poc_loc[:, ns]])
+                    update_value(Source.V_filt_cap, ns, state[Source.V_cap_loc[:, ns]])
+                end
+
+                @views icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
+                update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap)
+
+            elseif Source.filter_type[ns] == "LC"
+
+                update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
+                update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
+
+                @views icap = env.y[Source.I_poc_loc[:, ns]]
+                update_value(Source.V_filt_cap, ns, state[Source.V_cable_loc[:, ns]] .+ Source.Rf_C[ns]*icap)
+
+            elseif Source.filter_type[ns] == "L"
+
+                update_value(Source.V_filt_cap, ns, state[Source.V_cable_loc[:, ns]])
+
+                update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
+                update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
             end
-
-            @views icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
-            update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap)
-
-        elseif Source.filter_type[ns] == "LC"
-
-            update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
-            update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
-
-            @views icap = env.y[Source.I_poc_loc[:, ns]]
-            update_value(Source.V_filt_cap, ns, state[Source.V_cable_loc[:, ns]] .+ Source.Rf_C[ns]*icap)
-
-        elseif Source.filter_type[ns] == "L"
-
-            update_value(Source.V_filt_cap, ns, state[Source.V_cable_loc[:, ns]])
-
-            update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
-            update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
         end
 
-        Source.p_q_inv[ns, :] =  pqTheory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
+        @timeit to "power calcs" begin
+            Source.p_q_inv[ns, :] =  pqTheory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
 
-        if Source.filter_type[ns] != "L"
+            if Source.filter_type[ns] != "L"
 
-            Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end])
-        else
+                Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end])
+            else
 
-            Source.p_q_poc[ns, :] =  Source.p_q_inv[ns, :]
+                Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
+            end
         end
     end
 
@@ -1190,25 +1212,40 @@ function PQControlMode(Source::ClassicalControls, num_source, pq0)
         pq0 = pq0.*(Source.S[num_source]/norm(pq0))
     end
 
-    PhaseLockedLoop3ph(Source, num_source)
+    @timeit to "PhaseLockedLoop3ph" begin
+        PhaseLockedLoop3ph(Source, num_source)
+    end
     #PhaseLockedLoop1ph(Source, num_source, ph = 1)
     #PhaseLockedLoop1ph(Source, num_source, ph = 2)
     #PhaseLockedLoop1ph(Source, num_source, ph = 3)
     θ = Source.θpll[num_source, 1, end]
     ω = 2π*Source.fpll[num_source, 1, end]
 
-    Filtering(Source, num_source, θ)
+    @timeit to "Filtering" begin
+        Filtering(Source, num_source, θ)
+    end
     #Source.V_dq0_inv[num_source, :] = DQ0Transform(Source.V_filt_poc[num_source, :, end], θ) # for when filter becomes unstable
 
     if Source.steps*Source.ts > Source.process_start
 
-        PQControl(pq0_ref = pq0, Source, num_source, θ)
-        CurrentController(Source, num_source, θ, ω)
+        @timeit to "PQControl" begin
+            PQControl(pq0_ref = pq0, Source, num_source, θ)
+        end
+
+        @timeit to "CurrentController" begin
+            CurrentController(Source, num_source, θ, ω)
+        end
     else
 
-        PQControl(pq0_ref = [0.0; 0.0; 0.0], Source, num_source, θ)
+        @timeit to "PQControl" begin
+            PQControl(pq0_ref = [0.0; 0.0; 0.0], Source, num_source, θ)
+        end
+
         Source.I_ref_dq0[num_source, :] = [0.0; 0.0; 0.0]
-        CurrentController(Source, num_source, θ, ω)
+
+        @timeit to "CurrentController" begin
+            CurrentController(Source, num_source, θ, ω)
+        end
     end
 
     Source.f_source[num_source, :, end] = Source.fpll[num_source, :, end]
@@ -1269,12 +1306,21 @@ function SynchronverterMode(Source::ClassicalControls, num_source; pq0_ref = [So
 
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
 
-    SynchronverterControl(Source, num_source, pq0_ref = pq0_ref, Vrms = Vrms, mode = mode)
+    @timeit to "SynchronverterControl" begin
+        SynchronverterControl(Source, num_source, pq0_ref = pq0_ref, Vrms = Vrms, mode = mode)
+    end
 
-    VoltageController(Source, num_source, Source.θ_sync[num_source], Source.ω_sync[num_source, end])
-    CurrentController(Source, num_source, Source.θ_sync[num_source], Source.ω_sync[num_source, end])
+    @timeit to "VoltageController" begin
+        VoltageController(Source, num_source, Source.θ_sync[num_source], Source.ω_sync[num_source, end])
+    end
 
-    PhaseLockedLoop3ph(Source, num_source)
+    @timeit to "CurrentController" begin
+        CurrentController(Source, num_source, Source.θ_sync[num_source], Source.ω_sync[num_source, end])
+    end
+
+    @timeit to "PhaseLockedLoop3ph" begin
+        PhaseLockedLoop3ph(Source, num_source)
+    end
 
     ω = Source.ω_sync[num_source, end]
     θ = Source.θ_sync[num_source]
@@ -1399,15 +1445,9 @@ function PhaseLockedLoop3ph(Source::ClassicalControls, num_source; ωn = Source.
     Ki = ωn^2 # tuning
     Kp = ξ*2*sqrt(Ki) # tuning
 
-    v_abc = Source.V_filt_cap[num_source, :, end]
-
-    f = Source.fpll[num_source, 1, :]
     θ = Source.θpll[num_source, 1, end]
 
-    err_t = Source.pll_err_t[num_source, 1]
-    err = Source.pll_err[num_source, 1, :]
-
-    v_αβγ = ClarkeTransform(v_abc)
+    v_αβγ = ClarkeTransform(Source.V_filt_cap[num_source, :, end])
 
     if norm(v_αβγ) != 0
         v_αβγ = sqrt(3)*v_αβγ./norm(v_αβγ)
@@ -1416,20 +1456,22 @@ function PhaseLockedLoop3ph(Source::ClassicalControls, num_source; ωn = Source.
     err_new = v_αβγ[2]*cos(θ) - v_αβγ[1]*sin(θ)
 
     f_new, err_t_new, err_int =
-    PIController(err_new, err, err_t, Kp, Ki, Source.ts, bias = Source.fsys, max_t_err = 0.00015)
+    PIController(err_new, Source.pll_err[num_source, 1, :], Source.pll_err_t[num_source, 1], Kp, Ki, Source.ts, bias = Source.fsys, max_t_err = 0.00015)
 
-    θ = ThirdOrderIntegrator(θ, Source.ts, 2π*[f[2:end]; f_new])
+    θ = ThirdOrderIntegrator(θ, Source.ts, 2π*[Source.fpll[num_source, 1, 2:end]; f_new])
 
-    Source.fpll[num_source, 1, :] = [f[2:end]; f_new[1]]
-    Source.fpll[num_source, 2, :] = [f[2:end]; f_new[1]]
-    Source.fpll[num_source, 3, :] = [f[2:end]; f_new[1]]
+    roll(Source.fpll, num_source)
+    Source.fpll[num_source, 1, end] = f_new[1]
+    Source.fpll[num_source, 2, end] = f_new[1]
+    Source.fpll[num_source, 3, end] = f_new[1]
 
-    Source.θpll[num_source, 1, :] = [Source.θpll[num_source, 1, 2:end]; (θ.%(2π))]
-    Source.θpll[num_source, 2, :] = [Source.θpll[num_source, 2, 2:end]; ((θ - 120π/180).%(2π))]
-    Source.θpll[num_source, 3, :] = [Source.θpll[num_source, 3, 2:end]; ((θ + 120π/180).%(2π))]
+    roll(Source.θpll, num_source)
+    Source.θpll[num_source, 1, end] = (θ.%(2π))
+    Source.θpll[num_source, 2, end] = ((θ - 120π/180).%(2π))
+    Source.θpll[num_source, 3, end] = ((θ + 120π/180).%(2π))
 
-    Source.pll_err_t[num_source, :] = [err_t_new; 0; 0]
-    Source.pll_err[num_source, :, :] = [transpose(err_int); transpose(err_int); transpose(err_int)]
+    Source.pll_err_t[num_source, 1] = err_t_new[1]
+    Source.pll_err[num_source, 1, :] = err_int
 
     return nothing
 end
@@ -1695,24 +1737,16 @@ Inner current control with anti-windup.
 """
 function CurrentController(Source::ClassicalControls, num_source, θ, ω; Kb = 0.5)
 
-    Kp = Source.I_kp[num_source]
-    Ki = Source.I_ki[num_source]
-
     Source.I_ref[num_source, :] = InvDQ0Transform(Source.I_ref_dq0[num_source, :], θ)
     Source.I_dq0[num_source, :] = DQ0Transform(Source.I_filt_inv[num_source, :, end], θ)
     Source.V_dq0[num_source, :] = DQ0Transform(Source.V_filt_cap[num_source, :, end], θ)
     V_dq0 = Source.V_dq0[num_source, :]
 
-    I_dq0 = Source.I_dq0[num_source, :]
-    I_ref_dq0 = Source.I_ref_dq0[num_source, :]
-    I_err = Source.I_err[num_source, :, :]
-    I_err_t = Source.I_err_t[num_source, :]
-
     if Source.steps > 1
         # Including Anti-windup - Back-calculation
-        I_err_new = I_ref_dq0 .- I_dq0 .+ Kb*(Source.Vdc[num_source]/2)*(Source.s_dq0_avg[num_source, :] .- Source.s_lim[num_source, :])
+        I_err_new = Source.I_ref_dq0[num_source, :] .- Source.I_dq0[num_source, :] .+ Kb*(Source.Vdc[num_source]/2)*(Source.s_dq0_avg[num_source, :] .- Source.s_lim[num_source, :])
     else
-        I_err_new = I_ref_dq0 .- I_dq0
+        I_err_new = Source.I_ref_dq0[num_source, :] .- Source.I_dq0[num_source, :]
     end
 
     max_I_err = Source.i_max[num_source]/sqrt(2) # maximum rms error
@@ -1722,14 +1756,13 @@ function CurrentController(Source::ClassicalControls, num_source, θ, ω; Kb = 0
         I_err_new = I_err_new.*(max_I_err/(sqrt(1/3)*norm(I_err_new)))
     end
 
-    Source.s_lim[num_source, :], Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] =
-    PIController(I_err_new, I_err, I_err_t, Kp, Ki, Source.ts, max_t_err = 0.3*sqrt(3))
+    Source.s_lim[num_source, :], Source.I_err_t[num_source, :], Source.I_err[num_source, :, :] = PIController(I_err_new, Source.I_err[num_source, :, :], Source.I_err_t[num_source, :], Source.I_kp[num_source], Source.I_ki[num_source], Source.ts, max_t_err = 0.3*sqrt(3))
 
     # cross-coupling / feedforward
     Source.s_lim[num_source, 1] = Source.s_lim[num_source, 1] -
-    (Source.Lf_1[num_source]*ω*I_dq0[2] - V_dq0[1])*2/Source.Vdc[num_source]
+    (Source.Lf_1[num_source]*ω*Source.I_dq0[num_source, 2] - V_dq0[1])*2/Source.Vdc[num_source]
     Source.s_lim[num_source, 2] = Source.s_lim[num_source, 2] +
-    (Source.Lf_1[num_source]*ω*I_dq0[1] + V_dq0[2])*2/Source.Vdc[num_source]
+    (Source.Lf_1[num_source]*ω*Source.I_dq0[num_source, 1] + V_dq0[2])*2/Source.Vdc[num_source]
 
     # ---- Limiting Output (Saturation)
     Vp_ref = (Source.Vdc[num_source]/2)*sqrt(2)*ClarkeMag(Source.s_lim[num_source,:]) # peak set point
@@ -1827,7 +1860,7 @@ function PIController(Error_new, Error_Hist, Error_t, Kp, Ki, μ; bias = zeros(l
     end
 
     Err_t_new = Array{Float64, 1}(undef, d)
-    Err_t_new = fill!(Err_t_new, 0)
+    #Err_t_new = fill!(Err_t_new, 0)
 
     Err_d = [Error_Hist Error_new]
 
