@@ -964,12 +964,10 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
 
     Source = Animo.Source
     Source.steps = env.steps + 1
-    ω = 2π*Source.fsys
-    Source.θsys = (Source.θsys + Source.ts*ω)%(2π)
+    Source.θsys = (Source.θsys + Source.ts*2π*Source.fsys)%(2π)
 
     state = env.x[findall(x -> x in Animo.state_ids, env.state_ids)]
 
-    #Threads.@threads
     for ns in 1:Source.num_sources
 
         #= # for single phase measurements
@@ -979,25 +977,21 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
         =#
 
         #----------------------------------------------------------------------------------
-
-        @timeit to "Rolling Windows" begin
-        # Rolling Windows
-            roll(Source.Vd_abc_new, ns)
-            roll(Source.V_filt_poc, ns)
-            roll(Source.I_filt_inv, ns)
-
-        end
-
-        #----------------------------------------------------------------------------------
         # New values from environment
         @timeit to "New values" begin
-            update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
 
             if Source.filter_type[ns] == "LCL"
 
                 if Source.Observer[ns]
-                    update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
+
+                    roll(Source.Vd_abc_new, ns)
+                    roll(Source.I_filt_inv, ns)
+
+                    update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
+
                     LuenbergerObserver(Source, ns)
+                    update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
+
                 else
 
                     update_value(Source.V_filt_poc, ns, state[Source.V_cable_loc[:, ns]])
@@ -1006,10 +1000,14 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
                     update_value(Source.V_filt_cap, ns, state[Source.V_cap_loc[:, ns]])
                 end
 
+                update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
+
                 @views icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
                 update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap)
 
             elseif Source.filter_type[ns] == "LC"
+
+                update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
 
                 update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
                 update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
@@ -1019,22 +1017,25 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
 
             elseif Source.filter_type[ns] == "L"
 
+                update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
+
                 update_value(Source.V_filt_cap, ns, state[Source.V_cable_loc[:, ns]])
 
                 update_value(Source.V_filt_poc, ns, Source.V_filt_cap[ns, :, end])
                 update_value(Source.I_filt_poc, ns, Source.I_filt_inv[ns, :, end] .- env.y[Source.I_poc_loc[:, ns]])
+
             end
         end
 
         @timeit to "power calcs" begin
-            Source.p_q_inv[ns, :] =  pqTheory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
+            @views Source.p_q_inv[ns, :] =  pqTheory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end], Source.I_filt_inv[ns, :, end])
 
             if Source.filter_type[ns] != "L"
 
-                Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end])
+                @views Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end])
             else
 
-                Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
+                @views Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
             end
         end
     end
@@ -1862,9 +1863,9 @@ function PIController(Error_new, Error_Hist, Error_t, Kp, Ki, μ; bias = zeros(l
     Err_t_new = Array{Float64, 1}(undef, d)
     #Err_t_new = fill!(Err_t_new, 0)
 
-    Err_d = [Error_Hist Error_new]
+    @views Err_d = [Error_Hist Error_new]
 
-    Err_int = Err_d[:, 2:end]
+    @views Err_int = Err_d[:, 2:end]
 
     for j in 1:d
         Err_t_new[j] = ThirdOrderIntegrator(Error_t[j], μ, Err_int[j,:]) # integration
@@ -2028,7 +2029,7 @@ function LuenbergerObserver(Source::ClassicalControls, num_source)
 
         vₚ_DQ0 = DQ0Transform((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay - 1], θ)
         yₚ_DQ0 = DQ0Transform(Source.I_filt_inv[ns, :, end - 1], θ - 0.5*Source.ts*ω)
-        eₚ_DQ0 = DQ0Transform(Source.V_filt_poc[ns, :, end - 1], θ - 0.5*Source.ts*ω)
+        eₚ_DQ0 = DQ0Transform(Source.V_filt_poc[ns, :, end], θ - 0.5*Source.ts*ω)
 
         #----------------------------------------------------------------------
         # Zero component

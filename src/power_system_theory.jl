@@ -86,8 +86,10 @@ function ClarkeTransform(v_abc)
     spatial vectors on the abc coordinates rotate in the abc sequence, they would
     rotate in the αβ sequenc on the αβ coordinates.
 
+    v_αβγ = sqrt(2/3)*[1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)]*v_abc
+
     =#
-    return v_αβγ = sqrt(2/3)*[1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)]*v_abc
+    return sqrt(2/3)*[1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)]*v_abc
 end
 
 function InvClarkeTransform(v_αβγ)
@@ -251,12 +253,17 @@ function pqTheory(V_abc, I_abc)
         but also to the energy oscillation between the source and load as well.
     =#
 
-    V_αβγ = ClarkeTransform(V_abc)
-    I_αβγ = ClarkeTransform(I_abc)
+    @timeit to "ClarkeTransform" begin
+
+        V_αβγ = ClarkeTransform(V_abc)
+        I_αβγ = ClarkeTransform(I_abc)
+
+    end
 
     #pq0 = [I_αβγ[1] I_αβγ[2] 0; -I_αβγ[2] I_αβγ[1] 0; 0 0 I_αβγ[3]]*V_αβγ # also works
+    #pq0 = [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
 
-    return pq0 = [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
+    return [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
 end
 
 function Inv_p_q_v(V_αβγ, pq0)
