@@ -147,7 +147,7 @@ function InvDQ0Transform(v_dq0, θ)
     return v_abc
 end
 
-function pqTheory(V_abc, I_abc)
+function pqTheory(V_abc, I_abc, power_mat)
 
     #= Theory:
         For a three-phase system with or without a neutral conductor in the steady-
@@ -253,17 +253,19 @@ function pqTheory(V_abc, I_abc)
         but also to the energy oscillation between the source and load as well.
     =#
 
-    @timeit to "ClarkeTransform" begin
+    V_αβγ = ClarkeTransform(V_abc)
+    I_αβγ = ClarkeTransform(I_abc)
 
-        V_αβγ = ClarkeTransform(V_abc)
-        I_αβγ = ClarkeTransform(I_abc)
-
-    end
+    power_mat[1,1] = V_αβγ[1]
+    power_mat[1,2] = V_αβγ[2]
+    power_mat[2,1] = V_αβγ[2]
+    power_mat[2,2] = -V_αβγ[1]
+    power_mat[3,3] = V_αβγ[3]
 
     #pq0 = [I_αβγ[1] I_αβγ[2] 0; -I_αβγ[2] I_αβγ[1] 0; 0 0 I_αβγ[3]]*V_αβγ # also works
     #pq0 = [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
 
-    return [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
+    return power_mat*I_αβγ
 end
 
 function Inv_p_q_v(V_αβγ, pq0)

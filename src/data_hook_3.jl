@@ -242,11 +242,14 @@ function (hook::DataHook3)(::PreActStage, agent, env, action, training = false)
         for idx in hook.power_pq_inv
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
+
+                p_q_inv =  pqTheory((ClassicalPolicy.Source.Vdc[s_idx]/2)*ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end-ClassicalPolicy.Source.action_delay], ClassicalPolicy.Source.I_filt_inv[s_idx, :, end], ClassicalPolicy.Source.power_mat)
+
                 hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_p_inv"))
-                push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 1])
+                push!(hook.tmp, p_q_inv[1])
 
                 hook.firstrun && push!(hook.column_names, Symbol("source$(idx)_q_inv"))
-                push!(hook.tmp, ClassicalPolicy.Source.p_q_inv[s_idx, 2])
+                push!(hook.tmp, p_q_inv[2])
             end
         end
 
@@ -546,7 +549,7 @@ function (hook::DataHook3)(::PostActStage, agent, env, training = false)
     push!(hook.tmp, env.reward)
     hook.firstrun && push!(hook.column_names, :done)
     push!(hook.tmp, env.done)
-    
+
     if hook.firstrun
         hook.tmp = [[i] for i in hook.tmp]
         hook.df = DataFrame(hook.tmp, hook.column_names; copycols=false)

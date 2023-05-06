@@ -229,8 +229,14 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         for idx in hook.power_pq_inv
             s_idx = findfirst(x -> x == idx, ClassicalPolicy.Source_Indices)
             if s_idx !== nothing
-                insertcols!(hook.tmp, "source$(idx)_p_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 1])
-                insertcols!(hook.tmp, "source$(idx)_q_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 2])
+
+                p_q_inv =  pqTheory((ClassicalPolicy.Source.Vdc[s_idx]/2)*ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end-ClassicalPolicy.Source.action_delay], ClassicalPolicy.Source.I_filt_inv[s_idx, :, end], ClassicalPolicy.Source.power_mat)
+
+                insertcols!(hook.tmp, "source$(idx)_p_inv" => p_q_inv[1])
+                insertcols!(hook.tmp, "source$(idx)_q_inv" => p_q_inv[2])
+
+                #= insertcols!(hook.tmp, "source$(idx)_p_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 1])
+                insertcols!(hook.tmp, "source$(idx)_q_inv" => ClassicalPolicy.Source.p_q_inv[s_idx, 2]) =#
             end
         end
 
