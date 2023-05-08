@@ -718,6 +718,9 @@ function LayoutCabels(CM, parameters, verbosity=0)
     # Constant values
     omega = 2π * parameters["grid"]["f_grid"]
 
+    # add mising zero_expression
+    zero_expression = @NLexpression(model, 0.0)
+    
     # for every Source: v is fixed 230
     # for one Source: theta is fixed 0
 
