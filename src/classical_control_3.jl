@@ -887,6 +887,10 @@ calculating the actions.
 function ClassicalControl(Animo::ClassicalPolicy, env::ElectricGridEnv)
 
     Source = Animo.Source
+    Source.steps = env.steps + 1
+    Source.θsys = (Source.θsys + Source.ts*2π*Source.fsys)%(2π)
+
+    state = env.x[findall(x -> x in Animo.state_ids, env.state_ids)]
 
     ramp_end = Source.ramp_end
 
@@ -894,85 +898,7 @@ function ClassicalControl(Animo::ClassicalPolicy, env::ElectricGridEnv)
         OrnsteinUhlenbeck(Source)
     end
 
-    @timeit to "SourceInterface" begin
-        SourceInterface(Animo, env)
-    end
-
-    @timeit to "Loop Sources" begin
     #Threads.@threads
-        for ns in 1:Source.num_sources
-
-            if Source.Source_Modes[ns] == "Swing"
-
-                SwingMode(Source, ns, t_end = ramp_end)
-            elseif Source.Source_Modes[ns] == "Voltage"
-
-                VoltageControlMode(Source, ns, t_end = ramp_end)
-            elseif Source.Source_Modes[ns] == "PQ"
-
-                PQControlMode(Source, ns, Source.pq0_set[ns, :])
-            elseif Source.Source_Modes[ns] == "PV"
-
-                PVControlMode(Source, ns, Source.pq0_set[ns, :])
-            elseif Source.Source_Modes[ns] == "Droop" || Source.Source_Modes[ns] == "Semi-Droop"
-
-                DroopControlMode(Source, ns, t_end = ramp_end)
-            elseif Source.Source_Modes[ns] == "Synchronverter"
-
-                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 1, t_end = ramp_end)
-            elseif Source.Source_Modes[ns] == "Semi-Synchronverter"
-
-                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
-            elseif Source.Source_Modes[ns] == "Step"
-
-                StepMode(Source, ns, t_end = ramp_end)
-            elseif Source.Source_Modes[ns] == "Not Used 2"
-
-                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
-            elseif Source.Source_Modes[ns] == "Not Used 3"
-
-                SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
-            end
-        end
-    end
-
-    @timeit to "EnvInterface" begin
-        Action = EnvInterface(Source)
-    end
-
-    @timeit to "Measurements" begin
-        Measurements(Source)
-    end
-
-    return Action
-end
-
-function roll(matrix, ns = nothing)
-    if isnothing(ns)
-        @views matrix[:, 1:end-1] = matrix[:, 2:end]
-    else
-        @views matrix[ns, :, 1:end-1] = matrix[ns, :, 2:end]
-    end
-end
-
-function update_value(matrix, ns, vector)
-    @views matrix[ns, :, end] = vector
-end
-
-"""
-    SourceInterface(ClassicalPolicy, ElectricGridEnv)
-
-# Description
-"Measures" or "Observes" the relevant quantities necessary for control.
-"""
-function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
-
-    Source = Animo.Source
-    Source.steps = env.steps + 1
-    Source.θsys = (Source.θsys + Source.ts*2π*Source.fsys)%(2π)
-
-    state = env.x[findall(x -> x in Animo.state_ids, env.state_ids)]
-
     for ns in 1:Source.num_sources
 
         #= # for single phase measurements
@@ -1006,10 +932,13 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
                     update_value(Source.V_filt_cap, ns, state[Source.V_cap_loc[:, ns]])
                 end
 
-                update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
+                #update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
+                @views Source.I_filt_inv[ns, :, end] = state[Source.I_inv_loc[:, ns]]
 
-                @views icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
-                update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap)
+                #@views icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
+                #update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap)
+
+                @views Source.V_filt_cap[ns, :, end] = Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*(Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]])
 
             elseif Source.filter_type[ns] == "LC"
 
@@ -1047,9 +976,61 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
                 @views Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
             end
         end
+
+        if Source.Source_Modes[ns] == "Swing"
+
+            SwingMode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Voltage"
+
+            VoltageControlMode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "PQ"
+
+            PQControlMode(Source, ns, Source.pq0_set[ns, :])
+        elseif Source.Source_Modes[ns] == "PV"
+
+            PVControlMode(Source, ns, Source.pq0_set[ns, :])
+        elseif Source.Source_Modes[ns] == "Droop" || Source.Source_Modes[ns] == "Semi-Droop"
+
+            DroopControlMode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Synchronverter"
+
+            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 1, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Semi-Synchronverter"
+
+            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Step"
+
+            StepMode(Source, ns, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Not Used 2"
+
+            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+        elseif Source.Source_Modes[ns] == "Not Used 3"
+
+            SynchronverterMode(Source, ns, pq0_ref = Source.pq0_set[ns, :], mode = 2, t_end = ramp_end)
+        end
     end
 
-    return nothing
+    @timeit to "EnvInterface" begin
+        Action = EnvInterface(Source)
+    end
+
+    @timeit to "Measurements" begin
+        Measurements(Source)
+    end
+
+    return Action
+end
+
+function roll(matrix, ns = nothing)
+    if isnothing(ns)
+        @views matrix[:, 1:end-1] = matrix[:, 2:end]
+    else
+        @views matrix[ns, :, 1:end-1] = matrix[ns, :, 2:end]
+    end
+end
+
+function update_value(matrix, ns, vector)
+    @views matrix[ns, :, end] = vector
 end
 
 """
