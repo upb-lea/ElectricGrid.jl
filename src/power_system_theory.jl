@@ -86,8 +86,10 @@ function ClarkeTransform(v_abc)
     spatial vectors on the abc coordinates rotate in the abc sequence, they would
     rotate in the αβ sequenc on the αβ coordinates.
 
+    v_αβγ = sqrt(2/3)*[1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)]*v_abc
+
     =#
-    return v_αβγ = sqrt(2 / 3) * [1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)] * v_abc
+    return sqrt(2/3)*[1 -1/2 -1/2; 0 sqrt(3)/2 -sqrt(3)/2; 1/sqrt(2) 1/sqrt(2) 1/sqrt(2)]*v_abc
 end
 
 function InvClarkeTransform(v_αβγ)
@@ -145,7 +147,7 @@ function InvDQ0Transform(v_dq0, θ)
     return v_abc
 end
 
-function pqTheory(V_abc, I_abc)
+function pqTheory(V_abc, I_abc, power_mat)
 
     #= Theory:
         For a three-phase system with or without a neutral conductor in the steady-
@@ -254,9 +256,16 @@ function pqTheory(V_abc, I_abc)
     V_αβγ = ClarkeTransform(V_abc)
     I_αβγ = ClarkeTransform(I_abc)
 
-    #pq0 = [I_αβγ[1] I_αβγ[2] 0; -I_αβγ[2] I_αβγ[1] 0; 0 0 I_αβγ[3]]*V_αβγ # also works
+    power_mat[1,1] = V_αβγ[1]
+    power_mat[1,2] = V_αβγ[2]
+    power_mat[2,1] = V_αβγ[2]
+    power_mat[2,2] = -V_αβγ[1]
+    power_mat[3,3] = V_αβγ[3]
 
-    return pq0 = [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]] * I_αβγ
+    #pq0 = [I_αβγ[1] I_αβγ[2] 0; -I_αβγ[2] I_αβγ[1] 0; 0 0 I_αβγ[3]]*V_αβγ # also works
+    #pq0 = [V_αβγ[1] V_αβγ[2] 0; V_αβγ[2] -V_αβγ[1] 0; 0 0 V_αβγ[3]]*I_αβγ
+
+    return power_mat*I_αβγ
 end
 
 function Inv_p_q_v(V_αβγ, pq0)

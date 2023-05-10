@@ -292,9 +292,11 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
 
     hook(PRE_EXPERIMENT_STAGE, policy, env, training)
     policy(PRE_EXPERIMENT_STAGE, env, training)
+
     is_stop = false
     while !is_stop
         RLBase.reset!(env)
+
         ResetPolicy(policy)
 
         policy(PRE_EPISODE_STAGE, env, training)
@@ -302,10 +304,10 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
 
         while !is_terminated(env) # one episode
             action = policy(env, training)
-
+                
             policy(PRE_ACT_STAGE, env, action, training)
             hook(PRE_ACT_STAGE, policy, env, action, training)
-
+            
             env(action)
 
             policy(POST_ACT_STAGE, env, training)
@@ -325,5 +327,6 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
 
     policy(POST_EXPERIMENT_STAGE, env, training)
     hook(POST_EXPERIMENT_STAGE, policy, env, training)
+    
     return hook
 end
