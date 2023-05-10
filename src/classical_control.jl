@@ -928,13 +928,13 @@ function ClassicalControl(Animo::ClassicalPolicy, env::ElectricGridEnv)
                 update_value(Source.V_filt_cap, ns, state[Source.V_cap_loc[:, ns]])
             end
 
-            #update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
-            @views Source.I_filt_inv[ns, :, end] = state[Source.I_inv_loc[:, ns]]
+            update_value(Source.I_filt_inv, ns, state[Source.I_inv_loc[:, ns]])
+            #@views Source.I_filt_inv[ns, :, end] = state[Source.I_inv_loc[:, ns]]
 
             #@views icap = Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]
-            #update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*icap)
 
-            @views Source.V_filt_cap[ns, :, end] = Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*(Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]])
+            update_value(Source.V_filt_cap, ns, Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*(Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]]))
+            #@views Source.V_filt_cap[ns, :, end] = Source.V_filt_cap[ns, :, end] .+ Source.Rf_C[ns]*(Source.I_filt_inv[ns, :, end] .- state[Source.I_poc_loc[:, ns]])
 
         elseif Source.filter_type[ns] == "LC"
 
@@ -962,12 +962,9 @@ function ClassicalControl(Animo::ClassicalPolicy, env::ElectricGridEnv)
         #@views Source.p_q_inv[ns, :] =  pqTheory((Source.Vdc[ns]/2)*Source.Vd_abc_new[ns, :, end - Source.action_delay], Source.I_filt_inv[ns, :, end], Source.power_mat)
 
         if Source.filter_type[ns] != "L"
-
-            @views Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end], Source.power_mat)
-
+            Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end], Source.power_mat)
         else
-
-            @views Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
+            Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
         end
 
         if Source.Source_Modes[ns] == "Swing"
