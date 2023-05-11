@@ -1040,11 +1040,11 @@ function SourceInterface(Animo::ClassicalPolicy, env::ElectricGridEnv)
 
             if Source.filter_type[ns] != "L"
 
-                @views Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end], Source.power_mat)
+                Source.p_q_poc[ns, :] =  pqTheory(Source.V_filt_cap[ns, :, end], Source.I_filt_poc[ns, :, end], Source.power_mat)
 
             else
 
-                @views Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
+                Source.p_q_poc[ns, :] = Source.p_q_inv[ns, :]
             end
         end
     end

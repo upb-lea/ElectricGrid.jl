@@ -53,7 +53,6 @@ Multi_Agent = SetupAgents(env)
 
 hook = EmptyHook()
 
-
 disable_timer!(to)
     Simulate(Multi_Agent, env, hook = hook)
 enable_timer!(to)
