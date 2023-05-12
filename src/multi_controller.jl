@@ -46,6 +46,7 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
     for agent in values(A.agents)
+        multiplier = agent
         action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training)
     end
 
@@ -304,10 +305,10 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
 
         while !is_terminated(env) # one episode
             action = policy(env, training)
-                
+
             policy(PRE_ACT_STAGE, env, action, training)
             hook(PRE_ACT_STAGE, policy, env, action, training)
-            
+
             env(action)
 
             policy(POST_ACT_STAGE, env, training)
@@ -327,6 +328,6 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
 
     policy(POST_EXPERIMENT_STAGE, env, training)
     hook(POST_EXPERIMENT_STAGE, policy, env, training)
-    
+
     return hook
 end
