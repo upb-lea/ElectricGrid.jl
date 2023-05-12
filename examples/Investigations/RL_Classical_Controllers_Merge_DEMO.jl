@@ -95,7 +95,7 @@ env = ElectricGridEnv(
     t_end = 1,
     reward_function = reward_function,
     action_delay = 0,
-    verbosity = 0)
+    verbosity = 2)
 
 
 controllers = SetupAgents(env)

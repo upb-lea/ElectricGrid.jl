@@ -45,9 +45,13 @@ Base.getindex(A::MultiController, x) = getindex(A.agents, x)
 function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
-    for agent in values(A.agents)
-        multiplier = agent
-        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training)
+    for (name, agent) in A.agents
+        if name == "classic"
+            multiplier = 1.0
+        else
+            multiplier = 0.0
+        end
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training) .* multiplier
     end
 
     return action
