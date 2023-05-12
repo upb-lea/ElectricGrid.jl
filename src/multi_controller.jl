@@ -49,7 +49,7 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
         if name == "classic"
             multiplier = 1.0
         else
-            multiplier = 0.0
+            multiplier = 1.0
         end
         action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training) .* multiplier
     end
