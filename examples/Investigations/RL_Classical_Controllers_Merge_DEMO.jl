@@ -25,7 +25,7 @@ Dict{Any, Any}(
                         "pwr" => 200e3,
                         "fltr" => "LC",
                         "control_type" => "classic",
-                        "mode" => "Swing",),
+                        "mode" => "Droop",),
                     ],
     "grid" => Dict{Any, Any}(
         "phase" => 3,
@@ -78,7 +78,7 @@ end
 function reference(t)
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
-    return -10 * cos.(θph) 
+    return +10 * cos.(θph) 
 end
 
 featurize_ddpg = function(state, env, name)
@@ -124,6 +124,7 @@ env = ElectricGridEnv(
 
 controllers = SetupAgents(env)
 
+# Let it learn till 19_000 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function learn()
     while true
         Learn(controllers, env, num_episodes = 50)
