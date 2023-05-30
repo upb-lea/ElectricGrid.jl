@@ -242,15 +242,19 @@ Here the RL agents are training and e.g. action noise is applied.
 - `hook::DataHook`: Measured data.
 
 """
-function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
+function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing, steps = nothing)
 
     if isnothing(hook) # default hook
-
         hook = DataHook()
-
+    end
+    if isnothing(steps) # default hook
+        stopcondition = StopAfterEpisode(num_episodes)
+    else
+        stopcondition = StopAfterStep(steps)
     end
 
-    CustomRun(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
+
+    CustomRun(Multi_Agent, env, stopcondition, hook, true)
 
     return hook
 end

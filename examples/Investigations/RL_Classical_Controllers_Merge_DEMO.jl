@@ -12,7 +12,7 @@ CM = [ 0. 0. 1.
         0. 0. 2.
         -1. -2. 0.]
 
-R_load, L_load, _, _ = ParallelLoadImpedance(50e3, 0.99, 230)
+R_load, L_load, _, _ = ParallelLoadImpedance(50e3, 0.95, 230)
 
 parameters =
 Dict{Any, Any}(
@@ -20,7 +20,8 @@ Dict{Any, Any}(
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "control_type" => "RL",
-                        "fltr" => "L",),
+                        "fltr" => "L",
+                        "i_rip" => 0.25,),
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "fltr" => "LC",
@@ -82,7 +83,31 @@ function reference(t)
 end
 
 featurize_ddpg = function(state, env, name)
-    if name != "classic"
+    if name == "ElectricGrid_ddpg_1"
+
+        #state = state[findall(x -> split(x, "_")[2] == "i" , env.agent_dict["ElectricGrid_ddpg_1"]["state_ids"])]
+
+        norm_ref = env.nc.parameters["source"][1]["i_limit"]
+        state = vcat(state, reference(env.t)/norm_ref)
+
+        θ = 2*pi*50*env.t
+
+        state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1_a", env.state_ids)]
+        state_to_control_2 = env.state[findfirst(x -> x == "source1_i_L1_b", env.state_ids)]
+        state_to_control_3 = env.state[findfirst(x -> x == "source1_i_L1_c", env.state_ids)]
+
+        state_to_control = [state_to_control_1, state_to_control_2, state_to_control_3]
+
+        Il_dq0 = DQ0Transform(state_to_control, θ)
+        state = vcat(state, Il_dq0)
+    end
+end
+
+featurize_ddpg2 = function(state, env, name)
+    if name == "ElectricGrid_ddpg_1"
+
+        state = state[findall(x -> split(x, "_")[2] == "i" , env.agent_dict["ElectricGrid_ddpg_1"]["state_ids"])]
+
         norm_ref = env.nc.parameters["source"][1]["i_limit"]
         state = vcat(state, reference(env.t)/norm_ref)
     end
@@ -124,11 +149,147 @@ env = ElectricGridEnv(
 
 controllers = SetupAgents(env)
 
+using FileIO, JLD2
+#FileIO.save("controllers.jld2","controllers",controllers)
+#controllers = FileIO.load("controllers.jld2","controllers");
+
+learnhook = DataHook()
+
 # Let it learn till 19_000 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function learn()
+    num_steps = 50_000
     while true
-        Learn(controllers, env, num_episodes = 50)
+        Learn(controllers, env, steps = num_steps, hook = learnhook)
     end
+end
+
+function learn5()
+    num_steps = 3_000_000
+
+    global rewardresults1 = [[], [], [], [], []]
+    rewardresults1 = convert(Vector{Vector{Float64}}, rewardresults1)
+    for i in 1:5
+        learnmore = true
+
+        env = ElectricGridEnv(
+            #CM =  CM,
+            parameters = parameters,
+            t_end = 1,
+            reward_function = reward_function2,
+            featurize = featurize_ddpg,
+            action_delay = 0,
+            verbosity = 0)
+
+        controllers = SetupAgents(env)
+        learnhook = DataHook()
+
+        Learn(controllers, env, steps = num_steps, hook = learnhook)
+
+        println(length(learnhook.df[!,"reward"]))
+
+        rewardresults1[i] = convert(Vector{Float64}, learnhook.df[!,"reward"])
+    end
+
+    # global rewardresults2 = [[], [], [], [], []]
+    # rewardresults2 = convert(Vector{Vector{Float64}}, rewardresults2)
+    # for i in 1:5
+    #     learnmore = true
+
+    #     env = ElectricGridEnv(
+    #         #CM =  CM,
+    #         parameters = parameters,
+    #         t_end = 1,
+    #         reward_function = reward_function2,
+    #         featurize = featurize_ddpg2,
+    #         action_delay = 0,
+    #         verbosity = 0)
+
+    #     controllers = SetupAgents(env)
+    #     learnhook = DataHook()
+
+    #     Learn(controllers, env, steps = num_steps, hook = learnhook)
+
+    #     println(length(learnhook.df[!,"reward"]))
+
+    #     rewardresults2[i] = convert(Vector{Float64}, learnhook.df[!,"reward"])
+    # end
+end
+
+#FileIO.save("rewardresults1.jld2","rewardresults1",rewardresults1)
+#FileIO.save("rewardresults2.jld2","rewardresults2",rewardresults2)
+#rewardresults1 = FileIO.load("rewardresults1.jld2","rewardresults1")
+#rewardresults2 = FileIO.load("rewardresults2.jld2","rewardresults2")
+
+#good in rewardresults1: 2, 3, 4
+#good in rewardresults2: 2, 3
+
+using Statistics
+using PlotlyJS
+function plot_rewardresults(n = 0)
+    global plotresults = Float64[]
+    global plotresults_std = Float64[]
+    if n > 0
+        xx = [i*1000+1 for i in 1:3000]
+        for i in 1:3000
+            temp = []
+            if n == 1
+                for j = 2:4
+                    append!(temp,rewardresults1[j][(i-1)*1000+1:i*1000])
+                end
+            else
+                for j = 2:3
+                    append!(temp,rewardresults2[j][(i-1)*1000+1:i*1000])
+                end
+            end
+
+            push!(plotresults, mean(temp))
+            push!(plotresults_std, std(temp))
+            #push!(plotresults_std, std([mean(temp[1:1000]),mean(temp[1001:2000]),mean(temp[2001:3000])]))
+        end
+    else
+        rewardresults = convert(Vector{Float64}, controllers.hook.df[!,"reward"])
+        global batch_size = Int(floor(length(rewardresults)/3000))
+        xx = [i*batch_size+1 for i in 1:3000]
+        for i in 1:3000
+            temp = []
+            append!(temp,rewardresults[(i-1)*batch_size+1:i*batch_size])
+            push!(plotresults, mean(temp))
+            push!(plotresults_std, std(temp))
+        end
+    end
+
+    rl = Layout(
+        plot_bgcolor = "white",
+        font=attr(
+            family="Arial",
+            size=16,
+            color="black"
+        ),
+        yaxis=attr(
+            title="reward",
+            showline=true,
+            linewidth=2,
+            linecolor="black",
+            showgrid=true,
+            gridwidth=1,
+            gridcolor="LightGrey",
+            ),
+        xaxis=attr(
+            title="time steps",
+            showline=true,
+            linewidth=2,
+            linecolor="black",
+            showgrid=true,
+            gridwidth=1,
+            gridcolor="LightGrey",
+            ),
+    )
+
+    plot([
+        scatter(x=xx, y=plotresults.+plotresults_std, mode="lines", line=attr(width=0.0)),
+        scatter(x=xx, y=plotresults.-plotresults_std, mode="none", fillcolor="rgba(111, 120, 219, 0.3)", fill="tonexty", showlegend=false),
+        scatter(x=xx, y=plotresults, mode="lines", line_color="indigo", showlegend=false),
+    ], rl)
 end
 
 hook = DataHook(collect_state_ids = env.state_ids,
@@ -143,3 +304,16 @@ RenderHookResults(hook = hook,
                     plot_reward=true)
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
+
+
+
+function plottest()
+    a = [1.0, 2.0, 2.0, 3.0]
+    b = [0.3, 0.1, 0.4, 0.1]
+
+    plot([
+        scatter(y=a.+b, mode="lines", line=attr(width=0.0), showlegend=false),
+        scatter(y=a.-b, mode="none", fillcolor="rgba(111, 120, 219, 0.3)", fill="tonexty", showlegend=false),
+        scatter(y=a, mode="lines", line_color="indigo"),
+    ])
+end
