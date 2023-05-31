@@ -21,7 +21,8 @@ Dict{Any, Any}(
                         "pwr" => 200e3,
                         "control_type" => "RL",
                         "fltr" => "L",
-                        "i_rip" => 0.25,),
+                        #"L1" => 0.0008,
+                        ),
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "fltr" => "LC",
@@ -90,16 +91,16 @@ featurize_ddpg = function(state, env, name)
         norm_ref = env.nc.parameters["source"][1]["i_limit"]
         state = vcat(state, reference(env.t)/norm_ref)
 
-        θ = 2*pi*50*env.t
+        # θ = 2*pi*50*env.t
 
-        state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1_a", env.state_ids)]
-        state_to_control_2 = env.state[findfirst(x -> x == "source1_i_L1_b", env.state_ids)]
-        state_to_control_3 = env.state[findfirst(x -> x == "source1_i_L1_c", env.state_ids)]
+        # state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1_a", env.state_ids)]
+        # state_to_control_2 = env.state[findfirst(x -> x == "source1_i_L1_b", env.state_ids)]
+        # state_to_control_3 = env.state[findfirst(x -> x == "source1_i_L1_c", env.state_ids)]
 
-        state_to_control = [state_to_control_1, state_to_control_2, state_to_control_3]
+        # state_to_control = [state_to_control_1, state_to_control_2, state_to_control_3]
 
-        Il_dq0 = DQ0Transform(state_to_control, θ)
-        state = vcat(state, Il_dq0)
+        # Il_dq0 = DQ0Transform(state_to_control, θ)
+        # state = vcat(state, Il_dq0)
     end
 end
 
@@ -302,6 +303,9 @@ RenderHookResults(hook = hook,
                     states_to_plot  = env.state_ids,
                     actions_to_plot = env.action_ids,
                     plot_reward=true)
+
+#RenderHookResults(hook = hook, states_to_plot  = ["source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c"], actions_to_plot = [])
+#RenderHookResults(hook = hook, states_to_plot  = [], actions_to_plot = ["source1_u_a", "source1_u_b", "source1_u_c"])
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
