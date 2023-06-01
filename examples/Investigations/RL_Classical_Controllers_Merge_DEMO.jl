@@ -78,6 +78,10 @@ function reward_function(env, name = nothing)
 end
 
 function reference(t)
+    if t < 0.04
+        return [0.0, 0.0, 0.0]
+    end
+
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
     return +10 * cos.(θph) 
@@ -159,8 +163,22 @@ learnhook = DataHook()
 # Let it learn till 19_000 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function learn()
     num_steps = 50_000
+
+    an_scheduler_loops = 20
+
     while true
-        Learn(controllers, env, steps = num_steps, hook = learnhook)
+        if length(controllers.hook.df[!,"reward"]) <= 1_500_000
+            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+            Learn(controllers, env, steps = num_steps, hook = learnhook)
+        else
+            an = 0.01 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+            for i in 1:an_scheduler_loops
+                controllers.agents["ElectricGrid_ddpg_1"]["policy"].policy.policy.act_noise = an[i]
+                println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+                println("next action noise level: $(an[i])")
+                Learn(controllers, env, steps = num_steps, hook = learnhook)
+            end
+        end
     end
 end
 
