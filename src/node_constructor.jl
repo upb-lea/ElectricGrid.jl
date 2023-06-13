@@ -1,3 +1,19 @@
+import Base:/,*,+,-,^
+
+/(a::Number,b::Function) = x->a/b(x)
+/(a::Function,b::Function) = x->a(x)/b(x)
+*(a::Function,b::Number) = x->a(x)*b
+*(b::Number,a::Function) = x->a(x)*b
+*(a::Function,b::Function) = x->a(x)*b(x)
++(a::Function,b::Number) = x->a(x)+b
++(b::Number,a::Function) = x->a(x)+b
++(a::Function,b::Function) = x->a(x)+b(x)
+-(a::Function,b::Number) = x->a(x)-b
+-(b::Number,a::Function) = x->b-a(x)
+-(a::Function,b::Function) = x->a(x)-b(x)
+-(a::Function) = x->-a(x)
+^(a::Function,b::Number) = x->a(x)^b
+
 mutable struct NodeConstructor
     num_connections
     num_sources
@@ -2718,3 +2734,5 @@ function SampleSource(grid_properties, fltr)
 
     return source
 end
+
+
