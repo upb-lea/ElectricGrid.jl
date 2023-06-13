@@ -2,6 +2,7 @@ import Base: /, *, +, -, ^
 
 /(a::Number, b::Function) = x -> a / b(x)
 /(a::Function, b::Function) = x -> a(x) / b(x)
+/(a::Function, b::Number) = x -> a(x) / b
 *(a::Function, b::Number) = x -> a(x) * b
 *(b::Number, a::Function) = x -> a(x) * b
 *(a::Function, b::Function) = x -> a(x) * b(x)
@@ -19,33 +20,37 @@ function funktion(v₁,v₂)
 end
 
 parameters = Dict(
+    "a" => x->x,
     "L_value_1" => 1,
-    "L_value_2" => 1,
-    # "L" => funktion(parameters["L_value_1"],parameters["L_value_2"]),
-    "L" => x->parameters["L_value_1"]*x^parameters["L_value_2"]
+    "L_value_2" => 3
 )
 
+parameters["L"] = funktion(parameters["L_value_1"],parameters["L_value_2"])
 
 f = parameters["L"]
 
+x = [1, 2, 3]
 
-A = [1/f 4 -f
-    1/f 5 -f]
+A = [2 1/f f; 
+    2 1/f f;
+    f f f]
 
-function B(x)
-    rows, columns = size(A)
-    H = zeros(rows, columns)
-    for row = 1:rows
-        for column = 1:columns
-            if isa(A[row, column], Function)
-                H[row, column] = A[row, column](x[row])
-            else
-                H[row, column] = A[row, column]
-            end
+b = Matrix{Function}(undef,size(A))
+
+(rows,columns) = size(A)
+
+# thats a little bit stupid. Because I have to make all numbers to a constant function
+for row in 1:rows
+    for column in 1:columns
+        h = A[row,column]
+        if isa(h,Number)
+            b[row,column] = x->h
+        else
+            b[row,column] = h
         end
     end
-    return H
 end
-# statevariable:
-x = [1,2]
-@show B(x)
+
+# thats where the magic happens
+C(x) = (|>).(x,b)
+C(x)
