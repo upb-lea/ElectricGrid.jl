@@ -182,13 +182,18 @@ function learn()
     end
 end
 
-function learn5()
-    num_steps = 3_000_000
+global rewardresults1 = Vector{Float64}[]
+global totalruns = 0
 
-    global rewardresults1 = [[], [], [], [], []]
-    rewardresults1 = convert(Vector{Vector{Float64}}, rewardresults1)
-    for i in 1:5
-        learnmore = true
+function learn5()
+    num_steps = 1_500_000
+
+    #rewardresults1 = convert(Vector{Vector{Float64}}, rewardresults1)
+
+    global totalruns
+    global rewardresults1
+
+    while length(rewardresults1) < 10
 
         env = ElectricGridEnv(
             #CM =  CM,
@@ -204,9 +209,11 @@ function learn5()
 
         Learn(controllers, env, steps = num_steps, hook = learnhook)
 
-        println(length(learnhook.df[!,"reward"]))
+        totalruns += 1
 
-        rewardresults1[i] = convert(Vector{Float64}, learnhook.df[!,"reward"])
+        if learnhook.df[!,"reward"][end] > 0.9
+            push!(rewardresults1, convert(Vector{Float64}, learnhook.df[!,"reward"]))
+        end
     end
 
     # global rewardresults2 = [[], [], [], [], []]
@@ -249,10 +256,10 @@ function plot_rewardresults(n = 0)
     global plotresults_std = Float64[]
     if n > 0
         xx = [i*1000+1 for i in 1:3000]
-        for i in 1:3000
+        for i in 1:1500
             temp = []
             if n == 1
-                for j = 2:4
+                for j in [2,4,7]
                     append!(temp,rewardresults1[j][(i-1)*1000+1:i*1000])
                 end
             else
@@ -324,6 +331,8 @@ RenderHookResults(hook = hook,
 
 #RenderHookResults(hook = hook, states_to_plot  = ["source1_i_L1_a", "source1_i_L1_b", "source1_i_L1_c"], actions_to_plot = [])
 #RenderHookResults(hook = hook, states_to_plot  = [], actions_to_plot = ["source1_u_a", "source1_u_b", "source1_u_c"])
+
+#learn5()
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
 
