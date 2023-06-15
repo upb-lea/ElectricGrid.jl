@@ -159,17 +159,19 @@ function ElectricGridEnv(;
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
     Bd = (Ad - I) * B #
     ldiv!(factorize(A), Bd)
-    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    
     state_parameters = GetStateParameters(nc)
 
     if use_gpu
-        Ad = CuArray(A)
-        Bd = CuArray(B)
+        Ad = CuArray(Ad)
+        Bd = CuArray(Bd)
         C = CuArray(C)
         if isa(D, Array)
             D = CuArray(D)
         end
     end
+
+    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
 
     if isnothing(action_space)
         action_space = Space([-1.0 .. 1.0 for i = 1:length(sys_d.B[1, :])],)
