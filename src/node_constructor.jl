@@ -1,18 +1,19 @@
-import Base:/,*,+,-,^
+import Base: /, *, +, -, ^
 
-/(a::Number,b::Function) = x->a/b(x)
-/(a::Function,b::Function) = x->a(x)/b(x)
-*(a::Function,b::Number) = x->a(x)*b
-*(b::Number,a::Function) = x->a(x)*b
-*(a::Function,b::Function) = x->a(x)*b(x)
-+(a::Function,b::Number) = x->a(x)+b
-+(b::Number,a::Function) = x->a(x)+b
-+(a::Function,b::Function) = x->a(x)+b(x)
--(a::Function,b::Number) = x->a(x)-b
--(b::Number,a::Function) = x->b-a(x)
--(a::Function,b::Function) = x->a(x)-b(x)
--(a::Function) = x->-a(x)
-^(a::Function,b::Number) = x->a(x)^b
+/(a::Number, b::Function) = x -> a / b(x)
+/(a::Function, b::Function) = x -> a(x) / b(x)
+/(a::Function, b::Number) = x -> a(x) / b
+*(a::Function, b::Number) = x -> a(x) * b
+*(a::Number, b::Function) = x -> a * b(x)
+*(a::Function, b::Function) = x -> a(x) * b(x)
++(a::Function, b::Number) = x -> a(x) + b
++(b::Number, a::Function) = x -> a(x) + b
++(a::Function, b::Function) = x -> a(x) + b(x)
+-(a::Function, b::Number) = x -> a(x) - b
+-(b::Number, a::Function) = x -> b - a(x)
+-(a::Function, b::Function) = x -> a(x) - b(x)
+-(a::Function) = x -> -a(x)
+^(a::Function, b::Number) = x -> a(x)^b
 
 mutable struct NodeConstructor
     num_connections
@@ -92,7 +93,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             but got $(size(CM)[1]) columns and $(size(CM)[2]) rows.")
 
         @assert(-transpose(CM .* LowerTriangular(ones(size(CM)))) ==
-            CM .* UpperTriangular(ones(size(CM))),
+                CM .* UpperTriangular(ones(size(CM))),
             "Expect the CM matrix to be a antisymetric: transpose(CM) = -CM.")
 
         num_connections = Int(maximum(CM))
@@ -128,8 +129,8 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             but got $num_loads and $(length(parameters["load"]))")
 
         @assert(length(parameters["cable"]) == num_connections,
-        "Expect the number of cables to match the number of cables in the parameters, but
-        got $num_connections and $(length(parameters["cable"]))")
+            "Expect the number of cables to match the number of cables in the parameters, but
+            got $num_connections and $(length(parameters["cable"]))")
 
         num_fltr_LCL, num_fltr_LC, num_fltr_L = CountFilters(parameters["source"])
         loads = CountLoads(parameters["load"])
@@ -147,7 +148,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             $(num_fltr_LCL + num_fltr_LC + num_fltr_L)")
 
         @assert((num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_RC + num_loads_R +
-            num_loads_C + num_loads_L == num_loads),
+                 num_loads_C + num_loads_L == num_loads),
             "Expect the number of loads to be identical to the sum of the loads types, but
             the number of loads is $num_loads and the sum of the loads is
             $(num_loads_RLC + num_loads_RL + num_loads_RC + num_loads_R)")
@@ -159,11 +160,11 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
 
     # Equivalent to the number of load states
     num_impedance = (2 * (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) +
-                    num_loads_RC + num_loads_C + num_loads_R)
+                     num_loads_RC + num_loads_C + num_loads_R)
 
     num_spp = num_fltr_LCL * 4 + num_fltr_LC * 3 + num_fltr_L * 2 + num_connections +
-        (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 +
-        (num_loads_RC + num_loads_C + num_loads_R)
+              (num_loads_RLC + num_loads_LC + num_loads_RL + num_loads_L) * 2 +
+              (num_loads_RC + num_loads_C + num_loads_R)
 
     p_load_total, q_load_total, s_load_total, s_source_total = CheckPowerBalance(
         parameters)
@@ -202,7 +203,7 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
         ts,
         invoke_pfe,
         verbosity
-        )
+    )
 
     return nc
 end
@@ -241,10 +242,10 @@ function GetLoadsDistr(num)
     num_loads_RC = Int(floor(smpl[5]))
     num_loads_LC = Int(floor(smpl[6]))
     num_loads_RLC = num -
-        (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC +
-        num_loads_LC)
+                    (num_loads_R + num_loads_C + num_loads_L + num_loads_RL + num_loads_RC +
+                     num_loads_LC)
     return (num_loads_R, num_loads_C, num_loads_L, num_loads_RL, num_loads_RC, num_loads_LC,
-         num_loads_RLC)
+        num_loads_RLC)
 end
 
 
@@ -265,7 +266,7 @@ Gets `parameters` and controls the entries based on the given inputs `num_source
 """
 function CheckParameters(
     parameters, num_sources, num_loads, num_connections, CM, ts, invoke_pfe, verbosity
-    )
+)
     # Variable generation of the parameter dicts
 
     # check if parameters have been specified
@@ -442,7 +443,7 @@ function CheckParameters(
                     Iorms = Vorms / Zl
                     Iop = Iorms * sqrt(2)
                     Ir_d = source["vdc"] /
-                        (4 * parameters["grid"]["fs"] * source["L1"] * Iop)
+                           (4 * parameters["grid"]["fs"] * source["L1"] * Iop)
                     ΔIlfmax = Ir_d * Iop
                     ΔVcfmax = source["v_rip"] * Vop
                     source["C"] = ΔIlfmax / (8 * parameters["grid"]["fs"] * ΔVcfmax)
@@ -496,7 +497,7 @@ function CheckParameters(
             if source["fltr"] == "LCL"
 
                 fc = (1 / (2 * pi)) * sqrt((source["L1"] + source["L2"]) /
-                (source["L1"] * source["L2"] * source["C"]))
+                                           (source["L1"] * source["L2"] * source["C"]))
 
                 if fc > parameters["grid"]["fs"] / 2
                     if verbosity > 0
@@ -533,7 +534,7 @@ function CheckParameters(
                     source["pf"] = source["p_set"] / source["pwr"]
                 elseif haskey(source, "p_set") && haskey(source, "q_set")
                     s_set = sqrt(source["p_set"]^2 + source["q_set"]^2) *
-                        sign(source["q_set"])
+                            sign(source["q_set"])
                     if s_set == 0
                         source["pf"] = 1 / sqrt(2)
                     else
@@ -562,11 +563,11 @@ function CheckParameters(
                 source["control_type"] = "classic"
             end
 
-            if source["control_type"] ==  "classic"
+            if source["control_type"] == "classic"
                 if !haskey(source, "mode")
                     source["mode"] = "Synchronverter"
                 end
-            elseif source["control_type"] ==  "RL"
+            elseif source["control_type"] == "RL"
                 if !haskey(source, "mode")
                     source["mode"] = "ElectricGrid_ddpg"
                 end
@@ -607,7 +608,7 @@ function CheckParameters(
             if !haskey(source, "Δt")
                 steps = 1 # ... cycles for 1 step
                 source["Δt"] = round(steps * parameters["grid"]["fs"] /
-                    (parameters["grid"]["f_grid"])) / parameters["grid"]["fs"]
+                                     (parameters["grid"]["f_grid"])) / parameters["grid"]["fs"]
 
             elseif haskey(source, "Δt")
                 if typeof(source["Δt"]) == Int
@@ -632,7 +633,7 @@ function CheckParameters(
         if num_undef_sources > 0
             num_fltr_L_undef, num_fltr_LC_undef, num_fltr_LCL_undef = GetFltrDistr(
                 num_undef_sources
-                )
+            )
 
             for s in 1:num_fltr_LCL_undef
                 push!(parameters["source"], SampleFilterLCL(parameters["grid"]))
@@ -652,7 +653,7 @@ function CheckParameters(
     # calculate grid power
     parameters["grid"]["pwr"] = sum(
         [parameters["source"][i]["pwr"] for i in 1:length(parameters["source"])]
-        )
+    )
 
     # check loads
     if !haskey(parameters, "load")
@@ -699,10 +700,13 @@ function CheckParameters(
         num_def_loads = length(parameters["load"])
         num_undef_loads = num_loads - num_def_loads
 
-        @assert(num_undef_loads >= 0, "Expect the number of defined loads within the
-            parameter dict to be less or equal to the number of loads in the env, but the
-            entries within the parameter dict is $num_def_loads and the number of env loads
-            is $num_loads.")
+        @assert(
+            num_undef_loads >= 0,
+            "Expect the number of defined loads within the
+parameter dict to be less or equal to the number of loads in the env, but the
+entries within the parameter dict is $num_def_loads and the number of env loads
+is $num_loads."
+        )
 
         if num_undef_loads > 0
             @warn("The number of defined loads $num_def_loads is smaller than the number
@@ -797,31 +801,31 @@ function CheckParameters(
             load["pf"] = 0
         elseif load["impedance"] == "RL"
             load["Z"] = 1im * parameters["grid"]["f_grid"] * 2 * pi * load["R"] *
-                load["L"] / (load["R"] + 1im * parameters["grid"]["f_grid"] *
-                2 * pi * load["L"])
+                        load["L"] / (load["R"] + 1im * parameters["grid"]["f_grid"] *
+                                                 2 * pi * load["L"])
             load["pf"] = sign(imag(load["Z"]))abs(cos(atan(imag(load["Z"]) /
-                real(load["Z"]))))
+                                                           real(load["Z"]))))
         elseif load["impedance"] == "RC"
             load["Z"] = load["R"] / (1 + 1im * parameters["grid"]["f_grid"] *
-                2 * pi * load["C"] * load["R"])
+                                         2 * pi * load["C"] * load["R"])
             load["pf"] = sign(imag(load["Z"]))abs(cos(atan(imag(load["Z"]) /
-                real(load["Z"]))))
+                                                           real(load["Z"]))))
         elseif load["impedance"] == "LC"
             load["Z"] = 1im * parameters["grid"]["f_grid"] * 2 * pi * load["L"] /
-                (1 - (parameters["grid"]["f_grid"] * 2 * pi)^2 * load["L"] * load["C"])
+                        (1 - (parameters["grid"]["f_grid"] * 2 * pi)^2 * load["L"] * load["C"])
             load["pf"] = 0
         elseif load["impedance"] == "RLC"
             load["Z"] = 1im * parameters["grid"]["f_grid"] * 2 * pi * load["L"] /
-                (1 + 1im * parameters["grid"]["f_grid"] * 2 * pi * load["L"] / load["R"] -
-                (parameters["grid"]["f_grid"] * 2 * pi)^2 * load["L"] * load["C"])
+                        (1 + 1im * parameters["grid"]["f_grid"] * 2 * pi * load["L"] / load["R"] -
+                         (parameters["grid"]["f_grid"] * 2 * pi)^2 * load["L"] * load["C"])
             load["pf"] = sign(imag(load["Z"]))abs(cos(atan(imag(load["Z"]) /
-                real(load["Z"]))))
+                                                           real(load["Z"]))))
         end
 
         load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) *
-            parameters["grid"]["phase"]
+                      parameters["grid"]["phase"]
 
-        load["i_limit"] = sqrt(2)*0.9*parameters["grid"]["v_rms"] / abs(load["Z"])
+        load["i_limit"] = sqrt(2) * 0.9 * parameters["grid"]["v_rms"] / abs(load["Z"])
     end
 
     # check cables
@@ -846,10 +850,13 @@ function CheckParameters(
         num_def_cables = length(parameters["cable"])
         num_undef_cables = num_connections - num_def_cables
 
-        @assert(num_undef_cables >= 0, "Expect the number of defined cables within the
+        @assert(
+            num_undef_cables >= 0,
+            "Expect the number of defined cables within the
             parameter dict to be less or equal to the number of sources in the env, but the
             entries within the parameter dict is $num_def_cables and the number of env
-            cables is $num_cables.")
+            cables is $num_cables."
+        )
 
         if num_undef_cables > 0
             if verbosity > 0
@@ -977,7 +984,7 @@ function SampleFilterLCL(grid_properties)
     source["R_C"] = R_C
     source["i_limit"] = i_limit
     source["v_limit"] = v_limit
-    source["control_type"] ==  "classic"
+    source["control_type"] == "classic"
     source["mode"] = "Synchronverter"
 
     return source
@@ -1008,7 +1015,7 @@ function SampleFilterLC(grid_properties)
     source["R_C"] = R_C
     source["i_limit"] = i_limit
     source["v_limit"] = v_limit
-    source["control_type"] ==  "classic"
+    source["control_type"] == "classic"
     source["mode"] = "Synchronverter"
 
     return source
@@ -1036,7 +1043,7 @@ function SampleFilterL(grid_properties)
     source["R1"] = R_1
     source["i_limit"] = i_limit
     source["v_limit"] = 1.1 * grid_properties["v_rms"] * sqrt(2)
-    source["control_type"] ==  "classic"
+    source["control_type"] == "classic"
     source["mode"] = "Synchronverter"
 
     return source
@@ -1051,19 +1058,19 @@ Sample parameters for the RLC load.
 function SampleLoadRLC(grid_properties, num_loads)
     load = Dict()
     a = 0.3
-    b = 1-a
+    b = 1 - a
     S1 = grid_properties["pwr"] / num_loads * 0.7 * a
     S2 = grid_properties["pwr"] / num_loads * 0.7 * b
-    pf1 = round(rand(Uniform(.95, .99)), digits=3)
-    pf2 = round(rand(Uniform(.95, .99)), digits=3)
+    pf1 = round(rand(Uniform(0.95, 0.99)), digits=3)
+    pf2 = round(rand(Uniform(0.95, 0.99)), digits=3)
 
-    R1, L, _, _= ParallelLoadImpedance(S1, pf1, grid_properties["v_rms"],
-        fsys=grid_properties["f_grid"],  type_sign="L")
-    R2, C, _, _= ParallelLoadImpedance(S2, -pf2, grid_properties["v_rms"],
-        fsys=grid_properties["f_grid"],  type_sign="C")
+    R1, L, _, _ = ParallelLoadImpedance(S1, pf1, grid_properties["v_rms"],
+        fsys=grid_properties["f_grid"], type_sign="L")
+    R2, C, _, _ = ParallelLoadImpedance(S2, -pf2, grid_properties["v_rms"],
+        fsys=grid_properties["f_grid"], type_sign="C")
 
     load["impedance"] = "RLC"
-    load["R"] = R1+R2
+    load["R"] = R1 + R2
     load["L"] = L
     load["C"] = C
 
@@ -1079,15 +1086,15 @@ Sample parameters for the LC load.
 function SampleLoadLC(grid_properties, num_loads)
     load = Dict()
     a = 0.3
-    b = 1-a
+    b = 1 - a
 
     S1 = grid_properties["pwr"] / num_loads * 0.7 * a
     S2 = grid_properties["pwr"] / num_loads * 0.7 * b
 
-    _, L, _, _= ParallelLoadImpedance(S1, 0, grid_properties["v_rms"],
-        fsys=grid_properties["f_grid"],  type_sign="L")
-    _, C, _, _= ParallelLoadImpedance(S2, -0, grid_properties["v_rms"],
-        fsys=grid_properties["f_grid"],  type_sign="C")
+    _, L, _, _ = ParallelLoadImpedance(S1, 0, grid_properties["v_rms"],
+        fsys=grid_properties["f_grid"], type_sign="L")
+    _, C, _, _ = ParallelLoadImpedance(S2, -0, grid_properties["v_rms"],
+        fsys=grid_properties["f_grid"], type_sign="C")
 
     load["impedance"] = "LC"
     load["L"] = L
@@ -1104,10 +1111,10 @@ Sample parameters for the RL load.
 """
 function SampleLoadRL(grid_properties, num_loads)
     load = Dict()
-    pf = round(rand(Uniform(.95, .99)), digits=3)
-    S = grid_properties["pwr"]/num_loads * 0.7
+    pf = round(rand(Uniform(0.95, 0.99)), digits=3)
+    S = grid_properties["pwr"] / num_loads * 0.7
 
-    R, L, _, _= ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
+    R, L, _, _ = ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
 
     load["impedance"] = "RL"
@@ -1125,10 +1132,10 @@ Sample parameters for the RC load.
 """
 function SampleLoadRC(grid_properties, num_loads)
     load = Dict()
-    pf = round(rand(Uniform(.9, .98)), digits=3)
+    pf = round(rand(Uniform(0.9, 0.98)), digits=3)
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    R, C, _, _= ParallelLoadImpedance(S, -pf, grid_properties["v_rms"],
+    R, C, _, _ = ParallelLoadImpedance(S, -pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
 
     load["impedance"] = "RC"
@@ -1150,8 +1157,8 @@ function SampleLoadL(grid_properties, num_loads)
     pf = 0
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    _, L, _, _= ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
-        fsys=grid_properties["f_grid"],  type_sign=load["impedance"])
+    _, L, _, _ = ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
+        fsys=grid_properties["f_grid"], type_sign=load["impedance"])
 
     load["L"] = L
 
@@ -1170,8 +1177,8 @@ function SampleLoadC(grid_properties, num_loads)
     pf = 0
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    _, C, _, _= ParallelLoadImpedance(S, -pf, grid_properties["v_rms"],
-        fsys=grid_properties["f_grid"],  type_sign=load["impedance"])
+    _, C, _, _ = ParallelLoadImpedance(S, -pf, grid_properties["v_rms"],
+        fsys=grid_properties["f_grid"], type_sign=load["impedance"])
 
     load["C"] = C
 
@@ -1189,7 +1196,7 @@ function SampleLoadR(grid_properties, num_loads)
     pf = 1
     S = grid_properties["pwr"] / num_loads * 0.7
 
-    R, _, _, _= ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
+    R, _, _, _ = ParallelLoadImpedance(S, pf, grid_properties["v_rms"],
         fsys=grid_properties["f_grid"])
 
     load["impedance"] = "R"
@@ -1341,7 +1348,7 @@ function GetASource(self::NodeConstructor, source_i)
     parameter_i = self.parameters["source"][source_i]
 
     if parameter_i["fltr"] == "LCL"
-        A_src = zeros(4, 4)
+        A_src = Matrix{Any}(undef, (4, 4)) .= 0
         A_src[1, 1] = -(parameter_i["R1"] + parameter_i["R_C"]) / parameter_i["L1"]
         A_src[1, 2] = -1 / parameter_i["L1"]
         A_src[1, 3] = parameter_i["R_C"] / parameter_i["L1"]
@@ -1365,7 +1372,7 @@ function GetASource(self::NodeConstructor, source_i)
 
         A_src[4, 3] = C_sum^(-1)
     elseif parameter_i["fltr"] == "LC"
-        A_src = zeros(3, 3)
+        A_src = Matrix{Any}(undef, (3, 3)) .= 0
         A_src[1, 1] = -(parameter_i["R1"]) / parameter_i["L1"]
         A_src[1, 3] = -1 / parameter_i["L1"]
         A_src[2, 2] = -1 / (parameter_i["C"] * parameter_i["R_C"])
@@ -1387,7 +1394,7 @@ function GetASource(self::NodeConstructor, source_i)
         A_src[3, 3] = -1 / parameter_i["R_C"] * (C_sum)^(-1)
 
     elseif parameter_i["fltr"] == "L"
-        A_src = zeros(2, 2)
+        A_src = Matrix{Any}(undef, (2, 2)) .= 0
         A_src[1, 1] = -parameter_i["R1"] / parameter_i["L1"]
         A_src[1, 2] = -1 / parameter_i["L1"]
 
@@ -1420,13 +1427,13 @@ function GetBSource(self::NodeConstructor, source_i)
     parameter_i = self.parameters["source"][source_i]
 
     if parameter_i["fltr"] == "LCL"
-        B_source = zeros(4, 1)
+        B_source = Matrix{Any}(undef, (4, 1)) .= 0
         B_source[1, 1] = 1 / parameter_i["L1"]
     elseif parameter_i["fltr"] == "LC"
-        B_source = zeros(3, 1)
+        B_source = Matrix{Any}(undef, (3, 1)) .= 0
         B_source[1, 1] = 1 / parameter_i["L1"]
     elseif parameter_i["fltr"] == "L"
-        B_source = zeros(2, 1)
+        B_source = Matrix{Any}(undef, (2, 1)) .= 0
         B_source[1, 1] = 1 / parameter_i["L1"]
     end
 
@@ -1443,7 +1450,7 @@ function GetASourceTrnC(self::NodeConstructor, source_i)
     parameter_i = self.parameters["source"][source_i]
 
     if parameter_i["fltr"] == "LCL"
-        A_src_trn_c = zeros(4, self.num_connections)
+        A_src_trn_c = Matrix{Any}(undef, (4, self.num_connections)) .= 0
         CM_row = self.CM[source_i, :]
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1460,7 +1467,7 @@ function GetASourceTrnC(self::NodeConstructor, source_i)
             A_src_trn_c[4, idx] = sign * -(C_sum^(-1))
         end
     elseif parameter_i["fltr"] == "LC"
-        A_src_trn_c = zeros(3, self.num_connections)
+        A_src_trn_c = Matrix{Any}(undef, (3, self.num_connections)) .= 0
         CM_row = self.CM[source_i, :]
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1477,7 +1484,7 @@ function GetASourceTrnC(self::NodeConstructor, source_i)
             A_src_trn_c[3, idx] = sign * -(C_sum^(-1))
         end
     elseif parameter_i["fltr"] == "L"
-        A_src_trn_c = zeros(2, self.num_connections)
+        A_src_trn_c = Matrix{Any}(undef, (2, self.num_connections)) .= 0
         CM_row = self.CM[source_i, :]
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1504,23 +1511,24 @@ end
 
 Create the A_src_trn_l entry in the A matrix.
 """
+#XXX vergleichen mit GenerateATrnLoadL
 function GetASourceTrnL(self::NodeConstructor, source_i)
     parameter_i = self.parameters["source"][source_i]
-
     if parameter_i["fltr"] == "LCL"
-        A_src_trn_l = zeros(4, self.num_connections)
+        A_src_trn_l = Matrix{Any}(undef, (self.num_connections,4)) .= 0
         CM_col = self.CM[source_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
 
+        #XXX Irgendwas geht hier in die Hose
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_l[4, idx] = sign * 1 / self.parameters["cable"][idx]["L"]
+            A_src_trn_l[idx,4] = sign * (1 / self.parameters["cable"][idx]["L"])
         end
 
     elseif parameter_i["fltr"] == "LC"
-        A_src_trn_l = zeros(3, self.num_connections)
+        A_src_trn_l = Matrix{Any}(undef, (self.num_connections,3)) .= 0
         CM_col = self.CM[source_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1528,11 +1536,11 @@ function GetASourceTrnL(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_l[3, idx] = sign * 1 / self.parameters["cable"][idx]["L"]
+            A_src_trn_l[idx,3] = sign * (1 / self.parameters["cable"][idx]["L"])
         end
 
     elseif parameter_i["fltr"] == "L"
-        A_src_trn_l = zeros(2, self.num_connections)
+        A_src_trn_l = Matrix{Any}(undef, (self.num_connections,2)) .= 0
         CM_col = self.CM[source_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1540,11 +1548,11 @@ function GetASourceTrnL(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_l[2, idx] = sign * 1 / self.parameters["cable"][idx]["L"]
+            A_src_trn_l[idx,2] = sign * 1 / self.parameters["cable"][idx]["L"]
         end
-    end
 
-    return A_src_trn_l'
+    end
+    return A_src_trn_l
 end
 
 
@@ -1554,12 +1562,17 @@ end
 Create the A_tran entry in the A matrix.
 """
 function GenerateATrn(self::NodeConstructor)
-    vec = zeros(self.num_connections)
+    vec = Vector{Any}(undef, self.num_connections) .= 0
     for (i, ele) in enumerate(self.parameters["cable"])
         vec[i] = -ele["R"] / ele["L"]
     end
 
-    A_trn = Diagonal(vec)
+    # A_trn = Diagonal(vec)
+    A_trn = Matrix{Any}(undef, (self.num_connections, self.num_connections)) .= 0
+    for (i, e) in enumerate(vec)
+        A_trn[i, i] = e
+    end
+
     return A_trn
 end
 
@@ -1573,7 +1586,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
     parameter_i = self.parameters["load"][load_i]
 
     if parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC"
-        A_tran_load_c = zeros(2, self.num_connections)
+        A_tran_load_c = Matrix{Any}(undef, (2, self.num_connections)) .= 0
         CM_row = self.CM[self.num_sources+load_i, :]
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1591,7 +1604,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
         end
 
     elseif parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L"
-        A_tran_load_c = zeros(2, self.num_connections)
+        A_tran_load_c = Matrix{Any}(undef, (2, self.num_connections)) .= 0
         CM_row = self.CM[self.num_sources+load_i, :]
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1609,7 +1622,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
         end
 
     elseif parameter_i["impedance"] == "RC" || parameter_i["impedance"] == "C"
-        A_tran_load_c = zeros(1, self.num_connections)
+        A_tran_load_c = Matrix{Any}(undef, (1, self.num_connections)) .= 0
         CM_row = self.CM[self.num_sources+load_i, :]
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1627,7 +1640,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
         end
 
     elseif parameter_i["impedance"] == "R"
-        A_tran_load_c = zeros(1, self.num_connections)
+        A_tran_load_c = Matrix{Any}(undef, (1, self.num_connections)) .= 0
         CM_row = self.CM[self.num_sources+load_i, :]
         indizes = CM_row[CM_row.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1654,13 +1667,14 @@ end
 
 Create the A_tran_load_l entry in the A matrix.
 """
+#XXX vergleichen mit GetASourceTrnL
 function GenerateATrnLoadL(self::NodeConstructor, load_i)
     parameter_i = self.parameters["load"][load_i]
 
     if (parameter_i["impedance"] == "RLC" || parameter_i["impedance"] == "LC" ||
         parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L")
 
-        A_tran_load_l = zeros(self.num_connections, 2)
+        A_tran_load_l = Matrix{Any}(undef, (self.num_connections, 2)) .= 0
         CM_col = self.CM[self.num_sources+load_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1668,14 +1682,13 @@ function GenerateATrnLoadL(self::NodeConstructor, load_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-
-            A_tran_load_l[idx, 1] = sign * 1 / self.parameters["cable"][idx]["L"]
+            A_tran_load_l[idx, 1] = sign * (1 / self.parameters["cable"][idx]["L"])
         end
 
     elseif (parameter_i["impedance"] == "RC" || parameter_i["impedance"] == "C" ||
             parameter_i["impedance"] == "R")
 
-        A_tran_load_l = zeros(self.num_connections, 1)
+        A_tran_load_l = Matrix{Any}(undef, (self.num_connections, 1)) .= 0
         CM_col = self.CM[self.num_sources+load_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1683,8 +1696,7 @@ function GenerateATrnLoadL(self::NodeConstructor, load_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-
-            A_tran_load_l[idx, 1] = sign * 1 / self.parameters["cable"][idx]["L"]
+            A_tran_load_l[idx, 1] = sign * (1 / self.parameters["cable"][idx]["L"])
         end
     end
 
@@ -1701,7 +1713,7 @@ function GenerateALoad(self::NodeConstructor, load_i)
     parameter_i = self.parameters["load"][load_i]
 
     if parameter_i["impedance"] == "RLC"
-        A_load = zeros(2, 2)
+        A_load = Matrix{Any}(undef, (2, 2)) .= 0
         A_load[2, 1] = 1 / parameter_i["L"]
         C_sum = parameter_i["C"]
         CM_row = self.CM[self.num_sources+load_i, :]
@@ -1718,7 +1730,7 @@ function GenerateALoad(self::NodeConstructor, load_i)
         A_load[1, 2] = -(C_sum)^(-1)
 
     elseif parameter_i["impedance"] == "LC"
-        A_load = zeros(2, 2)
+        A_load = Matrix{Any}(undef, (2, 2)) .= 0
         A_load[2, 1] = 1 / parameter_i["L"]
         C_sum = parameter_i["C"]
         CM_row = self.CM[self.num_sources+load_i, :]
@@ -1733,7 +1745,7 @@ function GenerateALoad(self::NodeConstructor, load_i)
 
         A_load[1, 2] = -(C_sum)^(-1)
     elseif parameter_i["impedance"] == "RL"
-        A_load = zeros(2, 2)
+        A_load = Matrix{Any}(undef, (2, 2)) .= 0
         A_load[2, 1] = 1 / parameter_i["L"]
         C_sum = 0
         CM_row = self.CM[self.num_sources+load_i, :]
@@ -1749,7 +1761,7 @@ function GenerateALoad(self::NodeConstructor, load_i)
         A_load[1, 1] = -((parameter_i["R"]) * C_sum)^(-1)
         A_load[1, 2] = -(C_sum)^(-1)
     elseif parameter_i["impedance"] == "RC"
-        A_load = zeros(1, 1)
+        A_load = Matrix{Any}(undef, (1, 1)) .= 0
         C_sum = parameter_i["C"]
         CM_row = self.CM[self.num_sources+load_i, :]
         indizes = CM_row[CM_row.!=0]
@@ -1764,7 +1776,7 @@ function GenerateALoad(self::NodeConstructor, load_i)
         A_load[1, 1] = -((parameter_i["R"]) * C_sum)^(-1)
 
     elseif parameter_i["impedance"] == "L"
-        A_load = zeros(2, 2)
+        A_load = Matrix{Any}(undef, (2, 2)) .= 0
         A_load[2, 1] = 1 / parameter_i["L"]
         C_sum = 0
         CM_row = self.CM[self.num_sources+load_i, :]
@@ -1779,9 +1791,9 @@ function GenerateALoad(self::NodeConstructor, load_i)
 
         A_load[1, 2] = -(C_sum)^(-1)
     elseif parameter_i["impedance"] == "C"
-        A_load = zeros(1, 1)
+        A_load = Matrix{Any}(undef, (1, 1)) .= 0
     elseif parameter_i["impedance"] == "R"
-        A_load = zeros(1, 1)
+        A_load = Matrix{Any}(undef, (1, 1)) .= 0
         C_sum = 0
         CM_row = self.CM[self.num_sources+load_i, :]
         indizes = CM_row[CM_row.!=0]
@@ -1831,7 +1843,7 @@ function GenerateA(self::NodeConstructor)
     """
     # get A_src
     self.num_fltr = 4 * self.num_fltr_LCL + 3 * self.num_fltr_LC + 2 * self.num_fltr_L
-    A_src = zeros(self.num_fltr, self.num_fltr) # construct matrix of zeros
+    A_src = Matrix{Any}(undef, (self.num_fltr, self.num_fltr)) .= 0# construct matrix of zeros
     A_src_list = [GetASource(self, i) for i in 1:self.num_sources]
 
     # TODO: maybe do in one loop like:
@@ -1859,8 +1871,8 @@ function GenerateA(self::NodeConstructor)
     end
 
     # get A_src_trn_c
-    A_src_trn_c = zeros(self.num_fltr, self.num_connections)
-
+    A_src_trn_c = Matrix{Any}(undef, (self.num_fltr, self.num_connections)) .= 0
+    self
     # start at 1 bc Source 1
     A_src_trn_c_list = [GetASourceTrnC(self, i) for i in 1:self.num_sources]
     cntr = 0
@@ -1885,8 +1897,8 @@ function GenerateA(self::NodeConstructor)
     end
 
     # get A_src_trn_l
-    A_src_trn_l = zeros(self.num_connections, self.num_fltr)
-
+    A_src_trn_l = Matrix{Any}(undef, (self.num_connections, self.num_fltr)) .= 0
+    
     # start at 1 bc Source 1
     A_src_trn_l_list = [GetASourceTrnL(self, i) for i in 1:self.num_sources]
 
@@ -1927,7 +1939,7 @@ function GenerateA(self::NodeConstructor)
         end
 
         A_tran_load_c = reduce(vcat, A_tran_load_c_list)
-        A_load_diag = zeros(self.num_impedance, self.num_impedance)
+        A_load_diag = Matrix{Any}(undef, (self.num_impedance, self.num_impedance)) .= 0
         A_load_list = [GenerateALoad(self, i) for i in 1:self.num_loads]
 
         cntr = 0
@@ -1950,11 +1962,11 @@ function GenerateA(self::NodeConstructor)
                 stop = 1 + cntr
                 cntr += 1
                 start = (i + self.num_loads_RLC + self.num_loads_LC + self.num_loads_RL +
-                    self.num_loads_L)
+                         self.num_loads_L)
                 A_load_diag[start:start, start:start] = ele
             end
         end
-        A_load_zeros = zeros(self.num_fltr, self.num_impedance)
+        A_load_zeros = Matrix{Any}(undef, (self.num_fltr, self.num_impedance)) .= 0
         A_load_zeros_t = A_load_zeros'
     end
 
@@ -1970,7 +1982,7 @@ function GenerateA(self::NodeConstructor)
     if self.parameters["grid"]["phase"] === 1
         return A
     elseif self.parameters["grid"]["phase"] === 3
-        z = zeros(size(A))
+        z = Matrix{Any}(undef, size(A)) .= 0
         A_ = [A z z; z A z; z z A]
         return A_
     end
@@ -1991,7 +2003,7 @@ function GenerateB(self::NodeConstructor)
          [         0,          0, ...,  B_source_n]]
 
     """
-    B = zeros(self.num_fltr + self.num_connections + self.num_impedance, self.num_sources)
+    B = Matrix{Any}(undef, (self.num_fltr + self.num_connections + self.num_impedance, self.num_sources)) .= 0
 
     # start at 1 bc Source 1
     B_source_list = [GetBSource(self, i) for i in 1:self.num_sources]
@@ -2019,7 +2031,7 @@ function GenerateB(self::NodeConstructor)
     if self.parameters["grid"]["phase"] === 1
         return B
     elseif self.parameters["grid"]["phase"] === 3
-        z = zeros(size(B))
+        z = Matrix{Any}(undef, size(B)) .= 0
         B_ = [B z z; z B z; z z B]
         return B_
     end
@@ -2037,7 +2049,7 @@ function GenerateC(self::NodeConstructor)
     if self.parameters["grid"]["phase"] === 1
         return C
     elseif self.parameters["grid"]["phase"] === 3
-        z = zeros(size(C))
+        z = Matrix{Any}(undef, size(C)) .= 0
         C_ = [C z z
             z C z
             z z C]
@@ -2404,7 +2416,7 @@ end
 Returns the Admittance Matrix of the power grid based on the CM matrix and the parameters.
 """
 function GetYBus(self::NodeConstructor)
-    Y_bus = zeros(Complex{Float64}, self.tot_ele, self.tot_ele)  # Y -> tot_ele x tot_ele
+    Y_bus = Matrix{Any}(undef, (self.tot_ele, self.tot_ele)) .= 0  # Y -> tot_ele x tot_ele
     omega = 2 * π * self.parameters["grid"]["f_grid"]
 
     for col in 1:self.tot_ele
@@ -2413,11 +2425,11 @@ function GetYBus(self::NodeConstructor)
                 # CM index defines the number of the cable
                 cable_idx = abs(Int(self.CM[row, col]))
                 G_RL = self.parameters["cable"][cable_idx]["R"] /
-                    (self.parameters["cable"][cable_idx]["R"]^2 +
-                    omega^2 * self.parameters["cable"][1]["L"]^2)
+                       (self.parameters["cable"][cable_idx]["R"]^2 +
+                        omega^2 * self.parameters["cable"][1]["L"]^2)
                 B_RL = (omega * self.parameters["cable"][cable_idx]["L"]) /
-                    (self.parameters["cable"][cable_idx]["R"]^2 +
-                    omega^2 * self.parameters["cable"][1]["L"]^2)
+                       (self.parameters["cable"][cable_idx]["R"]^2 +
+                        omega^2 * self.parameters["cable"][1]["L"]^2)
                 Y_bus[row, col] = -G_RL - im * B_RL
             elseif row == col  # diagonal elements
                 # Go through all col elements of that row to find the connected cable to
@@ -2430,11 +2442,11 @@ function GetYBus(self::NodeConstructor)
                     # add all RL
                     idx = abs(Int(idx))
                     G += self.parameters["cable"][idx]["R"] /
-                        (self.parameters["cable"][idx]["R"]^2 +
-                        omega^2 * self.parameters["cable"][1]["L"]^2)
+                         (self.parameters["cable"][idx]["R"]^2 +
+                          omega^2 * self.parameters["cable"][1]["L"]^2)
                     B += (omega * self.parameters["cable"][idx]["L"]) /
-                        (self.parameters["cable"][idx]["R"]^2 +
-                        omega^2 * self.parameters["cable"][1]["L"]^2)
+                         (self.parameters["cable"][idx]["R"]^2 +
+                          omega^2 * self.parameters["cable"][1]["L"]^2)
                     # and add all shunt C connected to that bus since diagonal element
                     B += omega * self.parameters["cable"][idx]["C"] / 2
                 end
@@ -2625,7 +2637,7 @@ function SetupMG(num_sources, num_cables; random=nothing, avg_pwr=200e3, Vrms=23
         if random == 0 || isnothing(random)
 
             # Grid Forming sources
-            source["mode"]     = "Synchronverter"
+            source["mode"] = "Synchronverter"
             source["fltr"] = "LCL"  # Filter type
             pwr = avg_pwr
             source["pwr"] = pwr # Rated Apparent Power, VA

@@ -91,6 +91,21 @@ https://juliareinforcementlearning.org/
 
 
 """
+function checkifnonlinear(list::Matrix)
+    return checkifnonlinear([list])
+end
+
+function checkifnonlinear(list::Array)
+    for element in list
+        for idx in eachindex(element)
+            if typeof(element[idx]) <: Function
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function ElectricGridEnv(;
     maxsteps=500,
     ts=1 / 10_000,
@@ -155,6 +170,15 @@ function ElectricGridEnv(;
     end
 
     A, B, C, D = GetSystem(nc)
+    #XXX Here is where the Linear or nonlinear solver should be
+
+    checkifnonlinear([A,B,C,D])
+    if checkifnonlinear([A,B,C,D])
+        
+    else
+
+    end
+
     Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
     Bd = (Ad - I) * B #

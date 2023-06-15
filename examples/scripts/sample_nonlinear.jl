@@ -1,5 +1,5 @@
 import Base: /, *, +, -, ^
-
+using LinearAlgebra
 /(a::Number, b::Function) = x -> a / b(x)
 /(a::Function, b::Function) = x -> a(x) / b(x)
 /(a::Function, b::Number) = x -> a(x) / b
@@ -29,17 +29,19 @@ parameters["L"] = funktion(parameters["L_value_1"],parameters["L_value_2"])
 
 f = parameters["L"]
 
-x = [1, 2, 3]
+x = [1, 1, 3, 0]
 
 A = [2 1/f f; 
     2 1/f f;
     f f f]
 
-b = Matrix{Function}(undef,size(A))
+b = Matrix{Any}(undef,(4,4)) .= 0
 
+
+typeof(b[1,1])
 (rows,columns) = size(A)
 
-# thats a little bit stupid. Because I have to make all numbers to a constant function
+# thats a little bit inconvenient. Because I have to make all numbers to a constant function
 for row in 1:rows
     for column in 1:columns
         h = A[row,column]
@@ -51,6 +53,29 @@ for row in 1:rows
     end
 end
 
-# thats where the magic happens
-C(x) = (|>).(x,b)
-C(x)
+(rows,columns) = size(b)
+c = Matrix{Any}(undef,(rows,columns))
+for row in 1:rows
+    for column in 1:columns
+        h = b[row,column]
+        if isa(h,Number)
+            c[row,column] = x->h
+        else
+            c[row,column] = h
+        end
+    end
+end
+# this is where the magic happens
+# C(x) = (|>).(x,c)
+# C(x)
+
+# @show moin = Array{Any}(undef,4) .= 1
+
+# A_trn = Matrix{Any}(undef,(4, 4)) .= 0
+# for (i,e) in enumerate(moin)
+#     A_trn[i,i] = e
+# end
+
+# @show A_trn'
+
+a = [x->2 3 4]
