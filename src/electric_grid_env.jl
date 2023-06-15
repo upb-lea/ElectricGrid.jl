@@ -47,7 +47,7 @@ https://juliareinforcementlearning.org/
 # Arguments
 
 # Keyword Arguments
-- `maxsteps::Int`: the number of time steps that the simulation is run.
+- `maxsteps::Int`: The number of time steps that the simulation is run.
 - `ts::Float`: Sampling time by which the environment is evolved per step.
 - `action_space::Space`: Defines the valide space per action.
 - `state_space::Space`: Defines the valide space per state. Default is [-1, 1] since the
@@ -62,10 +62,10 @@ https://juliareinforcementlearning.org/
 - `reward_function::function(env::ElectricGridEnv, name::String) )`: Function to define the reward
     for a (named) policy. Return 0 per default.
 - `CM::Matrix`: Conectivity matrix to define the structure of the electric power grid
-    (for more details see NodeConstructor)
-- `num_sources::Int`: Number of sources in the electric power grid
-- `num_loads::Int`: Number of loads in the electric power grid
-- `parameter::Dict`: Dictonary to define the parameterof the grid. Entries can be "grid",
+    (for more details see NodeConstructor).
+- `num_sources::Int`: Number of sources in the electric power grid.
+- `num_loads::Int`: Number of loads in the electric power grid.
+- `parameter::Dict`: Dictonary to define the parameter of the grid. Entries can be "grid",
     "source", "load", "cable". Here, e.g. the electric components are defined.
 - `x0::Vector`: Initial states which will be used in reset!().
 - `t0::Float`: Initial time where the env starts from simulating.
@@ -81,10 +81,10 @@ https://juliareinforcementlearning.org/
 - `state_action_delay::Int`: Specifies the number of simulation steps it is delayed from
     giving an action to the env to when it is applied to the plant.
 - `t_end::Float`: Spezifies the end time of an episode. If defined it overwrites maxsteps.
-- `verbosity::Int`: Deinfes the level of how much information (warnings, info,...) is
+- `verbosity::Int`: Defines the level of how much information (warnings, info,...) is
     printed to the console (0 - nothing, 1 - warn, 2 - debug(warn, info,...)).
-- `state_ids_RL::Vector{String}`: State ids which are given to RL agents.
-- `action_ids_RL::Vector{String}`: Action ids which are given to RL agents.
+- `state_ids_RL::Vector{String}`: State IDs which are given to RL agents.
+- `action_ids_RL::Vector{String}`: Action IDs which are given to RL agents.
 
 # Return Values
 - `ElectricGridEnv::ElectricGridEnv`: Environment an agent can interact with
@@ -92,38 +92,38 @@ https://juliareinforcementlearning.org/
 
 """
 function ElectricGridEnv(;
-        maxsteps = 500,
-        ts = 1/10_000,
-        action_space = nothing,
-        state_space = nothing,
-        prepare_action = nothing,
-        featurize = nothing,
-        reward_function = nothing,
-        CM = nothing,
-        num_sources = nothing,
-        num_loads = nothing,
-        parameters = nothing,
-        x0 = nothing,
-        t0 = 0.0,
-        state_ids = nothing,
-        convert_state_to_cpu = true,
-        use_gpu = false,
-        reward = nothing,
-        action = nothing,
-        action_ids = nothing,
-        action_delay = 1,
-        t_end = nothing,
-        verbosity = 0,
-        agent_dict = nothing
-    )
+    maxsteps=500,
+    ts=1 / 10_000,
+    action_space=nothing,
+    state_space=nothing,
+    prepare_action=nothing,
+    featurize=nothing,
+    reward_function=nothing,
+    CM=nothing,
+    num_sources=nothing,
+    num_loads=nothing,
+    parameters=nothing,
+    x0=nothing,
+    t0=0.0,
+    state_ids=nothing,
+    convert_state_to_cpu=true,
+    use_gpu=false,
+    reward=nothing,
+    action=nothing,
+    action_ids=nothing,
+    action_delay=1,
+    t_end=nothing,
+    verbosity=0,
+    agent_dict=nothing
+)
 
     if !(isnothing(t_end))
-        maxsteps = floor(t_end/ts) + 1
+        maxsteps = floor(t_end / ts) + 1
     end
 
     if !(isnothing(num_sources) || isnothing(num_loads))
-        nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM,
-                             parameters = parameters, ts = ts, verbosity = verbosity)
+        nc = NodeConstructor(num_sources=num_sources, num_loads=num_loads, CM=CM,
+            parameters=parameters, ts=ts, verbosity=verbosity)
     else
 
         if isnothing(parameters)
@@ -131,10 +131,10 @@ function ElectricGridEnv(;
             @info("Three phase electric power grid with 2 sources and 1 load is created!
             Parameters are drawn randomly! To change, please define parameters
             (see node_constructor)")
-            CM = [ 0. 0. 1.
-                   0. 0. 2
-                  -1. -2. 0.]
-            nc = NodeConstructor(num_sources = 2, num_loads = 1, CM = CM, verbosity = verbosity)
+            CM = [0.0 0.0 1.0
+                0.0 0.0 2
+                -1.0 -2.0 0.0]
+            nc = NodeConstructor(num_sources=2, num_loads=1, CM=CM, verbosity=verbosity)
         else
             if haskey(parameters, "source") && haskey(parameters, "load")
                 num_sources = length(parameters["source"])
@@ -149,13 +149,13 @@ function ElectricGridEnv(;
                 num_sources = 2
                 num_loads = 1
             end
-            nc = NodeConstructor(num_sources = num_sources, num_loads = num_loads, CM = CM,
-            parameters = parameters, ts = ts, verbosity = verbosity)
+            nc = NodeConstructor(num_sources=num_sources, num_loads=num_loads, CM=CM,
+                parameters=parameters, ts=ts, verbosity=verbosity)
         end
     end
 
     A, B, C, D = GetSystem(nc)
-    Ad = exp(A*ts) #fastExpm(A*ts) might be a better option
+    Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
     Bd = (Ad - I) * B #
     ldiv!(factorize(A), Bd)
@@ -172,7 +172,7 @@ function ElectricGridEnv(;
     end
 
     if isnothing(action_space)
-        action_space = Space([ -1.0..1.0 for i = 1:length(sys_d.B[1,:]) ], )
+        action_space = Space([-1.0 .. 1.0 for i = 1:length(sys_d.B[1, :])],)
     end
 
     if isnothing(state_ids)
@@ -213,7 +213,7 @@ function ElectricGridEnv(;
                     agent_dict[name] = Dict(
                         "source_number" => [ns],
                         "mode" => nc.parameters["source"][ns]["mode"],
-                        )
+                    )
                     agent_dict[name]["state_ids"] = filter(x -> split(x, "_")[1] == ssa, state_ids)
                     agent_dict[name]["action_ids"] = filter(x -> split(x, "_")[1] == ssa, action_ids)
                 end
@@ -222,7 +222,7 @@ function ElectricGridEnv(;
     end
 
 
-    inner_featurize = function(x0 = nothing, t0 = nothing; env = nothing, name = nothing)
+    inner_featurize = function (x0=nothing, t0=nothing; env=nothing, name=nothing)
         if !isnothing(name)
             if name == "classic"
                 return env.state
@@ -242,27 +242,27 @@ function ElectricGridEnv(;
 
 
     if isnothing(prepare_action)
-        prepare_action = function(env)
+        prepare_action = function (env)
             env.action
         end
     end
 
     if isnothing(reward_function)
-        reward_function = function(env, name = nothing)
+        reward_function = function (env, name=nothing)
             return 0.0
         end
     end
 
     if isnothing(x0)
-        x0 = [ 0.0 for i = 1:length(sys_d.A[1,:]) ]
+        x0 = [0.0 for i = 1:length(sys_d.A[1, :])]
     end
 
     x = x0
     t = t0
-    state = inner_featurize(x0,t0)
+    state = inner_featurize(x0, t0)
 
     if isnothing(state_space)
-        state_space = Space([ -1.0..1.0 for i = 1:length(state) ], )
+        state_space = Space([-1.0 .. 1.0 for i = 1:length(state)],)
     end
 
     if use_gpu
@@ -276,7 +276,7 @@ function ElectricGridEnv(;
 
     vdc_fixed = 0
     v_dc = ones(nc.num_sources)  # vector to store evaluated v_dc_arr (constants and
-                                 # functions) in the env, needed e.g. in the DataHook
+    # functions) in the env, needed e.g. in the DataHook
     v_dc_arr = []  # array to store all functions for v_dc as well as constants
     for (source_number, source) in enumerate(nc.parameters["source"])
         if haskey(source, "source_type")
@@ -299,10 +299,10 @@ function ElectricGridEnv(;
                 #       define the offet for $source_number?!?!?
                 # TODO built pv module from parameter dict - where to define? In env?
                 pv_m = SolarModule()
-                SolarArray = SolarArray(;SolarModule=pv_m)
+                SolarArray = SolarArray(; SolarModule=pv_m)
                 # find(x -> .... source$source_number_i_L in state_ids)
                 fun = (env, G, T) -> GetV(:($SolarArray),
-                                            env.x[:($source_number)]*env.action, G, T)
+                    env.x[:($source_number)] * env.action, G, T)
                 push!(v_dc_arr, fun)
 
                 # first value set to 0
@@ -345,8 +345,8 @@ function ElectricGridEnv(;
                 else
                     i_limit_fixed += 1
                     norm_array[state_index] = 1.15 * sqrt(2) *
-                        nc.parameters["source"][source_number]["pwr"]/
-                        (3*nc.parameters["grid"]["v_rms"])
+                                              nc.parameters["source"][source_number]["pwr"] /
+                                              (3 * nc.parameters["grid"]["v_rms"])
                     nc.parameters["source"][source_number]["i_limit"] = norm_array[state_index]
                 end
             elseif contains(states[state_index], "_v")
@@ -416,20 +416,20 @@ function ElectricGridEnv(;
         fill!(action_delay_buffer, zeros(length(action_space)))
     end
 
-    y = (A * Vector(x) + B * (Vector(action)) ) .* (state_parameters)
+    y = (A * Vector(x) + B * (Vector(action))) .* (state_parameters)
 
     ElectricGridEnv(verbosity, nc, sys_d, action_space, state_space,
-    false, inner_featurize, featurize, prepare_action, reward_function,
-    x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
-    v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
-    reward, action, action_ids, action_delay_buffer,
-    A, B, C, D, state_parameters, y, agent_dict)
+        false, inner_featurize, featurize, prepare_action, reward_function,
+        x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
+        v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
+        reward, action, action_ids, action_delay_buffer,
+        A, B, C, D, state_parameters, y, agent_dict)
 end
 
 RLBase.action_space(env::ElectricGridEnv) = env.action_space
 RLBase.state_space(env::ElectricGridEnv) = env.state_space
-RLBase.reward(env::ElectricGridEnv) =  env.reward
-RLBase.DynamicStyle(env::ElectricGridEnv) =  RLBase.Simultaneous
+RLBase.reward(env::ElectricGridEnv) = env.reward
+RLBase.DynamicStyle(env::ElectricGridEnv) = RLBase.Simultaneous
 
 function RLBase.reward(env::ElectricGridEnv, name::String)
     return env.reward_function(env, name)
@@ -439,7 +439,7 @@ RLBase.is_terminated(env::ElectricGridEnv) = env.done
 RLBase.state(env::ElectricGridEnv) = env.state
 
 function RLBase.state(env::ElectricGridEnv, name::String)
-    return env.inner_featurize(;env = env, name = name)
+    return env.inner_featurize(; env=env, name=name)
 end
 
 """
@@ -503,7 +503,7 @@ function (env::ElectricGridEnv)(action)
     G = 1000
     T = 27
     env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr]
-    env.action = env.action .* repeat(env.v_dc/2, inner = env.nc.parameters["grid"]["phase"])
+    env.action = env.action .* repeat(env.v_dc / 2, inner=env.nc.parameters["grid"]["phase"])
 
     env.action = env.prepare_action(env)
 
@@ -517,20 +517,20 @@ function (env::ElectricGridEnv)(action)
     u = [env.action env.action]
 
     xout_d = CustomLsim(env.sys_d, u, t, x0=env.x)
-    env.x = xout_d[:,2]
+    env.x = xout_d[:, 2]
 
     if env.convert_state_to_cpu
-        env.state = Array(xout_d)'[2,:] ./ env.norm_array
+        env.state = Array(xout_d)'[2, :] ./ env.norm_array
     else
-        env.state = xout_d'[2,:] ./ env.norm_array
+        env.state = xout_d'[2, :] ./ env.norm_array
     end
 
-    env.state = env.inner_featurize(; env = env)
+    env.state = env.inner_featurize(; env=env)
     env.reward = env.reward_function(env)
     env.done = (env.steps >= env.maxsteps) || (any(abs.(env.x ./ env.norm_array) .> 1))
 
     if env.done
-        if any(abs.(env.x./env.norm_array) .> 1)
+        if any(abs.(env.x ./ env.norm_array) .> 1)
             states_exceeded = findall(abs.(env.x ./ env.norm_array) .> 1)
             if env.verbosity > 0
                 @warn ("The state(s) $(env.state_ids[states_exceeded]) exceeded limit(s)
@@ -542,11 +542,11 @@ function (env::ElectricGridEnv)(action)
     end
 
     # calcultaing the inductor voltages and capacitor currents
-    env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action)) ) .* (env.state_parameters)
+    env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action))) .* (env.state_parameters)
 end
 
 function GetVDC_PV(I)
 
-    V_dc = I *N_cell * P_cell
+    V_dc = I * N_cell * P_cell
 
 end
