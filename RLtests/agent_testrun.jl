@@ -103,13 +103,12 @@ my_custom_agents = Dict("my_agent" => agent)
 
 controllers = SetupAgents(env, my_custom_agents)
 
-learnhook = DataHook()
 
 function learn()
     steps_total = 1_500_000
     steps_loop = 50_000
 
-    Learn(controllers, env, steps = steps_loop, hook = learnhook)
+    Learn(controllers, env, steps = steps_loop)
     while length(controllers.hook.df[!,"reward"]) <= steps_total
 
         println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
