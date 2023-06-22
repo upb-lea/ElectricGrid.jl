@@ -12,7 +12,7 @@ Dict{Any, Any}(
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "control_type" => "RL",
-                        "mode" => "my_ddpg",
+                        "mode" => "my_agent",
                         "fltr" => "L",
                         #"L1" => 0.0008,
                         ),
@@ -41,7 +41,7 @@ function reference(t)
 end
 
 featurize_ddpg = function(state, env, name)
-    if name == "ElectricGrid_ddpg_1"
+    if name == "my_agent"
 
         #state = state[findall(x -> split(x, "_")[2] == "i" , env.agent_dict["ElectricGrid_ddpg_1"]["state_ids"])]
 
@@ -95,11 +95,11 @@ env = ElectricGridEnv(
     verbosity = 0)
 
 
-agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
-    ns = length(state(env, "my_ddpg")),
+agent = CreateAgentDdpg(na = length(env.agent_dict["my_agent"]["action_ids"]),
+    ns = length(state(env, "my_agent")),
     use_gpu = false)
 
-my_custom_agents = Dict("my_ddpg" => agent)
+my_custom_agents = Dict("my_agent" => agent)
 
 controllers = SetupAgents(env, my_custom_agents)
 
@@ -109,6 +109,7 @@ function learn()
     steps_total = 1_500_000
     steps_loop = 50_000
 
+    Learn(controllers, env, steps = steps_loop, hook = learnhook)
     while length(controllers.hook.df[!,"reward"]) <= steps_total
 
         println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
@@ -120,7 +121,7 @@ end
 
 learn()
 
-plot_rewardresults()
+plot_rewardresults(controllers = controllers)
 
 hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
