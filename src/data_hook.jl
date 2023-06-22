@@ -22,11 +22,12 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
     tmp = []
     column_names = []
     list_iterator = 0
-    ep = 1
+    ep = 0
 
     plot_rewards = false
     rewards::Vector{Vector{Float64}} = []
     reward::Vector{Float64} = [0.0]
+    n_timesteps::Vector{Int} = []
     policy_names::Vector{String} = []
 
     is_inner_hook_RL = false
@@ -68,7 +69,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
 
     # rest
     #hook.df = DataFrame()
-    #hook.ep = 1
+    #hook.ep = 1 
 
     # add states of chosen sources to the state and action plotting list
     # with this method, in addition to the states at L and C, one also obtains the states of R
@@ -198,6 +199,14 @@ function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
         end
     end
 
+end
+
+function (hook::DataHook)(::PreEpisodeStage, agent, env, training = false)
+    hook.ep += 1
+    if !isempty(hook.tmp)
+        hook.list_iterator = 1
+    end
+    hook.reward = [0.0]
 end
 
 function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
@@ -744,7 +753,6 @@ function (hook::DataHook)(::PostActStage, agent, env, training = false)
 end
 
 function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
-    hook.ep += 1
 
     if training
         if isa(agent, MultiController)
@@ -767,6 +775,7 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
         end
 
         push!(hook.rewards, hook.reward)
+        push!(hook.n_timesteps, env.steps)
 
         if isa(agent, MultiController)
             hook.reward = zeros(length(agent.agents))
