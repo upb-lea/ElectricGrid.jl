@@ -531,3 +531,66 @@ function RenderPLoad(;env, hook, episode, load_ids)
     display(p)
 
 end
+
+
+
+
+"""
+    plot_rewardresults(rewardresults = nothing)
+
+    # Description
+    Plots the rewards with time steps on the x-axis and std as a shadowed area around the curve.
+    
+    # Arguments
+    - `rewardresults::Float64[]`: List containing the rewards for each timestep
+
+"""
+function plot_rewardresults(rewardresults = nothing)
+    global plotresults = Float64[]
+    global plotresults_std = Float64[]
+    if isnothing(rewardresults)
+        rewardresults = convert(Vector{Float64}, controllers.hook.df[!,"reward"])
+    end
+
+    global batch_size = Int(floor(length(rewardresults)/3000))
+    xx = [i*batch_size+1 for i in 1:3000]
+    for i in 1:3000
+        temp = []
+        append!(temp,rewardresults[(i-1)*batch_size+1:i*batch_size])
+        push!(plotresults, mean(temp))
+        push!(plotresults_std, std(temp))
+    end
+
+    rl = Layout(
+        plot_bgcolor = "white",
+        font=attr(
+            family="Arial",
+            size=16,
+            color="black"
+        ),
+        yaxis=attr(
+            title="reward",
+            showline=true,
+            linewidth=2,
+            linecolor="black",
+            showgrid=true,
+            gridwidth=1,
+            gridcolor="LightGrey",
+            ),
+        xaxis=attr(
+            title="time steps",
+            showline=true,
+            linewidth=2,
+            linecolor="black",
+            showgrid=true,
+            gridwidth=1,
+            gridcolor="LightGrey",
+            ),
+    )
+
+    plot([
+        scatter(x=xx, y=plotresults.+plotresults_std, mode="lines", line=attr(width=0.0)),
+        scatter(x=xx, y=plotresults.-plotresults_std, mode="none", fillcolor="rgba(111, 120, 219, 0.3)", fill="tonexty", showlegend=false),
+        scatter(x=xx, y=plotresults, mode="lines", line_color="indigo", showlegend=false),
+    ], rl)
+end
