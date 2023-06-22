@@ -1091,7 +1091,9 @@ function SwingMode(Source::ClassicalControls, num_source, V_filt_cap_new; t_end 
 
     Source.Vd_abc_new[num_source, :, end] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
 
-    PhaseLockedLoop3ph(Source, num_source, V_filt_cap_new)
+    #PhaseLockedLoop3ph(Source, num_source, V_filt_cap_new)
+    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t,
+Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
 
     Source.f_source[num_source, :, end] = Source.fsys*[1 1 1]
     Source.θ_source[num_source, :, end] = θph
@@ -1137,7 +1139,8 @@ function VoltageControlMode(Source::ClassicalControls, num_source, V_filt_cap_ne
     VoltageController(Source, num_source, θ, ω, V_filt_cap_new, I_filt_poc_new)
     CurrentController(Source, num_source, θ, ω, V_filt_cap_new, I_filt_inv_new)
 
-    PhaseLockedLoop3ph(Source, num_source, V_filt_cap_new)
+    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t,
+Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
 
     Source.f_source[num_source, :, end] = Source.fsys*[1 1 1]
     Source.θ_source[num_source, :, end] = θph
@@ -1157,14 +1160,15 @@ function DroopControlMode(Source::ClassicalControls, num_source, V_filt_cap_new,
 
     Vrms = Ramp(pu*Source.Vrms[num_source], Source.ts, Source.steps; t_end = t_end)
 
-    DroopControl(Source, num_source, Vrms = Vrms)
+    Source.ω_droop, Source.θ_droop, Source.V_ref = DroopControl(Source.ω_droop, Source.θ_droop, Source.p_q_poc, Source.fsys, Source.D, Source.ts, Vrms, Source.V_ref, num_source)
     θ = Source.θ_droop[num_source, 1]
     ω = Source.ω_droop[num_source, 1, end]
 
     VoltageController(Source, num_source, θ, ω, V_filt_cap_new, I_filt_poc_new)
     CurrentController(Source, num_source, θ, ω, V_filt_cap_new, I_filt_inv_new)
 
-    PhaseLockedLoop3ph(Source, num_source, V_filt_cap_new)
+    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t,
+Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
 
     Source.f_source[num_source, :, end] = (ω/2π)*[1 1 1]
     Source.θ_source[num_source, :, end] = [θ; θ - 120π/180; θ + 120π/180]
@@ -1184,7 +1188,8 @@ function PQControlMode(Source::ClassicalControls, num_source, pq0, V_filt_cap_ne
         pq0 = pq0.*(Source.S[num_source]/norm(pq0))
     end
 
-    PhaseLockedLoop3ph(Source, num_source, V_filt_cap_new)
+    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t,
+Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
 
     #PhaseLockedLoop1ph(Source, num_source, ph = 1)
     #PhaseLockedLoop1ph(Source, num_source, ph = 2)
@@ -1227,7 +1232,8 @@ Wrapper for more elaborate grid following control. A controllable load on the re
 """
 function PVControlMode(Source::ClassicalControls, num_source, pq0, V_filt_cap_new, I_filt_inv_new)
 
-    PhaseLockedLoop3ph(Source, num_source, V_filt_cap_new)
+    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t,
+Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
     #PhaseLockedLoop1ph(Source, num_source, ph = 1)
     #PhaseLockedLoop1ph(Source, num_source, ph = 2)
     #PhaseLockedLoop1ph(Source, num_source, ph = 3)
@@ -1278,7 +1284,8 @@ function SynchronverterMode(Source::ClassicalControls, num_source, V_filt_cap_ne
 
     CurrentController(Source, num_source, Source.θ_sync[num_source], Source.ω_sync[num_source, end], V_filt_cap_new, I_filt_inv_new)
 
-    PhaseLockedLoop3ph(Source, num_source, V_filt_cap_new)
+    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t,
+Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
 
     ω = Source.ω_sync[num_source, end]
     θ = Source.θ_sync[num_source]
@@ -1295,7 +1302,7 @@ end
 # Description
 Tuned 3 phase Phase Locked loop.
 """
-function PhaseLockedLoop3ph(Source::ClassicalControls, num_source, V_filt_cap_new; ωn = Source.fsys + 20, ξ = 0.35)
+function PhaseLockedLoop3ph(θpll, pll_err, pll_err_t, ts, fsys, fpll, num_source, V_filt_cap_new; ωn = fsys + 20, ξ = 0.35)
 
     #= A robost 3 phase phase locked loop
 
@@ -1403,7 +1410,7 @@ function PhaseLockedLoop3ph(Source::ClassicalControls, num_source, V_filt_cap_ne
     Ki = ωn^2 # tuning
     Kp = ξ*2*sqrt(Ki) # tuning
 
-    θ = Source.θpll[num_source, 1, end]
+    θ = θpll[num_source, 1, end]
 
     v_αβγ = ClarkeTransform(V_filt_cap_new)
 
@@ -1414,24 +1421,24 @@ function PhaseLockedLoop3ph(Source::ClassicalControls, num_source, V_filt_cap_ne
     err_new = v_αβγ[2]*cos(θ) - v_αβγ[1]*sin(θ)
 
     f_new, err_t_new, err_int =
-    PIController(err_new, Source.pll_err[num_source, 1, :], Source.pll_err_t[num_source, 1], Kp, Ki, Source.ts, bias = Source.fsys, max_t_err = 0.00015)
+    PIController(err_new, pll_err[num_source, 1, :], pll_err_t[num_source, 1], Kp, Ki, ts, bias = fsys, max_t_err = 0.00015)
 
-    θ = ThirdOrderIntegrator(θ, Source.ts, 2π*[Source.fpll[num_source, 1, 2:end]; f_new])
+    θ = ThirdOrderIntegrator(θ, ts, 2π*[fpll[num_source, 1, 2:end]; f_new])
 
-    roll(Source.fpll, num_source)
-    Source.fpll[num_source, 1, end] = f_new[1]
-    Source.fpll[num_source, 2, end] = f_new[1]
-    Source.fpll[num_source, 3, end] = f_new[1]
+    roll(fpll, num_source)
+    fpll[num_source, 1, end] = f_new[1]
+    fpll[num_source, 2, end] = f_new[1]
+    fpll[num_source, 3, end] = f_new[1]
 
-    roll(Source.θpll, num_source)
-    Source.θpll[num_source, 1, end] = (θ.%(2π))
-    Source.θpll[num_source, 2, end] = ((θ - 120π/180).%(2π))
-    Source.θpll[num_source, 3, end] = ((θ + 120π/180).%(2π))
+    roll(θpll, num_source)
+    θpll[num_source, 1, end] = (θ.%(2π))
+    θpll[num_source, 2, end] = ((θ - 120π/180).%(2π))
+    θpll[num_source, 3, end] = ((θ + 120π/180).%(2π))
 
-    Source.pll_err_t[num_source, 1] = err_t_new[1]
-    Source.pll_err[num_source, 1, :] = err_int
+    pll_err_t[num_source, 1] = err_t_new[1]
+    pll_err[num_source, 1, :] = err_int
 
-    return nothing
+    return fpll, θpll, pll_err_t, pll_err
 end
 
 function PhaseLockedLoop1ph(Source::ClassicalControls, num_source; Kp = 0.001, Ki = 1, ph = 1, k_sogi = 0.8)
@@ -1663,27 +1670,27 @@ function PVControl(Source::ClassicalControls, num_source, V_filt_cap_new; pq0_re
     return pq0_ref
 end
 
-function DroopControl(Source::ClassicalControls, num_source; Vrms = Source.Vrms[num_source])
+function DroopControl(ω_droop, θ_droop, p_q_poc, fsys, D, ts, Vrms, V_ref, num_source)
 
-    ω = Source.ω_droop[num_source, 1, :]
-    θ = Source.θ_droop[num_source, 1]
-    p_q = Source.p_q_poc[num_source, :]
+    ω = ω_droop[num_source, 1, :]
+    θ = θ_droop[num_source, 1]
+    p_q = p_q_poc[num_source, :]
 
-    ωsys = Source.fsys*2π
+    ωsys = fsys*2π
 
-    ω_new = ωsys - p_q[1]/(ωsys*Source.D[num_source, 1])
-    Source.ω_droop[num_source, 1, 1:2] = ω[2:end]
-    Source.ω_droop[num_source, :, end] = [ω_new; ω_new; ω_new]
+    ω_new = ωsys - p_q[1]/(ωsys*D[num_source, 1])
+    ω_droop[num_source, 1, 1:2] = ω[2:end]
+    ω_droop[num_source, :, end] = [ω_new; ω_new; ω_new]
 
-    θ_new = ThirdOrderIntegrator(θ, Source.ts, [ω[2:end]; ω_new])%(2π)
+    θ_new = ThirdOrderIntegrator(θ, ts, [ω[2:end]; ω_new])%(2π)
 
-    Source.θ_droop[num_source, :] = [θ_new; θ_new - 120*π/180; θ_new + 120*π/180].%(2π)
+    θ_droop[num_source, :] = [θ_new; θ_new - 120*π/180; θ_new + 120*π/180].%(2π)
 
-    e = sqrt(2)*Vrms - p_q[2]/Source.D[num_source, 2]
+    e = sqrt(2)*Vrms- p_q[2]/D[num_source, 2]
 
-    Source.V_ref[num_source, :] = e*cos.(Source.θ_droop[num_source, :])
+    V_ref[num_source, :] = e*cos.(θ_droop[num_source, :])
 
-    return nothing
+    return ω_droop, θ_droop, V_ref
 end
 
 """

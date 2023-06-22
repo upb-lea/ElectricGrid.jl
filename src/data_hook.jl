@@ -69,7 +69,7 @@ function (hook::DataHook)(::PreExperimentStage, agent, env, training = false)
 
     # rest
     #hook.df = DataFrame()
-    #hook.ep = 1 
+    #hook.ep = 1
 
     # add states of chosen sources to the state and action plotting list
     # with this method, in addition to the states at L and C, one also obtains the states of R
@@ -274,14 +274,21 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
 
                 p_q_inv =  pqTheory((ClassicalPolicy.Source.Vdc[s_idx]/2)*ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end-ClassicalPolicy.Source.action_delay], ClassicalPolicy.Source.I_filt_inv[s_idx, :, end], ClassicalPolicy.Source.power_mat)
 
+                #= println("power_mat = ")
+                display(ClassicalPolicy.Source.power_mat) =#
+                #= println("I_filt_inv = ")
+                display(ClassicalPolicy.Source.I_filt_inv[s_idx, :, end]) =#
+                #= println("Vd_abc_new = ")
+                display(ClassicalPolicy.Source.Vd_abc_new[s_idx, :, end-ClassicalPolicy.Source.action_delay]) =#
+
                 if hook.list_iterator == 0
                     push!(hook.column_names, Symbol("source$(idx)_p_inv"))
                     push!(hook.tmp, p_q_inv[1])
                     push!(hook.column_names, Symbol("source$(idx)_q_inv"))
                     push!(hook.tmp, p_q_inv[2])
                 else
-                    append_tmp(hook, ClassicalPolicy.Source.p_q_inv[s_idx, 1])
-                    append_tmp(hook, ClassicalPolicy.Source.p_q_inv[s_idx, 2])
+                    append_tmp(hook, p_q_inv[1])
+                    append_tmp(hook, p_q_inv[2])
                 end
             end
         end
