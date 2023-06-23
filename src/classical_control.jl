@@ -1091,8 +1091,7 @@ function SwingMode(Source::ClassicalControls, num_source, V_filt_cap_new; t_end 
 
     Source.Vd_abc_new[num_source, :, end] = 2*Source.V_ref[num_source, :]/Source.Vdc[num_source]
 
-    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t,
-Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
+    Source.fpll, Source.θpll, Source.pll_err_t, Source.pll_err = PhaseLockedLoop3ph(Source.θpll, Source.pll_err, Source.pll_err_t, Source.ts, Source.fsys, Source.fpll, num_source, V_filt_cap_new)
 
     Source.f_source[num_source, :, end] = Source.fsys*[1 1 1]
     Source.θ_source[num_source, :, end] = θph
