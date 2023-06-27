@@ -103,6 +103,7 @@ function learn()
 
     an_scheduler_loops = 20
 
+    Learn(controllers, env, steps = num_steps, hook = learnhook)
     while true
         if length(controllers.hook.df[!,"reward"]) <= 1_500_000
             println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
