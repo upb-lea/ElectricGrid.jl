@@ -10,7 +10,7 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 
 Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
 t_end    = 0.2     # total run time, seconds
-num_eps  = 4       # number of episodes to run
+num_eps  = 1       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
@@ -58,7 +58,7 @@ source_list = []
 
 source = Dict()
 
-source["mode"]     = 4
+source["mode"]     = 3
 
 source["fltr"]     = "LCL"  # Filter type
 
@@ -237,9 +237,9 @@ for eps in 1:num_eps
                       episode = eps,
                       states_to_plot  = [],
                       actions_to_plot = [],
-                      power_p_inv     = [2],
+                      power_p_inv     = [1 2],
                       power_p_poc     = [],
-                      power_q_inv     = [2],
+                      power_q_inv     = [],
                       power_q_poc     = [],
                       v_mag_inv       = [],
                       v_mag_poc       = [],
