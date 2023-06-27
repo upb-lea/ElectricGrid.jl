@@ -238,7 +238,7 @@ for eps in 1:num_eps
                       states_to_plot  = [],
                       actions_to_plot = [],
                       power_p_inv     = [1 2],
-                      power_p_poc     = [],
+                      power_p_poc     = [1 2],
                       power_q_inv     = [],
                       power_q_poc     = [],
                       v_mag_inv       = [],
