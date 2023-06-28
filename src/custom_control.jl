@@ -38,6 +38,39 @@ function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVec
     return x
 end
 
+function CustomNonlinearsim(AAA,B,u,tspan,x0)
+    (rows, columns) = size(AAA)
+    AA = Matrix{Any}(undef, (rows, columns)) 
+    for row in 1:rows
+        for column in 1:columns
+            h = AAA[row, column]
+            if isa(h, Number)
+                AA[row, column] = x -> h
+            else
+                AA[row, column] = h
+            end
+        end
+    end
+
+    A(x) = (|>).(x, AA)
+
+    function f(dx, x, p, t)
+        dx .= A(x) * x + B*p
+    end
+
+    prob = ODEProblem(f, x0, tspan, u)
+    alg = Tsit5()
+    sol = solve(prob, alg, reltol=1e-8, abstol=1e-8)
+    xout_d = sol.u[2]
+    help = Array{Float64}(undef,0)
+
+    for i in xout_d
+        append!(help,i)
+    end
+
+    return help
+end
+
 @views function CustomLtitr(A::AbstractMatrix, B::AbstractMatrix, u::AbstractVecOrMat,
     x0::AbstractVecOrMat=zeros(eltype(A), size(A, 1)))
 

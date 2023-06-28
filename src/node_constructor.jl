@@ -3,8 +3,8 @@ import Base: /, *, +, -, ^
 /(a::Number, b::Function) = x -> a / b(x)
 /(a::Function, b::Function) = x -> a(x) / b(x)
 /(a::Function, b::Number) = x -> a(x) / b
-*(a::Function, b::Number) = x -> a(x) * b
-*(a::Number, b::Function) = x -> a * b(x)
+*(a::Number, f::Function) = x -> a * f(x)
+*(a::Function, b::Number) = b * a
 *(a::Function, b::Function) = x -> a(x) * b(x)
 +(a::Function, b::Number) = x -> a(x) + b
 +(b::Number, a::Function) = x -> a(x) + b
@@ -1370,7 +1370,7 @@ function GetASource(self::NodeConstructor, source_i)
             C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
-        A_src[4, 3] = C_sum^(-1)
+        A_src[4, 3] = 1 / C_sum
     elseif parameter_i["fltr"] == "LC"
         A_src = Matrix{Any}(undef, (3, 3)) .= 0
         A_src[1, 1] = -(parameter_i["R1"]) / parameter_i["L1"]
@@ -1389,7 +1389,7 @@ function GetASource(self::NodeConstructor, source_i)
             C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
-        A_src[3, 1] = C_sum^(-1)
+        A_src[3, 1] = 1 / C_sum
         A_src[3, 2] = 1 / parameter_i["R_C"] * (C_sum)^(-1)
         A_src[3, 3] = -1 / parameter_i["R_C"] * (C_sum)^(-1)
 
@@ -1408,8 +1408,7 @@ function GetASource(self::NodeConstructor, source_i)
             idx = Int(idx)
             C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
-
-        A_src[2, 1] = C_sum^(-1)
+        A_src[2, 1] = 1 / C_sum
     else
         throw("Expect filter to be \"LCL\", \"LC\" or \"L\", not $(parameter_i["fltr"]).")
     end
@@ -1464,7 +1463,7 @@ function GetASourceTrnC(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_c[4, idx] = sign * -(C_sum^(-1))
+            A_src_trn_c[4, idx] = sign * -(1 / C_sum)
         end
     elseif parameter_i["fltr"] == "LC"
         A_src_trn_c = Matrix{Any}(undef, (3, self.num_connections)) .= 0
@@ -1481,7 +1480,7 @@ function GetASourceTrnC(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_c[3, idx] = sign * -(C_sum^(-1))
+            A_src_trn_c[3, idx] = sign * -(1 / C_sum)
         end
     elseif parameter_i["fltr"] == "L"
         A_src_trn_c = Matrix{Any}(undef, (2, self.num_connections)) .= 0
@@ -1498,7 +1497,7 @@ function GetASourceTrnC(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_c[2, idx] = sign * -(C_sum^(-1))
+            A_src_trn_c[2, idx] = sign * -(1 / C_sum)
         end
     end
 
@@ -1515,20 +1514,19 @@ Create the A_src_trn_l entry in the A matrix.
 function GetASourceTrnL(self::NodeConstructor, source_i)
     parameter_i = self.parameters["source"][source_i]
     if parameter_i["fltr"] == "LCL"
-        A_src_trn_l = Matrix{Any}(undef, (self.num_connections,4)) .= 0
+        A_src_trn_l = Matrix{Any}(undef, (self.num_connections, 4)) .= 0
         CM_col = self.CM[source_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
         indizes_ = indizes .* signs # delet signs from indices
 
-        #XXX Irgendwas geht hier in die Hose
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_l[idx,4] = sign * (1 / self.parameters["cable"][idx]["L"])
+            A_src_trn_l[idx, 4] = sign * (1 / self.parameters["cable"][idx]["L"])
         end
 
     elseif parameter_i["fltr"] == "LC"
-        A_src_trn_l = Matrix{Any}(undef, (self.num_connections,3)) .= 0
+        A_src_trn_l = Matrix{Any}(undef, (self.num_connections, 3)) .= 0
         CM_col = self.CM[source_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1536,11 +1534,11 @@ function GetASourceTrnL(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_l[idx,3] = sign * (1 / self.parameters["cable"][idx]["L"])
+            A_src_trn_l[idx, 3] = sign * (1 / self.parameters["cable"][idx]["L"])
         end
 
     elseif parameter_i["fltr"] == "L"
-        A_src_trn_l = Matrix{Any}(undef, (self.num_connections,2)) .= 0
+        A_src_trn_l = Matrix{Any}(undef, (self.num_connections, 2)) .= 0
         CM_col = self.CM[source_i, :]
         indizes = CM_col[CM_col.!=0] # get entries unequal 0
         signs = [sign(x) for x in indizes] # get signs
@@ -1548,7 +1546,7 @@ function GetASourceTrnL(self::NodeConstructor, source_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_src_trn_l[idx,2] = sign * 1 / self.parameters["cable"][idx]["L"]
+            A_src_trn_l[idx, 2] = sign * 1 / self.parameters["cable"][idx]["L"]
         end
 
     end
@@ -1600,7 +1598,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_tran_load_c[1, idx] = sign * -(C_sum^(-1))
+            A_tran_load_c[1, idx] = sign * -(1 / C_sum)
         end
 
     elseif parameter_i["impedance"] == "RL" || parameter_i["impedance"] == "L"
@@ -1618,7 +1616,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_tran_load_c[1, idx] = sign * -(C_sum^(-1))
+            A_tran_load_c[1, idx] = sign * -(1 / C_sum)
         end
 
     elseif parameter_i["impedance"] == "RC" || parameter_i["impedance"] == "C"
@@ -1636,7 +1634,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_tran_load_c[idx] = sign * -(C_sum^(-1))
+            A_tran_load_c[idx] = sign * -(1 / C_sum)
         end
 
     elseif parameter_i["impedance"] == "R"
@@ -1654,7 +1652,7 @@ function GenerateATrnLoadC(self::NodeConstructor, load_i)
 
         for (idx, sign) in zip(indizes_, signs)
             idx = Int(idx)
-            A_tran_load_c[idx] = sign * -(C_sum^(-1))
+            A_tran_load_c[idx] = sign * -(1 / C_sum)
         end
     end
 
@@ -1726,8 +1724,8 @@ function GenerateALoad(self::NodeConstructor, load_i)
             C_sum += self.parameters["cable"][idx]["C"] * 0.5
         end
 
-        A_load[1, 1] = -((parameter_i["R"]) * C_sum)^(-1)
-        A_load[1, 2] = -(C_sum)^(-1)
+        A_load[1, 1] = -1 / ((parameter_i["R"]) * C_sum)
+        A_load[1, 2] = -1 / (C_sum)
 
     elseif parameter_i["impedance"] == "LC"
         A_load = Matrix{Any}(undef, (2, 2)) .= 0
@@ -1898,7 +1896,7 @@ function GenerateA(self::NodeConstructor)
 
     # get A_src_trn_l
     A_src_trn_l = Matrix{Any}(undef, (self.num_connections, self.num_fltr)) .= 0
-    
+
     # start at 1 bc Source 1
     A_src_trn_l_list = [GetASourceTrnL(self, i) for i in 1:self.num_sources]
 
@@ -1978,7 +1976,6 @@ function GenerateA(self::NodeConstructor)
             A_src_trn_l A_trn A_tran_load_l
             A_load_zeros_t A_tran_load_c A_load_diag]
     end
-
     if self.parameters["grid"]["phase"] === 1
         return A
     elseif self.parameters["grid"]["phase"] === 3
@@ -2044,12 +2041,16 @@ end
 Returns the C matrix.
 """
 function GenerateC(self::NodeConstructor)
-    C = Diagonal(ones(self.num_fltr + self.num_connections + self.num_impedance))
+    n = self.num_fltr + self.num_connections + self.num_impedance
+    C = Matrix{Any}(undef, (n, n)) .= 0
+    for i = 1:n
+        C[i, i] = 1
+    end
 
     if self.parameters["grid"]["phase"] === 1
         return C
     elseif self.parameters["grid"]["phase"] === 3
-        z = Matrix{Any}(undef, size(C)) .= 0
+        z = Matrix{Any}(undef, (n, n)) .= 0
         C_ = [C z z
             z C z
             z z C]
