@@ -1,4 +1,5 @@
 # ?
+using DifferentialEquations
 function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVector;
     x0::AbstractVecOrMat=zeros(Bool, nstates(sys)), method::Symbol=:zoh)
     ny, nu = size(sys)
