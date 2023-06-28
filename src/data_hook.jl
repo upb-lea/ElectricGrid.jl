@@ -763,7 +763,7 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
 
     if training
         if isa(agent, MultiController)
-            if length(hook.rewards) >= 1 && sum(hook.reward) > maximum(sum.(hook.rewards))
+            if length(hook.rewards) >= 1 && sum(hook.reward) > maximum(sum.(hook.rewards)) && env.steps >= env.maxsteps
                 if hook.is_inner_hook_RL
                     for name in hook.policy_names
                         if isa(agent.agents[name]["policy"], Agent)
@@ -775,7 +775,7 @@ function (hook::DataHook)(::PostEpisodeStage, agent, env, training = false)
                 hook.bestreward = sum(hook.reward)
             end
         else
-            if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards)
+            if length(hook.rewards) >= 1 && hook.reward > maximum(hook.rewards) && env.steps >= env.maxsteps
                 hook.bestepisode = hook.ep
                 hook.bestreward = hook.reward
             end

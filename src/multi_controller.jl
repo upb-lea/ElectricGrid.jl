@@ -294,6 +294,29 @@ function DefaultDataHook(Multi_Agent, env)
 end
 
 """
+Provide a special update for setting no 'terminal' flag when the env is just truncated.
+"""
+function RLBase.update!(
+    trajectory::AbstractTrajectory,
+    policy::AbstractPolicy,
+    env::ElectricGridEnv,
+    ::PostActStage,
+)
+    r = policy isa NamedPolicy ? reward(env, nameof(policy)) : reward(env)
+    push!(trajectory[:reward], r)
+    if is_terminated(env)
+        if env.steps >= env.maxsteps
+            push!(trajectory[:terminal], false)
+        else
+            push!(trajectory[:terminal], true)
+        end
+    else
+        push!(trajectory[:terminal], false)
+    end
+end
+
+
+"""
 Wrapps the Run function form https://juliareinforcementlearning.org/ to enable turning off
 the action noise.
 """
