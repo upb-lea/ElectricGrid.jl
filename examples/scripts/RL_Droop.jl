@@ -123,7 +123,7 @@ global θpll, fpll, pll_err_t, pll_err
 # pll_err_t[num_source, phase]
 # pll_err[num_source, phase, :]
 #-------------------------------------------------------------------------------
-RL_pll = PLL(50, 0.001)
+RL_pll = PLL(50, 0.0001)
 
 #= for i in 1:1000
     v1 = cos(50*2π*i)
@@ -184,12 +184,6 @@ function reward_function(env, name = nothing)
 
     else
 
-        vC_1 = env.state[findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)]
-        vC_2 = env.state[findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)]
-        vC_3 = env.state[findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)]
-
-        V_filt_cap_new = [vC_1, vC_2, vC_3]
-
         state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1_a", env.state_ids)]
         state_to_control_2 = env.state[findfirst(x -> x == "source1_i_L1_b", env.state_ids)]
         state_to_control_3 = env.state[findfirst(x -> x == "source1_i_L1_c", env.state_ids)]
@@ -249,8 +243,7 @@ end
 ===#
 
 function learn()
-
-    steps_total = #1_500_000
+    steps_total = 1_500_000
 
     steps_loop = 50_000
 
@@ -258,15 +251,8 @@ function learn()
 
     while length(controllers.hook.df[!,"reward"]) <= steps_total
 
-
-
-
         println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-
         Learn(controllers, env, steps = steps_loop, hook = learnhook)
-
-
-
 
     end
 
