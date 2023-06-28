@@ -1,4 +1,5 @@
 using ElectricGrid
+using LinearAlgebra
 
 mutable struct PLL
 
@@ -70,7 +71,7 @@ mutable struct PLL
         pll.pll_err_t[1] = err_t_new[1]
         pll.pll_err[1, :] = err_int
 
-        return fpll, θpll
+        return pll.fpll, pll.θpll
     end
 end
 
@@ -216,33 +217,8 @@ env = ElectricGridEnv(
 controllers = SetupAgents(env)
 
 learnhook = DataHook()
-#===
-function learn()
-    num_steps = 50_000
 
-    an_scheduler_loops = 20
-
-    Learn(controllers, env, steps = num_steps, hook = learnhook)
-    while true
-        if length(controllers.hook.df[!,"reward"]) <= 1_500_000
-            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-            Learn(controllers, env, steps = num_steps, hook = learnhook)
-        else
-            for j in 1:10
-                an = 0.01 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
-                for i in 1:an_scheduler_loops
-                    controllers.agents["ElectricGrid_ddpg_1"]["policy"].policy.policy.act_noise = an[i]
-                    println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-                    println("next action noise level: $(an[i])")
-                    Learn(controllers, env, steps = num_steps, hook = learnhook)
-                end
-            end
-        end
-    end
-end
-===#
-
-function learn()
+function learn1()
     steps_total = 1_500_000
 
     steps_loop = 50_000
@@ -258,19 +234,33 @@ function learn()
 
 end
 
+# second training phase with action noise scheduler
+function learn2()
+    num_steps = 50_000
+
+    an_scheduler_loops = 20
+
+    
+    for j in 1:10
+        an = 0.01 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+        for i in 1:an_scheduler_loops
+            controllers.agents["ElectricGrid_ddpg_1"]["policy"].policy.policy.act_noise = an[i]
+            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+            println("next action noise level: $(an[i])")
+            Learn(controllers, env, steps = num_steps, hook = learnhook)
+        end
+    end
+end
 
 
-#learn()
+#learn1()
 
 hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
-Simulate(controllers, env, hook=hook)
+#Simulate(controllers, env, hook=hook);
 
 
-RenderHookResults(hook = hook,
-                    states_to_plot  = env.state_ids,
-                    actions_to_plot = env.action_ids,
-                    plot_reward=true)
+#RenderHookResults(hook = hook, states_to_plot  = env.state_ids, actions_to_plot = env.action_ids, plot_reward=true)
 
 println("...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")
