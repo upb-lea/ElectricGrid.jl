@@ -133,12 +133,9 @@ RL_pll = PLL(50, 0.0001)
     fpll, θpll = RL_pll([v1, v2, v3])
 end =#
 
-
+global fpll_a = Float64[]
+global θpll_a = Float64[]
 function reference(env)
-
-    if env.t < 0.04
-        return [0.0, 0.0, 0.0]
-    end
 
     #V_filt_cap_new = env.state_abc_v
     vC_1 = env.state[findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)]
@@ -151,20 +148,29 @@ function reference(env)
     θ_f = [θ; θ - 120π/180; θ + 120π/180]
     V_filt_cap_new =cos.(θ_f)
     =#
-    fpll, θpll = RL_pll(V_filt_cap_new) #TODO we do not know the env here
+    fpll, θpll = RL_pll(V_filt_cap_new) 
+
+    #push!(fpll_a, fpll[ 1, end])
+    #push!(θpll_a, θpll[ 1, end])
+
+    if env.t < 0.04
+        return [0.0, 0.0, 0.0]
+    end
 
     θph = θpll[ :, end]
 
-    return +10 * cos.(θph .+ π/2)
+    return +10 * cos.(θph .+ π)
 end
 
+global ref
 featurize_ddpg = function(state, env, name)
     if name == "ElectricGrid_ddpg_1"
 
         #state = state[findall(x -> split(x, "_")[2] == "i" , env.agent_dict["ElectricGrid_ddpg_1"]["state_ids"])]
 
         norm_ref = env.nc.parameters["source"][1]["i_limit"]
-        state = vcat(state, reference(env)/norm_ref)
+        global ref = reference(env)
+        state = vcat(state, ref/norm_ref)
 
         # θ = 2*pi*50*env.t
 
@@ -179,6 +185,7 @@ featurize_ddpg = function(state, env, name)
     end
 end
 
+global ref_a = Float64[]
 function reward_function(env, name = nothing)
     if name == "classic"
         return 0
@@ -194,10 +201,10 @@ function reward_function(env, name = nothing)
         if any(abs.(state_to_control).>1)
             return -1
         else
-
-            refs = reference(env)
+            refs = ref
             norm_ref = env.nc.parameters["source"][1]["i_limit"]
             r = 1-1/3*(sum((abs.(refs/norm_ref - state_to_control)/2).^0.5))
+            #push!(ref_a, refs[1]/norm_ref)
             return r
         end
     end
@@ -260,6 +267,8 @@ hook = DataHook(collect_state_ids = env.state_ids,
 
 #Simulate(controllers, env, hook=hook);
 
+using PlotlyJS
+#Plot([scatter(y=hook.df[!,"source1_v_C_cables_a"], name="source1_v_C_cables_a"), scatter(y=hook.df[!,"source1_i_L1_a"], name="source1_i_L1_a"), scatter(y=ref_a.*700, name="ref_a"), scatter(y=fpll_a[1:end], name="fpll_a"), scatter(y=θpll_a[1:end], name="θpll_a")])
 
 #RenderHookResults(hook = hook, states_to_plot  = env.state_ids, actions_to_plot = env.action_ids, plot_reward=true)
 
