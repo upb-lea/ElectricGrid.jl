@@ -62,14 +62,14 @@ function CustomNonlinearsim(AAA,B,u,tspan,x0)
     prob = ODEProblem(f, x0, tspan, u)
     alg = Tsit5()
     sol = solve(prob, alg, reltol=1e-8, abstol=1e-8)
-    xout_d = sol.u[2]
-    help = Array{Float64}(undef,0)
+    xout = sol.u[2]
 
-    for i in xout_d
-        append!(help,i)
+    xout_float = Array{Float64}(undef,0)
+    for i in xout
+        append!(xout_float,i)
     end
 
-    return help
+    return xout_float
 end
 
 @views function CustomLtitr(A::AbstractMatrix, B::AbstractMatrix, u::AbstractVecOrMat,

@@ -2076,9 +2076,9 @@ Returns the system matrices A, B, C and D.
 function GetSystem(self::NodeConstructor)
     # Returns state space matrices
     A = GenerateA(self)
-    B = GenerateB(self)
-    C = GenerateC(self)
-    D = GenerateD(self)
+    B = Float64.(GenerateB(self))
+    C = Float64.(GenerateC(self))
+    D = Float64.(GenerateD(self))
     return (A, B, C, D)
 end
 

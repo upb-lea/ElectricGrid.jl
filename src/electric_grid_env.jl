@@ -550,7 +550,6 @@ function (env::ElectricGridEnv)(action)
         end
     end
 
-    #XXX
     if env.nonlinear
         u = env.action
         tspan = (env.t, env.t + env.ts)
