@@ -21,6 +21,14 @@ Dict{Any, Any}(
                         "control_type" => "classic",
                         "mode" => "Droop",),
                     ],
+    "load"   => Any[
+        Dict{Any, Any}(
+            "impedance" => "RL",
+            "R" => R_load,
+            "L" => L_load,
+            "v_limit" => 1e4,
+            "i_limit" => 1e4)
+        ],
     "grid" => Dict{Any, Any}(
         "phase" => 3,
         "ramp_end" => 0.04,)
@@ -36,7 +44,7 @@ function reference(t)
 
     θ = 2*pi*50*t
     θph = [θ; θ - 120π/180; θ + 120π/180]
-    return +10 * cos.(θph) 
+    return +10 * cos.(θph)
 end
 
 featurize_ddpg = function(state, env, name)
@@ -63,7 +71,7 @@ end
 function reward_function(env, name = nothing)
     if name == "classic"
         return 0
-        
+
     else
         state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1_a", env.state_ids)]
         state_to_control_2 = env.state[findfirst(x -> x == "source1_i_L1_b", env.state_ids)]
@@ -76,16 +84,16 @@ function reward_function(env, name = nothing)
         else
 
             refs = reference(env.t)
-            norm_ref = env.nc.parameters["source"][1]["i_limit"]          
+            norm_ref = env.nc.parameters["source"][1]["i_limit"]
             r = 1-1/3*(sum((abs.(refs/norm_ref - state_to_control)/2).^0.5))
-            return r 
+            return r
         end
     end
 
 end
 
 env = ElectricGridEnv(
-    #CM =  CM,
+    CM =  CM,
     parameters = parameters,
     t_end = 1,
     reward_function = reward_function,
@@ -122,16 +130,47 @@ function learn()
     end
 end
 
+function learn1()
+    steps_total = 1_500_000
 
-learn()
+    steps_loop = 50_000
+
+    Learn(controllers, env, steps = steps_loop)
+
+    while length(controllers.hook.df[!,"reward"]) <= steps_total
+
+        println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+        Learn(controllers, env, steps = steps_loop, hook = learnhook)
+
+    end
+
+end
+
+# second training phase with action noise scheduler
+function learn2()
+    num_steps = 50_000
+
+    an_scheduler_loops = 20
+
+
+    for j in 1:10
+        an = 0.01 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+        for i in 1:an_scheduler_loops
+            controllers.agents["ElectricGrid_ddpg_1"]["policy"].policy.policy.act_noise = an[i]
+            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+            println("next action noise level: $(an[i])")
+            Learn(controllers, env, steps = num_steps, hook = learnhook)
+        end
+    end
+end
+
+
+#learn()
 
 hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
-Simulate(controllers, env, hook=hook)
+#Simulate(controllers, env, hook=hook);
 
 
-RenderHookResults(hook = hook,
-                    states_to_plot  = env.state_ids,
-                    actions_to_plot = env.action_ids,
-                    plot_reward=true)
+#RenderHookResults(hook = hook, states_to_plot  = env.state_ids, actions_to_plot = env.action_ids, plot_reward=true)

@@ -98,6 +98,14 @@ Dict{Any, Any}(
                         "control_type" => "classic",
                         "mode" => "Droop",),
                     ],
+    "load"   => Any[
+        Dict{Any, Any}(
+            "impedance" => "RL",
+            "R" => R_load,
+            "L" => L_load,
+            "v_limit" => 1e4,
+            "i_limit" => 1e4)
+        ],
     "grid" => Dict{Any, Any}(
         "phase" => 3,
         "ramp_end" => 0.04,)
@@ -137,6 +145,13 @@ global fpll_a = Float64[]
 global θpll_a = Float64[]
 function reference(env)
 
+    if env.steps == 0
+        RL_pll.θpll = zeros(total_phases, 2) # two past terms
+        RL_pll.fpll = RL_pll.fsys*ones(total_phases, 4) # four past terms
+        RL_pll.pll_err_t = zeros(total_phases)
+        RL_pll.pll_err = zeros(total_phases, 3)
+    end
+
     #V_filt_cap_new = env.state_abc_v
     vC_1 = env.state[findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)]
     vC_2 = env.state[findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)]
@@ -148,7 +163,7 @@ function reference(env)
     θ_f = [θ; θ - 120π/180; θ + 120π/180]
     V_filt_cap_new =cos.(θ_f)
     =#
-    fpll, θpll = RL_pll(V_filt_cap_new) 
+    fpll, θpll = RL_pll(V_filt_cap_new)
 
     #push!(fpll_a, fpll[ 1, end])
     #push!(θpll_a, θpll[ 1, end])
@@ -159,7 +174,7 @@ function reference(env)
 
     θph = θpll[ :, end]
 
-    return +10 * cos.(θph .+ π)
+    return +10 * cos.(θph .+ π/2)
 end
 
 global ref
@@ -212,7 +227,7 @@ function reward_function(env, name = nothing)
 end
 
 env = ElectricGridEnv(
-    #CM =  CM,
+    CM =  CM,
     parameters = parameters,
     t_end = 1,
     reward_function = reward_function,
@@ -247,7 +262,7 @@ function learn2()
 
     an_scheduler_loops = 20
 
-    
+
     for j in 1:10
         an = 0.01 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
         for i in 1:an_scheduler_loops
