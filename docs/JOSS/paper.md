@@ -158,7 +158,7 @@ The package should be installed using the julia package manager. In a julia term
 add ElectricGrid
 ```
 
-Alternatively it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]`to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` If you started Julia in your ElectricGrid directory and afterwards run `instantiate`.
+Alternatively it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]` to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` If you started Julia in your ElectricGrid directory and afterwards run `instantiate`.
   
 The source code, guide and 
 examples are available on the GitHub repository (https://github.com/upb-lea/JuliaElectricGrid.jl). 
