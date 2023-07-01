@@ -106,7 +106,7 @@ Already provided are classic controllers (i.e., industry standard contollers) li
 Many basic auxiliary functionalities for the essential operation of electric power grids are provided too such
 as coordinate transformations for basic controller classes, data logging, measurement of real and imaginary powers, 
 and phase-locked loops for frequency and phase angle extraction. 
-The interface provided by [@Tian2020Reinforcement] is also available for training 
+The interface provided by @Tian2020Reinforcement is also available for training 
 data-driven control approaches like RL.
 This enables users who want to integrate contemporary open-source Julia-based RL toolboxes
 such as ``ReinforcementLearning.jl`` [@Tian2020Reinforcement].
