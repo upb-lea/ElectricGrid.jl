@@ -141,7 +141,7 @@ The ``ElectricGrid.jl`` toolbox provides the following key features:
 * Interesting use cases applying data-driven learning.
 
 # Examples
-For illustration and interactive introduction, jupyter notebooks are available for each topic.
+For illustration and interactive introduction, Jupyter Notebooks are available for each topic.
 These provide clear and easy-to-expand examples of: 
  - [Utilising ElectricGrid.jl to build an energy grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb),
  - [Theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb),
