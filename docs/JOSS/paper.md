@@ -143,8 +143,8 @@ For illustration and interactive introduction, jupyter notebooks are available f
 These provide clear and easy-to-expand examples of: 
  - [Utilising ElectricGrid.jl to build an energy grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb),
  - [Theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb),
- - [Applying classic controllers on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/1_Auxiliaries_OU_process.ipynb),
- - [Training an RL agent on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb).
+ - [Applying classic controllers on the electrical grid](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/3_Classical_Controllers_Droop.ipynb),
+ - [Training an RL agent on the electrical grid](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/RL_Single_Agent_DEMO.ipynb).
 
 
 # Availability and installation
