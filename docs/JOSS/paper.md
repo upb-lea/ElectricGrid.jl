@@ -106,7 +106,7 @@ Already provided are classic controllers (i.e., industry standard contollers) li
 Many basic auxiliary functionalities for the essential operation of electric power grids are provided too such
 as coordinate transformations for basic controller classes, data logging, measurement of real and imaginary powers, 
 and phase-locked loops for frequency and phase angle extraction. 
-The interface provided by [@Tian2020Reinforcement] is also available for training 
+The interface provided by @Tian2020Reinforcement is also available for training 
 data-driven control approaches like RL.
 This enables users who want to integrate contemporary open-source Julia-based RL toolboxes
 such as ``ReinforcementLearning.jl`` [@Tian2020Reinforcement].
@@ -141,7 +141,7 @@ The ``ElectricGrid.jl`` toolbox provides the following key features:
 * Interesting use cases applying data-driven learning.
 
 # Examples
-For illustration and interactive introduction, jupyter notebooks are available for each topic.
+For illustration and interactive introduction, Jupyter Notebooks are available for each topic.
 These provide clear and easy-to-expand examples of: 
  - [Utilising ElectricGrid.jl to build an energy grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb),
  - [Theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb),
