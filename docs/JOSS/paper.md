@@ -46,8 +46,7 @@ With a few lines of code, a parameterised electric grid can
 be initialised in Julia. 
 An example grid is shown in the figure below.
 
-![\label{fig:grid}](ExampleGrid.png)
-_Fig. 1:  Exemplary electric energy grid in a simplified single phase representation._
+![Exemplary electric energy grid in a simplified single phase representation.\label{fig:grid}](ExampleGrid.png)
 
 By means of  state-space models (set of first order ordinary differential equations), electrical energy grids can be constructed and simulated in a short time, which can be utilised
 for synthetic data generation (e.g., for data-driven meta-modelling) and to compare grid control methods.
@@ -99,8 +98,7 @@ which does not allow an evaluation of, e.g., control on component level in case 
 The API is designed to provide a user-friendly interface to connect a modeled electric energy grid 
 with a wide range of classical control methods like shown in the figure below.
 
-![\label{fig:jeg}](Overview_EG.png)
-_Fig. 2:  Overview of the functionality and interconnections of the ElectricGrid.jl framework._
+![Overview of the functionality and interconnections of the ElectricGrid.jl framework.\label{fig:jeg}](Overview_EG.png)
  
 Already provided are classic controllers (i.e., industry standard contollers) like linear feedback proportional integral (PI) in the direct-quadrature-zero (DQ0) rotating reference frame. These control methods can be used out of the box including automatical tuning procedures. 
 Many basic auxiliary functionalities for the essential operation of electric power grids are provided too such
