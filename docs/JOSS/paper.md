@@ -150,7 +150,7 @@ These provide clear and easy-to-expand examples of:
 # Availability and installation
 
 ``ElectricGrid.jl`` is supported and tested on Linux, Windows and macOS.
-The package should be installed using the julia package manager. In a julia terminal run the follwing:
+The package should be installed using the Julia package manager. In a Julia terminal run the follwing:
 ```
 ]
 add ElectricGrid
