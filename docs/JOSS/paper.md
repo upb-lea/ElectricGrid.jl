@@ -46,8 +46,7 @@ With a few lines of code, a parameterised electric grid can
 be initialised in Julia. 
 An example grid is shown in the figure below.
 
-![\label{fig:grid}](ExampleGrid.png)
-_Fig. 1:  Exemplary electric energy grid in a simplified single phase representation._
+![Exemplary electric energy grid in a simplified single phase representation.\label{fig:grid}](ExampleGrid.png)
 
 By means of  state-space models (set of first order ordinary differential equations), electrical energy grids can be constructed and simulated in a short time, which can be utilised
 for synthetic data generation (e.g., for data-driven meta-modelling) and to compare grid control methods.
@@ -99,8 +98,7 @@ which does not allow an evaluation of, e.g., control on component level in case 
 The API is designed to provide a user-friendly interface to connect a modeled electric energy grid 
 with a wide range of classical control methods like shown in the figure below.
 
-![\label{fig:jeg}](Overview_EG.png)
-_Fig. 2:  Overview of the functionality and interconnections of the ElectricGrid.jl framework._
+![Overview of the functionality and interconnections of the ElectricGrid.jl framework.\label{fig:jeg}](Overview_EG.png)
  
 Already provided are classic controllers (i.e., industry standard contollers) like linear feedback proportional integral (PI) in the direct-quadrature-zero (DQ0) rotating reference frame. These control methods can be used out of the box including automatical tuning procedures. 
 Many basic auxiliary functionalities for the essential operation of electric power grids are provided too such
@@ -145,14 +143,14 @@ For illustration and interactive introduction, Jupyter Notebooks are available f
 These provide clear and easy-to-expand examples of: 
  - [Utilising ElectricGrid.jl to build an energy grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/Env_Create_DEMO.ipynb),
  - [Theoretical principles behind the calculations](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb),
- - [Applying classic controllers on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/1_Auxiliaries_OU_process.ipynb),
- - [Training an RL agent on the electrical grid](https://github.com/upb-lea/JuliaElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory_DEMO.ipynb).
+ - [Applying classic controllers on the electrical grid](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/3_Classical_Controllers_Droop.ipynb),
+ - [Training an RL agent on the electrical grid](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/RL_Single_Agent_DEMO.ipynb).
 
 
 # Availability and installation
 
 ``ElectricGrid.jl`` is supported and tested on Linux, Windows and macOS.
-The package should be installed using the julia package manager. In a julia terminal run the follwing:
+The package should be installed using the Julia package manager. In a Julia terminal run the follwing:
 ```
 ]
 add ElectricGrid
