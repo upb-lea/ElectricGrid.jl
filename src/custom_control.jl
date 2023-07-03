@@ -9,7 +9,7 @@ function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVec
         error("size(x0) must match the number of states of sys")
     end
     if size(u) != (nu, length(t))
-        error("u must be of size (nu, length(t))")
+        error("u must be of size (nu, length(t))=$((nu,length(t)))")
     end
 
     dt = Float64(t[2] - t[1])
@@ -62,7 +62,7 @@ function CustomNonlinearsim(AAA,B,u,tspan,x0)
     prob = ODEProblem(f, x0, tspan, u)
     alg = Tsit5()
     sol = solve(prob, alg, reltol=1e-8, abstol=1e-8)
-    xout = sol.u[2]
+    xout = sol.u[end]
 
     xout_float = Array{Float64}(undef,0)
     for i in xout
