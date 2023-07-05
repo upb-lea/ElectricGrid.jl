@@ -77,9 +77,8 @@ end
 
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
-CM = [ 0. 0. 1.
-        0. 0. 2.
-        -1. -2. 0.]
+CM = [ 0. 1.
+        -1. 0.]
 
 R_load, L_load, _, _ = ParallelLoadImpedance(50e3, 0.95, 230)
 
@@ -89,15 +88,10 @@ Dict{Any, Any}(
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "control_type" => "RL",
-                        "fltr" => "L",
-                        #"osc" => true,
+                        "fltr" => "LC",
+                        "osc" => true,
                         #"L1" => 0.0008,
                         ),
-                    Dict{Any, Any}(
-                        "pwr" => 200e3,
-                        "fltr" => "LC",
-                        "control_type" => "classic",
-                        "mode" => "Droop",),
                     ],
     "load"   => Any[
         Dict{Any, Any}(
@@ -116,92 +110,8 @@ Dict{Any, Any}(
 total_num_RL = 1
 total_phases = 3 # always has to be 3 when using pll 3ph
 
-# initialise matrices
-θpll = zeros(total_num_RL, total_phases, 2) # two past terms
-fpll = 50*ones(total_num_RL, total_phases, 4) # four past terms
-pll_err_t = zeros(total_num_RL, total_phases)
-pll_err = zeros(total_num_RL, total_phases, 3)
 
-global θpll, fpll, pll_err_t, pll_err
 
-# fsys = system frequency = 50 Hz
-# ts = step interval
-# V_filt_cap_new = instantaneous voltage over capacitor at poc
-# phase = 1
-# fpll[num_RL_source, phase, end = newest]
-# θpll[num_RL_source, phase, end = newest]
-# pll_err_t[num_source, phase]
-# pll_err[num_source, phase, :]
-#-------------------------------------------------------------------------------
-RL_pll = PLL(50, 0.0001)
-
-#= for i in 1:1000
-    v1 = cos(50*2π*i)
-    v2 = cos(50*2π*i + 120) # for checking pll,check 120 angles + or -
-    v3 = cos(50*2π*i - 120)
-    fpll, θpll = RL_pll([v1, v2, v3])
-end =#
-
-global fpll_a = Float64[]
-global θpll_a = Float64[]
-function reference(env)
-
-    if env.steps == 0
-        RL_pll.θpll = zeros(total_phases, 2) # two past terms
-        RL_pll.fpll = RL_pll.fsys*ones(total_phases, 4) # four past terms
-        RL_pll.pll_err_t = zeros(total_phases)
-        RL_pll.pll_err = zeros(total_phases, 3)
-    end
-
-    #V_filt_cap_new = env.state_abc_v
-    vC_1 = env.state[findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)]
-    vC_2 = env.state[findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)]
-    vC_3 = env.state[findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)]
-
-    V_filt_cap_new = [vC_1, vC_2, vC_3]
-
-    #= θ_fudge = 2*pi*50*env.t
-    θ_f = [θ; θ - 120π/180; θ + 120π/180]
-    V_filt_cap_new =cos.(θ_f)
-    =#
-    fpll, θpll = RL_pll(V_filt_cap_new)
-
-    #push!(fpll_a, fpll[ 1, end])
-    #push!(θpll_a, θpll[ 1, end])
-
-    if env.t < 0.04
-        return [0.0, 0.0, 0.0]
-    end
-
-    θph = θpll[ :, end]
-
-    return +10 * cos.(θph .+ π/2)
-end
-
-global ref
-featurize_ddpg = function(state, env, name)
-    if name == "ElectricGrid_ddpg_1"
-
-        #state = state[findall(x -> split(x, "_")[2] == "i" , env.agent_dict["ElectricGrid_ddpg_1"]["state_ids"])]
-
-        norm_ref = env.nc.parameters["source"][1]["i_limit"]
-        global ref = reference(env)
-        state = vcat(state, ref/norm_ref)
-
-        # θ = 2*pi*50*env.t
-
-        # state_to_control_1 = env.state[findfirst(x -> x == "source1_i_L1_a", env.state_ids)]
-        # state_to_control_2 = env.state[findfirst(x -> x == "source1_i_L1_b", env.state_ids)]
-        # state_to_control_3 = env.state[findfirst(x -> x == "source1_i_L1_c", env.state_ids)]
-
-        # state_to_control = [state_to_control_1, state_to_control_2, state_to_control_3]
-
-        # Il_dq0 = DQ0Transform(state_to_control, θ)
-        # state = vcat(state, Il_dq0)
-    end
-end
-
-global ref_a = Float64[]
 function reward_function(env, name = nothing)
     if name == "classic"
         return 0

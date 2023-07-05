@@ -51,7 +51,30 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
         else
             multiplier = 1.0
         end
-        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training) .* multiplier
+
+        if haskey(env.agent_dict[name], "osc")
+            agent_output = agent["policy"](env, training)
+            sub_action = Array{Union{Nothing, Float64}}(nothing, length(agent["action_ids"]))
+            visited_osc_numbers = []
+
+            for (i, action_id) in enumerate(agent["action_ids"])
+                #find the source number of the current action ideal
+                source_number = parse(Int, split(split(action_id, "_")[1], "source")[2])
+
+                if !(source_number in visited_osc_numbers)
+                    if source_number in env.agent_dict[name]["osc"]
+                        na += 2
+                        push!(visited_osc_numbers, source_number)
+                    else
+                        sub_action[i] = agent_output[i]
+                    end
+                end
+            end
+        else
+            sub_action = agent["policy"](env, training)
+        end
+
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= sub_action .* multiplier
     end
 
     return action
@@ -132,7 +155,27 @@ function SetupAgents(env, custom_agents = nothing)
     for (name, config) in env.agent_dict
 
         if config["mode"] == "ElectricGrid_ddpg"
-            agent = CreateAgentDdpg(na = length(env.agent_dict[name]["action_ids"]),
+            if haskey(env.agent_dict[name], "osc")
+                na = 0
+                visited_osc_numbers = []
+                for action_id in env.agent_dict[name]["action_ids"]
+                    #find the source number of the current action ideal
+                    source_number = parse(Int, split(split(action_id, "_")[1], "source")[2])
+
+                    if !(source_number in visited_osc_numbers)
+                        if source_number in env.agent_dict[name]["osc"]
+                            na += 2
+                            push!(visited_osc_numbers, source_number)
+                        else
+                            na += 1
+                        end
+                    end
+                end
+            else
+                na = length(env.agent_dict[name]["action_ids"])
+            end
+
+            agent = CreateAgentDdpg(na = na,
                                         ns = length(state(env, name)),
                                         use_gpu = false)
 
