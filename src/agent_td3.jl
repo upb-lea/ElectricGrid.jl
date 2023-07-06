@@ -138,7 +138,7 @@ function (p::TD3Policy)(env::AbstractEnv, name::Union{Nothing, String} = nothing
         p.start_policy(env)
     else
         D = device(p.behavior_actor)
-        s = ElectricGrid.state(env)
+        s = state(env, "my_agent")
         s = Flux.unsqueeze(s, ndims(s) + 1)
         actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
         # add training flag

@@ -46,11 +46,13 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
     for (name, agent) in A.agents
+        # @show name
         if name == "classic"
             multiplier = 1.0
         else
             multiplier = 1.0
         end
+        # @show agent["action_ids"]
         action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training) .* multiplier
     end
 

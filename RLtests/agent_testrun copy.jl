@@ -1,5 +1,5 @@
 using ElectricGrid
-# using ReinforcementLearning
+using ReinforcementLearning
 using Flux
 using Flux.Losses
 using StableRNGs
@@ -87,7 +87,7 @@ env = ElectricGridEnv(
     verbosity = 0)
 
 seed = 123
-
+using Flux
 rng = StableRNG(seed)
 init = glorot_uniform(rng)
 create_actor() = Chain(
@@ -113,8 +113,9 @@ create_critic() = TD3Critic(
     create_critic_model()
     )
 
-ns = length(env.state)
-na = length(env.action)
+# ns = length(env.agent_dict["my_agent"]["state_ids"])
+ns = length(state(env, "my_agent"))
+na = length(env.agent_dict["my_agent"]["action_ids"])
 
 agent = Agent(
     policy = TD3Policy(
@@ -137,11 +138,11 @@ agent = Agent(
         γ = 0.99f0,
         ρ = 0.99f0,
         batch_size = 64,
-        start_steps = 1000,
+        start_steps = 100,
         start_policy = RandomPolicy(-1.0..1.0; rng = rng),
         update_after = 1000,
-        update_freq = 1,
-        policy_freq = 2,
+        update_freq = 10,
+        policy_freq = 20,
         target_act_limit = 1.0,
         target_act_noise = 0.1,
         act_limit = 1.0,
@@ -155,66 +156,66 @@ agent = Agent(
             action = Float32 => (na, ),
     ),
 )
+
 # find problems with dimension mismatch
+# stop_condition = StopAfterStep(1_0000)
+# hook = TotalRewardPerEpisode()
 
-stop_condition = StopAfterStep(1_000_000)
-hook = TotalRewardPerEpisode()
-
-run(agent, env, stop_condition, hook)
+# run(agent, env, stop_condition, hook)
 
 
-function _run(policy::AbstractPolicy, env::AbstractEnv, stop_condition, hook::AbstractHook)
+# function _run(policy::AbstractPolicy, env::AbstractEnv, stop_condition, hook::AbstractHook)
 
-    hook(PRE_EXPERIMENT_STAGE, policy, env)
-    policy(PRE_EXPERIMENT_STAGE, env)
-    is_stop = false
-    while !is_stop
-        reset!(env)
-        policy(PRE_EPISODE_STAGE, env)
-        hook(PRE_EPISODE_STAGE, policy, env)
+#     hook(PRE_EXPERIMENT_STAGE, policy, env)
+#     policy(PRE_EXPERIMENT_STAGE, env)
+#     is_stop = false
+#     while !is_stop
+#         reset!(env)
+#         policy(PRE_EPISODE_STAGE, env)
+#         hook(PRE_EPISODE_STAGE, policy, env)
 
-        while !is_terminated(env) # one episode
-            action = policy(env)
+#         while !is_terminated(env) # one episode
+#             action = policy(env)
 
-            policy(PRE_ACT_STAGE, env, action)
-            hook(PRE_ACT_STAGE, policy, env, action)
+#             policy(PRE_ACT_STAGE, env, action)
+#             hook(PRE_ACT_STAGE, policy, env, action)
 
-            env(action)
+#             env(action)
 
-            policy(POST_ACT_STAGE, env)
-            hook(POST_ACT_STAGE, policy, env)
+#             policy(POST_ACT_STAGE, env)
+#             hook(POST_ACT_STAGE, policy, env)
 
-            if stop_condition(policy, env)
-                is_stop = true
-                break
-            end
-        end # end of an episode
+#             if stop_condition(policy, env)
+#                 is_stop = true
+#                 break
+#             end
+#         end # end of an episode
 
-        if is_terminated(env)
-            policy(POST_EPISODE_STAGE, env)  # let the policy see the last observation
-            hook(POST_EPISODE_STAGE, policy, env)
-        end
-    end
-    hook(POST_EXPERIMENT_STAGE, policy, env)
-    hook
-end
+#         if is_terminated(env)
+#             policy(POST_EPISODE_STAGE, env)  # let the policy see the last observation
+#             hook(POST_EPISODE_STAGE, policy, env)
+#         end
+#     end
+#     hook(POST_EXPERIMENT_STAGE, policy, env)
+#     hook
+# end
 
 # _run(agent, env, 1_000, verbosity = 1)
 
+# env.agent_dict["my_agent"]["action_ids"]
 
 
-
-agent = CreateAgentDdpg(na = length(env.agent_dict["my_agent"]["action_ids"]),
-    ns = length(state(env, "my_agent")),
-    use_gpu = false)
+# agent = CreateAgentDdpg(na = length(env.agent_dict["my_agent"]["action_ids"]),
+#     ns = length(state(env, "my_agent")),
+#     use_gpu = false)
 
 my_custom_agents = Dict("my_agent" => agent)
 
 controllers = SetupAgents(env, my_custom_agents)
 
 function learn()
-    steps_total = 1_500_000
-    steps_loop = 50_000
+    steps_total = 1_500
+    steps_loop = 50
 
     Learn(controllers, env, steps = steps_loop)
     while length(controllers.hook.df[!,"reward"]) <= steps_total
@@ -232,6 +233,9 @@ plot_rewardresults(controllers = controllers)
 
 hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
+
+
+# run(agent, env, stop_condition, hook)
 
 Simulate(controllers, env, hook=hook)
 
