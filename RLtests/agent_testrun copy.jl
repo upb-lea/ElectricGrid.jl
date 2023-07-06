@@ -1,9 +1,10 @@
 using ElectricGrid
-using ReinforcementLearning
+# using ReinforcementLearning
 using Flux
 using Flux.Losses
 using StableRNGs
 using IntervalSets
+using Zygote: ignore
 
 # include agetn_td3 here
 src_dir = joinpath(dirname(pathof(ElectricGrid)))
@@ -113,7 +114,7 @@ create_critic() = TD3Critic(
     )
 
 ns = length(env.state)
-na = length(env.agent_dict["my_agent"]["action_ids"])
+na = length(env.action)
 
 agent = Agent(
     policy = TD3Policy(
@@ -151,13 +152,55 @@ agent = Agent(
     trajectory = CircularArraySARTTrajectory(
             capacity = 10_000_000,
             state = Vector{Float32} => (ns,),
-            action = Float32 => (),
+            action = Float32 => (na, ),
     ),
 )
+# find problems with dimension mismatch
+
+stop_condition = StopAfterStep(1_000_000)
+hook = TotalRewardPerEpisode()
+
+run(agent, env, stop_condition, hook)
 
 
+function _run(policy::AbstractPolicy, env::AbstractEnv, stop_condition, hook::AbstractHook)
 
-run(agent, env, 1_000, verbosity = 1)
+    hook(PRE_EXPERIMENT_STAGE, policy, env)
+    policy(PRE_EXPERIMENT_STAGE, env)
+    is_stop = false
+    while !is_stop
+        reset!(env)
+        policy(PRE_EPISODE_STAGE, env)
+        hook(PRE_EPISODE_STAGE, policy, env)
+
+        while !is_terminated(env) # one episode
+            action = policy(env)
+
+            policy(PRE_ACT_STAGE, env, action)
+            hook(PRE_ACT_STAGE, policy, env, action)
+
+            env(action)
+
+            policy(POST_ACT_STAGE, env)
+            hook(POST_ACT_STAGE, policy, env)
+
+            if stop_condition(policy, env)
+                is_stop = true
+                break
+            end
+        end # end of an episode
+
+        if is_terminated(env)
+            policy(POST_EPISODE_STAGE, env)  # let the policy see the last observation
+            hook(POST_EPISODE_STAGE, policy, env)
+        end
+    end
+    hook(POST_EXPERIMENT_STAGE, policy, env)
+    hook
+end
+
+# _run(agent, env, 1_000, verbosity = 1)
+
 
 
 
@@ -168,7 +211,6 @@ agent = CreateAgentDdpg(na = length(env.agent_dict["my_agent"]["action_ids"]),
 my_custom_agents = Dict("my_agent" => agent)
 
 controllers = SetupAgents(env, my_custom_agents)
-
 
 function learn()
     steps_total = 1_500_000

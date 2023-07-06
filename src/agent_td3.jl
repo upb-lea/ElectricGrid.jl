@@ -3,6 +3,16 @@ using IntervalSets
 using StableRNGs
 using ReinforcementLearning
 using Random
+using Statistics
+
+#functions to make the training flag work for the whole RL framework
+# (agent::Agent)(env::ElectricGridEnv, training::Bool) = agent.policy(env, training)
+# (p::NamedPolicy)(env::ElectricGridEnv, training::Bool) = p.policy(env, p.name, training)
+# (policy::AbstractPolicy)(env, training::Bool) = policy(env)
+# (policy::AbstractPolicy)(env, name::Union{Nothing, String}, training::Bool) = policy(env, name)
+# (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, training::Bool) = policy(stage, env)
+# (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, action, training::Bool) = policy(stage, env, action)
+
 
 # TD3 uses two critics 
 struct TD3Critic
@@ -121,18 +131,18 @@ end
 
 # TODO: handle Training/Testing mode
 # function RLBase.plan!(p::TD3Policy, env)
-function (p::TD3Policy)(env::AbstractEnv, training::Bool)
+function (p::TD3Policy)(env::AbstractEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
     p.update_step += 1
 
     if p.update_step <= p.start_steps
         p.start_policy(env)
     else
         D = device(p.behavior_actor)
-        s = state(env)
-        s = Flux.unsqueeze(s, dims=ndims(s) + 1)
-        action = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
+        s = ElectricGrid.state(env)
+        s = Flux.unsqueeze(s, ndims(s) + 1)
+        actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
         # add training flag
-        clamp(action[] + training * randn(p.rng) * p.act_noise, -p.act_limit, p.act_limit)
+        clamp.(actions .+ training * randn(p.rng) .* p.act_noise, -p.act_limit, p.act_limit)
     end
 end
 
@@ -165,7 +175,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
             p.target_act_limit,
         ) |> to_device
     # add noise and clip to act_limit bounds
-    a′ = clamp.(p.target_actor(s′) + target_noise, -p.act_limit, p.act_limit)
+    a′ = clamp.(p.target_actor(s′) .+ target_noise, -p.act_limit, p.act_limit)
 
     q_1′, q_2′ = p.target_critic(s′, a′)
     y = r .+ p.γ .* (1 .- t) .* (min.(q_1′, q_2′) |> vec)
@@ -178,7 +188,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
     gs1 = gradient(Flux.params(critic)) do
         q1, q2 = critic(s, a)
         loss = mse(q1 |> vec, y) + mse(q2 |> vec, y)
-        ignore_derivatives() do
+        ignore() do
             p.critic_loss = loss
         end
         loss
@@ -189,7 +199,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
         gs2 = gradient(Flux.params(actor)) do
             actions = actor(s)
             loss = -mean(critic.model.critic_1(vcat(s, actions)))
-            ignore_derivatives() do
+            ignore() do
                 p.actor_loss = loss
             end
             loss
