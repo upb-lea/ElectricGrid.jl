@@ -1,5 +1,5 @@
 using Flux
-
+using IntervalSets
 # TD3 uses two critics 
 struct TD3Critic
     critic_1::Flux.Chain
@@ -116,7 +116,8 @@ function TD3Policy(;
 end
 
 # TODO: handle Training/Testing mode
-function RLBase.plan!(p::TD3Policy, env)
+# function RLBase.plan!(p::TD3Policy, env)
+function (p::TD3Policy)(env::AbstractEnv, training::Bool)
     p.update_step += 1
 
     if p.update_step <= p.start_steps
@@ -126,7 +127,8 @@ function RLBase.plan!(p::TD3Policy, env)
         s = state(env)
         s = Flux.unsqueeze(s, dims=ndims(s) + 1)
         action = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
-        clamp(action[] + randn(p.rng) * p.act_noise, -p.act_limit, p.act_limit)
+        # add training flag
+        clamp(action[] + training * randn(p.rng) * p.act_noise, -p.act_limit, p.act_limit)
     end
 end
 
