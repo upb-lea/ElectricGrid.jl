@@ -1,125 +1,63 @@
 using ElectricGrid
-using DifferentialEquations
 using PlotlyJS
 
-CM = [0 1
-    -1 0]
+CM = [0. 1.
+     -1. 0.]
 
-# Source
-R = 1.1e-3
-L = 70e-6
-C = 250e-6
+S_source = 1e4
 
-# Cable
-C_b = 1e-4/2
-L_b = 1e-4
-R_b = 1e-3
+S_load = 1e2
+pf_load = 1
+v_rms = 230
+R_load, L_load, X, Z = ParallelLoadImpedance(S_load, pf_load, v_rms)
 
-# Load
-R_l = 100
-C_l = 1e-2
-L_l = 1e-2;
-parameters = Dict()
+# Which value is plottet
+value = 2
 
-grid_properties = Dict()
-grid_properties["fs"] =  10e3
-grid_properties["v_rms"] = 230
-grid_properties["phase"] = 1;
-parameters["grid"] = grid_properties
+parameters = Dict{Any, Any}(
+    "source" => Any[
+                    Dict{Any, Any}("pwr" => S_source, "control_type" => "classic", "mode" => "Swing", "fltr" => "LC", "i_limit" => 1e4, "v_limit" => 1e4,),
+                    ],
+    "load"   => Any[
+                    Dict{Any, Any}("impedance" => "R", "R" => R_load, "v_limit" => 1e4, "i_limit" => 1e4)
+                    ],
+    "cable"   => Any[
+                    Dict{Any, Any}("R" => 1e-3, "L" => x->1e-4, "C" => 1e-4),
+                    ],
+    "grid" => Dict{Any, Any}("fs"=>1e4, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.00)
+)
 
-source1 = Dict()
-source_list = []
+env1 = ElectricGridEnv(CM = CM, parameters = parameters, verbosity = 2)
 
-source1["fltr"] = "L"
-source1["R1"] = R
-source1["L1"] = L
-
-push!(source_list, source1)
-
-parameters["source"] = source_list
-
-cable = Dict()
-cable["R"] = R_b
-cable["L"] = L_b
-cable["C"] = C_b
-cable_list = []
-
-push!(cable_list, cable);
-parameters["cable"] = cable_list
-
-load1 = Dict()
-load_list = []
-
-load1["impedance"] = "RLC"
-load1["R"] = R_l;
-load1["L"] = L_l;
-load1["C"] = C_l;
-
-push!(load_list, load1);
-parameters["load"] = load_list;
-
-# @show parameters
-env1 = ElectricGridEnv(num_sources=1, num_loads=1, CM = CM, parameters = parameters, verbosity = 2)
-value = 5
 sol = []
-
 for i = 1:1000
-    env1([230])
+    env1([0.5, 0.5, 0.5])
     append!(sol,env1.x[value])
 end
-
-parameters = Dict()
-
-grid_properties = Dict()
-grid_properties["fs"] =  10e3
-grid_properties["v_rms"] = 230
-grid_properties["phase"] = 1;
-parameters["grid"] = grid_properties
-
-source1 = Dict()
-source_list = []
-
-source1["fltr"] = "L"
-source1["R1"] = R
-source1["L1"] = L
-
-push!(source_list, source1)
-
-parameters["source"] = source_list
-
-cable = Dict()
-cable["R"] = R_b
-cable["L"] = x->L_b
-cable["C"] = C_b
-cable_list = []
-
-push!(cable_list, cable);
-parameters["cable"] = cable_list
-
-load1 = Dict()
-load_list = []
-
-load1["impedance"] = "RLC"
-load1["R"] = R_l;
-load1["L"] = L_l;
-load1["C"] = C_l;
-
-push!(load_list, load1);
-parameters["load"] = load_list;
-
-# @show parameters
-env2 = ElectricGridEnv(num_sources=1, num_loads=1, CM = CM, parameters = parameters, verbosity = 2)
-
 t_t = collect(env1.t0:env1.ts:env1.t)
-p1 = scatter(x=t_t,y=sol,mode="lines",name="Nonlinear")
-sol = []
+p1 = scatter(x=t_t,y=sol,mode="lines",name="nonlinear")
 
+parameters2 = Dict{Any, Any}(
+    "source" => Any[
+                    Dict{Any, Any}("pwr" => S_source, "control_type" => "classic", "mode" => "Swing", "fltr" => "LC", "i_limit" => 1e4, "v_limit" => 1e4,),
+                    ],
+    "load"   => Any[
+                    Dict{Any, Any}("impedance" => "R", "R" => R_load, "v_limit" => 1e4, "i_limit" => 1e4)
+                    ],
+    "cable"   => Any[
+                    Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4),
+                    ],
+    "grid" => Dict{Any, Any}("fs"=>1e4, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.00)
+)
+
+env2 = ElectricGridEnv(CM = CM, parameters = parameters2, verbosity = 2)
+
+sol = []
 for i = 1:1000
-    env2([230])
+    env2([0.5, 0.5, 0.5])
     append!(sol,env2.x[value])
 end
-
 t_t = collect(env2.t0:env2.ts:env2.t)
-p2 = scatter(x=t_t,y=sol,mode="lines",name="Linear")
+p2 = scatter(x=t_t,y=sol,mode="lines",name="linear")
 
 plot([p1,p2])

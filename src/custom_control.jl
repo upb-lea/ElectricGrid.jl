@@ -61,7 +61,7 @@ function CustomNonlinearsim(AAA,B,u,tspan,x0)
 
     prob = ODEProblem(f, x0, tspan, u)
     alg = Tsit5()
-    sol = solve(prob, alg, reltol=1e-8, abstol=1e-8)
+    sol = solve(prob, alg, reltol=1e-10, abstol=1e-10)
     xout = sol.u[end]
 
     xout_float = Array{Float64}(undef,0)
