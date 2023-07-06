@@ -1,5 +1,9 @@
 using Flux
 using IntervalSets
+using StableRNGs
+using ReinforcementLearning
+using Random
+
 # TD3 uses two critics 
 struct TD3Critic
     critic_1::Flux.Chain

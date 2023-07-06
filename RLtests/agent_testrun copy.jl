@@ -5,8 +5,10 @@ using Flux.Losses
 using StableRNGs
 using IntervalSets
 
+# include agetn_td3 here
+src_dir = joinpath(dirname(pathof(ElectricGrid)))
+include(src_dir * "/agent_td3.jl")
 
-include(src * "./agent_td3.jl")
 CM = [ 0. 0. 1.
         0. 0. 2.
         -1. -2. 0.]
@@ -155,10 +157,7 @@ agent = Agent(
 
 
 
-run(agent, env, 1_000_000, verbosity = 1)
-
-
-
+run(agent, env, 1_000, verbosity = 1)
 
 
 
