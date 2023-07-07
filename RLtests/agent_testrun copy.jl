@@ -5,8 +5,15 @@ using Flux.Losses
 using StableRNGs
 using IntervalSets
 using Zygote: ignore
+using Logging
+using Wandb
 
-# include agetn_td3 here
+
+lg = WandbLogger(project="TD3", name="testruns",
+                    config= Dict("lr" => 3e-5))
+global_logger(lg)
+
+# include agent_td3 here
 src_dir = joinpath(dirname(pathof(ElectricGrid)))
 include(src_dir * "/agent_td3.jl")
 
@@ -86,14 +93,15 @@ env = ElectricGridEnv(
     action_delay = 0,
     verbosity = 0)
 
-seed = 123
+# seed = rand(Int, 1)
+seed = Int(floor(rand()*100000000))
 using Flux
 rng = StableRNG(seed)
 init = glorot_uniform(rng)
 create_actor() = Chain(
     Dense(ns, 32, relu; init = init),
-    Dense(32, 64, relu; init = init),
-    Dense(64, na, tanh; init = init)
+    Dense(32, 32, relu; init = init),
+    Dense(32, na, tanh; init = init)
 )
 
 create_critic_model() = Chain(
@@ -114,44 +122,46 @@ create_critic() = TD3Critic(
     )
 
 # ns = length(env.agent_dict["my_agent"]["state_ids"])
-ns = length(state(env, "my_agent"))
+ns = length(ElectricGrid.state(env, "my_agent"))
 na = length(env.agent_dict["my_agent"]["action_ids"])
 
 agent = Agent(
     policy = TD3Policy(
         behavior_actor = NeuralNetworkApproximator(
             model = create_actor(),
-            optimizer = ADAM(0.001),
+            optimizer = ADAM(3e-4),
         ),
         behavior_critic = NeuralNetworkApproximator(
             model = create_critic(),
-            optimizer = ADAM(0.001),
+            optimizer = ADAM(3e-4),
         ),
         target_actor = NeuralNetworkApproximator(
             model = create_actor(),
-            optimizer = ADAM(0.001),
+            optimizer = ADAM(3e-4),
         ),
         target_critic = NeuralNetworkApproximator(
             model = create_critic(),
-            optimizer = ADAM(0.001),
+            optimizer = ADAM(3e-4),
         ),
         γ = 0.99f0,
-        ρ = 0.99f0,
+        ρ = 0.995f0,
         batch_size = 64,
         start_steps = 100,
+        # start_steps = -1,
         start_policy = RandomPolicy(-1.0..1.0; rng = rng),
         update_after = 1000,
-        update_freq = 10,
-        policy_freq = 20,
+        update_freq = 1,
+        policy_freq = 2,
         target_act_limit = 1.0,
+        # ??
         target_act_noise = 0.1,
         act_limit = 1.0,
-        act_noise = 0.1,
+        act_noise = 0.05,
         rng = rng,
     ),
 
     trajectory = CircularArraySARTTrajectory(
-            capacity = 10_000_000,
+            capacity = 1000_000,
             state = Vector{Float32} => (ns,),
             action = Float32 => (na, ),
     ),
@@ -212,22 +222,82 @@ agent = Agent(
 my_custom_agents = Dict("my_agent" => agent)
 
 controllers = SetupAgents(env, my_custom_agents)
+learnhook = DataHook()
+
+
+EPISODIC_STEPS = 10_000
+EPISODES = 10_000
+warmup_episodes = 0.2 * EPISODES
+
+
+# function train()
+
+#             Learn(controllers, env, steps = Int(EPISODIC_STEPS/10))
+
+#                 println("Annealing learning rate")
+#                 # action noise anneal
+#                 controllers.agents["my_agent"].policy.poilcy.act_noise *= exp(-0.1)
+  
+#             Learn(controllers, env, steps = EPISODIC_STEPS)
+#         end
+#         @info "rewards" Episode=i, total_reward=sum(controllers.hook.df[!,"reward"])
+
+# end
+
+
+# train()
+
+
+
+
+
+
+
+
+
+
 
 function learn()
-    steps_total = 1_500
-    steps_loop = 50
-
+    steps_total = 1_500_000
+    steps_loop = 50_000
+    
     Learn(controllers, env, steps = steps_loop)
     while length(controllers.hook.df[!,"reward"]) <= steps_total
-
+        # learning_rate anneal
+        # act_noise anneal
         println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-        Learn(controllers, env, steps = steps_loop, hook = learnhook)
+        Learn(controllers, env, steps = steps_loop)
+        @info "rewards" total_reward=mean(sum(controllers.hook.df[!,"reward"]))
 
     end
 end
 
-
 learn()
+
+# function learn2()
+#     num_steps = 50_000
+#     an_scheduler_loops = 20
+#     for j in 1:10
+#         an = 0.1 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+#         target_noise = 0.1 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+#         learn_rate = 0.0001 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+#         for i in 1:an_scheduler_loops
+#             controllers.agents["my_agent"]["policy"].policy.policy.act_noise = an[i]
+#             controllers.agents["my_agent"]["policy"].policy.policy.target_act_noise = target_noise[i]
+#             # controllers.agents["my_agent"]["policy"].policy.policy.behavior_actor.optimizer.eta = learn_rate[i]
+#             # controllers.agents["my_agent"]["policy"].policy.policy.behavior_critic.optimizer.eta = learn_rate[i]
+#             println("next action noise level: $(an[i])")
+#             Learn(controllers, env, steps = num_steps)
+#             println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+            
+#         end
+
+#     end
+
+# end
+
+
+# learn2()
 
 plot_rewardresults(controllers = controllers)
 
@@ -235,7 +305,7 @@ hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
 
-# run(agent, env, stop_condition, hook)
+# # run(agent, env, stop_condition, hook)
 
 Simulate(controllers, env, hook=hook)
 
@@ -244,3 +314,5 @@ RenderHookResults(hook = hook,
                     states_to_plot  = env.state_ids,
                     actions_to_plot = env.action_ids,
                     plot_reward=true)
+
+

@@ -138,7 +138,7 @@ function (p::TD3Policy)(env::AbstractEnv, name::Union{Nothing, String} = nothing
         p.start_policy(env)
     else
         D = device(p.behavior_actor)
-        s = state(env, "my_agent")
+        s = ElectricGrid.state(env, "my_agent")
         s = Flux.unsqueeze(s, ndims(s) + 1)
         actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
         # add training flag
@@ -174,6 +174,8 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
             -p.target_act_limit,
             p.target_act_limit,
         ) |> to_device
+
+    
     # add noise and clip to act_limit bounds
     a′ = clamp.(p.target_actor(s′) .+ target_noise, -p.act_limit, p.act_limit)
 
@@ -190,6 +192,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
         loss = mse(q1 |> vec, y) + mse(q2 |> vec, y)
         ignore() do
             p.critic_loss = loss
+            @info "metrics" critic_loss=loss
         end
         loss
     end
@@ -201,6 +204,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
             loss = -mean(critic.model.critic_1(vcat(s, actions)))
             ignore() do
                 p.actor_loss = loss
+                @info "metrics" actor_loss=loss
             end
             loss
         end

@@ -300,20 +300,21 @@ Wrapps the Run function form https://juliareinforcementlearning.org/ to enable t
 the action noise.
 """
 function CustomRun(policy, env, stop_condition, hook, training = false)
-
     hook(PRE_EXPERIMENT_STAGE, policy, env, training)
     policy(PRE_EXPERIMENT_STAGE, env, training)
 
     is_stop = false
     while !is_stop
+        episode = 0
         RLBase.reset!(env)
 
         ResetPolicy(policy)
 
         policy(PRE_EPISODE_STAGE, env, training)
         hook(PRE_EPISODE_STAGE, policy, env, training)
-
+        tstep = 0
         while !is_terminated(env) # one episode
+            tstep += 1
             action = policy(env, training)
 
             policy(PRE_ACT_STAGE, env, action, training)
@@ -329,6 +330,10 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
                 break
             end
         end # end of an episode
+        episode += 1
+        @info "Episode" episode=episode
+        @info "total_timesteps" tstep=tstep
+        # @info "total_reward" reward=env.total_reward
 
         if is_terminated(env)
             policy(POST_EPISODE_STAGE, env, training)  # let the policy see the last observation
