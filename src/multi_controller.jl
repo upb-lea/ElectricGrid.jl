@@ -296,7 +296,7 @@ function DefaultDataHook(Multi_Agent, env)
 end
 
 """
-Wrapps the Run function form https://juliareinforcementlearning.org/ to enable turning off
+Wraps the Run function form https://juliareinforcementlearning.org/ to enable turning off
 the action noise.
 """
 function CustomRun(policy, env, stop_condition, hook, training = false)
