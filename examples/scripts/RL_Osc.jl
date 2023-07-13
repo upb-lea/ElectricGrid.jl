@@ -110,7 +110,46 @@ Dict{Any, Any}(
 total_num_RL = 1
 total_phases = 3 # always has to be 3 when using pll 3ph
 
+RL_pll = PLL(50, 0.0001)
 
+function reference(env)
+
+    if env.steps == 0
+        RL_pll.θpll = zeros(total_phases, 2) # two past terms
+        RL_pll.fpll = RL_pll.fsys*ones(total_phases, 4) # four past terms
+        RL_pll.pll_err_t = zeros(total_phases)
+        RL_pll.pll_err = zeros(total_phases, 3)
+    end
+
+    #V_filt_cap_new = env.state_abc_v
+    vC_1 = env.state[findfirst(x -> x == "source1_v_C_cables_a", env.state_ids)]
+    vC_2 = env.state[findfirst(x -> x == "source1_v_C_cables_b", env.state_ids)]
+    vC_3 = env.state[findfirst(x -> x == "source1_v_C_cables_c", env.state_ids)]
+
+    V_filt_cap_new = [vC_1, vC_2, vC_3]
+
+    fpll, θpll = RL_pll(V_filt_cap_new)
+
+
+    if env.t < 0.04
+        return [0.0, 0.0, 0.0]
+    end
+
+    θph = θpll[ :, end]
+
+    return +10 * cos.(θph .+ π/2)
+end
+
+global ref
+featurize_ddpg = function(state, env, name)
+    if name == "ElectricGrid_ddpg_1"
+
+        norm_ref = env.nc.parameters["source"][1]["i_limit"]
+        global ref = reference(env)
+        state = vcat(state, ref/norm_ref)
+
+    end
+end
 
 function reward_function(env, name = nothing)
     if name == "classic"
@@ -187,6 +226,9 @@ end
 
 
 #learn1()
+
+#plot_rewardresults(convert(Vector{Float64}, controllers.hook.df[!,"reward"]))
+
 
 hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)

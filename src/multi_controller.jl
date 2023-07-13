@@ -42,6 +42,10 @@ end
 
 Base.getindex(A::MultiController, x) = getindex(A.agents, x)
 
+function get_osc(params, t, phases)
+    return [sin(1000 * params[1] * t + (i-1) * (2*pi/phases) + params[2] * (2*pi)) for i in 1:phases]
+end
+
 function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
@@ -55,23 +59,20 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
         if haskey(env.agent_dict[name], "osc")
             agent_output = agent["policy"](env, training)
             sub_action = Array{Union{Nothing, Float64}}(nothing, length(agent["action_ids"]))
-            visited_osc_numbers = []
 
-            for (i, action_id) in enumerate(agent["action_ids"])
-                #find the source number of the current action ideal
-                source_number = parse(Int, split(split(action_id, "_")[1], "source")[2])
-
-                if !(source_number in visited_osc_numbers)
-                    if source_number in env.agent_dict[name]["osc"]
-                        na += 2
-                        push!(visited_osc_numbers, source_number)
-                    else
-                        sub_action[i] = agent_output[i]
-                    end
-                end
+            for (i, source_number) in enumerate(env.agent_dict[name]["osc"])
+                osc_output = get_osc(agent_output[collect(1:2) .+ (i-1)*2], env.t, env.nc.parameters["grid"]["phase"])
+                sub_action[findall(x -> startswith(x, "source$source_number") , agent["action_ids"])] = osc_output
             end
+
+            #fill the rest of sub_action (which is still "nothing") with all the other values of agent_output
+            sub_action[findall(x -> isnothing(x), sub_action)] = agent_output[(length(env.agent_dict[name]["osc"])*2+1):end]
+
+            #save the original agent_output so it can later be stored in the trajectory
+            A.agents[name]["last_agent_output"] = agent_output
         else
             sub_action = agent["policy"](env, training)
+            A.agents[name]["last_agent_output"] = sub_action
         end
 
         action[findall(x -> x in agent["action_ids"], A.action_ids)] .= sub_action .* multiplier
@@ -95,7 +96,7 @@ function (A::MultiController)(stage::PreActStage, env::AbstractEnv, action, trai
 
     if training
         for agent in values(A.agents)
-            agent["policy"](stage, env, action[findall(x -> x in agent["action_ids"], A.action_ids)], training)
+            agent["policy"](stage, env, agent["last_agent_output"], training)
         end
     end
 end

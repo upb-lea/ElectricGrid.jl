@@ -24,13 +24,14 @@ function RLBase.update!(
     # stored in a SARSA format, which means we still need to generate a dummy
     # action at the end of an episode.
 
-    s = policy isa NamedPolicy ? state(env, nameof(policy)) : state(env)
+    #s = policy isa NamedPolicy ? state(env, nameof(policy)) : state(env)
+    #A = policy isa NamedPolicy ? action_space(env, nameof(policy)) : action_space(env)
+    #a = rand(A)
 
-    A = policy isa NamedPolicy ? action_space(env, nameof(policy)) : action_space(env)
-    a = rand(A)
+    #just copy the last values to achieve that - otherwise the osc module broke the commented out code from above
 
-    push!(trajectory[:state], s)
-    push!(trajectory[:action], a)
+    push!(trajectory[:state], trajectory[:state][:,end])
+    push!(trajectory[:action], trajectory[:action][:,end])
     if haskey(trajectory, :legal_actions_mask)
         lasm =
             policy isa NamedPolicy ? legal_action_space_mask(env, nameof(policy)) :
