@@ -9,8 +9,14 @@ using Logging
 using Wandb
 
 
-lg = WandbLogger(project="TD3", name="testruns",
-                    config= Dict("lr" => 3e-5))
+lg = WandbLogger(   
+            project="TD3", 
+            entity="electricgrid-jl",
+            # name="testruns",
+            config= Dict("lr" => 3e-5)
+        )
+
+
 global_logger(lg)
 
 # include agent_td3 here
@@ -244,58 +250,50 @@ warmup_episodes = 0.2 * EPISODES
 
 # end
 
-
 # train()
 
 
-
-
-
-
-
-
-
-
-
-function learn()
-    steps_total = 1_500_000
-    steps_loop = 50_000
+# function learn()
+#     steps_total = 1_500_000
+#     steps_loop = 50_000
     
-    Learn(controllers, env, steps = steps_loop)
-    while length(controllers.hook.df[!,"reward"]) <= steps_total
-        # learning_rate anneal
-        # act_noise anneal
-        println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-        Learn(controllers, env, steps = steps_loop)
-        @info "rewards" total_reward=mean(sum(controllers.hook.df[!,"reward"]))
+#     Learn(controllers, env, steps = steps_loop)
+#     while length(controllers.hook.df[!,"reward"]) <= steps_total
+#         # learning_rate anneal
+#         # act_noise anneal
+#         println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+#         Learn(controllers, env, steps = steps_loop)
+#         @info "rewards" total_reward=mean(sum(controllers.hook.df[!,"reward"]))
 
+#     end
+# end
+# # controllers.agents["my_agent"]["policy"].policy.policy.act_noise = 1e-3
+# # controllers.agents["my_agent"]["policy"].policy.policy.target_act_noise = 1e-3
+# # for 
+# # controllers.agents["my_agent"]["policy"].policy.policy.behavior_actor.optimizer.eta = 1e-3
+
+# learn()
+
+function learn2()
+    num_steps = 50_000
+    an_scheduler_loops = 20
+    for j in 1:10
+        an = 0.1 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+        target_noise = 0.1 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+        learn_rate = 0.0001 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+        for i in 1:an_scheduler_loops
+            controllers.agents["my_agent"]["policy"].policy.policy.act_noise = an[i]
+            controllers.agents["my_agent"]["policy"].policy.policy.target_act_noise = target_noise[i]
+            # controllers.agents["my_agent"]["policy"].policy.policy.behavior_actor.optimizer.eta = learn_rate[i]
+            # controllers.agents["my_agent"]["policy"].policy.policy.behavior_critic.optimizer.eta = learn_rate[i]
+            println("next action noise level: $(an[i])")
+            Learn(controllers, env, steps = num_steps)
+            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))") 
+        end
     end
 end
 
-learn()
-
-# function learn2()
-#     num_steps = 50_000
-#     an_scheduler_loops = 20
-#     for j in 1:10
-#         an = 0.1 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
-#         target_noise = 0.1 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
-#         learn_rate = 0.0001 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
-#         for i in 1:an_scheduler_loops
-#             controllers.agents["my_agent"]["policy"].policy.policy.act_noise = an[i]
-#             controllers.agents["my_agent"]["policy"].policy.policy.target_act_noise = target_noise[i]
-#             # controllers.agents["my_agent"]["policy"].policy.policy.behavior_actor.optimizer.eta = learn_rate[i]
-#             # controllers.agents["my_agent"]["policy"].policy.policy.behavior_critic.optimizer.eta = learn_rate[i]
-#             println("next action noise level: $(an[i])")
-#             Learn(controllers, env, steps = num_steps)
-#             println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-            
-#         end
-
-#     end
-
-# end
-
+Learn(controllers, env, steps = 1000)
 
 # learn2()
 
@@ -304,7 +302,7 @@ plot_rewardresults(controllers = controllers)
 hook = DataHook(collect_state_ids = env.state_ids,
                 collect_action_ids = env.action_ids)
 
-
+close(lg)
 # # run(agent, env, stop_condition, hook)
 
 Simulate(controllers, env, hook=hook)
