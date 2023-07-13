@@ -51,6 +51,9 @@ node_modules/
 # Database
 db/*.sqlite
 
+# conda
+/.CondaPkg
+/wandb
 # Notebook helper
 .idea/*
 
@@ -63,6 +66,4 @@ pre_investigations/*
 
 # # .github files
 # *.github
-
-
-
+wandb/
