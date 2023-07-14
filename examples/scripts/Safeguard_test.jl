@@ -1,4 +1,5 @@
 using ElectricGrid
+using LinearAlgebra
 
 CM = [ 0. 0. 1.
         0. 0. 2.
@@ -81,7 +82,7 @@ omega_x = [
 
 A_sqare = A_P10^2
 
-N = 4  # maximum number of iteration
+N = 3  # maximum number of iteration
 
 m = 1 # number of inputs to the system,
 n = size(B_P10)[1]
@@ -91,33 +92,35 @@ n = size(B_P10)[1]
 global A_N = 1* Matrix(I, size(A_P10)[1], size(A_P10)[1])
 global B_N = zeros(n, m*N)
 
+using SparseArrays
+
+W_x_cal = sparse(W_x)
+W_x_sp = sparse(W_x)
+W_u_cal = sparse(W_u)
+
+W_x_cal = blockdiag(W_x_cal, W_x_cal)
+W_u_cal = cat(W_u,  reverse(W_u); dims=(1,2))
+
 for ii  = 1:N
 
     global A_N = [A_N; A_P10^ii]
 
+    global W_x_cal = blockdiag(W_x_cal, W_x_sp)
+    #Wglobal W_u_cal = blockdiag(W_u_cal, W_u_cal)
+
 
 
     B_N_newline = A_P10^(ii-1)*B_P10
-    println("First:")
-    println(B_N_newline)
-    println("")
+
 
     for jj in 2:ii
-        println("First:")
-        println(A_P10^(ii-jj)*B_P10)
-        println("")
+
         B_N_newline = hcat(B_N_newline, A_P10^(ii-jj)*B_P10)
 
-        println("")
-        println(jj)
-        println("")
-        println(B_N_newline)
-        println("")
+
     end
     B_N_newline = hcat(B_N_newline, zeros(n, m*(N-ii)))
-    println("Last:")
-    println(B_N_newline)
-    println("")
+
 
 
 
@@ -131,4 +134,9 @@ println("")
 println(A_N)
 println("")
 println(B_N)
+println("")
+println("")
+println(W_x_cal)
+println("")
+println(W_u_cal)
 println("")
