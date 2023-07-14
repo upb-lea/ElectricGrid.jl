@@ -43,11 +43,11 @@ end
 Base.getindex(A::MultiController, x) = getindex(A.agents, x)
 
 function get_osc(params, t, phases)
-    return [params[1] * sin(1000 * params[2] * t + (i-1) * (2*pi/phases)) for i in 1:phases]
+    return [params[1] * cos(1000 * params[2] * t - (i-1) * (2*pi/phases)) for i in 1:phases]
 end
 
 function get_osc3(params, t, phases)
-    return [params[1] * sin(1000 * params[2] * t + (i-1) * (2*pi/phases) + params[3] * (2*pi)) for i in 1:phases]
+    return [params[1] * cos(1000 * params[2] * t - (i-1) * (2*pi/phases) + params[3] * (2*pi)) for i in 1:phases]
 end
 
 function (A::MultiController)(env::AbstractEnv, training::Bool = false)
