@@ -43,7 +43,11 @@ end
 Base.getindex(A::MultiController, x) = getindex(A.agents, x)
 
 function get_osc(params, t, phases)
-    return [sin(1000 * params[1] * t + (i-1) * (2*pi/phases) + params[2] * (2*pi)) for i in 1:phases]
+    return [params[1] * sin(1000 * params[2] * t + (i-1) * (2*pi/phases)) for i in 1:phases]
+end
+
+function get_osc3(params, t, phases)
+    return [params[1] * sin(1000 * params[2] * t + (i-1) * (2*pi/phases) + params[3] * (2*pi)) for i in 1:phases]
 end
 
 function (A::MultiController)(env::AbstractEnv, training::Bool = false)
@@ -56,17 +60,30 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
             multiplier = 1.0
         end
 
-        if haskey(env.agent_dict[name], "osc")
+        if name != "classic" && (haskey(env.agent_dict[name], "osc") || haskey(env.agent_dict[name], "osc3"))
             agent_output = agent["policy"](env, training)
             sub_action = Array{Union{Nothing, Float64}}(nothing, length(agent["action_ids"]))
 
-            for (i, source_number) in enumerate(env.agent_dict[name]["osc"])
-                osc_output = get_osc(agent_output[collect(1:2) .+ (i-1)*2], env.t, env.nc.parameters["grid"]["phase"])
-                sub_action[findall(x -> startswith(x, "source$source_number") , agent["action_ids"])] = osc_output
+            length_osc = 0
+            if haskey(env.agent_dict[name], "osc") 
+                length_osc = length(env.agent_dict[name]["osc"])
+                for (i, source_number) in enumerate(env.agent_dict[name]["osc"])
+                    osc_output = get_osc(agent_output[collect(1:2) .+ (i-1)*2], env.t, env.nc.parameters["grid"]["phase"])
+                    sub_action[findall(x -> startswith(x, "source$source_number") , agent["action_ids"])] = osc_output
+                end
+            end
+
+            length_osc3 = 0
+            if haskey(env.agent_dict[name], "osc3") 
+                length_osc3 = length(env.agent_dict[name]["osc3"])
+                for (i, source_number) in enumerate(env.agent_dict[name]["osc3"])
+                    osc_output = get_osc3(agent_output[collect(1:3) .+ (i-1)*3], env.t, env.nc.parameters["grid"]["phase"])
+                    sub_action[findall(x -> startswith(x, "source$source_number") , agent["action_ids"])] = osc_output
+                end
             end
 
             #fill the rest of sub_action (which is still "nothing") with all the other values of agent_output
-            sub_action[findall(x -> isnothing(x), sub_action)] = agent_output[(length(env.agent_dict[name]["osc"])*2+1):end]
+            sub_action[findall(x -> isnothing(x), sub_action)] = agent_output[(length_osc*2 + length_osc3*3 + 1):end]
 
             #save the original agent_output so it can later be stored in the trajectory
             A.agents[name]["last_agent_output"] = agent_output
@@ -156,7 +173,7 @@ function SetupAgents(env, custom_agents = nothing)
     for (name, config) in env.agent_dict
 
         if config["mode"] == "ElectricGrid_ddpg"
-            if haskey(env.agent_dict[name], "osc")
+            if haskey(env.agent_dict[name], "osc") || haskey(env.agent_dict[name], "osc3")
                 na = 0
                 visited_osc_numbers = []
                 for action_id in env.agent_dict[name]["action_ids"]
@@ -164,8 +181,11 @@ function SetupAgents(env, custom_agents = nothing)
                     source_number = parse(Int, split(split(action_id, "_")[1], "source")[2])
 
                     if !(source_number in visited_osc_numbers)
-                        if source_number in env.agent_dict[name]["osc"]
+                        if haskey(env.agent_dict[name], "osc") && source_number in env.agent_dict[name]["osc"]
                             na += 2
+                            push!(visited_osc_numbers, source_number)
+                        elseif haskey(env.agent_dict[name], "osc3") && source_number in env.agent_dict[name]["osc3"]
+                            na += 3
                             push!(visited_osc_numbers, source_number)
                         else
                             na += 1

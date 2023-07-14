@@ -221,10 +221,24 @@ function ElectricGridEnv(;
                 end
 
                 if haskey(nc.parameters["source"][ns], "osc") && nc.parameters["source"][ns]["osc"] == true
-                    if haskey(agent_dict[name], "osc")
-                        append!(agent_dict[name]["osc"], ns)
-                    else
-                        agent_dict[name]["osc"] = [ns]
+                    mode = 2
+
+                    if haskey(nc.parameters["source"][ns], "osc_mode")
+                        mode = nc.parameters["source"][ns]["osc_mode"]
+                    end
+
+                    if mode == 2
+                        if haskey(agent_dict[name], "osc")
+                            append!(agent_dict[name]["osc"], ns)
+                        else
+                            agent_dict[name]["osc"] = [ns]
+                        end
+                    elseif mode == 3
+                        if haskey(agent_dict[name], "osc3")
+                            append!(agent_dict[name]["osc3"], ns)
+                        else
+                            agent_dict[name]["osc3"] = [ns]
+                        end
                     end
                 end
             end

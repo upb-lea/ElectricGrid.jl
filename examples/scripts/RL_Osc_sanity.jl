@@ -1,5 +1,6 @@
 using ElectricGrid
 using LinearAlgebra
+using ReinforcementLearning
 
 mutable struct PLL
 
@@ -77,9 +78,8 @@ end
 
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
-CM = [ 0. 0. 1.
-        0. 0. 2.
-        -1. -2. 0.]
+CM = [ 0. 1.
+        -1. 0.]
 
 R_load, L_load, _, _ = ParallelLoadImpedance(50e3, 0.95, 230)
 
@@ -89,16 +89,11 @@ Dict{Any, Any}(
                     Dict{Any, Any}(
                         "pwr" => 200e3,
                         "control_type" => "RL",
+                        "mode" => "my_agent",
                         "fltr" => "LC",
                         "osc" => true,
                         "osc_mode" => 3,
                         #"L1" => 0.0008,
-                        ),
-                    Dict{Any, Any}(
-                            "pwr" => 200e3,
-                            "fltr" => "LC",
-                            "control_type" => "classic",
-                            "mode" => "Droop",
                         ),
                     ],
     "load"   => Any[
@@ -194,7 +189,28 @@ env = ElectricGridEnv(
     verbosity = 0)
 
 
-controllers = SetupAgents(env)
+struct CustomPolicy <: AbstractPolicy
+end
+
+(p::CustomPolicy)(env, training) = [0.05, 0.05, 0.05]
+
+myAgent = Agent(
+    policy = CustomPolicy(),
+    trajectory = CircularArraySARTTrajectory(
+        capacity = 20_000,
+        state = Vector{Float32} => (3,),
+        action = Float32 => (3, ),
+    ),
+)
+
+my_custom_agents = Dict("my_agent" => myAgent)
+
+controllers = SetupAgents(env, my_custom_agents)
+
+mutable struct EmptyHook <: AbstractHook
+end
+
+controllers.hook = EmptyHook()
 
 learnhook = DataHook()
 
