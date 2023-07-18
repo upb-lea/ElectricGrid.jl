@@ -11,6 +11,7 @@ using Distributions
 using Flux
 using Graphs
 using GraphPlot
+using Interpolations
 using IntervalSets
 using Ipopt
 using JuMP
@@ -31,6 +32,7 @@ include("./power_system_theory.jl")
 include("./node_constructor.jl")
 include("./custom_control.jl")
 include("./solar_module.jl")
+include("./battery.jl")
 include("./electric_grid_env.jl")
 include("./agent_ddpg.jl")
 include("./classical_control.jl")

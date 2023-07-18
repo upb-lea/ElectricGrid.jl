@@ -56,15 +56,15 @@ function get_V(SolarArr::SolarArray, I, G, T)
     end
 
     I = maximum([0.0, I[1]])
-    res = I_photo(self, G, T) - (I / SolarArr.parallel)
+    res = (I - I_photo(self, G, T)) / (self.I_0 * SolarArr.parallel)
 
     dT = self.T_0 + T
     V_T = self.k * dT / self.q
 
-    if res <= 0
+    if res >= 1
         V = 0
     else
-        V = self.ni * self.N_cell * SolarArr.serial * V_T * (log((res) / self.I_0) + 1)
+        V = self.ni * self.N_cell * SolarArr.serial * V_T * log(1 - res)
     end
 
     return V
