@@ -331,8 +331,8 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
             end
         end # end of an episode
         episode += 1
-        @info "Episode" episode=episode
-        @info "total_timesteps" tstep=tstep
+        # @info "Episode" episode=episode
+        # @info "total_timesteps" tstep=tstep
         # @info "total_reward" reward=env.total_reward
 
         if is_terminated(env)

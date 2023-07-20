@@ -193,7 +193,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
         loss = mse(q1 |> vec, y) + mse(q2 |> vec, y)
         ignore() do
             p.critic_loss = loss
-            @info "metrics" critic_loss=loss
+            # @info "metrics" critic_loss=loss
         end
         loss
     end
@@ -205,7 +205,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
             loss = -mean(critic.model.critic_1(vcat(s, actions)))
             ignore() do
                 p.actor_loss = loss
-                @info "metrics" actor_loss=loss
+                # @info "metrics" actor_loss=loss
             end
             loss
         end
