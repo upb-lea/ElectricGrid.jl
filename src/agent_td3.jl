@@ -4,6 +4,7 @@ using StableRNGs
 using ReinforcementLearning
 using Random
 using Statistics
+using Flux.Losses: mse
 
 #functions to make the training flag work for the whole RL framework
 # (agent::Agent)(env::ElectricGridEnv, training::Bool) = agent.policy(env, training)
@@ -131,7 +132,7 @@ end
 
 # TODO: handle Training/Testing mode
 # function RLBase.plan!(p::TD3Policy, env)
-function (p::TD3Policy)(env::AbstractEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
+function (p::TD3Policy)(env::ElectricGridEnv, name::Union{Nothing, String} = nothing, training::Bool = false)
     p.update_step += 1
 
     if p.update_step <= p.start_steps
@@ -146,7 +147,7 @@ function (p::TD3Policy)(env::AbstractEnv, name::Union{Nothing, String} = nothing
     end
 end
 
-function RLCore.update!(
+function RLBase.update!(
     p::TD3Policy,
     traj::CircularArraySARTTrajectory,
     ::AbstractEnv,
@@ -155,7 +156,7 @@ function RLCore.update!(
     length(traj) > p.update_after || return
     p.update_step % p.update_freq == 0 || return
     inds, batch = sample(p.rng, traj, BatchSampler{SARTS}(p.batch_size))
-    update!(p, batch)
+    RLBase.update!(p, batch)
 end
 
 function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
@@ -196,7 +197,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
         end
         loss
     end
-    update!(critic, gs1)
+    RLBase.update!(critic, gs1)
 
     if p.replay_counter % p.policy_freq == 0
         gs2 = gradient(Flux.params(actor)) do
@@ -208,7 +209,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
             end
             loss
         end
-        update!(actor, gs2)
+        RLBase.update!(actor, gs2)
         # polyak averaging
         for (dest, src) in zip(
             Flux.params([p.target_actor, p.target_critic]),
