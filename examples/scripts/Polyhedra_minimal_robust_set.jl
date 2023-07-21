@@ -35,13 +35,13 @@ F_2 = Fs(2)
 F_3 = Fs(3)
 
 using Plots
-plot()
+p = plot()
 for i in 10:-1:1
     plot!(Fs(i, 0))
 end
 plot!()
 display(p)
-
+#=
 using PlotlyJS
 layout = Layout(
             plot_bgcolor="#f1f3f7",
@@ -61,3 +61,4 @@ end
 
 p = PlotlyBase.Plot(traces, layout)#, config = PlotConfig(scrollZoom=true))
 display(p)
+=#
