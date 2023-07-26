@@ -248,6 +248,12 @@ poly_3D_Hrep = doubledescription(poly_3d.vrep)
 
 volume(poly_3d)  # TODO: Why is this 0? Problem -> when abort algorithm?
 
+poly_3d_proj = project(poly, [1,2,3])
+volume(poly_3d_proj)
+
+poly_2d_v_u_prj = project(poly, [2,3])
+plot(poly_2d_v_u_prj)
+
 feas_bA = poly_3D_Hrep.A
 
 
