@@ -2,6 +2,9 @@ using ElectricGrid
 using LinearAlgebra
 using Polyhedra
 
+using Ipopt
+using JuMP
+
 ############################################################################################
 # New functions
 
@@ -24,19 +27,19 @@ Creates a blockdiagonal matrix with N-times vector v on the diagonal
 function my_blkdiag_from_vec(v, N)
 
     count = 1
-    v_lec = length(v)
-    M_blk = zeros(v_lec*N, N)
+    v_len = length(v)
+    M_blk = zeros(v_len*N, N)
 
-    for n in 1:N+1
-        for i in 1:size(v)[1]+1
+    for n in 1:N
+        for i in 1:v_len*N
             if n == i
-                M_blk[count, i] = v[1]
-                M_blk[count+v_lec-1, i] = v[v_lec]
+                for k in 1:v_len
+                    M_blk[k+count-1, n] = v[k]
+                end
             end
         end
-        count+=v_lec
+        count+=v_len
     end
-
     return M_blk
 end
 
@@ -220,7 +223,7 @@ N = 3  # maximum number of iteration
 m = 1 # number of inputs to the system,
 n = size(B)[1]
 
-A_N2, B_N2, Omega_x2, Omega_u2, W_x_cal2, W_u_cal2 = get_condensed_matrices(A_P10, B_P10, omega_x, omega_u, W_x, W_u, N)
+A_N2, B_N2, Omega_x2, Omega_u2, W_x_cal2, W_u_cal2 = get_condensed_matrices(A_P10, B_P10, omega_x, omega_u, W_x, W_u, 2)
 
 poly = get_poly(A_N2, B_N2, Omega_x2, Omega_u2, W_x_cal2, W_u_cal2, m, n)
 
@@ -242,16 +245,97 @@ plot(poly_2d_v_u)
 # geting matrices for safeguard
 poly_3d = eliminate(poly, [4, 5])
 poly_3D_Hrep = doubledescription(poly_3d.vrep)
+
+volume(poly_3d)  # TODO: Why is this 0? Problem -> when abort algorithm?
+
 feas_bA = poly_3D_Hrep.A
 
 
-
+#=
 for i in 1:N
 
     A_N, B_N, Omega_x, Omega_u, W_x_cal, W_u_cal = get_condensed_matrices(A_P10, B_P10, omega_x, omega_u, W_x, W_u, i)
     poly_vol = get_poly(A_N, B_N, Omega_x, Omega_u, W_x_cal, W_u_cal, m, n)
     println("")
-    println(n)
+    println(i)
     println(volume(poly_vol))
     println("")
 end
+=#
+
+# From Python - validated with quadprog in matlab
+i = [0.7, 0.1, 0.5, -0.6, -0.4, -0.6, -0.7, 0.7]
+v = [-0.5, -0.4, -0.2, 0.55, 0.3, -0.6, -0.5, 0.55]
+a_rl = [0.95, 0.8, 0.9, -0.8, -0.6, -0.95, -0.8, 0.9]
+a_sg = [-0.619, -0.123, -0.021, 0.644, 0.128, -0.19, -0.493, 0.275]
+
+feas_b = feas_bA[:,1]
+feas_A = feas_bA[:,2:end]
+
+action_rl = a_rl[1]
+state = [i[1]; v[1]]
+safeguard = Model(Ipopt.Optimizer)
+
+@variable(safeguard, action)
+
+@objective(safeguard, Min, (action - action_rl)^2)
+
+A_x = feas_A[:,1:2]
+A_u = feas_A[:,3]
+A_x *state
+@constraint(safeguard, A_u * action <= feas_b - A_x*state)
+
+print(safeguard)
+
+optimize!(safeguard)
+
+
+p1 = plot(poly_2d_v_u, label="feas_Set")
+scatter!(p1, (v[1], value(action)), mc=:green, ms=10, ma=1, label="u_SG")
+plot!(p1, legend=:bottomright)
+plot!(p1, [(v[1], action_rl), (v[1], value(action))], arrow = arrow(:closed, 0.1), color = :black)
+scatter!(p1, (v[1], action_rl), mc=:red, ms=10, ma=1, label="u_RL")
+
+p = plot(poly_2d_v_u, label="feas_Set")
+p_i = plot(poly_2d_i_u)
+
+a_sg_jump = []
+
+for ii in 1:length(v)
+    action_rl = a_rl[ii]
+    state = [i[ii]; v[ii]]
+    safeguard = Model(Ipopt.Optimizer)
+
+    @variable(safeguard, action)
+
+    @objective(safeguard, Min, (action - action_rl)^2)
+
+    A_x = feas_A[:,1:2]
+    A_u = feas_A[:,3]
+    A_x *state
+    @constraint(safeguard, A_u * action <= feas_b - A_x*state)
+
+    print(safeguard)
+
+    optimize!(safeguard)
+
+
+    scatter!(p, (v[ii], value(action)), mc=:green, ms=10, ma=1, label="u_SG")
+    plot!([(v[ii], action_rl), (v[ii], value(action))], arrow = arrow(:closed, 0.1), color = :black)
+    scatter!(p, (v[ii], action_rl), mc=:red, ms=10, ma=1, label="u_RL")
+    push!(a_sg_jump, value(action))
+
+    scatter!(p_i, (i[ii], value(action)), mc=:green, ms=10, ma=1, label="u_SG")
+    plot!([(i[ii], action_rl), (i[ii], value(action))], arrow = arrow(:closed, 0.1), color = :black)
+    scatter!(p_i, (i[ii], action_rl), mc=:red, ms=10, ma=1, label="u_RL")
+    push!(a_sg_jump, value(action))
+
+end
+xlabel!(p, "v / v_lim")
+ylabel!(p, "action")
+
+xlabel!(p_i, "i / i_lim")
+ylabel!(p_i, "action")
+
+display(p)
+display(p_i)
