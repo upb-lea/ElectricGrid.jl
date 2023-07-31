@@ -298,10 +298,10 @@ function ElectricGridEnv(;
                 #TODO : $source_number does only fit if all L filters! Otherwise how to
                 #       define the offet for $source_number?!?!?
                 # TODO built pv module from parameter dict - where to define? In env?
-                pv_m = SolarModule()
-                SolarArray = SolarArray(; SolarModule=pv_m)
+                ModulePV = SolarModule()
+                SolarArr = SolarArray(; ModuleParameters=ModulePV)
                 # find(x -> .... source$source_number_i_L in state_ids)
-                fun = (env, G, T) -> GetV(:($SolarArray),
+                fun = (env, G, T) -> GetV(:($SolarArr),
                     env.x[:($source_number)] * env.action, G, T)
                 push!(v_dc_arr, fun)
 
