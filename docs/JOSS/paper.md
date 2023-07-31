@@ -24,6 +24,7 @@ authors:
   - name: Septimus Boshoff
     affiliation: 1
   - name: Marvin Meyer
+    orcid: 0009-0008-2879-7118
     affiliation: 1
   - name: Vikas Chidananda
     affiliation: 2
@@ -34,7 +35,7 @@ affiliations:
     index: 1
   - name: Chair of Data Science for Engineering, Paderborn University, Paderborn, Germany
     index: 2
-date: 28 April 2023
+date: 31 July 2023
 bibliography: paper.bib
 ---
 
@@ -42,7 +43,7 @@ bibliography: paper.bib
 
 The ElectricGrid.jl toolbox provides a transient simulation framework
 for electric energy grids based on power electronic converters. 
-With a few lines of code, a parameterised electric grid model can 
+With a few lines of code, a parameterised electric grid model on component level can 
 be initialised in Julia. 
 An example grid is shown in the figure below.
 
@@ -87,14 +88,13 @@ the modeling, control, and testing of
 small to large scale electric power grids and to provide a platform on which different control methods (including RL) can be compared under defined conditions (benchmarks).
 
 The experiments are based on dynamic simulations in the time domain which allows for accurate control
-and test investigations during transients and steady state. 
-This is an essential difference to already available open-
-source solutions for the simulation of electrical energy grids like PyPSA [@Brown2017], Powermodels.jl [@Coffrin2018] and pandapower 
+and test investigations during transients and steady state down to component level. 
+This is an essential difference to already available open-source solutions for the simulation of electrical energy grids like PyPSA [@Brown2017], Powermodels.jl [@Coffrin2018] and pandapower 
 [@Thurner2018] which, in contrast, usually perform the calculations 
 in a (quasi)-stationary state. Also these frameworks tend to focus on large-scale power systems at the transmission and distribution grid level, 
 which does not allow an evaluation of, e.g., control on component level in case of load fluctuations in the grid.
 In addition, few tools like [@lara2023revisiting] already exist in Julia, which offer dynamic simulations. 
-However, the latter is based on different simplifications (e.g. assumption of a symmetric grid, fixed frequency, ...) and 
+However, the latter is based on different simplifications (e.g., assumption of a symmetric grid, fixed frequency, ...) and 
 also do not offer an interface to RL toolboxes.
 To ensure a seamless integration of the control algorithms, the Gymnasium-based API [@FaramaFoundation2023] should be used, which has been established as a standard in recent years.
 For other projects implementing the Gymnasium-based API, such as GridAlive (based on Grid2Op [@Donnot2020]) and ChroniX2Grid [@Marot2020], the focus remains on top-down control and steady-state models.
@@ -129,7 +129,7 @@ The ``ElectricGrid.jl`` toolbox provides the following key features:
 
 * Framework to set up an experiment with a parameterised energy grid in a few lines of code. 
 
-* Dynamic simulation of electricity grids on component level including single and multi-phase systems as well as AC and DC operation. 
+* Dynamic simulation of electricity grids on component level including single and multi-phase systems as well as AC and DC operation with arbitrary waveforms. 
 
 * Calculation, evaluation and logging of every single time step covering states, action and auxiliary quantities. 
 
@@ -155,7 +155,7 @@ The package should be installed using the Julia package manager. In a Julia term
 add ElectricGrid
 ```
 
-Alternatively it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]` to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` If you started Julia in your ElectricGrid directory and afterwards run `instantiate`.
+Alternatively, it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]` to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` If you started Julia in your ElectricGrid directory and afterwards run `instantiate`.
   
 The source code, guide and 
 examples are available on the GitHub repository (https://github.com/upb-lea/JuliaElectricGrid.jl). 
