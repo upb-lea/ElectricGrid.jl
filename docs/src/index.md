@@ -9,13 +9,18 @@ ElectricGrid.jl is a library for setting up realistic electric grid simulations 
 The getting started pages of this documentation will guide you through the principles of working with ElectricGrid.jl by following different examples and explaining them step by step. The example scripts can also be found in the examples folder of the ElectricGrid.jl repository.
 
 ## Installation
+- Installation using the julia package manager (recommended if you want to use ElectricGrid in your project):
+In a julia terminal run the follwing:
+```
+import Pkg
+Pkg.add("ElectricGrid")
+```
 
-For now you have to download or clone the github repository at https://github.com/upb-lea/ElectricGrid.jl and set it up:
-- start up julia
-- activate the project by pressing `]`to access pkg mode and then `activate path/to/ElectricGrid` or `activate .` if you started julia in your ElectricGrid directory
-- run `instantiate`
-
-Now you should be ready to run the examples and work with ElectricGrid.jl.
+- Install from Github source (recommended if you want to run the example notebooks and scripts):
+  - Clone the git and navigate to the directory
+```
+git clone https://github.com/upb-lea/ElectricGrid.jl.git
+```
 
 
 
