@@ -203,6 +203,8 @@ function learn1()
 
     steps_loop = 50_000
 
+    controllers.agents["ElectricGrid_ddpg_1"]["policy"].policy.policy.act_noise = 0.00001
+
     Learn(controllers, env, steps = steps_loop)
 
     while length(controllers.hook.df[!,"reward"]) <= steps_total
