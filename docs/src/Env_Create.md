@@ -347,7 +347,7 @@ env.nc.parameters["cable"][1]
       "R"       => 0.208
 
 
-For all information about the parameters which can be defined investigate the parameter dict itself or have a look into the documentation.
+For all information about the parameters which can be defined investigate the parameter dict itself or [have a look into the documentation](https://upb-lea.github.io/ElectricGrid.jl/dev/Default_Parameters/).
 
 The next step would be to interact with the env to run an experiment.
 To learn how to do this, see [Interaction with the Environment](https://upb-lea.github.io/ElectricGrid.jl/dev/Env_Interaction/).
