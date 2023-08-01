@@ -151,8 +151,8 @@ These provide clear and easy-to-expand examples of:
 ``ElectricGrid.jl`` is supported and tested on Linux, Windows and macOS.
 The package should be installed using the Julia package manager. In a Julia terminal run the follwing:
 ```
-]
-add ElectricGrid
+import Pkg
+Pkg.add("ElectricGrid")
 ```
 
 Alternatively, it can also be installed from the Github source code. To do that, clone the repository, start Julia, activate the project by pressing `]` to access Pkg mode and then `activate path/to/ElectricGrid` or `activate .` If you started Julia in your ElectricGrid directory and afterwards run `instantiate`.
