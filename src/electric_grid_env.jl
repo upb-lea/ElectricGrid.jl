@@ -35,21 +35,6 @@ mutable struct ElectricGridEnv <: AbstractEnv
     agent_dict
     nonlinear
 end
-
-function checkifnonlinear(list::Matrix)
-    return checkifnonlinear([list])
-end
-
-function checkifnonlinear(list::Array)
-    for element in list
-        for idx in eachindex(element)
-            if typeof(element[idx]) <: Function
-                return true
-            end
-        end
-    end
-    return false
-end
 """
     ElectricGridEnv(...)
 
@@ -170,7 +155,6 @@ function ElectricGridEnv(;
     end
 
     A, B, C, D = GetSystem(nc)
-    #XXX Here is where the Linear or nonlinear solver should be
 
     if checkifnonlinear([A, B, C, D])
         nonlinear = true
@@ -590,4 +574,19 @@ function GetVDC_PV(I)
 
     V_dc = I * N_cell * P_cell
 
+end
+
+function checkifnonlinear(list::Matrix)
+    return checkifnonlinear([list])
+end
+
+function checkifnonlinear(list::Array)
+    for element in list
+        for idx in eachindex(element)
+            if typeof(element[idx]) <: Function
+                return true
+            end
+        end
+    end
+    return false
 end

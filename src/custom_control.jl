@@ -60,10 +60,12 @@ function CustomNonlinearsim(AAA,B,u,tspan,x0)
     end
 
     prob = ODEProblem(f, x0, tspan, u)
-    alg = Tsit5()
-    sol = solve(prob, alg, reltol=1e-5, abstol=1e-5)
-    xout = sol.u[end]
 
+    # alg = SSPRK22()
+    alg = RK4()
+    Δt = Float64(tspan[2] - tspan[1])/10
+    sol = solve(prob, alg, dt = Δt)
+    xout = sol.u[end]
     xout_float = Array{Float64}(undef,0)
     for i in xout
         append!(xout_float,i)
