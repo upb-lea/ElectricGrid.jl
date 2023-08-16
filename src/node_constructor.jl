@@ -95,8 +95,8 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             verbosity
         )
 
-        @assert(length(keys(parameters)) == 4,
-            "Expect parameters to have the four entries 'cable', 'load', 'grid' and
+        @assert(length(keys(parameters)) == 5,
+            "Expect parameters to have the four entries 'cable', 'load', 'grid', 'weather' and
             'source' but got $(keys(parameters))")
 
         @assert(length(keys(parameters["grid"])) == 9,
@@ -257,13 +257,29 @@ function CheckParameters(
         parameters = Dict()
     end
 
+    # check environment
+    if !haskey(parameters, "weather")
+        environment_properties = Dict()
+        environment_properties["G"] = 1000 # Irradiance in W/m^2
+        environment_properties["T"] = 23 # Temperature in °C
+        parameters["weather"] = environment_properties
+    else
+        if !haskey(parameters["weather"], "G")
+            parameters["weather"]["G"] = 1000
+        end
+
+        if !haskey(parameters["weather"], "T")
+            parameters["weather"]["T"] = 23
+        end
+    end
+
     # check grid
     if !haskey(parameters, "grid")
         grid_properties = Dict()
         grid_properties["fs"] = 1 / ts
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
-        grid_properties["f_grid"] = 50
+        grid_properties["f_grid"] = 50 # Gridfrequency
         grid_properties["Δfmax"] = 0.5 # The drop in frequency
         grid_properties["ΔEmax"] = 5 # The drop in rms voltage
         grid_properties["ramp_end"] = 2 / 50

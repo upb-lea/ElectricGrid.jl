@@ -53,12 +53,14 @@ Base.@kwdef mutable struct battery_block
     P_1h = nothing
 end;
 
-function update_bat(self::battery_block, I_batt, T)
+function get_V(self::battery_block, I_batt, T)
 
     T_ = self.T + T
 
     self.Q = clamp(self.Q - I_batt * self.tau, 0, self.Q_0) # Clamp
     self.SOC = clamp(self.Q / self.Q_0, 0, 1)
+
+    println("SOC: $(self.SOC)")
 
     if sign(I_batt) == -1
         self.mode = "charge"
@@ -72,4 +74,6 @@ function update_bat(self::battery_block, I_batt, T)
 
     self.V = self.LT_V0(self.SOC, T_) - self.n * self.LT_R(self.SOC, T_) * I_batt - self.R_0 * I_batt
 
+
+    return self.V
 end
