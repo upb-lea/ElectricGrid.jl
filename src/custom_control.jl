@@ -1,5 +1,4 @@
 # ?
-using DifferentialEquations
 function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVector;
     x0::AbstractVecOrMat=zeros(Bool, nstates(sys)), method::Symbol=:zoh)
     ny, nu = size(sys)
@@ -39,7 +38,7 @@ function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVec
     return x
 end
 
-function CustomNonlinearsim(AAA,B,u,tspan,x0)
+function CustomNonlinearsim(AAA,B,u,tspan,x0,solver)
     (rows, columns) = size(AAA)
     AA = Matrix{Any}(undef, (rows, columns)) 
     for row in 1:rows
@@ -61,8 +60,7 @@ function CustomNonlinearsim(AAA,B,u,tspan,x0)
 
     prob = ODEProblem(f, x0, tspan, u)
 
-    # alg = SSPRK22()
-    alg = RK4()
+    alg = solver
     Δt = Float64(tspan[2] - tspan[1])/10
     sol = solve(prob, alg, dt = Δt)
     xout = sol.u[end]

@@ -1,3 +1,4 @@
+using DifferentialEquations
 mutable struct ElectricGridEnv <: AbstractEnv
     verbosity
     nc
@@ -34,6 +35,7 @@ mutable struct ElectricGridEnv <: AbstractEnv
     y #holds all of the inductor voltages and capacitor currents
     agent_dict
     nonlinear
+    nonlinear_solver
 end
 """
     ElectricGridEnv(...)
@@ -114,7 +116,8 @@ function ElectricGridEnv(;
     t_end=nothing,
     verbosity=0,
     agent_dict=nothing,
-    nonlinear=false
+    nonlinear=false,
+    nonlinear_solver = nothing
 )
 
     if !(isnothing(t_end))
@@ -154,9 +157,14 @@ function ElectricGridEnv(;
         end
     end
 
+
     A, B, C, D = GetSystem(nc)
 
     if checkifnonlinear([A, B, C, D])
+        if isnothing(nonlinear_solver)
+            nonlinear_solver = SSPRK22()
+        end
+        @info ("Nonlinear Solver: Use $(nameof(nonlinear_solver)) as solver.")
         nonlinear = true
     end
 
@@ -443,7 +451,7 @@ function ElectricGridEnv(;
         x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
         v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
         reward, action, action_ids, action_delay_buffer,
-        A, B, C, D, state_parameters, y, agent_dict, nonlinear)
+        A, B, C, D, state_parameters, y, agent_dict, nonlinear, nonlinear_solver)
 end
 
 RLBase.action_space(env::ElectricGridEnv) = env.action_space
@@ -537,7 +545,7 @@ function (env::ElectricGridEnv)(action)
     if env.nonlinear
         u = env.action
         tspan = (env.t, env.t + env.ts)
-        env.x = CustomNonlinearsim(env.A, env.B , u, tspan, env.x)
+        env.x = CustomNonlinearsim(env.A, env.B , u, tspan, env.x, env.nonlinear_solver)
     else
         u = [env.action env.action]
         xout_d = CustomLsim(env.sys, u, t, x0=env.x)
@@ -589,4 +597,8 @@ function checkifnonlinear(list::Array)
         end
     end
     return false
+end
+
+function nameof(func)
+    return split(string(func),"(")[1]
 end

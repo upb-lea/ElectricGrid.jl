@@ -34,13 +34,16 @@ parameters = Dict{Any, Any}(
     "grid" => Dict{Any, Any}("fs"=>1e4, "phase"=>3, "v_rms"=>230, "f_grid" => 50, "ramp_end"=>0.00)
 )
 
-env1 = ElectricGridEnv(CM = CM, parameters = parameters, verbosity = 2)
+env1 = ElectricGridEnv(CM = CM, parameters = parameters, verbosity = 2);
 
 sol_1 = []
-for i = 1:1000
+function test1()
+    for i = 1:1000
     env1([0.5, 0.5, 0.5])
     append!(sol_1,env1.x[value])
+    end
 end
+@timev test1()
 t_t = collect(env1.t0:env1.ts:env1.t)
 p1 = scatter(x=t_t,y=sol_1,mode="lines",name="nonlinear")
 
@@ -60,10 +63,13 @@ parameters2 = Dict{Any, Any}(
 env2 = ElectricGridEnv(CM = CM, parameters = parameters2, verbosity = 2)
 
 sol_2 = []
-for i = 1:1000
-    env2([0.5, 0.5, 0.5])
-    append!(sol_2,env2.x[value])
+function test2()
+    for i = 1:1000
+        env2([0.5, 0.5, 0.5])
+        append!(sol_2,env2.x[value])
+    end
 end
+@timev test2()
 t_t = collect(env2.t0:env2.ts:env2.t)
 p2 = scatter(x=t_t,y=sol_2,mode="lines",name="linear")
 
