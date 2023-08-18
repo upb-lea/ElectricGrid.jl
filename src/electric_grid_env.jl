@@ -369,9 +369,6 @@ function ElectricGridEnv(;
 
     y = (A * Vector(x) + B * (Vector(action))) .* (state_parameters)
 
-
-    println(typeof(vdc_link_voltages))
-
     ElectricGridEnv(
         verbosity,
         nc,
