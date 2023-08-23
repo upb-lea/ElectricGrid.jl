@@ -1,6 +1,7 @@
 using ElectricGrid
-using PlotlyJS
 using BenchmarkTools
+using PlotlyJS
+using DifferentialEquations
 
 CM = [0. 1.
      -1. 0.]
@@ -43,7 +44,7 @@ function test1()
     append!(sol_1,env1.x[value])
     end
 end
-@timev test1()
+test1()
 t_t = collect(env1.t0:env1.ts:env1.t)
 p1 = scatter(x=t_t,y=sol_1,mode="lines",name="nonlinear")
 
@@ -69,7 +70,7 @@ function test2()
         append!(sol_2,env2.x[value])
     end
 end
-@timev test2()
+test2()
 t_t = collect(env2.t0:env2.ts:env2.t)
 p2 = scatter(x=t_t,y=sol_2,mode="lines",name="linear")
 

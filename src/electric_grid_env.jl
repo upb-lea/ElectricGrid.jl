@@ -1,4 +1,3 @@
-using DifferentialEquations
 mutable struct ElectricGridEnv <: AbstractEnv
     verbosity
     nc

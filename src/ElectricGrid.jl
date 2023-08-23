@@ -6,6 +6,7 @@ using CUDA
 using DataStructures
 using DataFrames
 using Dates
+using DifferentialEquations
 using ControlSystemsBase
 using Distributions
 using Flux
