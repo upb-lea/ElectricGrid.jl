@@ -45,7 +45,7 @@ The ElectricGrid.jl toolbox provides a transient simulation framework
 for electric energy grids based on power electronic converters. 
 With a few lines of code, a parameterised electric grid model on component level can 
 be initialised in Julia. 
-An example grid is shown in the figure below.
+An example grid is shown in Figure 1.
 
 ![Exemplary electric energy grid in a simplified single phase representation.\label{fig:grid}](ExampleGrid.png)
 
@@ -105,7 +105,7 @@ Therefore, ``ElectricGrid.jl`` provides a tool to close these highlighted gaps.
 
 
 The API is designed to provide a user-friendly interface to connect a modeled electric energy grid 
-with a wide range of classical control methods like shown in the figure below.
+with a wide range of classical control methods like shown in Figure 2.
 
 ![Overview of the functionality and interconnections of the ElectricGrid.jl framework.\label{fig:jeg}](Overview_EG.png)
  
