@@ -45,7 +45,7 @@ The ElectricGrid.jl toolbox provides a transient simulation framework
 for electric energy grids based on power electronic converters. 
 With a few lines of code, a parameterised electric grid model on component level can 
 be initialised in Julia. 
-An example grid is shown in the figure below.
+An example grid is shown in Figure 1.
 
 ![Exemplary electric energy grid in a simplified single phase representation.\label{fig:grid}](ExampleGrid.png)
 
@@ -75,7 +75,7 @@ This applies in particular to emerging data-driven control approaches such as
 reinforcement learning (RL), the stability and operating behavior of
 which cannot be evaluated a priori [@Garcia2015].
 Besides RL methods, being data-driven, result in a model-free and self-adaptive controller design with little human effort labeling them a promising tool for controlling unknown or changing systems targeting the above described challanges.
-However, there is a need for further research into the requirements for energy networks in terms of safety, robustness and availability before RL-based controllers can be used in real applications [@ZhangRL2018], [@GlavicRL2018].
+However, there is a need for further research into the requirements for energy networks in terms of safety, robustness and availability before RL-based controllers can be used in real applications [@ZhangRL2018; @GlavicRL2018].
  
 
 ``ElectricGrid.jl`` is a Julia package for setting up realistic electric grid simulations with support for control options. A number of parameters are made avaible to the user to evaluate the various control options. If no details are given, all parameters are generated automatically, either through randomness on a physically meaningful basis or by verified design methods.
@@ -93,7 +93,7 @@ This is an essential difference to already available open-source solutions for t
 [@Thurner2018] which, in contrast, usually perform the calculations 
 in a (quasi)-stationary state. Also these frameworks tend to focus on large-scale power systems at the transmission and distribution grid level, 
 which does not allow an evaluation of, e.g., control on component level in case of load fluctuations in the grid.
-In addition, few tools like [@lara2023revisiting] already exist in Julia, which offer dynamic simulations. 
+In addition, a few tools like the one presented in @lara2023revisiting already exist in Julia, which offer dynamic simulations. 
 However, the latter is based on different simplifications (e.g., assumption of a symmetric grid, fixed frequency, ...) and 
 also do not offer an interface to RL toolboxes.
 To ensure a seamless integration of the control algorithms, the Gymnasium-based API [@FaramaFoundation2023] should be used, which has been established as a standard in recent years.
@@ -105,7 +105,7 @@ Therefore, ``ElectricGrid.jl`` provides a tool to close these highlighted gaps.
 
 
 The API is designed to provide a user-friendly interface to connect a modeled electric energy grid 
-with a wide range of classical control methods like shown in the figure below.
+with a wide range of classical control methods like shown in Figure 2.
 
 ![Overview of the functionality and interconnections of the ElectricGrid.jl framework.\label{fig:jeg}](Overview_EG.png)
  
