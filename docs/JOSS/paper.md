@@ -93,7 +93,7 @@ This is an essential difference to already available open-source solutions for t
 [@Thurner2018] which, in contrast, usually perform the calculations 
 in a (quasi)-stationary state. Also these frameworks tend to focus on large-scale power systems at the transmission and distribution grid level, 
 which does not allow an evaluation of, e.g., control on component level in case of load fluctuations in the grid.
-In addition, few tools like [@lara2023revisiting] already exist in Julia, which offer dynamic simulations. 
+In addition, a few tools like the one presented in @lara2023revisiting already exist in Julia, which offer dynamic simulations. 
 However, the latter is based on different simplifications (e.g., assumption of a symmetric grid, fixed frequency, ...) and 
 also do not offer an interface to RL toolboxes.
 To ensure a seamless integration of the control algorithms, the Gymnasium-based API [@FaramaFoundation2023] should be used, which has been established as a standard in recent years.
