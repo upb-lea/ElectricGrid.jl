@@ -75,7 +75,7 @@ This applies in particular to emerging data-driven control approaches such as
 reinforcement learning (RL), the stability and operating behavior of
 which cannot be evaluated a priori [@Garcia2015].
 Besides RL methods, being data-driven, result in a model-free and self-adaptive controller design with little human effort labeling them a promising tool for controlling unknown or changing systems targeting the above described challanges.
-However, there is a need for further research into the requirements for energy networks in terms of safety, robustness and availability before RL-based controllers can be used in real applications [@ZhangRL2018], [@GlavicRL2018].
+However, there is a need for further research into the requirements for energy networks in terms of safety, robustness and availability before RL-based controllers can be used in real applications [@ZhangRL2018; @GlavicRL2018].
  
 
 ``ElectricGrid.jl`` is a Julia package for setting up realistic electric grid simulations with support for control options. A number of parameters are made avaible to the user to evaluate the various control options. If no details are given, all parameters are generated automatically, either through randomness on a physically meaningful basis or by verified design methods.
