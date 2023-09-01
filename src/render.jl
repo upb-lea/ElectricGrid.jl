@@ -540,14 +540,17 @@ end
 
     # Description
     Plots the rewards with time steps on the x-axis and std as a shadowed area around the curve.
+    Either `rewardresults` or `controllers` have to be defined.
     
-    # Arguments
+    # Keyword Arguments
     - `rewardresults::Float64[]`: List containing the rewards for each timestep
+    - `controllers`: the controllers object returned by `SetupAgents`
 
 """
-function plot_rewardresults(rewardresults = nothing)
+function plot_rewardresults(;rewardresults = nothing, controllers = nothing)
     global plotresults = Float64[]
     global plotresults_std = Float64[]
+    
     if isnothing(rewardresults)
         rewardresults = convert(Vector{Float64}, controllers.hook.df[!,"reward"])
     end
