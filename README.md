@@ -8,6 +8,7 @@
 | [**Quickstart**](#getting-started)
 | [**Release notes**](https://github.com/upb-lea/ElectricGrid.jl/releases/new)
 
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.05616/status.svg)](https://doi.org/10.21105/joss.05616)
 [![Build Status](https://github.com/upb-lea/ElectricGrid.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/upb-lea/ElectricGrid.jl/actions/workflows/CI.yml)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/upb-lea/ElectricGrid.jl/blob/main/LICENSE)
 
