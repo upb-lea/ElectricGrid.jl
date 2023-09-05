@@ -40,32 +40,25 @@ function DCLinkVoltagesInit(nc)
         @assert haskey(source, "source_type") "Source $(num) has no sourceType defined!"
 
         state = "source$(num)_i_L1"
-        state_idx = findall(x->occursin(state, x), states)
+        state_idx = findall(x -> occursin(state, x), states)
 
         if source["source_type"] == "ideal"
-
             push!(v_dc_vector, IdealVoltage(num, state_idx, source["vdc"], source["pwr"]))
         elseif source["source_type"] == "pv"
-            #v_dc[source_number] = :(GetV(SolarArray, env.x[1]*env.action, G, T))
             #TODO : how to calculate i_dc in 3-phase grid? Which current of env to use?
-            #TODO : $source_number does only fit if all L filters! Otherwise how to
-            #       define the offet for $source_number?!?!?
-            # TODO built pv module from parameter dict - where to define? In env?
-            ModulePV = solar_module()
-            SolarArr = solar_array(; solar_module=ModulePV)
+            ModulePV = solar_module(I_0=source["module_I_0"], ni=source["module_ni"],
+                N_cell=source["module_N_cell"], I_ph_ref=source["module_I_ph_ref"])
+            SolarArr = solar_array(; solar_module=ModulePV, serial=source["serial"],
+                parallel=source["parallel"])
 
             push!(v_dc_vector, PVVoltage(num, state_idx, SolarArr))
         elseif source["source_type"] == "battery"
-            #v_dc[source_number] = :(GetV(SolarArray, env.x[1]*env.action, G, T))
             #TODO : how to calculate i_dc in 3-phase grid? Which current of env to use?
-            #TODO : $source_number does only fit if all L filters! Otherwise how to
-            #       define the offet for $source_number?!?!?
-            # TODO built pv module from parameter dict - where to define? In env?
-            Cell = battery_module();
-            Battery = battery_block(battery_module=Cell)
-            # find(x -> .... source$source_number_i_L in state_ids)
-
-
+            Cell = battery_module(source["module_R"], source["module_C"])
+            Battery = battery_block(battery_module=Cell, n=source["n"], R_0=source["R_0"],
+                V_0=source["V_0"], Q_0=source["Q_0"], Q=source["Q"],
+                SOC_BP=source["SOC_BP"], T_BP=source["T_BP"],
+                tau=nc.parameters["grid"]["fs"])
 
             push!(v_dc_vector, BatteryVoltage(num, state_idx, Battery))
         else
@@ -76,8 +69,6 @@ function DCLinkVoltagesInit(nc)
     end
     vdc_fixed > 0 && @warn("$vdc_fixed DC-link voltages set to 800 V - please define in
                             nc.parameters -> source -> vdc.")
-
-    println(typeof(v_dc_vector))
 
     DCLinkVoltages(sources=v_dc_vector)
 end
@@ -93,14 +84,20 @@ function step(DCLinkVoltages, env)
         elseif typeof(source) == PVVoltage
             I_ac = env.state[source.state_idx][1]
 
+            println("I: $I_ac")
+
             # P_ac = I_ac * V_ac
             # I_dc = P_ac / V_dc
 
             I_dc = I_ac
-            push!(V, get_V(source.SolarArray, I_dc, env.nc.parameters["weather"]["G"], env.nc.parameters["weather"]["T"]))
-        elseif typeof(source) == BatteryVoltage
 
+            println("V: $(get_V(source.SolarArray, I_ac, env.nc.parameters["weather"]["G"], env.nc.parameters["weather"]["T"]))")
+            push!(V, get_V(source.SolarArray, I_ac, env.nc.parameters["weather"]["G"], env.nc.parameters["weather"]["T"]))
+        elseif typeof(source) == BatteryVoltage
             I = env.state[source.state_idx][1]
+
+            println("I: $I")
+            println("V: $(get_V(source.BatteryBlock, I, env.nc.parameters["weather"]["T"]))")
             push!(V, get_V(source.BatteryBlock, I, env.nc.parameters["weather"]["T"]))
         else
             @assert false "Type of source '$typeof(source)' is not valid"

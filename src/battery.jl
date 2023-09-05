@@ -49,7 +49,7 @@ Base.@kwdef mutable struct battery_block
     V = 0
     LT_V0 = LinearInterpolation((SOC_BP, T_BP), V_0)
     LT_R = LinearInterpolation((SOC_BP, T_BP), battery_module.R)
-    I_limit = 5
+    I_limit = 500
     P_1h = nothing
 end;
 
@@ -68,12 +68,15 @@ function get_V(self::battery_block, I_batt, T)
         self.mode = "discharge"
     end
 
-    P_1h = self.Q / 3600 * self.LT_V0(self.SOC, T_)
+    self.P_1h = self.Q / 3600 * self.LT_V0(self.SOC, T_)
 
     I_batt = clamp(I_batt, -self.I_limit, self.I_limit) # Current limitation
 
+    println(I_batt)
+
     self.V = self.LT_V0(self.SOC, T_) - self.n * self.LT_R(self.SOC, T_) * I_batt - self.R_0 * I_batt
 
+    println(self.V)
 
     return self.V
 end
