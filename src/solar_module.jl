@@ -8,7 +8,7 @@ Base.@kwdef mutable struct solar_module
     ni = 1.2                   # Diode ideality factor for Si-mono
     k = 1.3806e-23             # Boltzman constant
     q = 1.6022e-19             # Electron charge
-    T_0 = 273                  # Temperature offset
+    T_0 = 273.15               # Temperature offset
     N_cell = 36                # Number of cells
 
     G_ref = 1000               # Irradiance at STC
