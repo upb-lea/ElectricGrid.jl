@@ -923,10 +923,13 @@ is $num_loads."
                                                            real(load["Z"]))))
         end
 
-        load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) *
-                      parameters["grid"]["phase"]
+        if !haskey(load, "pwr")
+            load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
+        end
 
-        load["i_limit"] = sqrt(2) * 0.9 * parameters["grid"]["v_rms"] / abs(load["Z"])
+        if !haskey(load, "pwr")
+            load["i_limit"] = sqrt(2) * 0.9 * parameters["grid"]["v_rms"] / abs(load["Z"])
+        end
     end
 
     # check cables

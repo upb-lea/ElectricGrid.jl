@@ -37,6 +37,8 @@ Base.@kwdef mutable struct DataHook <: AbstractHook
 
     collect_reference = false
     collect_vdc_ids = []
+    collect_soc_ids = []
+    collect_idc_ids = []
 
     v_dq = []
     v_mag_inv = []
@@ -494,7 +496,39 @@ function (hook::DataHook)(::PreActStage, agent, env, action, training = false)
         else
             append_tmp(hook, env.v_dc[idx])
         end
+    end
 
+    for idx in hook.collect_soc_ids
+        if env.nc.parameters["source"][idx]["source_type"] == "battery"
+            if hook.list_iterator == 0
+                push!(hook.column_names, Symbol("source$(idx)_SOC_batt"))
+                push!(hook.tmp,  env.vdc_link_voltages.sources[idx].BatteryBlock.SOC)
+
+            else
+                append_tmp(hook,  env.vdc_link_voltages.sources[idx].BatteryBlock.SOC)
+            end
+        end
+    end
+
+    for idx in hook.collect_idc_ids
+
+        if env.nc.parameters["source"][idx]["source_type"] == "battery"
+            if hook.list_iterator == 0
+                push!(hook.column_names, Symbol("source$(idx)_idc"))
+                push!(hook.tmp,  env.vdc_link_voltages.sources[idx].BatteryBlock.i_dc)
+            else
+                append_tmp(hook, env.vdc_link_voltages.sources[idx].BatteryBlock.i_dc)
+            end
+        end
+
+        if env.nc.parameters["source"][idx]["source_type"] == "pv"
+           if hook.list_iterator == 0
+               push!(hook.column_names, Symbol("source$(idx)_idc"))
+               push!(hook.tmp,  env.vdc_link_voltages.sources[idx].SolarArray.i_dc)
+           else
+               append_tmp(hook, env.vdc_link_voltages.sources[idx].SolarArray.i_dc)
+           end
+        end
     end
 
     if hook.collect_reference
