@@ -69,7 +69,7 @@ function DCLinkVoltagesInit(nc)
             Cell = battery_module(source["module_R"], source["module_C"])
             Battery = battery_block(battery_module=Cell, R_0=source["R_0"],
                 V_0=source["V_0"], Q_0=source["Q_0"], Q=source["Q"],
-                SOC_BP=source["SOC_BP"], T_BP=source["T_BP"],
+                SOC_OP=source["SOC_OP"], T_OP=source["T_OP"],
                 tau=1/nc.parameters["grid"]["fs"], i_bat_limit=source["i_bat_limit"],
                 serial = source["serial"], parallel = source["parallel"])
 

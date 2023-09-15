@@ -20,12 +20,6 @@ parameters = Dict{Any,Any}(
             "L1" => 0.001, "C" => 2e-8, "L2" => 0.001, "R_C" => 0.01, "R2" => 0.05,
             "Q" => 100 * 26 * 3600, "mode" => 1, "parallel" => 48, "serial" => 200,
             "i_bat_limit" => 500, "i_limit" => 1e3, "v_limit" => 1e3), # p_set maybe 15k
-        # Dict{Any,Any}("source_type" => "ideal", "pwr" => 10e4,
-        #     "fltr" => "L", "L1" => 0.001, "C" => 2e-8, "L2" => 0.001, "R_C" => 0.01, "R2" => 0.05),
-        # Dict{Any,Any}("source_type" => "ideal", "pwr" => 10e4,
-        #     "fltr" => "L", "L1" => 0.001, "C" => 2e-8, "L2" => 0.001, "R_C" => 0.01, "R2" => 0.05),
-            # Dict{Any,Any}("source_type" => "ideal", "pwr" => 10e4,
-            # "fltr" => "L", "L1" => 0.001, "C" => 2e-8, "L2" => 0.001, "R_C" => 0.01, "R2" => 0.05),
             ],
     "load" => Any[
         Dict{Any,Any}("impedance" => "RL", "R" => R_load, "L" => L_load, "i_limit" => 500, "v_limit" => 1000)

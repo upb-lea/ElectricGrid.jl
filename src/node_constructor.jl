@@ -579,11 +579,11 @@ function CheckParameters(
                 if !haskey(source, "Q")
                     source["Q"] = 0
                 end
-                if !haskey(source, "SOC_BP")
-                    source["SOC_BP"] = vec([0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1])
+                if !haskey(source, "SOC_OP")
+                    source["SOC_OP"] = vec([0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1])
                 end
-                if !haskey(source, "T_BP")
-                    source["T_BP"] = vec([293.15 313.15])
+                if !haskey(source, "T_OP")
+                    source["T_OP"] = vec([293.15 313.15])
                 end
                 if !haskey(source, "i_limit")
                     source["i_limit"] = 500

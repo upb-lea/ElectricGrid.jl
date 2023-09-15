@@ -19,8 +19,8 @@ end;
 
 Base.@kwdef mutable struct solar_array
     solar_module::solar_module           # module parameters
-    serial = 10
-    parallel = 4
+    serial = 20
+    parallel = 20
     v_next = 0
     i_dc = 0.0
 end;
@@ -59,7 +59,7 @@ function get_V(SolarArr::solar_array, I, G, T)
     end
 
     I = I[1]
-    res = (I - I_photo(self, G, T)) / (self.I_0 * SolarArr.parallel)
+    res = (I / SolarArr.parallel - I_photo(self, G, T)) / self.I_0
 
     dT = self.T_0 + T
     V_T = self.k * dT / self.q

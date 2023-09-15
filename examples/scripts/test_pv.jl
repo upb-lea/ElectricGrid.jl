@@ -10,17 +10,17 @@ using PlotlyJS
 CM = [ 0.  1.
       -1.  0.]
 
-R_load, L_load, X, Z = ParallelLoadImpedance(1e3, .95, 230)
+R_load, L_load, X, Z = ParallelLoadImpedance(1e3, 1., 230)
 
 parameters = Dict{Any, Any}(
         "source" => Any[
                         Dict{Any, Any}("source_type" => "pv",
                         "fltr"=>"L", "L1"=>0.001, "C"=>2e-8, "L2"=>0.001, "R_C"=>0.01,
-                        "R2"=> 0.05, "mode" => 1, "parallel" => 12800, "serial" => 128,
-                        "i_limit" => 1e4, "v_limit" => 1e5),
+                        "R2"=> 0.05, "mode" => 1, "parallel" => 20, "serial" => 20,
+                        "i_limit" => 1e4, "v_limit" => 1e5, "module_N_cell" => 36),
                         ],
         "load"   => Any[
-                        Dict{Any, Any}("impedance" => "RL", "R" => R_load, "L" => L_load, "i_limit" => 10e4, "v_limit" => 10e4),
+                        Dict{Any, Any}("impedance" => "R", "R" => 1e100, "i_limit" => 10e4, "v_limit" => 10e4),
                         ],
         "cable"   => Any[
                         Dict{Any, Any}("R" => 1e-3, "L" => 1e-4, "C" => 1e-4, "i_limit" => 1e4, "v_limit" => 1e6,),
@@ -33,7 +33,7 @@ env = ElectricGridEnv(num_sources=1, num_loads=1, CM = CM, parameters = paramete
 
 Multi_Agent = SetupAgents(env)
 
-hook = DataHook(collect_state_ids = [],#env.state_ids,
+hook = DataHook(collect_state_ids = ["source1_i_L1_a", "source1_v_C_cables_a"],#env.state_ids,
                 collect_action_ids = [],#env.action_ids,
                 collect_vdc_ids = [1],
                 collect_soc_ids = [1],
@@ -42,7 +42,7 @@ hook = DataHook(collect_state_ids = [],#env.state_ids,
 hook = Simulate(Multi_Agent, env, hook=hook)
 
 p = RenderHookResults(hook = hook,
-                    states_to_plot  = [],#GetStateIds(env.nc),
+                    states_to_plot  = ["source1_i_L1_a", "source1_v_C_cables_a"],#GetStateIds(env.nc),
                     actions_to_plot = [],
                     power_p_inv     = [],
                     power_q_inv     = [],
@@ -59,10 +59,11 @@ p = RenderHookResults(hook = hook,
                     idc_to_plot     = [1],
                     return_plot     = false);
 
+
 # for val in range(-1,1,step=0.001)
-#     println(val)
-#     x = env([val])
-#     println(env.v_dc)
+#     # println(val)
+#     x = env([val, -val/2, -val/2])
+#     # println(env.v_dc)
 
 #     append!(states, x)
 #     append!(A, env.v_dc[1])

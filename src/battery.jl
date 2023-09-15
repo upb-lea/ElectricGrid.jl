@@ -25,9 +25,8 @@ end;
 
 Base.@kwdef mutable struct battery_block
     battery_module::battery_module
-    T_0 = 273.15    # temperature offset
-    # n = 100                      # number of RC pairs
-    R_0 = 0.016                  # series resistance
+    T_0 = 273.15 # temperature offset
+    R_0 = 0.016 # series resistance
     V_0 = [3.5042 3.5136
         3.5573 3.5646
         3.6009 3.6153
@@ -38,25 +37,31 @@ Base.@kwdef mutable struct battery_block
         3.8753 3.8945
         3.97 3.9859
         4.0764 4.0821
-        4.1924 4.193]          # Battery open-circuit voltage
-    Q = 0.0                   # Current Ladung in A*s
-    SOC = 1.                    # State of Charge (SOC)
-    SOC_BP = vec([0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1])
-    T_BP = vec([293.15 313.15])
+        4.1924 4.193] # Battery open-circuit voltage
+    Q = 0.0 # Current Charge in A*s
+    SOC = 1.  # State of Charge (SOC)
+    SOC_OP = vec([0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]) # SOC operating points
+    T_OP = vec([293.15 313.15]) # Tempreture operating points
     tau = 1e-4
     mode = nothing
 
-    LT_V0 = LinearInterpolation((SOC_BP, T_BP), V_0)
-    LT_R = LinearInterpolation((SOC_BP, T_BP), battery_module.R)
-    i_bat_limit = 10000
-    P_1h = nothing
-    parallel = 3
-    serial = 12
-    Q_0 = parallel * serial * 26 * 3600         # Nominal Ladung
-    v_dc = 0
-    v_next = serial * V_0[end, end]
-    i_dc = 0.0
+    LT_V0 = LinearInterpolation((SOC_OP, T_OP), V_0)
+    LT_R = LinearInterpolation((SOC_OP, T_OP), battery_module.R)
+    i_bat_limit = 100 # max current with which the battery can be charged/discharged
+    P_1h = nothing # Power that can be emitted for over an hour
+    parallel = 3 # Number of battery blocks connected in parallel
+    serial = 12 # Number of serially connected battery blocks
+    Q_0 = parallel * serial * 26 * 3600         # Nominal charge
+    v_dc = 0 # DC voltage
+    v_next = serial * V_0[1,end] # TODO: Compute from inital states
+    i_dc = 0.0 # DC current
 end;
+
+# function init_v_next(self::battery_block)
+#     println(self.SOC)
+#     println(self.T_0)
+#     self.v_next = self.serial * self.LT_V0(self.SOC, self.T_0)
+# end
 
 function get_V(self::battery_block, I_batt, T)
 
