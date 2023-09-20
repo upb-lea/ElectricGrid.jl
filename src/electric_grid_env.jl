@@ -156,7 +156,6 @@ function ElectricGridEnv(;
         end
     end
 
-
     A, B, C, D = GetSystem(nc)
 
     if checkifnonlinear([A, B, C, D])
@@ -168,7 +167,6 @@ function ElectricGridEnv(;
     end
 
     if nonlinear
-        sys = [A, B, C, D]
         if use_gpu
             A = CuArray(A)
             B = CuArray(B)
@@ -177,23 +175,30 @@ function ElectricGridEnv(;
                 D = CuArray(D)
             end
         end
+        sys = [A, B, C, D]
     else
+        A = Array{Float64}(A)
+        B = Array{Float64}(B)
+        C = Array{Float64}(C)
         Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
         # Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
         Bd = (Ad - I) * B
         ldiv!(factorize(A), Bd)
+        if use_gpu
+            Ad = CuArray(Ad)
+            Bd = CuArray(Bd)
+            C = CuArray(C)
+            if isa(D, Array)
+                D = CuArray(D)
+            end
+        end
+    
+        sys = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    
     end
     
-    if use_gpu
-        Ad = CuArray(Ad)
-        Bd = CuArray(Bd)
-        C = CuArray(C)
-        if isa(D, Array)
-            D = CuArray(D)
-        end
-    end
-
-    sys = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    
+    state_parameters = GetStateParameters(nc)
 
     if isnothing(action_space)
         action_space = Space([-1.0 .. 1.0 for i = 1:length(B[1, :])],)
