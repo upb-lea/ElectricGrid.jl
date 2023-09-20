@@ -159,7 +159,7 @@ function ElectricGridEnv(;
     #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
     Bd = (Ad - I) * B #
     ldiv!(factorize(A), Bd)
-    
+
     state_parameters = GetStateParameters(nc)
 
     if use_gpu
@@ -483,9 +483,9 @@ function (env::ElectricGridEnv)(action)
 
     env.v_dc = step(env.vdc_link_voltages, env)
 
-    # env.action = env.action .* repeat(env.v_dc / 2, inner=env.nc.parameters["grid"]["phase"])
+    env.action = env.action .* repeat(env.v_dc / 2, inner=env.nc.parameters["grid"]["phase"])
 
-    env.action = env.action .* env.v_dc
+    # env.action = env.action .* env.v_dc
 
     env.action = env.prepare_action(env)
 
