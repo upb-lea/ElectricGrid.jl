@@ -509,6 +509,10 @@ function CheckParameters(
                 end
             end
 
+            if !haskey(source, "source_type")
+                source["source_type"] = "ideal"
+            end
+
             if source["source_type"] == "ideal"
                 if !haskey(source, "vdc")
                     source["vdc"] = 700
