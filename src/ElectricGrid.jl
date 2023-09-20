@@ -1,12 +1,14 @@
 module ElectricGrid
 
+using Reexport
+
 using Combinatorics
 using CSV
 using CUDA
 using DataStructures
 using DataFrames
 using Dates
-using DifferentialEquations
+@reexport using DifferentialEquations
 using ControlSystemsBase
 using Distributions
 using Flux
@@ -25,6 +27,7 @@ using StableRNGs
 using SpecialFunctions
 using StatsBase
 using UnicodePlots
+
 
 #export create_setup, ClassicalPolicy, CreateAgentDdpg, Source_Initialiser, MultiController, DataHook, RenderHookResults, plot_best_results, NodeConstructor, ElectricGrid_setup, ElectricGridEnv
 
