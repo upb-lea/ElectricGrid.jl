@@ -45,8 +45,13 @@ Base.getindex(A::MultiController, x) = getindex(A.agents, x)
 function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
-    for agent in values(A.agents)
-        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training)
+    for (name, agent) in A.agents
+        if name == "classic"
+            multiplier = 1.0
+        else
+            multiplier = 1.0
+        end
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training) .* multiplier
     end
 
     return action
@@ -237,15 +242,19 @@ Here the RL agents are training and e.g. action noise is applied.
 - `hook::DataHook`: Measured data.
 
 """
-function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing)
+function Learn(Multi_Agent, env; num_episodes = 1, hook = nothing, steps = nothing)
 
     if isnothing(hook) # default hook
-
         hook = DataHook()
-
+    end
+    if isnothing(steps) # default hook
+        stopcondition = StopAfterEpisode(num_episodes)
+    else
+        stopcondition = StopAfterStep(steps)
     end
 
-    CustomRun(Multi_Agent, env, StopAfterEpisode(num_episodes), hook, true)
+
+    CustomRun(Multi_Agent, env, stopcondition, hook, true)
 
     return hook
 end
@@ -285,29 +294,53 @@ function DefaultDataHook(Multi_Agent, env)
 end
 
 """
-Wrapps the Run function form https://juliareinforcementlearning.org/ to enable turning off
+Provide a special update for setting no 'terminal' flag when the env is just truncated.
+"""
+function RLBase.update!(
+    trajectory::AbstractTrajectory,
+    policy::AbstractPolicy,
+    env::ElectricGridEnv,
+    ::PostActStage,
+)
+    r = policy isa NamedPolicy ? reward(env, nameof(policy)) : reward(env)
+    push!(trajectory[:reward], r)
+    if is_terminated(env)
+        if env.steps >= env.maxsteps
+            push!(trajectory[:terminal], false)
+        else
+            push!(trajectory[:terminal], true)
+        end
+    else
+        push!(trajectory[:terminal], false)
+    end
+end
+
+
+"""
+Wraps the Run function form https://juliareinforcementlearning.org/ to enable turning off
 the action noise.
 """
 function CustomRun(policy, env, stop_condition, hook, training = false)
-
     hook(PRE_EXPERIMENT_STAGE, policy, env, training)
     policy(PRE_EXPERIMENT_STAGE, env, training)
 
     is_stop = false
     while !is_stop
+        episode = 0
         RLBase.reset!(env)
 
         ResetPolicy(policy)
 
         policy(PRE_EPISODE_STAGE, env, training)
         hook(PRE_EPISODE_STAGE, policy, env, training)
-
+        tstep = 0
         while !is_terminated(env) # one episode
+            tstep += 1
             action = policy(env, training)
-                
+
             policy(PRE_ACT_STAGE, env, action, training)
             hook(PRE_ACT_STAGE, policy, env, action, training)
-            
+
             env(action)
 
             policy(POST_ACT_STAGE, env, training)
@@ -318,6 +351,10 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
                 break
             end
         end # end of an episode
+        episode += 1
+        # @info "Episode" episode=episode
+        # @info "total_timesteps" tstep=tstep
+        # @info "total_reward" reward=env.total_reward
 
         if is_terminated(env)
             policy(POST_EPISODE_STAGE, env, training)  # let the policy see the last observation
@@ -327,6 +364,6 @@ function CustomRun(policy, env, stop_condition, hook, training = false)
 
     policy(POST_EXPERIMENT_STAGE, env, training)
     hook(POST_EXPERIMENT_STAGE, policy, env, training)
-    
+
     return hook
 end

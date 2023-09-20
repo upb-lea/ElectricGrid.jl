@@ -8,6 +8,7 @@
 | [**Quickstart**](#getting-started)
 | [**Release notes**](https://github.com/upb-lea/ElectricGrid.jl/releases/new)
 
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.05616/status.svg)](https://doi.org/10.21105/joss.05616)
 [![Build Status](https://github.com/upb-lea/ElectricGrid.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/upb-lea/ElectricGrid.jl/actions/workflows/CI.yml)
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/upb-lea/ElectricGrid.jl/blob/main/LICENSE)
 
@@ -24,23 +25,18 @@ ElectricGrid.jl is a library for setting up realistic electric grid simulations 
 ![ElectricGrid Framework](docs/src/assets/Overview_EG.png)
 
 ## Installation
-- Installation using the julia package manager (recommended):
-In a julia terminal run the follwing:
+- Installation using the julia package manager (recommended if you want to use ElectricGrid in your project):
+  - In a julia terminal run the follwing:
 ```
-]
-activate .
-add ElectricGrid
+import Pkg
+Pkg.add("ElectricGrid")
 ```
 
-- Install from Github source:
+- Install from Github source (recommended if you want to run the example notebooks and scripts):
   - Clone the git and navigate to the directory
 ```
 git clone https://github.com/upb-lea/ElectricGrid.jl.git
 ```
-  - activate Julia
-
-  - activate the project by pressing `]`to access pkg mode and then `activate path/to/ElectricGrid` or `activate .` if you started julia in your ElectricGrid directory
-  - run `instantiate`
 
 ## Getting Started
 

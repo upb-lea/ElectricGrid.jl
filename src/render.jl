@@ -226,8 +226,13 @@ function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = n
             xanchor="right",
             orientation="h"
         ),
-        width = 800,
-        height = 550,
+        font=attr(
+            family="Arial",
+            size=16,
+            color="black"
+        ),
+        #width = 800,
+        #height = 550,
         margin=attr(l=100, r=80, b=80, t=100, pad=10)
     )
 
@@ -525,4 +530,70 @@ function RenderPLoad(;env, hook, episode, load_ids)
     p = PlotlyBase.Plot(powers, layout, config = PlotConfig(scrollZoom=true))
     display(p)
 
+end
+
+
+
+
+"""
+    plot_rewardresults(rewardresults = nothing)
+
+    # Description
+    Plots the rewards with time steps on the x-axis and std as a shadowed area around the curve.
+    Either `rewardresults` or `controllers` have to be defined.
+    
+    # Keyword Arguments
+    - `rewardresults::Float64[]`: List containing the rewards for each timestep
+    - `controllers`: the controllers object returned by `SetupAgents`
+
+"""
+function plot_rewardresults(;rewardresults = nothing, controllers = nothing)
+    global plotresults = Float64[]
+    global plotresults_std = Float64[]
+    
+    if isnothing(rewardresults)
+        rewardresults = convert(Vector{Float64}, controllers.hook.df[!,"reward"])
+    end
+
+    global batch_size = Int(floor(length(rewardresults)/3000))
+    xx = [i*batch_size+1 for i in 1:3000]
+    for i in 1:3000
+        temp = []
+        append!(temp,rewardresults[(i-1)*batch_size+1:i*batch_size])
+        push!(plotresults, mean(temp))
+        push!(plotresults_std, std(temp))
+    end
+
+    rl = Layout(
+        plot_bgcolor = "white",
+        font=attr(
+            family="Arial",
+            size=16,
+            color="black"
+        ),
+        yaxis=attr(
+            title="reward",
+            showline=true,
+            linewidth=2,
+            linecolor="black",
+            showgrid=true,
+            gridwidth=1,
+            gridcolor="LightGrey",
+            ),
+        xaxis=attr(
+            title="time steps",
+            showline=true,
+            linewidth=2,
+            linecolor="black",
+            showgrid=true,
+            gridwidth=1,
+            gridcolor="LightGrey",
+            ),
+    )
+
+    plot([
+        scatter(x=xx, y=plotresults.+plotresults_std, mode="lines", line=attr(width=0.0)),
+        scatter(x=xx, y=plotresults.-plotresults_std, mode="none", fillcolor="rgba(111, 120, 219, 0.3)", fill="tonexty", showlegend=false),
+        scatter(x=xx, y=plotresults, mode="lines", line_color="indigo", showlegend=false),
+    ], rl)
 end

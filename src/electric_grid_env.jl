@@ -178,26 +178,22 @@ function ElectricGridEnv(;
             end
         end
     else
-        AA = Array{Float64}(A)
-        BB = Array{Float64}(B)
-        CC = Array{Float64}(C)
-        Ad = exp(AA * ts) #fastExpm(A*ts) might be a better option
-        Bd = AA \ (Ad - I) * BB #This may be bad for large sizes, maybe QR factorise, then use ldiv!
-        # Bd = (Ad - I) * B #
-        # ldiv!(factorize(Ad), Bd)
-        sys = HeteroStateSpace(Ad, Bd, CC, D, Float64(ts))
-
-        if use_gpu
-            Ad = CuArray(A)
-            Bd = CuArray(B)
-            C = CuArray(C)
-            if isa(D, Array)
-                D = CuArray(D)
-            end
+        Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
+        # Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
+        Bd = (Ad - I) * B
+        ldiv!(factorize(A), Bd)
+    end
+    
+    if use_gpu
+        Ad = CuArray(Ad)
+        Bd = CuArray(Bd)
+        C = CuArray(C)
+        if isa(D, Array)
+            D = CuArray(D)
         end
     end
 
-    state_parameters = GetStateParameters(nc)
+    sys = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
 
     if isnothing(action_space)
         action_space = Space([-1.0 .. 1.0 for i = 1:length(B[1, :])],)
