@@ -21,7 +21,7 @@ Base.@kwdef mutable struct solar_array
     solar_module::solar_module           # module parameters
     serial = 20
     parallel = 20
-    v_next = 0
+    v_next = 0.
     i_dc = 0.0
 end;
 
