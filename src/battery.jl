@@ -57,12 +57,6 @@ Base.@kwdef mutable struct battery_block
     i_dc = 0.0 # DC current
 end;
 
-# function init_v_next(self::battery_block)
-#     println(self.SOC)
-#     println(self.T_0)
-#     self.v_next = self.serial * self.LT_V0(self.SOC, self.T_0)
-# end
-
 function get_V(self::battery_block, I_batt, T)
 
     self.v_dc = self.v_next

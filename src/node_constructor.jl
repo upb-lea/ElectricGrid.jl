@@ -931,7 +931,7 @@ is $num_loads."
             load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
         end
 
-        if !haskey(load, "pwr")
+        if !haskey(load, "i_limit")
             load["i_limit"] = sqrt(2) * 0.9 * parameters["grid"]["v_rms"] / abs(load["Z"])
         end
     end

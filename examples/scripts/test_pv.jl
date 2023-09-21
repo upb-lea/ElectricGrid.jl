@@ -3,10 +3,6 @@ using LinearAlgebra
 using DataFrames
 using PlotlyJS
 
-# CM = [ 0.  1.  2.
-#       -1.  0.  0.
-#       -2.  0.  0.]
-
 CM = [ 0.  1.
       -1.  0.]
 
@@ -33,8 +29,8 @@ env = ElectricGridEnv(num_sources=1, num_loads=1, CM = CM, parameters = paramete
 
 Multi_Agent = SetupAgents(env)
 
-hook = DataHook(collect_state_ids = ["source1_i_L1_a", "source1_v_C_cables_a"],#env.state_ids,
-                collect_action_ids = [],#env.action_ids,
+hook = DataHook(collect_state_ids = ["source1_i_L1_a", "source1_v_C_cables_a"],
+                collect_action_ids = [],
                 collect_vdc_ids = [1],
                 collect_soc_ids = [1],
                 collect_idc_ids = [1],)
@@ -42,36 +38,7 @@ hook = DataHook(collect_state_ids = ["source1_i_L1_a", "source1_v_C_cables_a"],#
 hook = Simulate(Multi_Agent, env, hook=hook)
 
 p = RenderHookResults(hook = hook,
-                    states_to_plot  = ["source1_i_L1_a", "source1_v_C_cables_a"],#GetStateIds(env.nc),
-                    actions_to_plot = [],
-                    power_p_inv     = [],
-                    power_q_inv     = [],
-                    power_p_poc     = [],
-                    power_q_poc     = [],
-                    v_mag_inv       = [],
-                    v_mag_poc       = [],
-                    i_mag_inv       = [],
-                    i_mag_poc       = [],
-                    freq            = [],
-                    angles          = [],
+                    states_to_plot  = ["source1_i_L1_a", "source1_v_C_cables_a"],
                     vdc_to_plot     = [1],
-                    soc_to_plot     = [],
                     idc_to_plot     = [1],
                     return_plot     = false);
-
-
-# for val in range(-1,1,step=0.001)
-#     # println(val)
-#     x = env([val, -val/2, -val/2])
-#     # println(env.v_dc)
-
-#     append!(states, x)
-#     append!(A, env.v_dc[1])
-# end
-
-# t = collect(1:size(A)[1])
-
-# Plot([scatter(x=collect(1:size(A)[1]), y=A),
-#     #   scatter(x=collect(1:size(B)[1]), y=states[1:6:end]),
-#     #   scatter(x=collect(1:size(A)[1]), y=collect(range(-1,1,step=0.0001)))
-#       ])

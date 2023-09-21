@@ -439,6 +439,7 @@ function RLBase.reset!(env::ElectricGridEnv)
         fill!(env.action_delay_buffer, zeros(length(env.action_space)))
         env.action = zeros(length(env.action_space))
     end
+    env.v_dc = step(env.vdc_link_voltages, env)
     env.t = env.t0
     env.steps = 0
     env.reward = 0.0
@@ -484,8 +485,6 @@ function (env::ElectricGridEnv)(action)
     env.v_dc = step(env.vdc_link_voltages, env)
 
     env.action = env.action .* repeat(env.v_dc / 2, inner=env.nc.parameters["grid"]["phase"])
-
-    # env.action = env.action .* env.v_dc
 
     env.action = env.prepare_action(env)
 
