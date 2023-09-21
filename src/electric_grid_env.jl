@@ -162,7 +162,7 @@ function ElectricGridEnv(;
         if isnothing(nonlinear_solver)
             nonlinear_solver = SSPRK22()
         end
-        @info ("Nonlinear Solver: Use $(nameof(nonlinear_solver)) as solver.")
+        @info ("Nonlinear Solver: Use $(split(string(nonlinear_solver),"(")[1]) as solver.")
         nonlinear = true
     end
 
@@ -597,8 +597,4 @@ function checkifnonlinear(list::Array)
         end
     end
     return false
-end
-
-function nameof(func)
-    return split(string(func),"(")[1]
 end
