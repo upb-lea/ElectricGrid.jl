@@ -161,14 +161,14 @@ Window {
                 "toY": toY,
                 "color": "black",
                 "lineWidth": 2,
-                "length": length * cable_length_factor,
+                "length": length / cable_length_factor,
                 "showlength": false,
                 "capacity": capacity,
                 "inductance": inductance,
                 "resistance": resistance
             });
 
-            Julia.addCable(uid, drawCableNode.uid, to_uid, length * cable_length_factor, capacity, inductance, resistance);
+            Julia.addCable(uid, drawCableNode.uid, to_uid, length / cable_length_factor, capacity, inductance, resistance);
             canvas.requestPaint();
         } else {
             // Cancel the ongoing connection
@@ -418,7 +418,7 @@ Window {
             }
 
             Text {
-                x: 5 + model.length * cable_length_factor / 2
+                x: model.length * cable_length_factor / 2
                 y: 5
                 rotation: (model.toX - model.fromX) < 0 ? 180 : 0
                 text: model.length.toFixed(2)
@@ -1197,7 +1197,7 @@ Window {
 
     Rectangle {
         id: cableMenu
-        width: 350
+        width: 300
         height: lengthFieldCable.height + param1FieldCable.height + param2FieldCable.height + param3FieldCable.height + 100 // Adjust the height based on the text field heights
         color: "lightgray"
         radius: 10
