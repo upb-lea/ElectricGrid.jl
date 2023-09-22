@@ -112,8 +112,8 @@ function NodeConstructor(; num_sources, num_loads, CM=nothing, parameters=nothin
             verbosity
         )
 
-        @assert(length(keys(parameters)) == 4,
-            "Expect parameters to have the four entries 'cable', 'load', 'grid' and
+        @assert(length(keys(parameters)) == 5,
+            "Expect parameters to have the four entries 'cable', 'load', 'grid', 'weather' and
             'source' but got $(keys(parameters))")
 
         @assert(length(keys(parameters["grid"])) == 9,
@@ -274,13 +274,29 @@ function CheckParameters(
         parameters = Dict()
     end
 
+    # check environment
+    if !haskey(parameters, "weather")
+        environment_properties = Dict()
+        environment_properties["G"] = 1000 # Irradiance in W/m^2
+        environment_properties["T"] = 23 # Temperature in °C
+        parameters["weather"] = environment_properties
+    else
+        if !haskey(parameters["weather"], "G")
+            parameters["weather"]["G"] = 1000
+        end
+
+        if !haskey(parameters["weather"], "T")
+            parameters["weather"]["T"] = 23
+        end
+    end
+
     # check grid
     if !haskey(parameters, "grid")
         grid_properties = Dict()
         grid_properties["fs"] = 1 / ts
         grid_properties["v_rms"] = 230
         grid_properties["phase"] = 3
-        grid_properties["f_grid"] = 50
+        grid_properties["f_grid"] = 50 # Gridfrequency
         grid_properties["Δfmax"] = 0.5 # The drop in frequency
         grid_properties["ΔEmax"] = 5 # The drop in rms voltage
         grid_properties["ramp_end"] = 2 / 50
@@ -507,6 +523,112 @@ function CheckParameters(
                             must have enough attenuation in the range of the converter's
                             switching frequency.")
                     end
+                end
+            end
+
+            if !haskey(source, "source_type")
+                source["source_type"] = "ideal"
+            end
+
+            if source["source_type"] == "ideal"
+                if !haskey(source, "vdc")
+                    source["vdc"] = 700
+                end
+                if !haskey(source, "pwr")
+                    source["pwr"] = 5e3
+                end
+            end
+
+            if source["source_type"] == "pv"
+                if !haskey(source, "vdc")
+                    source["vdc"] = 700
+                end
+                if !haskey(source, "pwr")
+                    source["pwr"] = 5e3
+                end
+            end
+
+            if source["source_type"] == "battery"
+                if !haskey(source, "module_R")
+                    source["module_R"] = [0.010342 0.0012244
+                        0.0067316 0.0011396
+                        0.0051156 0.0012661
+                        0.0043447 0.0012265
+                        0.0038826 0.0011163
+                        0.0034226 0.0009968
+                        0.003346 0.0011458
+                        0.0033222 0.001345
+                        0.0033201 0.0013091
+                        0.0032886 0.0010986
+                        0.0028114 0.0010309]
+                end
+                if !haskey(source, "module_C")
+                    source["module_C"] = [2287.7 11897
+                        6122 24515
+                        18460 42098
+                        20975 44453
+                        15254 33098
+                        10440 24492
+                        13903 32975
+                        16694 40007
+                        15784 35937
+                        12165 26430
+                        9118 24795]
+                end
+                if !haskey(source, "n")
+                    source["n"] = 1
+                end
+                if !haskey(source, "R_0")
+                    source["R_0"] = 0.016
+                end
+                if !haskey(source, "V_0")
+                    source["V_0"] = [3.5042 3.5136
+                        3.5573 3.5646
+                        3.6009 3.6153
+                        3.6393 3.6565
+                        3.6742 3.6889
+                        3.7121 3.7214
+                        3.7937 3.8078
+                        3.8753 3.8945
+                        3.97 3.9859
+                        4.0764 4.0821
+                        4.1924 4.193]
+                end
+                if !haskey(source, "Q_0")
+                    source["Q_0"] = source["n"] * 26 * 3600
+                end
+                if !haskey(source, "Q")
+                    source["Q"] = 0
+                end
+                if !haskey(source, "SOC_OP")
+                    source["SOC_OP"] = vec([0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1])
+                end
+                if !haskey(source, "T_OP")
+                    source["T_OP"] = vec([293.15 313.15])
+                end
+                if !haskey(source, "i_limit")
+                    source["i_limit"] = 500
+                end
+            end
+
+            if source["source_type"] == "pv"
+                if !haskey(source, "module_I_0")
+                    source["module_I_0"] = 2.0381e-10
+                end
+                if !haskey(source, "module_ni")
+                    source["module_ni"] = 1.2
+                end
+                if !haskey(source, "module_N_cell")
+                    source["module_N_cell"] = 36
+                end
+                if !haskey(source, "module_I_ph_ref")
+                    source["module_I_ph_ref"] = 3.11
+                end
+                if !haskey(source, "serial")
+                    source["serial"] = 10
+                end
+                if !haskey(source, "parallel")
+                    source["parallel"] = 4
                 end
             end
 
@@ -822,10 +944,13 @@ is $num_loads."
                                                            real(load["Z"]))))
         end
 
-        load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) *
-                      parameters["grid"]["phase"]
+        if !haskey(load, "pwr")
+            load["pwr"] = parameters["grid"]["v_rms"]^2 / abs(load["Z"]) * parameters["grid"]["phase"]
+        end
 
-        load["i_limit"] = sqrt(2) * 0.9 * parameters["grid"]["v_rms"] / abs(load["Z"])
+        if !haskey(load, "i_limit")
+            load["i_limit"] = sqrt(2) * 0.9 * parameters["grid"]["v_rms"] / abs(load["Z"])
+        end
     end
 
     # check cables
@@ -853,9 +978,9 @@ is $num_loads."
         @assert(
             num_undef_cables >= 0,
             "Expect the number of defined cables within the
-            parameter dict to be less or equal to the number of sources in the env, but the
-            entries within the parameter dict is $num_def_cables and the number of env
-            cables is $num_cables."
+parameter dict to be less or equal to the number of sources in the env, but the
+entries within the parameter dict is $num_def_cables and the number of env
+cables is $num_cables."
         )
 
         if num_undef_cables > 0

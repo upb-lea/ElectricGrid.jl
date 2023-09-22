@@ -188,7 +188,8 @@ function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = n
     freq = [], angles = [],
     i_sat = [], i_err = [], i_err_t = [],
     v_sat = [], v_err = [], v_err_t = [],
-    v_dq = [], i_dq = [],
+    v_dq = [], i_dq = [], soc_to_plot = [],
+    idc_to_plot = [],
     return_plot = false)
 
     #TODO complete documentation
@@ -248,8 +249,15 @@ function RenderHookResults(; hook, states_to_plot = nothing, actions_to_plot = n
     end
 
     for vdc_idx in vdc_to_plot
-        #TODO: If the index is not collected this function does print only the steps 1,2,3,4.... on y axis, WHY? How to handle that?
         push!(traces, scatter(df, x = :time, y = Symbol("source$(vdc_idx)_vdc"), mode="lines", name = "source$(vdc_idx)_vdc"))
+    end
+
+    for soc_idx in soc_to_plot
+        push!(traces, scatter(df, x = :time, y = Symbol("source$(soc_idx)_SOC_batt"), mode="lines", name = "source$(soc_idx)_SOC_batt"))
+    end
+
+    for idc_idx in idc_to_plot
+        push!(traces, scatter(df, x = :time, y = Symbol("source$(idc_idx)_idc"), mode="lines", name = "source$(idc_idx)_idc"))
     end
 
     if findfirst(x -> x == "classic", hook.policy_names) !== nothing
