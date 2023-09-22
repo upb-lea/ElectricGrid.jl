@@ -1,7 +1,7 @@
 mutable struct ElectricGridEnv <: AbstractEnv
     verbosity
     nc
-    sys_d
+    sys
     action_space
     state_space
     done
@@ -33,9 +33,9 @@ mutable struct ElectricGridEnv <: AbstractEnv
     state_parameters
     y #holds all of the inductor voltages and capacitor currents
     agent_dict
+    nonlinear
+    nonlinear_solver
 end
-
-
 """
     ElectricGridEnv(...)
 
@@ -114,7 +114,9 @@ function ElectricGridEnv(;
     action_delay=1,
     t_end=nothing,
     verbosity=0,
-    agent_dict=nothing
+    agent_dict=nothing,
+    nonlinear=false,
+    nonlinear_solver = nothing
 )
 
     if !(isnothing(t_end))
@@ -155,26 +157,51 @@ function ElectricGridEnv(;
     end
 
     A, B, C, D = GetSystem(nc)
-    Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
-    #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
-    Bd = (Ad - I) * B #
-    ldiv!(factorize(A), Bd)
 
-    state_parameters = GetStateParameters(nc)
-
-    if use_gpu
-        Ad = CuArray(Ad)
-        Bd = CuArray(Bd)
-        C = CuArray(C)
-        if isa(D, Array)
-            D = CuArray(D)
+    if checkifnonlinear([A, B, C, D])
+        if isnothing(nonlinear_solver)
+            nonlinear_solver = SSPRK22()
         end
+        @info ("Nonlinear Solver: Use $(split(string(nonlinear_solver),"(")[1]) as solver.")
+        nonlinear = true
     end
 
-    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    if nonlinear
+        if use_gpu
+            A = CuArray(A)
+            B = CuArray(B)
+            C = CuArray(C)
+            if isa(D, Array)
+                D = CuArray(D)
+            end
+        end
+        sys = [A, B, C, D]
+    else
+        A = Array{Float64}(A)
+        B = Array{Float64}(B)
+        C = Array{Float64}(C)
+        Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
+        # Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
+        Bd = (Ad - I) * B
+        ldiv!(factorize(A), Bd)
+        if use_gpu
+            Ad = CuArray(Ad)
+            Bd = CuArray(Bd)
+            C = CuArray(C)
+            if isa(D, Array)
+                D = CuArray(D)
+            end
+        end
+    
+        sys = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    
+    end
+    
+    
+    state_parameters = GetStateParameters(nc)
 
     if isnothing(action_space)
-        action_space = Space([-1.0 .. 1.0 for i = 1:length(sys_d.B[1, :])],)
+        action_space = Space([-1.0 .. 1.0 for i = 1:length(B[1, :])],)
     end
 
     if isnothing(state_ids)
@@ -242,7 +269,6 @@ function ElectricGridEnv(;
         end
     end
 
-
     if isnothing(prepare_action)
         prepare_action = function (env)
             env.action
@@ -256,7 +282,7 @@ function ElectricGridEnv(;
     end
 
     if isnothing(x0)
-        x0 = [0.0 for i = 1:length(sys_d.A[1, :])]
+        x0 = [0.0 for i = 1:length(A[1, :])]
     end
 
     x = x0
@@ -374,7 +400,7 @@ function ElectricGridEnv(;
     ElectricGridEnv(
         verbosity,
         nc,
-        sys_d,
+        sys,
         action_space,
         state_space,
         false,
@@ -405,7 +431,7 @@ function ElectricGridEnv(;
         D,
         state_parameters,
         y,
-        agent_dict)
+        agent_dict, nonlinear, nonlinear_solver)
 end
 
 RLBase.action_space(env::ElectricGridEnv) = env.action_space
@@ -433,7 +459,7 @@ false.
 function RLBase.reset!(env::ElectricGridEnv)
     env.state = env.convert_state_to_cpu ? Array(env.inner_featurize(env.x0, env.t0)) : env.inner_featurize(env.x0, env.t0)
     env.x = env.x0
-    env.y = fill!(env.y, 0.0) #TODO: y0
+    env.y = fill!(env.y, 0.0)
     if !isnothing(env.action_delay_buffer)
         empty!(env.action_delay_buffer)
         fill!(env.action_delay_buffer, zeros(length(env.action_space)))
@@ -456,7 +482,6 @@ is_terminated(env::ElectricGridEnv) = RLBase.is_terminated(env)
 state(env::ElectricGridEnv) = RLBase.state(env)
 state(env::ElectricGridEnv, name::String) = RLBase.state(env, name)
 reset!(env::ElectricGridEnv) = RLBase.reset!(env)
-
 
 """
     env(action)
@@ -488,22 +513,28 @@ function (env::ElectricGridEnv)(action)
 
     env.action = env.prepare_action(env)
 
-    if env.sys_d.A isa CuArray && !(env.action isa CuArray)
+    if env.A isa CuArray && !(env.action isa CuArray)
         if env.action isa Array
             env.action = CuArray(env.action)
         else
             env.action = CuArray([env.action])
         end
     end
-    u = [env.action env.action]
 
-    xout_d = CustomLsim(env.sys_d, u, t, x0=env.x)
-    env.x = xout_d[:, 2]
+    if env.nonlinear
+        u = env.action
+        tspan = (env.t, env.t + env.ts)
+        env.x = CustomNonlinearsim(env.A, env.B , u, tspan, env.x, env.nonlinear_solver)
+    else
+        u = [env.action env.action]
+        xout_d = CustomLsim(env.sys, u, t, x0=env.x)
+        env.x = xout_d[:, 2]
+    end
 
     if env.convert_state_to_cpu
-        env.state = Array(xout_d)'[2, :] ./ env.norm_array
+        env.state = Array(env.x) ./ env.norm_array
     else
-        env.state = xout_d'[2, :] ./ env.norm_array
+        env.state = env.x ./ env.norm_array
     end
 
     env.state = env.inner_featurize(; env=env)
@@ -524,4 +555,20 @@ function (env::ElectricGridEnv)(action)
 
     # calcultaing the inductor voltages and capacitor currents
     env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action))) .* (env.state_parameters)
+end
+
+
+function checkifnonlinear(list::Matrix)
+    return checkifnonlinear([list])
+end
+
+function checkifnonlinear(list::Array)
+    for element in list
+        for idx in eachindex(element)
+            if typeof(element[idx]) <: Function
+                return true
+            end
+        end
+    end
+    return false
 end
