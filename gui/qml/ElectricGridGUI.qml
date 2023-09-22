@@ -7,7 +7,7 @@ import org.julialang 1.0
 Window {
     id: mainWindow
     visible: true
-    width: 800
+    width: 1200
     height: 800
     title: "Node Demo"
 
@@ -28,6 +28,7 @@ Window {
     property bool nodeLoadButtonHighlighted: false
     property var rightClickedNode: null
     property var rightClickedCable: null
+    property var cable_length_factor: 50.0
 
     JuliaSignals {
         signal nodesChanged()
@@ -58,13 +59,14 @@ Window {
                 "ex": ex,
                 "ey": ey,
                 "color": "red",
+                "source_type": "ideal",
                 "control_type": "Classic",
                 "mode": "Droop",
                 "filter": "L",
                 "pwr": pwr,
             });
 
-            Julia.addSource(uid, "Classic", "Droop", "L", pwr);
+            Julia.addSource(uid, "ideal", "Classic", "Droop", "L", pwr);
             showMenu = false;
             showNodeMenuSource = false;
         }
@@ -95,6 +97,8 @@ Window {
                 "impedance": "R",
                 "pwr": pwr,
                 //"loadImpedanceIndex": impedanceComboBoxLoad.currentIndex  // Store impedance index for each load node
+                "source_type": "", //dummy entry (needed for icons)
+                "control_type": "", //dummy entry (needed for icons)
             });
 
             Julia.addLoad(uid, "R", pwr);
@@ -157,14 +161,14 @@ Window {
                 "toY": toY,
                 "color": "black",
                 "lineWidth": 2,
-                "length": length,
+                "length": length * cable_length_factor,
                 "showlength": false,
                 "capacity": capacity,
                 "inductance": inductance,
                 "resistance": resistance
             });
 
-            Julia.addCable(uid, drawCableNode.uid, to_uid, length, capacity, inductance, resistance);
+            Julia.addCable(uid, drawCableNode.uid, to_uid, length * cable_length_factor, capacity, inductance, resistance);
             canvas.requestPaint();
         } else {
             // Cancel the ongoing connection
@@ -175,6 +179,7 @@ Window {
 
     function updateSource() {
         Julia.updateSource(rightClickedNode.uid,
+                            rightClickedNode.source_type,
                             rightClickedNode.control_type,
                             rightClickedNode.mode,
                             rightClickedNode.filter,
@@ -397,21 +402,23 @@ Window {
                 acceptedButtons: Qt.RightButton | Qt.LeftButton
 
                 onClicked: {
+                    showNodeMenuLoad = false;
+                    showNodeMenuSource = false;
                     if (mouse.button === Qt.RightButton) {
                         // Show the cable menu if right-clicked on the cable
                         showCableMenu = true;
                         rightClickedCable = model; // Store the clicked cable
                     } else if (showCableMenu && !cableMenuArea.containsMouse) {
-                    // Left-clicked outside the cable menu, hide the cable menu
-                    showCableMenu = false;
-                    rightClickedCable = null;
-                    canvas.requestPaint();
-                }
+                        // Left-clicked outside the cable menu, hide the cable menu
+                        showCableMenu = false;
+                        rightClickedCable = null;
+                        canvas.requestPaint();
+                    }
                 }
             }
 
             Text {
-                x: 5 + model.length / 2
+                x: 5 + model.length * cable_length_factor / 2
                 y: 5
                 rotation: (model.toX - model.fromX) < 0 ? 180 : 0
                 text: model.length.toFixed(2)
@@ -478,6 +485,38 @@ Window {
             x: model.ex * mainWindow.width
             y: model.ey * mainWindow.height
 
+            Image {
+                x: model.color === "red" ? -15 : -5
+                y: -40
+                width: model.color === "red" ? 25 : 30
+                height: model.color === "red" ? 25 : 30
+                source: model.color === "red" ? (model.source_type === "ideal" ? "ideal.png" : (model.source_type === "pv" ? "pv.png" : "battery.png")) : "load.png"
+
+                MouseArea { 
+                    anchors.fill:parent;
+                    onClicked: {
+                        print(model.color === "red" ? (model.source_type === "ideal" ? "ideal.png" : (model.source_type === "pv" ? "pv.png" : "battery.png")) : "load.png")
+                    }
+                }
+            }
+
+            Image {
+                x: 15
+                y: -40
+                width: 25
+                height: 25
+                source: model.color === "red" ? (model.control_type === "Classic" ? "classic.png" : "robot-solid.png") : "load.png"
+                visible: model.color === "red"
+
+                MouseArea { 
+                    anchors.fill:parent;
+                    onClicked: {
+                        print(model.color === "red" ? (model.control_type) : "load.png")
+                    }
+                }
+
+            }
+
             MouseArea {
                 anchors.fill: parent
                 drag.target: parent
@@ -523,7 +562,7 @@ Window {
                             cables.setProperty(i, "fromY", fromY);
                             cables.setProperty(i, "toX", toX);
                             cables.setProperty(i, "toY", toY);
-                            cables.setProperty(i, "length", length);
+                            cables.setProperty(i, "length", length / cable_length_factor);
                         }
                     }
 
@@ -655,8 +694,8 @@ Window {
 
     Rectangle {
         id: nodeMenuSource
-        width: 200
-        height: (controlTypeComboBoxSource.height + (modeText.visible && modeComboBoxSource.visible ? modeComboBoxSource.height : 0) + param3FieldSource.height + filterComboBoxSource.height + 60) // Adjust the height based on the text field heights        
+        width: 250
+        height: (sourceTypeComboBoxSource.height + controlTypeComboBoxSource.height + (modeText.visible && modeComboBoxSource.visible ? modeComboBoxSource.height : 0) + param3FieldSource.height + filterComboBoxSource.height + 100) // Adjust the height based on the text field heights        
         color: "lightgray"
         radius: 10
         visible: showNodeMenuSource
@@ -670,18 +709,7 @@ Window {
         property var pwr: 0
         property var filter: "L" // Set default value to "L"
 
-        Image {
-                x: 190
-                y: -10
-                width: 20
-                height: 20
-                source: "backspace-solid.png"
-                MouseArea { anchors.fill:parent;
-                    onClicked: {
-                        deleteRightClickedNode()
-                    }
-                }
-            }
+        
 
         ColumnLayout {
             id: contentColumnSource
@@ -690,6 +718,55 @@ Window {
 
             Item {
                 height: 5 // Adjust the top spacing
+            }
+
+            RowLayout {
+                spacing: 10
+
+                Item {
+                    width: 5 // Spacer width
+                }
+
+                Text {
+                    text: "Source_Type:"
+                    font.bold: true
+                    verticalAlignment: Text.AlignVCenter
+                    Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
+                }
+
+                // Dropdown ComboBox for the Source Type
+                ComboBox {
+                    id: sourceTypeComboBoxSource
+                    currentIndex: rightClickedNode ? (rightClickedNode.source_type ? 
+                    (rightClickedNode.source_type === "ideal" ? 0 : 
+                    (rightClickedNode.source_type === "pv" ? 1 : 2)) : 0) : 0
+
+                    Layout.fillWidth: true
+                    model: ListModel {
+                        ListElement {
+                            sourceType: "ideal"
+                        }
+                        ListElement {
+                            sourceType: "pv"
+                        }
+                        ListElement {
+                            sourceType: "battery"
+                        }
+                    }
+                    textRole: "sourceType" // Set the textRole to the property name
+
+                    onCurrentIndexChanged: {
+                        if(rightClickedNode) {
+                            rightClickedNode.source_type = sourceTypeComboBoxSource.model.get(sourceTypeComboBoxSource.currentIndex).sourceType;
+
+                            updateSource();
+                        } 
+                    }
+                }
+
+                Item {
+                    width: 5 // Spacer width
+                }
             }
 
             RowLayout {
@@ -855,6 +932,13 @@ Window {
                     }
                 }
 
+                Text {
+                    text: " VA"
+                    font.bold: true
+                    verticalAlignment: Text.AlignVCenter
+                    Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
+                }
+
                 Item {
                     width: 5 // Spacer width
                 }
@@ -911,6 +995,29 @@ Window {
                 }
             }
 
+            RowLayout {
+                spacing: 10
+
+                Item {
+                        width: 5 // Spacer width
+                    }
+
+                    Image {
+                    width: 20
+                    height: 20
+                    source: "trash-can-solid-small.png"
+                    MouseArea { anchors.fill:parent;
+                        onClicked: {
+                            deleteRightClickedNode()
+                        }
+                    }
+                }
+
+                Item {
+                    width: 5 // Spacer width
+                }
+            }
+
             Item {
                 height: 15
             }
@@ -923,7 +1030,7 @@ Window {
     Rectangle {
         id: nodeMenuLoad
         width: 200
-        height: impedanceComboBoxLoad.height + param3FieldLoad.height + 40 // Adjust the height based on the text field heights
+        height: impedanceComboBoxLoad.height + param3FieldLoad.height + 80 // Adjust the height based on the text field heights
         color: "lightgray"
         radius: 10
         visible: showNodeMenuLoad
@@ -931,19 +1038,6 @@ Window {
         // Set the position of the menu relative to the clicked node
         x: rightClickedNode ? rightClickedNode.x + 10 : 0
         y: rightClickedNode ? rightClickedNode.y + 10 : 0
-
-        Image {
-                x: 190
-                y: -10
-                width: 20
-                height: 20
-                source: "backspace-solid.png"
-                MouseArea { anchors.fill:parent;
-                    onClicked: {
-                        deleteRightClickedNode()
-                    }
-                }
-            }
 
         ColumnLayout {
             id: contentColumnLoad
@@ -1058,6 +1152,36 @@ Window {
                     }
                 }
 
+                Text {
+                    text: " VA"
+                    font.bold: true
+                    verticalAlignment: Text.AlignVCenter
+                    Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
+                }
+
+                Item {
+                    width: 5 // Spacer width
+                }
+            }
+
+            RowLayout {
+                spacing: 10
+
+                Item {
+                        width: 5 // Spacer width
+                    }
+
+                    Image {
+                    width: 20
+                    height: 20
+                    source: "trash-can-solid-small.png"
+                    MouseArea { anchors.fill:parent;
+                        onClicked: {
+                            deleteRightClickedNode()
+                        }
+                    }
+                }
+
                 Item {
                     width: 5 // Spacer width
                 }
@@ -1073,8 +1197,8 @@ Window {
 
     Rectangle {
         id: cableMenu
-        width: 200
-        height: lengthFieldCable.height + param1FieldCable.height + param2FieldCable.height + param3FieldCable.height + 60 // Adjust the height based on the text field heights
+        width: 350
+        height: lengthFieldCable.height + param1FieldCable.height + param2FieldCable.height + param3FieldCable.height + 100 // Adjust the height based on the text field heights
         color: "lightgray"
         radius: 10
         visible: showCableMenu
@@ -1083,19 +1207,12 @@ Window {
         x: rightClickedCable ? (rightClickedCable.fromX + rightClickedCable.toX) / 2 + 10 : 0
         y: rightClickedCable ? (rightClickedCable.fromY + rightClickedCable.toY) / 2 + 10 : 0
 
-        Image {
-                x: 190
-                y: -10
-                width: 20
-                height: 20
-                source: "backspace-solid.png"
-                MouseArea { anchors.fill:parent;
-                    onClicked: {
-                        deleteRightClickedCable()
-                    }
-                }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                forceActiveFocus()
             }
-
+        }
 
         ColumnLayout {
             id: contentColumnCable
@@ -1122,7 +1239,7 @@ Window {
 
                 Text {
                     id: lengthFieldCable
-                    text: rightClickedCable ? rightClickedCable.length.toFixed(2) :  "1.0"
+                    text: (rightClickedCable ? rightClickedCable.length.toFixed(2) :  "1.0") + " km"
                     font.bold: true
                     verticalAlignment: Text.AlignVCenter
                     Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
@@ -1141,7 +1258,7 @@ Window {
                 }
 
                 Text {
-                    text: "C:"
+                    text: "Capacity Coatings:"
                     font.bold: true
                     verticalAlignment: Text.AlignVCenter
                     Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
@@ -1185,6 +1302,14 @@ Window {
                     }
                 }
 
+                Text {
+                    id: capacityFieldCable
+                    text: " -> C: " + (rightClickedCable ? (rightClickedCable.length * rightClickedCable.capacity).toFixed(2) :  "1.0") + " µF"
+                    font.bold: true
+                    verticalAlignment: Text.AlignVCenter
+                    Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
+                }
+
                 Item {
                     width: 5 // Spacer width
                 }
@@ -1198,7 +1323,7 @@ Window {
                 }
 
                 Text {
-                    text: "L:"
+                    text: "Operating Inductor:"
                     font.bold: true
                     verticalAlignment: Text.AlignVCenter
                     Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
@@ -1242,6 +1367,14 @@ Window {
                     }
                 }
 
+                Text {
+                    id: inductanceFieldCable
+                    text: " -> L: " + (rightClickedCable ? (rightClickedCable.length * rightClickedCable.inductance).toFixed(2) :  "1.0") + " mH"
+                    font.bold: true
+                    verticalAlignment: Text.AlignVCenter
+                    Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
+                }
+
                 Item {
                     width: 5 // Spacer width
                 }
@@ -1255,7 +1388,7 @@ Window {
                 }
 
                 Text {
-                    text: "R:"
+                    text: "AC Resistor:"
                     font.bold: true
                     verticalAlignment: Text.AlignVCenter
                     Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
@@ -1295,6 +1428,37 @@ Window {
                             rightClickedCable.resistance = parseFloat(text);
 
                             updateCable()
+                        }
+                    }
+                }
+
+                Text {
+                    id: resistanceFieldCable
+                    text: " -> R: " + (rightClickedCable ? (rightClickedCable.length * rightClickedCable.resistance).toFixed(2) :  "1.0") + " Ohm"
+                    font.bold: true
+                    verticalAlignment: Text.AlignVCenter
+                    Layout.alignment: Qt.AlignLeft // Use Layout.alignment instead of anchors
+                }
+
+                Item {
+                    width: 5 // Spacer width
+                }
+            }
+
+            RowLayout {
+                spacing: 10
+
+                Item {
+                        width: 5 // Spacer width
+                    }
+
+                    Image {
+                    width: 20
+                    height: 20
+                    source: "trash-can-solid-small.png"
+                    MouseArea { anchors.fill:parent;
+                        onClicked: {
+                            deleteRightClickedCable()
                         }
                     }
                 }
