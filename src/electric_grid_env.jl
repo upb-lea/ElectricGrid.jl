@@ -1,7 +1,7 @@
 mutable struct ElectricGridEnv <: AbstractEnv
     verbosity
     nc
-    sys_d
+    sys
     action_space
     state_space
     done
@@ -19,7 +19,7 @@ mutable struct ElectricGridEnv <: AbstractEnv
     steps
     state_ids
     v_dc
-    v_dc_arr
+    vdc_link_voltages
     norm_array
     convert_state_to_cpu
     reward
@@ -33,9 +33,9 @@ mutable struct ElectricGridEnv <: AbstractEnv
     state_parameters
     y #holds all of the inductor voltages and capacitor currents
     agent_dict
+    nonlinear
+    nonlinear_solver
 end
-
-
 """
     ElectricGridEnv(...)
 
@@ -114,7 +114,9 @@ function ElectricGridEnv(;
     action_delay=1,
     t_end=nothing,
     verbosity=0,
-    agent_dict=nothing
+    agent_dict=nothing,
+    nonlinear=false,
+    nonlinear_solver = nothing
 )
 
     if !(isnothing(t_end))
@@ -155,26 +157,51 @@ function ElectricGridEnv(;
     end
 
     A, B, C, D = GetSystem(nc)
-    Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
-    #Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
-    Bd = (Ad - I) * B #
-    ldiv!(factorize(A), Bd)
+
+    if checkifnonlinear([A, B, C, D])
+        if isnothing(nonlinear_solver)
+            nonlinear_solver = SSPRK22()
+        end
+        @info ("Nonlinear Solver: Use $(split(string(nonlinear_solver),"(")[1]) as solver.")
+        nonlinear = true
+    end
+
+    if nonlinear
+        if use_gpu
+            A = CuArray(A)
+            B = CuArray(B)
+            C = CuArray(C)
+            if isa(D, Array)
+                D = CuArray(D)
+            end
+        end
+        sys = [A, B, C, D]
+    else
+        A = Array{Float64}(A)
+        B = Array{Float64}(B)
+        C = Array{Float64}(C)
+        Ad = exp(A * ts) #fastExpm(A*ts) might be a better option
+        # Bd = A \ (Ad - I) * B #This may be bad for large sizes, maybe QR factorise, then use ldiv!
+        Bd = (Ad - I) * B
+        ldiv!(factorize(A), Bd)
+        if use_gpu
+            Ad = CuArray(Ad)
+            Bd = CuArray(Bd)
+            C = CuArray(C)
+            if isa(D, Array)
+                D = CuArray(D)
+            end
+        end
+    
+        sys = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
+    
+    end
+    
     
     state_parameters = GetStateParameters(nc)
 
-    if use_gpu
-        Ad = CuArray(Ad)
-        Bd = CuArray(Bd)
-        C = CuArray(C)
-        if isa(D, Array)
-            D = CuArray(D)
-        end
-    end
-
-    sys_d = HeteroStateSpace(Ad, Bd, C, D, Float64(ts))
-
     if isnothing(action_space)
-        action_space = Space([-1.0 .. 1.0 for i = 1:length(sys_d.B[1, :])],)
+        action_space = Space([-1.0 .. 1.0 for i = 1:length(B[1, :])],)
     end
 
     if isnothing(state_ids)
@@ -242,7 +269,6 @@ function ElectricGridEnv(;
         end
     end
 
-
     if isnothing(prepare_action)
         prepare_action = function (env)
             env.action
@@ -256,7 +282,7 @@ function ElectricGridEnv(;
     end
 
     if isnothing(x0)
-        x0 = [0.0 for i = 1:length(sys_d.A[1, :])]
+        x0 = [0.0 for i = 1:length(A[1, :])]
     end
 
     x = x0
@@ -276,57 +302,8 @@ function ElectricGridEnv(;
         end
     end
 
-    vdc_fixed = 0
-    v_dc = ones(nc.num_sources)  # vector to store evaluated v_dc_arr (constants and
-    # functions) in the env, needed e.g. in the DataHook
-    v_dc_arr = []  # array to store all functions for v_dc as well as constants
-    for (source_number, source) in enumerate(nc.parameters["source"])
-        if haskey(source, "source_type")
-            if source["source_type"] == "ideal"
-                # set vdc for that source
-                if haskey(source, "vdc")
-                    v_dc[source_number] = source["vdc"]
-                    fun = (env, G, T) -> source["vdc"]
-                    push!(v_dc_arr, fun)
-                else
-                    v_dc[source_number] = 800
-                    fun = (env, G, T) -> 800
-                    push!(v_dc_arr, fun)
-                    vdc_fixed += 1
-                end
-            elseif source["source_type"] == "pv"
-                #v_dc[source_number] = :(GetV(SolarArray, env.x[1]*env.action, G, T))
-                #TODO : how to calculate i_dc in 3-phase grid? Which current of env to use?
-                #TODO : $source_number does only fit if all L filters! Otherwise how to
-                #       define the offet for $source_number?!?!?
-                # TODO built pv module from parameter dict - where to define? In env?
-                pv_m = SolarModule()
-                SolarArray = SolarArray(; SolarModule=pv_m)
-                # find(x -> .... source$source_number_i_L in state_ids)
-                fun = (env, G, T) -> GetV(:($SolarArray),
-                    env.x[:($source_number)] * env.action, G, T)
-                push!(v_dc_arr, fun)
-
-                # first value set to 0
-                v_dc[source_number] = 0
-            else
-                @warn "sourceType not known! vdc set to fixed value"
-                v_dc[source_number] = 800
-                fun = (env, G, T) -> 800
-                push!(v_dc_arr, fun)
-                vdc_fixed += 1
-            end
-        else
-            @warn "sourceType not defined! vdc set to fixed value, if not wanted please
-                   define nc.parameters -> source -> source_type (e.g. = ideal)"
-            v_dc[source_number] = 800
-            fun = (env, G, T) -> 800
-            push!(v_dc_arr, fun)
-            vdc_fixed += 1
-        end
-    end
-    vdc_fixed > 0 && @warn("$vdc_fixed DC-link voltages set to 800 V - please define in
-                            nc.parameters -> source -> vdc.")
+    vdc_link_voltages =  DCLinkVoltagesInit(nc) # create dc link voltage vector
+    v_dc = zeros(num_sources) # get initial v_dc
 
     if verbosity > 1
         @info "Normalization is done based on the defined parameter limits."
@@ -420,12 +397,41 @@ function ElectricGridEnv(;
 
     y = (A * Vector(x) + B * (Vector(action))) .* (state_parameters)
 
-    ElectricGridEnv(verbosity, nc, sys_d, action_space, state_space,
-        false, inner_featurize, featurize, prepare_action, reward_function,
-        x0, x, t0, t, ts, state, maxsteps, 0, state_ids,
-        v_dc, v_dc_arr, norm_array, convert_state_to_cpu,
-        reward, action, action_ids, action_delay_buffer,
-        A, B, C, D, state_parameters, y, agent_dict)
+    ElectricGridEnv(
+        verbosity,
+        nc,
+        sys,
+        action_space,
+        state_space,
+        false,
+        inner_featurize,
+        featurize,
+        prepare_action,
+        reward_function,
+        x0,
+        x,
+        t0,
+        t,
+        ts,
+        state,
+        maxsteps,
+        0,
+        state_ids,
+        v_dc,
+        vdc_link_voltages,
+        norm_array,
+        convert_state_to_cpu,
+        reward,
+        action,
+        action_ids,
+        action_delay_buffer,
+        A,
+        B,
+        C,
+        D,
+        state_parameters,
+        y,
+        agent_dict, nonlinear, nonlinear_solver)
 end
 
 RLBase.action_space(env::ElectricGridEnv) = env.action_space
@@ -453,12 +459,13 @@ false.
 function RLBase.reset!(env::ElectricGridEnv)
     env.state = env.convert_state_to_cpu ? Array(env.inner_featurize(env.x0, env.t0)) : env.inner_featurize(env.x0, env.t0)
     env.x = env.x0
-    env.y = fill!(env.y, 0.0) #TODO: y0
+    env.y = fill!(env.y, 0.0)
     if !isnothing(env.action_delay_buffer)
         empty!(env.action_delay_buffer)
         fill!(env.action_delay_buffer, zeros(length(env.action_space)))
         env.action = zeros(length(env.action_space))
     end
+    env.v_dc = step(env.vdc_link_voltages, env)
     env.t = env.t0
     env.steps = 0
     env.reward = 0.0
@@ -475,7 +482,6 @@ is_terminated(env::ElectricGridEnv) = RLBase.is_terminated(env)
 state(env::ElectricGridEnv) = RLBase.state(env)
 state(env::ElectricGridEnv, name::String) = RLBase.state(env, name)
 reset!(env::ElectricGridEnv) = RLBase.reset!(env)
-
 
 """
     env(action)
@@ -501,30 +507,34 @@ function (env::ElectricGridEnv)(action)
         env.action = action
     end
 
-    # TODO V2: define G and T via data_set or stochastic process next to SolarArray
-    G = 1000
-    T = 27
-    env.v_dc = [vdc(env, G, T) for vdc in env.v_dc_arr]
+    env.v_dc = step(env.vdc_link_voltages, env)
+
     env.action = env.action .* repeat(env.v_dc / 2, inner=env.nc.parameters["grid"]["phase"])
 
     env.action = env.prepare_action(env)
 
-    if env.sys_d.A isa CuArray && !(env.action isa CuArray)
+    if env.A isa CuArray && !(env.action isa CuArray)
         if env.action isa Array
             env.action = CuArray(env.action)
         else
             env.action = CuArray([env.action])
         end
     end
-    u = [env.action env.action]
 
-    xout_d = CustomLsim(env.sys_d, u, t, x0=env.x)
-    env.x = xout_d[:, 2]
+    if env.nonlinear
+        u = env.action
+        tspan = (env.t, env.t + env.ts)
+        env.x = CustomNonlinearsim(env.A, env.B , u, tspan, env.x, env.nonlinear_solver)
+    else
+        u = [env.action env.action]
+        xout_d = CustomLsim(env.sys, u, t, x0=env.x)
+        env.x = xout_d[:, 2]
+    end
 
     if env.convert_state_to_cpu
-        env.state = Array(xout_d)'[2, :] ./ env.norm_array
+        env.state = Array(env.x) ./ env.norm_array
     else
-        env.state = xout_d'[2, :] ./ env.norm_array
+        env.state = env.x ./ env.norm_array
     end
 
     env.state = env.inner_featurize(; env=env)
@@ -547,8 +557,18 @@ function (env::ElectricGridEnv)(action)
     env.y = (env.A * Vector(env.x) + env.B * (Vector(env.action))) .* (env.state_parameters)
 end
 
-function GetVDC_PV(I)
 
-    V_dc = I * N_cell * P_cell
+function checkifnonlinear(list::Matrix)
+    return checkifnonlinear([list])
+end
 
+function checkifnonlinear(list::Array)
+    for element in list
+        for idx in eachindex(element)
+            if typeof(element[idx]) <: Function
+                return true
+            end
+        end
+    end
+    return false
 end

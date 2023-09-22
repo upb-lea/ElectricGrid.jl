@@ -12,6 +12,8 @@ using MacroTools: @forward
 (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, training::Bool) = policy(stage, env)
 (policy::AbstractPolicy)(stage::AbstractStage, env::AbstractEnv, action, training::Bool) = policy(stage, env, action)
 
+nameof(policy::ReinforcementLearningCore.NamedPolicy) = RLBase.nameof(policy)
+
 
 # re-definition needed to use ElectricGrid-internal action-space functions
 function RLBase.update!(
