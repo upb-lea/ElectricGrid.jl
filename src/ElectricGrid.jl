@@ -14,7 +14,7 @@ using Distributions
 using Flux
 using Graphs
 using GraphPlot
-using Interpolations
+import Interpolations.LinearInterpolation
 using IntervalSets
 using Ipopt
 using JuMP
