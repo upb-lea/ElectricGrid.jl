@@ -29,6 +29,9 @@ makedocs(
         ],
         "Miscellanous" => [
             "Default Parameters" => "Default_Parameters.md"
+            "Nonlinear Components" => "Nonlinear.md"
+            "DC Link Models" => "DC_link_models.md"
+            "GUI" => "Gui.md"
         ],
         "References" => "references.md",
         "Contributing" => "dev.md",
