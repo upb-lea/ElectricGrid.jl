@@ -1,8 +1,7 @@
 using ElectricGrid
 
-CM = [ 0. 0. 1.
-        0. 0. 2.
-        -1. -2. 0.]
+CM = [ 0. 1.
+        -1. 0.]
 
 R_load, L_load, _, _ = ParallelLoadImpedance(50e3, 0.95, 230)
 
@@ -15,15 +14,10 @@ Dict{Any, Any}(
                         "fltr" => "L",
                         #"L1" => 0.0008,
                         ),
-                    Dict{Any, Any}(
-                        "pwr" => 200e3,
-                        "fltr" => "LC",
-                        "control_type" => "classic",
-                        "mode" => "Droop",),
                     ],
     "load"   => Any[
-            Dict{Any, Any}("impedance" => "RLC", "R" => R_load, "v_limit" => 1e4, "i_limit" => 1e4)
-            ],
+        Dict{Any, Any}("impedance" => "RLC", "R" => R_load, "v_limit" => 1e4, "i_limit" => 1e4)
+        ],
     "grid" => Dict{Any, Any}(
         "phase" => 3,
         "ramp_end" => 0.04,)
@@ -129,7 +123,7 @@ function learn_scheduled()
     num_steps = 50_000
 
     an_scheduler_loops = 20
-
+    
     for j in 1:10
         an = 0.01 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
         for i in 1:an_scheduler_loops
