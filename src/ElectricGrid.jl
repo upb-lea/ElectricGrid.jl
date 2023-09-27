@@ -1,16 +1,20 @@
 module ElectricGrid
 
+using Reexport
+
 using Combinatorics
 using CSV
 using CUDA
 using DataStructures
 using DataFrames
 using Dates
+@reexport using DifferentialEquations
 using ControlSystemsBase
 using Distributions
 using Flux
 using Graphs
 using GraphPlot
+import Interpolations.LinearInterpolation
 using IntervalSets
 using Ipopt
 using JuMP
@@ -25,14 +29,18 @@ using SpecialFunctions
 using StatsBase
 using UnicodePlots
 
+
 #export create_setup, ClassicalPolicy, CreateAgentDdpg, Source_Initialiser, MultiController, DataHook, RenderHookResults, plot_best_results, NodeConstructor, ElectricGrid_setup, ElectricGridEnv
 
 include("./power_system_theory.jl")
 include("./node_constructor.jl")
 include("./custom_control.jl")
 include("./solar_module.jl")
+include("./battery.jl")
+include("./varaible_dc_link.jl")
 include("./electric_grid_env.jl")
 include("./agent_ddpg.jl")
+include("./agent_td3.jl")
 include("./classical_control.jl")
 include("./multi_controller.jl")
 include("./render.jl")

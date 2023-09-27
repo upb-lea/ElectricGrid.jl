@@ -8,7 +8,7 @@ function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVec
         error("size(x0) must match the number of states of sys")
     end
     if size(u) != (nu, length(t))
-        error("u must be of size (nu, length(t))")
+        error("u must be of size (nu, length(t))=$((nu,length(t)))")
     end
 
     dt = Float64(t[2] - t[1])
@@ -36,6 +36,40 @@ function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVec
     #y = sys.C * x + sys.D * u
     #return SimResult(y, t, x, u, dsys) # saves the system that actually produced the simulation
     return x
+end
+
+function CustomNonlinearsim(AAA,B,u,tspan,x0,solver)
+    (rows, columns) = size(AAA)
+    AA = Matrix{Any}(undef, (rows, columns)) 
+    for row in 1:rows
+        for column in 1:columns
+            h = AAA[row, column]
+            if isa(h, Number)
+                AA[row, column] = x -> h
+            else
+                AA[row, column] = h
+            end
+        end
+    end
+
+    A(x) = (|>).(x, AA)
+
+    function f(dx, x, p, t)
+        dx .= A(x) * x + B*p
+    end
+
+    prob = ODEProblem(f, x0, tspan, u)
+
+    alg = solver
+    Δt = Float64(tspan[2] - tspan[1])/10
+    sol = solve(prob, alg, dt = Δt)
+    xout = sol.u[end]
+    xout_float = Array{Float64}(undef,0)
+    for i in xout
+        append!(xout_float,i)
+    end
+
+    return xout_float
 end
 
 @views function CustomLtitr(A::AbstractMatrix, B::AbstractMatrix, u::AbstractVecOrMat,

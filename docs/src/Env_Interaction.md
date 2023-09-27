@@ -15,7 +15,7 @@ The dynamic behaviour of the environment is simulated using linear state-space m
 It interacts step-wise with the agent/controller like shown in the figure below. 
 Based on the input/action `u` at timestep `k` the state `x` is calculated.
 
-![](./assets/RL_env.png)
+![](./assets/RL_interaction.png)
 
 Based on that action `u_k` and the internal state-space model, the system response is evolved for one timestep and the new states `x_k+1` are calulated.
 The state-space model is defined depending on the electric components - for more information about the ordinary differential equations behind,... see [The Nodecontructor - Theory](https://upb-lea.github.io/ElectricGrid.jl/dev/NodeConstructor_Theory/).
@@ -142,7 +142,7 @@ The interaction of the different components (env, agent, classic controllers, wr
 
 
 
-![](./assets/OverviewJEG.png)
+![](./assets/Overview_EG.png)
 
 
 The depicted multiagent ensures that the states and actions for every source are exchanged with the correct agent or classic controller. This is depending on the `control_types` and `mode`s.
