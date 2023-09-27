@@ -1,8 +1,7 @@
 using ElectricGrid
 
-CM = [ 0. 0. 1.
-        0. 0. 2.
-        -1. -2. 0.]
+CM = [ 0. 1.
+        -1. 0.]
 
 R_load, L_load, _, _ = ParallelLoadImpedance(50e3, 0.95, 230)
 
@@ -15,11 +14,6 @@ Dict{Any, Any}(
                         "fltr" => "L",
                         #"L1" => 0.0008,
                         ),
-                    Dict{Any, Any}(
-                        "pwr" => 200e3,
-                        "fltr" => "LC",
-                        "control_type" => "classic",
-                        "mode" => "Droop",),
                     ],
     "load"   => Any[
         Dict{Any, Any}(
