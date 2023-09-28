@@ -1,4 +1,5 @@
 using ElectricGrid
+using PlotlyJS
 
 R_load, L_load, X, Z = ParallelLoadImpedance(100e3, 1, 230)
 
@@ -19,7 +20,7 @@ parameters = Dict{Any, Any}(
 
 
 function reference(t)
-    return 1
+    return 10.0
 end
 
 
@@ -31,19 +32,17 @@ featurize_ddpg = function(state, env, name)
 end
 
 function reward_function(env, name = nothing)
-    if name == "my_ddpg"
-        index_1 = findfirst(x -> x == "source1_i_L1", env.state_ids)
-        state_to_control = env.state[index_1]
+    index_1 = findfirst(x -> x == "source1_i_L1", env.state_ids)
+    state_to_control = env.state[index_1]
 
-        if any(abs.(state_to_control).>1)
-            return -1
-        else
+    if any(abs.(state_to_control).>1)
+        return -1
+    else
 
-            refs = reference(env.t)
-            norm_ref = env.nc.parameters["source"][1]["i_limit"]          
-            r = 1-((abs.(refs/norm_ref - state_to_control)/2).^0.5)
-            return r 
-        end
+        refs = reference(env.t)
+        norm_ref = env.nc.parameters["source"][1]["i_limit"]          
+        r = 1-((abs.(refs/norm_ref - state_to_control)/2).^0.5)
+        return r 
     end
 end
 
@@ -64,14 +63,52 @@ agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
 
 controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
-
 #run(ma["ElectricGrid_ddpg_1"]["policy"], env)
 
 learnhook = DataHook()
-Learn(controllers, env, num_episodes = 250, hook = learnhook);
+Learn(controllers, env, steps = 30_000, hook = learnhook);
 
-#Learn(agent, env)
+function learn1()
+    steps_total = 1_500_000
 
+    steps_loop = 50_000
+
+    Learn(controllers, env, steps = steps_loop, hook = learnhook)
+
+    while length(controllers.hook.df[!,"reward"]) <= steps_total
+
+        println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+        Learn(controllers, env, steps = steps_loop, hook = learnhook)
+
+    end
+
+end
+
+# second training phase with action noise scheduler
+function learn2()
+    num_steps = 10_000
+
+    an_scheduler_loops = 7
+
+
+    for j in 1:1
+        an = 0.001 * exp10.(collect(LinRange(0.0, -13, an_scheduler_loops)))
+        for i in 1:an_scheduler_loops
+            controllers.agents["my_ddpg"]["policy"].policy.policy.act_noise = an[i]
+            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+            println("next action noise level: $(an[i])")
+            Learn(controllers, env, steps = num_steps, hook = learnhook)
+        end
+    end
+end
+
+learn2()
+
+controllers.agents["my_ddpg"]["policy"].policy.policy.act_noise = 0.0
+Learn(controllers, env, steps = 20_000, hook = learnhook);
+
+p = plot(learnhook.df[!, :reward])
+display(p)
 
 states_to_plot = ["source1_i_L1"]
 actions_to_plot = ["source1_u"]

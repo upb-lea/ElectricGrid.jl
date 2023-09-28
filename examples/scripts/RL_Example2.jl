@@ -129,7 +129,7 @@ function learn1()
 
     steps_loop = 50_000
 
-    Learn(controllers, env, steps = steps_loop)
+    Learn(controllers, env, steps = steps_loop, hook = learnhook)
 
     while length(controllers.hook.df[!,"reward"]) <= steps_total
 
