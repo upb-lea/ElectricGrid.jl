@@ -246,6 +246,28 @@ function ElectricGridEnv(;
                     agent_dict[name]["state_ids"] = filter(x -> split(x, "_")[1] == ssa, state_ids)
                     agent_dict[name]["action_ids"] = filter(x -> split(x, "_")[1] == ssa, action_ids)
                 end
+
+                if haskey(nc.parameters["source"][ns], "osc") && nc.parameters["source"][ns]["osc"] == true
+                    mode = 2
+
+                    if haskey(nc.parameters["source"][ns], "osc_mode")
+                        mode = nc.parameters["source"][ns]["osc_mode"]
+                    end
+
+                    if mode == 2
+                        if haskey(agent_dict[name], "osc")
+                            append!(agent_dict[name]["osc"], ns)
+                        else
+                            agent_dict[name]["osc"] = [ns]
+                        end
+                    elseif mode == 3
+                        if haskey(agent_dict[name], "osc3")
+                            append!(agent_dict[name]["osc3"], ns)
+                        else
+                            agent_dict[name]["osc3"] = [ns]
+                        end
+                    end
+                end
             end
         end
     end

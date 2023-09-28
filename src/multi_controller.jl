@@ -42,6 +42,14 @@ end
 
 Base.getindex(A::MultiController, x) = getindex(A.agents, x)
 
+function get_osc(params, t, phases)
+    return [params[1] * cos(1000 * params[2] * t - (i-1) * (2*pi/phases)) for i in 1:phases]
+end
+
+function get_osc3(params, t, phases)
+    return [params[1] * cos(1000 * params[2] * t - (i-1) * (2*pi/phases) + params[3] * (2*pi)) for i in 1:phases]
+end
+
 function (A::MultiController)(env::AbstractEnv, training::Bool = false)
     action = Array{Union{Nothing, Float64}}(nothing, length(A.action_ids))
 
@@ -51,7 +59,40 @@ function (A::MultiController)(env::AbstractEnv, training::Bool = false)
         else
             multiplier = 1.0
         end
-        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= agent["policy"](env, training) .* multiplier
+        
+        if name != "classic" && (haskey(env.agent_dict[name], "osc") || haskey(env.agent_dict[name], "osc3"))
+            agent_output = agent["policy"](env, training)
+            sub_action = Array{Union{Nothing, Float64}}(nothing, length(agent["action_ids"]))
+
+            length_osc = 0
+            if haskey(env.agent_dict[name], "osc") 
+                length_osc = length(env.agent_dict[name]["osc"])
+                for (i, source_number) in enumerate(env.agent_dict[name]["osc"])
+                    osc_output = get_osc(agent_output[collect(1:2) .+ (i-1)*2], env.t, env.nc.parameters["grid"]["phase"])
+                    sub_action[findall(x -> startswith(x, "source$source_number") , agent["action_ids"])] = osc_output
+                end
+            end
+
+            length_osc3 = 0
+            if haskey(env.agent_dict[name], "osc3") 
+                length_osc3 = length(env.agent_dict[name]["osc3"])
+                for (i, source_number) in enumerate(env.agent_dict[name]["osc3"])
+                    osc_output = get_osc3(agent_output[collect(1:3) .+ (i-1)*3], env.t, env.nc.parameters["grid"]["phase"])
+                    sub_action[findall(x -> startswith(x, "source$source_number") , agent["action_ids"])] = osc_output
+                end
+            end
+
+            #fill the rest of sub_action (which is still "nothing") with all the other values of agent_output
+            sub_action[findall(x -> isnothing(x), sub_action)] = agent_output[(length_osc*2 + length_osc3*3 + 1):end]
+
+            #save the original agent_output so it can later be stored in the trajectory
+            A.agents[name]["last_agent_output"] = agent_output
+        else
+            sub_action = agent["policy"](env, training)
+            A.agents[name]["last_agent_output"] = sub_action
+        end
+
+        action[findall(x -> x in agent["action_ids"], A.action_ids)] .= sub_action .* multiplier
     end
 
     return action
@@ -72,7 +113,7 @@ function (A::MultiController)(stage::PreActStage, env::AbstractEnv, action, trai
 
     if training
         for agent in values(A.agents)
-            agent["policy"](stage, env, action[findall(x -> x in agent["action_ids"], A.action_ids)], training)
+            agent["policy"](stage, env, agent["last_agent_output"], training)
         end
     end
 end
@@ -132,7 +173,30 @@ function SetupAgents(env, custom_agents = nothing)
     for (name, config) in env.agent_dict
 
         if config["mode"] == "ElectricGrid_ddpg"
-            agent = CreateAgentDdpg(na = length(env.agent_dict[name]["action_ids"]),
+            if haskey(env.agent_dict[name], "osc") || haskey(env.agent_dict[name], "osc3")
+                na = 0
+                visited_osc_numbers = []
+                for action_id in env.agent_dict[name]["action_ids"]
+                    #find the source number of the current action ideal
+                    source_number = parse(Int, split(split(action_id, "_")[1], "source")[2])
+
+                    if !(source_number in visited_osc_numbers)
+                        if haskey(env.agent_dict[name], "osc") && source_number in env.agent_dict[name]["osc"]
+                            na += 2
+                            push!(visited_osc_numbers, source_number)
+                        elseif haskey(env.agent_dict[name], "osc3") && source_number in env.agent_dict[name]["osc3"]
+                            na += 3
+                            push!(visited_osc_numbers, source_number)
+                        else
+                            na += 1
+                        end
+                    end
+                end
+            else
+                na = length(env.agent_dict[name]["action_ids"])
+            end
+
+            agent = CreateAgentDdpg(na = na,
                                         ns = length(state(env, name)),
                                         use_gpu = false)
 
