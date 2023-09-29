@@ -26,7 +26,7 @@ ElectricGrid.jl is a library for setting up realistic electric grid simulations 
 
 ## Installation
 - Installation using the julia package manager (recommended if you want to use ElectricGrid in your project):
-  - In a julia terminal run the follwing:
+  - In a Julia terminal run the follwing:
 ```
 import Pkg
 Pkg.add("ElectricGrid")
@@ -74,7 +74,7 @@ There should also appear a plot that looks like this:
 
 The current version of ElectricGrid features a graphical user interface (GUI) that helps with setting up a simulation.
 This is built on the library [QML.jl](https://github.com/JuliaGraphics/QML.jl), that, at the time of writing, stopped working in it's current release version.
-For that reason it is required to install `QML.jl` in it's github main state manually if you want to use the gui.
+For that reason it is **required to clone this codebase** and install `QML.jl` in it's github main state manually if you want to use the gui.
 
 ```
 import Pkg
