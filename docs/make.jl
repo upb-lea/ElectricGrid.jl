@@ -27,7 +27,7 @@ makedocs(
             "The Nodeconstructor - Theory" => "NodeConstructor_Theory.md",
             "The Nodeconstructor - Application" => "NodeConstructor_Application.md"
         ],
-        "Miscellanous" => [
+        "Miscellaneous" => [
             "Default Parameters" => "Default_Parameters.md"
             "Nonlinear Components" => "Nonlinear.md"
             "DC Link Models" => "DC_link_models.md"
