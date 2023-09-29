@@ -12,10 +12,11 @@ loads = []
 cables = []
 
 
-function addSource(uid, control_type, mode, filter, pwr)
+function addSource(uid, source_type, control_type, mode, filter, pwr)
 
     push!(sources, Dict(
         "uid" => uid,
+        "source_type" => source_type,
         "control_type" => control_type,
         "mode" => mode,
         "filter" => filter,
@@ -50,11 +51,12 @@ function addCable(uid, from, to, length, capacity, inductance, resistance)
     updated()
 end
 
-function updateSource(uid, control_type, mode, filter, pwr)
+function updateSource(uid, source_type, control_type, mode, filter, pwr)
     index = findall(x -> x["uid"] == uid, sources)[1]
     
     sources[index] = Dict(
         "uid" => uid,
+        "source_type" => source_type,
         "control_type" => control_type,
         "mode" => mode,
         "filter" => filter,
@@ -165,7 +167,8 @@ function updated()
 
     for source in sources
         if source["control_type"] == "Classic"
-            push!(parameters["source"], Dict{Any, Any}("control_type" => source["control_type"],
+            push!(parameters["source"], Dict{Any, Any}("source_type" => source["source_type"],
+                                                        "control_type" => source["control_type"],
                                                         "mode" => source["mode"],
                                                         "fltr" => source["filter"],
                                                         "pwr" => source["pwr"]))
@@ -183,9 +186,9 @@ function updated()
 
     for cable in cables
         push!(parameters["cable"], Dict{Any, Any}("len" => cable["length"],
-                                                    "R" => cable["resistance"],
-                                                    "L" => cable["inductance"],
-                                                    "C" => cable["capacity"]))
+                                                    "R" => cable["resistance"] * cable["length"],
+                                                    "L" => cable["inductance"] * cable["length"],
+                                                    "C" => cable["capacity"] * cable["length"]))
     end
 
     #println(CM)

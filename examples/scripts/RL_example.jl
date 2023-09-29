@@ -1,9 +1,5 @@
 using ElectricGrid
-using ReinforcementLearning
-using StableRNGs
-using Flux
-using Flux.Losses
-using IntervalSets
+using PlotlyJS
 
 R_load, L_load, X, Z = ParallelLoadImpedance(100e3, 1, 230)
 
@@ -24,7 +20,7 @@ parameters = Dict{Any, Any}(
 
 
 function reference(t)
-    return 1
+    return 10.0
 end
 
 
@@ -36,104 +32,91 @@ featurize_ddpg = function(state, env, name)
 end
 
 function reward_function(env, name = nothing)
-    if name == "my_ddpg"
-        index_1 = findfirst(x -> x == "source1_i_L1", env.state_ids)
-        state_to_control = env.state[index_1]
+    index_1 = findfirst(x -> x == "source1_i_L1", env.state_ids)
+    state_to_control = env.state[index_1]
 
-        if any(abs.(state_to_control).>1)
-            return -1
-        else
+    if any(abs.(state_to_control).>1)
+        return -1
+    else
 
-            refs = reference(env.t)
-            norm_ref = env.nc.parameters["source"][1]["i_limit"]
-            r = 1-((abs(refs/norm_ref - state_to_control)/2)^0.5)
-            return r
-        end
+        refs = reference(env.t)
+        norm_ref = env.nc.parameters["source"][1]["i_limit"]          
+        r = 1-((abs.(refs/norm_ref - state_to_control)/2).^0.5)
+        return r 
     end
 end
 
 env = ElectricGridEnv(
-    CM = CM,
-    parameters = parameters,
-    t_end = 0.1,
-    featurize = featurize_ddpg,
-    reward_function = reward_function,
-    action_delay = 0)
+    CM = CM, 
+    parameters = parameters, 
+    t_end = 0.025, 
+    featurize = featurize_ddpg, 
+    reward_function = reward_function, 
+    action_delay = 0);
 
 #agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]), ns = length(state(env, "my_ddpg")), use_gpu = false)
 
 
-rng = StableRNG(1)
-init = glorot_uniform(rng)
-
-ns = length(state(env, "my_ddpg"))#length(env.agent_dict["my_ddpg"]["state_ids"])
-na = length(env.agent_dict["my_ddpg"]["action_ids"])
-
-CreateActor() = Chain(
-    Dense(ns, 30, relu; init = init),
-    Dense(30, 30, relu; init = init),
-    Dense(30, 1, tanh; init = init),
-) |> gpu
-
-CreateCritic() = Chain(
-    Dense(ns + na, 30, relu; init = init),
-    Dense(30, 30, relu; init = init),
-    Dense(30, 1; init = init),
-) |> gpu
-
-agent = Agent(
-    policy = DDPGPolicy(
-        behavior_actor = NeuralNetworkApproximator(
-            model = CreateActor(),
-            optimizer = ADAM(),
-        ),
-        behavior_critic = NeuralNetworkApproximator(
-            model = CreateCritic(),
-            optimizer = ADAM(),
-        ),
-        target_actor = NeuralNetworkApproximator(
-            model = CreateActor(),
-            optimizer = ADAM(),
-        ),
-        target_critic = NeuralNetworkApproximator(
-            model = CreateCritic(),
-            optimizer = ADAM(),
-        ),
-        γ = 0.99f0,
-        ρ = 0.995f0,
-        na = 1,
-        batch_size = 64,
-        start_steps = 1000,
-        start_policy = RandomPolicy(-1.0..1.0; rng = rng),
-        update_after = 1000,
-        update_freq = 1,
-        act_limit = 1.0,
-        act_noise = 0.1,
-        rng = rng,
-    ),
-    trajectory = CircularArraySARTTrajectory(
-        capacity = 10000,
-        state = Vector{Float32} => (ns,),
-        action = Float32 => (na, ),
-    ),
-)
+agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
+                          ns = length(state(env, "my_ddpg")),
+                          use_gpu = false);
 
 controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
-
 #run(ma["ElectricGrid_ddpg_1"]["policy"], env)
 
-Learn(controllers, env, num_episodes = 80)
+learnhook = DataHook()
+Learn(controllers, env, steps = 30_000, hook = learnhook);
 
-#Learn(agent, env)
+function learn1()
+    steps_total = 1_500_000
 
+    steps_loop = 50_000
+
+    Learn(controllers, env, steps = steps_loop, hook = learnhook)
+
+    while length(controllers.hook.df[!,"reward"]) <= steps_total
+
+        println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+        Learn(controllers, env, steps = steps_loop, hook = learnhook)
+
+    end
+
+end
+
+# second training phase with action noise scheduler
+function learn2()
+    num_steps = 10_000
+
+    an_scheduler_loops = 7
+
+
+    for j in 1:1
+        an = 0.001 * exp10.(collect(LinRange(0.0, -13, an_scheduler_loops)))
+        for i in 1:an_scheduler_loops
+            controllers.agents["my_ddpg"]["policy"].policy.policy.act_noise = an[i]
+            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+            println("next action noise level: $(an[i])")
+            Learn(controllers, env, steps = num_steps, hook = learnhook)
+        end
+    end
+end
+
+learn2()
+
+controllers.agents["my_ddpg"]["policy"].policy.policy.act_noise = 0.0
+Learn(controllers, env, steps = 20_000, hook = learnhook);
+
+p = plot(learnhook.df[!, :reward])
+display(p)
 
 states_to_plot = ["source1_i_L1"]
-action_to_plot = ["source1_u"]
+actions_to_plot = ["source1_u"]
 
-hook = DataHook(collect_state_ids = states_to_plot)
+hook = DataHook(collect_state_ids = states_to_plot, collect_action_ids = actions_to_plot)
 
 Simulate(controllers, env, hook=hook)
 
 RenderHookResults(hook = hook,
-                  states_to_plot  = states_to_plot)
+                  states_to_plot  = states_to_plot,
+                  actions_to_plot = actions_to_plot)
