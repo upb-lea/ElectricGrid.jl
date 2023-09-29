@@ -25,7 +25,7 @@ ElectricGrid.jl is a library for setting up realistic electric grid simulations 
 ![ElectricGrid Framework](docs/src/assets/Overview_EG.png)
 
 ## Installation
-- Installation using the julia package manager (recommended if you want to use ElectricGrid in your project):
+- Installation using the Julia package manager (recommended if you want to use ElectricGrid in your project):
   - In a julia terminal run the follwing:
 ```
 import Pkg
