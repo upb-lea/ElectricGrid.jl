@@ -1,3 +1,5 @@
+# In this script we set up an experiment with one source that is controlled by RL that is connected to one load. Note that this is a single phase setup. The goal of the RL agent will be to control the input voltage of the source such that the corresponding current will match a reference signal which is a constant of 10 A.
+
 using ElectricGrid
 using PlotlyJS
 
@@ -19,6 +21,8 @@ parameters = Dict{Any, Any}(
 )
 
 
+# The reference function just returns the 10.0 A and the featurize_ddpg adds it to the controller's state (normalized).
+
 function reference(t)
     return 10.0
 end
@@ -30,6 +34,9 @@ featurize_ddpg = function(state, env, name)
         state = vcat(state, reference(env.t)/norm_ref)
     end
 end
+
+
+# The reward function computes the error and takes the square root.
 
 function reward_function(env, name = nothing)
     index_1 = findfirst(x -> x == "source1_i_L1", env.state_ids)
@@ -46,6 +53,9 @@ function reward_function(env, name = nothing)
     end
 end
 
+
+# Now we can set up the env and the controllers and define a training functions.
+
 env = ElectricGridEnv(
     CM = CM, 
     parameters = parameters, 
@@ -54,8 +64,6 @@ env = ElectricGridEnv(
     reward_function = reward_function, 
     action_delay = 0);
 
-#agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]), ns = length(state(env, "my_ddpg")), use_gpu = false)
-
 
 agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
                           ns = length(state(env, "my_ddpg")),
@@ -63,28 +71,15 @@ agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
 
 controllers = SetupAgents(env, Dict("my_ddpg" => agent))
 
-#run(ma["ElectricGrid_ddpg_1"]["policy"], env)
+
+# We start training with 30_000 steps with the default action noise (0.032).
 
 learnhook = DataHook()
 Learn(controllers, env, steps = 30_000, hook = learnhook);
 
-function learn1()
-    steps_total = 1_500_000
 
-    steps_loop = 50_000
+# Here we define a second training function with an action noise scheduler enabled.
 
-    Learn(controllers, env, steps = steps_loop, hook = learnhook)
-
-    while length(controllers.hook.df[!,"reward"]) <= steps_total
-
-        println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-        Learn(controllers, env, steps = steps_loop, hook = learnhook)
-
-    end
-
-end
-
-# second training phase with action noise scheduler
 function learn2()
     num_steps = 10_000
 
@@ -102,13 +97,25 @@ function learn2()
     end
 end
 
+
+# Run it!
+
 learn2()
+
+
+# Run an additional 20_000 steps of training with action noise set to 0.0.
 
 controllers.agents["my_ddpg"]["policy"].policy.policy.act_noise = 0.0
 Learn(controllers, env, steps = 20_000, hook = learnhook);
 
+
+# We now plot the learning rate per time step.
+
 p = plot(learnhook.df[!, :reward])
 display(p)
+
+
+# Now we also want to run a simulation with the fully trained agent and plot the results.
 
 states_to_plot = ["source1_i_L1"]
 actions_to_plot = ["source1_u"]
