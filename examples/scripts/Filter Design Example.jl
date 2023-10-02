@@ -1,5 +1,12 @@
 print("\n...........o0o----ooo0o0ooo~~~  START  ~~~ooo0o0ooo----o0o...........\n")
 
+#= Description:
+
+    This script has all of the equations that have been used to automatically design the
+    filter inductor and capacitor.
+
+=#
+
 #____________________________________________________________
 # Inputs
 
@@ -57,12 +64,12 @@ println("Cf = ", round(Cf*1e6, digits = 3), " μF\n")
 # Verifying Design
 
 #= Theory
-    The design should be valid for the entire range. That is, the if 
-    the network voltage is at 0.95 p.u. then the ripple voltage should 
-    be still be below the specified value. In other words, at 0.95 p.u. 
-    the ripple voltage is maximised, which is why we designed the Cf at 
-    0.95 p.u. For the ripple current we use the inverse methodology. The 
-    ripple current is maximised at 1.05 p.u. 
+    The design should be valid for the entire range. That is, the if
+    the network voltage is at 0.95 p.u. then the ripple voltage should
+    be still be below the specified value. In other words, at 0.95 p.u.
+    the ripple voltage is maximised, which is why we designed the Cf at
+    0.95 p.u. For the ripple current we use the inverse methodology. The
+    ripple current is maximised at 1.05 p.u.
 =#
 
 Vorms = Vrms*1.05

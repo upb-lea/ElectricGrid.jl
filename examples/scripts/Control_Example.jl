@@ -1,5 +1,13 @@
 using ElectricGrid
 
+#= Description:
+
+    This script is for classical control of sources. It is a relatively simple script, with
+    most of the functionality commented out. By uncommenting certain sections it can be very
+    quick to build a new network.
+
+=#
+
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
@@ -238,15 +246,15 @@ for eps in 1:num_eps
                       states_to_plot  = [],
                       actions_to_plot = [],
                       power_p_inv     = [1 2],
-                      power_p_poc     = [],
-                      power_q_inv     = [],
-                      power_q_poc     = [],
-                      v_mag_inv       = [],
-                      v_mag_poc       = [],
-                      i_mag_inv       = [],
-                      i_mag_poc       = [],
-                      freq            = [],
-                      angles          = [],
+                      power_p_poc     = [1 2],
+                      power_q_inv     = [1 2],
+                      power_q_poc     = [1 2],
+                      v_mag_inv       = [1 2],
+                      v_mag_poc       = [1 2],
+                      i_mag_inv       = [1 2],
+                      i_mag_poc       = [1 2],
+                      freq            = [1 2],
+                      angles          = [1 2],
                       i_sat           = [],
                       v_sat           = [],
                       i_err_t         = [],
