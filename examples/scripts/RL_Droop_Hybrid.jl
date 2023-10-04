@@ -138,6 +138,40 @@ function learn()
     end
 end
 
+function learn1()
+    steps_total = 1_500_000
+
+    steps_loop = 50_000
+
+    Learn(controllers, env, steps = steps_loop, hook = learnhook)
+
+    while length(controllers.hook.df[!,"reward"]) <= steps_total
+
+        println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+        Learn(controllers, env, steps = steps_loop, hook = learnhook)
+
+    end
+
+end
+
+# second training phase with action noise scheduler
+function learn2()
+    num_steps = 50_000
+
+    an_scheduler_loops = 20
+
+
+    for j in 1:10
+        an = 0.01 * exp10.(collect(LinRange(0.0, -10, an_scheduler_loops)))
+        for i in 1:an_scheduler_loops
+            controllers.agents["ElectricGrid_ddpg_1"]["policy"].policy.policy.act_noise = an[i]
+            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
+            println("next action noise level: $(an[i])")
+            Learn(controllers, env, steps = num_steps, hook = learnhook)
+        end
+    end
+end
+
 
 # Start training!
 

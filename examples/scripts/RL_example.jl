@@ -46,76 +46,88 @@ function reward_function(env, name = nothing)
         return -1
     else
 
-        refs = reference(env.t)
-        norm_ref = env.nc.parameters["source"][1]["i_limit"]          
-        r = 1-((abs.(refs/norm_ref - state_to_control)/2).^0.5)
-        return r 
-    end
-end
-
-
-# Now we can set up the env and the controllers and define a training functions.
-
-env = ElectricGridEnv(
-    CM = CM, 
-    parameters = parameters, 
-    t_end = 0.025, 
-    featurize = featurize_ddpg, 
-    reward_function = reward_function, 
-    action_delay = 0);
-
-
-agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]),
-                          ns = length(state(env, "my_ddpg")),
-                          use_gpu = false);
-
-controllers = SetupAgents(env, Dict("my_ddpg" => agent))
-
-
-# We start training with 30_000 steps with the default action noise (0.032).
-
-learnhook = DataHook()
-Learn(controllers, env, steps = 30_000, hook = learnhook);
-
-
-# Here we define a second training function with an action noise scheduler enabled.
-
-function learn2()
-    num_steps = 10_000
-
-    an_scheduler_loops = 7
-
-
-    for j in 1:1
-        an = 0.001 * exp10.(collect(LinRange(0.0, -13, an_scheduler_loops)))
-        for i in 1:an_scheduler_loops
-            controllers.agents["my_ddpg"]["policy"].policy.policy.act_noise = an[i]
-            println("Steps so far: $(length(controllers.hook.df[!,"reward"]))")
-            println("next action noise level: $(an[i])")
-            Learn(controllers, env, steps = num_steps, hook = learnhook)
+            refs = reference(env.t)
+            norm_ref = env.nc.parameters["source"][1]["i_limit"]
+            r = 1-((abs(refs/norm_ref - state_to_control)/2)^0.5)
+            return r
         end
     end
 end
 
+env = ElectricGridEnv(
+    CM = CM,
+    parameters = parameters,
+    t_end = 0.1,
+    featurize = featurize_ddpg,
+    reward_function = reward_function,
+    action_delay = 0)
 
-# Run it!
-
-learn2()
-
-
-# Run an additional 20_000 steps of training with action noise set to 0.0.
-
-controllers.agents["my_ddpg"]["policy"].policy.policy.act_noise = 0.0
-Learn(controllers, env, steps = 20_000, hook = learnhook);
-
-
-# We now plot the learning rate per time step.
-
-p = plot(learnhook.df[!, :reward])
-display(p)
+#agent = CreateAgentDdpg(na = length(env.agent_dict["my_ddpg"]["action_ids"]), ns = length(state(env, "my_ddpg")), use_gpu = false)
 
 
-# Now we also want to run a simulation with the fully trained agent and plot the results.
+rng = StableRNG(1)
+init = glorot_uniform(rng)
+
+ns = length(state(env, "my_ddpg"))#length(env.agent_dict["my_ddpg"]["state_ids"])
+na = length(env.agent_dict["my_ddpg"]["action_ids"])
+
+CreateActor() = Chain(
+    Dense(ns, 30, relu; init = init),
+    Dense(30, 30, relu; init = init),
+    Dense(30, 1, tanh; init = init),
+) |> gpu
+
+CreateCritic() = Chain(
+    Dense(ns + na, 30, relu; init = init),
+    Dense(30, 30, relu; init = init),
+    Dense(30, 1; init = init),
+) |> gpu
+
+agent = Agent(
+    policy = DDPGPolicy(
+        behavior_actor = NeuralNetworkApproximator(
+            model = CreateActor(),
+            optimizer = ADAM(),
+        ),
+        behavior_critic = NeuralNetworkApproximator(
+            model = CreateCritic(),
+            optimizer = ADAM(),
+        ),
+        target_actor = NeuralNetworkApproximator(
+            model = CreateActor(),
+            optimizer = ADAM(),
+        ),
+        target_critic = NeuralNetworkApproximator(
+            model = CreateCritic(),
+            optimizer = ADAM(),
+        ),
+        γ = 0.99f0,
+        ρ = 0.995f0,
+        na = 1,
+        batch_size = 64,
+        start_steps = 1000,
+        start_policy = RandomPolicy(-1.0..1.0; rng = rng),
+        update_after = 1000,
+        update_freq = 1,
+        act_limit = 1.0,
+        act_noise = 0.1,
+        rng = rng,
+    ),
+    trajectory = CircularArraySARTTrajectory(
+        capacity = 10000,
+        state = Vector{Float32} => (ns,),
+        action = Float32 => (na, ),
+    ),
+)
+
+controllers = SetupAgents(env, Dict("my_ddpg" => agent))
+
+#run(ma["ElectricGrid_ddpg_1"]["policy"], env)
+
+Learn(controllers, env, num_episodes = 80)
+
+#Learn(agent, env)
+
 
 states_to_plot = ["source1_i_L1"]
 actions_to_plot = ["source1_u"]
