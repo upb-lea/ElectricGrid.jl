@@ -3,8 +3,8 @@ using LinearAlgebra
 using DataFrames
 using PlotlyJS
 """
-This scipt contains parts of the DC_linkModels.ipynb notebook.
-For comments and more documentation see refering notebookin examples/notebooks.
+This script contains parts of the DC_linkModels.ipynb notebook.
+For comments and more documentation see refering notebook in examples/notebooks.
 """
 
 # constructing a simple grid

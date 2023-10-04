@@ -104,6 +104,5 @@ p = RenderHookResults(hook = hook,
                     angles          = [1 2],
                     return_plot     = true)
 
-#PlotlyJS.savefig(p, "VSG_voltages.png")
-#DrawGraph(env.nc)
+
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

@@ -16,7 +16,7 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 #-------------------------------------------------------------------------------
 # Time simulation
 
-Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+Timestep = 100e-6  # time step, seconds ~ 100 μs => 10 kHz, 50 μs => 20 kHz, 20 μs => 50 kHz
 t_end    = 0.2     # total run time, seconds
 num_eps  = 1       # number of episodes to run
 
@@ -34,7 +34,7 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 cable = Dict()
-cable["R"]       = 0.1    # Ω, line resistance #0.208
+cable["R"]       = 0.1    # Ω, line resistance 
 cable["L"]       = 0.25e-3 # H, line inductance
 cable["C"]       = 0.05e-4  # F, line capacitance
 cable["i_limit"] = 10e12   # A, line current limit
@@ -46,7 +46,7 @@ push!(cable_list, cable, cable)
 # Sources
 
 #= Modes:
-    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+    1 -> "Swing" - voltage source without dynamics (i.e. an infinite Bus)
     2 -> "PQ" - grid following controllable source/load (active and reactive Power)
     3 -> "Droop" - simple grid forming with power balancing
     4 -> "Synchronverter" - enhanced droop control
@@ -87,8 +87,8 @@ source["mode"]     = 2
 source["fltr"]     = "L"   # Filter type
 
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
-source["p_set"]    = 30e3   # Real Power Set Point, Watt
-source["q_set"]    = -10e3   # Imaginary Power Set Point, VAi
+source["p_set"]    = 30e3   # Real Power Set Point, W
+source["q_set"]    = -10e3   # Imaginary Power Set Point, VA
 
 source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
 source["v_δ_set"]  = 0      # Voltage Angle, degrees
@@ -96,7 +96,7 @@ source["v_δ_set"]  = 0      # Voltage Angle, degrees
 source["std_asy"]  = 2.5e3   # Asymptotic Standard Deviation
 source["σ"]        = 100e3   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"]       = 0.01   # Time Step, seconds
-source["X₀"]       = 0      # Initial Process Values, Watt
+source["X₀"]       = 0      # Initial Process Values, W
 source["k"]        = 2      # Interpolation degree
 
 source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
