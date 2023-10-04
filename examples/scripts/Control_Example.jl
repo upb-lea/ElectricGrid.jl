@@ -23,17 +23,10 @@ num_eps  = 1       # number of episodes to run
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-#= CM = [ 0. 0. 0. 1.
-        0. 0. 0. 2.
-        0. 0. 0. 3.
-        -1. -2. -3. 0.] =#
 
 CM = [ 0. 0. 1.
         0. 0. 2.
         -1. -2. 0.]
-
-#= CM = [0. 1.
-   -1. 0.] =#
 
 #-------------------------------------------------------------------------------
 # Cable Impedances
@@ -46,11 +39,8 @@ cable["L"]       = 0.25e-3 # H, line inductance
 cable["C"]       = 0.05e-4  # F, line capacitance
 cable["i_limit"] = 10e12   # A, line current limit
 
-#push!(cable_list, cable, cable, cable)
-
 push!(cable_list, cable, cable)
 
-#push!(cable_list, cable)
 
 #-------------------------------------------------------------------------------
 # Sources
@@ -127,41 +117,6 @@ source["V_ki"]     = 5.856 # A/Vs =#
 
 push!(source_list, source)
 
-#=
-source["Dp"]           = 202 # frequency droop coefficient
-source["Dq"]           = 6148 # voltage droop coefficient
-source["I_kp"]         = 0.0032 # V/A
-source["I_ki"]         = 0.3497 # V/As
-source["V_kp"]         = 0.2964# A/V
-source["V_ki"]         = 5.856 # A/Vs
-source["fltr"]         = "LCL"
-source["control_type"] = "classic"
-source["v_δ_set"]      = 0 # degrees
-source["v_rip"]        = 0.01537
-source["i_rip"]        = 0.15
-source["vdc"]          = 800 #V
-source["τv"]           = 0.002
-source["τf"]           = 0.002
-source["pf"]           = 0.8    # Power Factor
-source["κ"]            = 3 # mean reversion parameter
-source["γ"]            = 50e3   # Asymptotoic Mean
-source["X₀"]           = 25 # initial values
-source["L1"]           = 0.002
-source["R1"]           = 0.04
-source["L2"]           = 0.002
-source["R2"]           = 0.05
-source["R_C"]          = 0.09
-source["C"]            = 0.003 =#
-
-#= source = Dict()
-
-source["pwr"] = 200e3
-source["vdc"] = 800
-source["fltr"] = "LC"
-source["i_rip"] = 0.15
-source["v_rip"] = 0.01537
-
-push!(source_list, source) =#
 
 #-------------------------------------------------------------------------------
 # Loads

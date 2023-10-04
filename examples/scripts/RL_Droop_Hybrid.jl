@@ -1,3 +1,5 @@
+# This is code that is associated to the article "Hybrid control of interconnected power converters using both expert-driven droop and data-driven reinforcement learning approaches", published here: XXX
+
 # In this script we set up an experiment with two sources - one being controlled by a classical controller in Droop mode, the other by RL - each of which are connected to a load. The goal of the RL agent will be to control the input voltage of the source such that the corresponding current will match a reference signal which is a 3-phase sine signal.
 
 

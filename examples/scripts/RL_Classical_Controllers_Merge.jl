@@ -2,7 +2,7 @@ using ElectricGrid
 #using ReinforcementLearning
 
 """
-This scipt contains the content of the RL_Classical_Controllers_Merge_DEMO.ipynb notebook.
+This scipt contains the content of the RL_Classical_Controllers_Merge.ipynb notebook.
 For comments and more documentation see refering notebookin examples/notebooks
 """
 
