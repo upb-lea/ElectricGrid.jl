@@ -45,7 +45,7 @@ git clone https://github.com/upb-lea/ElectricGrid.jl.git
 ## Getting Started
 
 To get started with ElectricGrid.jl the following interactive notebooks are useful. They show how to use the ElectricGrid.jl framework to build and simulate the dynamics of an electric power grid controlled via classic controllers or train common RL agents for different control tasks:
-* [Create an environment with ElectricGrid.jl](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/Env_Creat.ipynb)
+* [Create an environment with ElectricGrid.jl](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/Env_Create.ipynb)
 * [Theory behind ElectricGrid.jl - Modelling Dynamics using Linear State-Space Systems](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/NodeConstructor_Theory.ipynb)
 * [Classic Controlled Electric Power Grids - State-of-the-Art](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/Classical_Controllers_1_Swing.ipynb)
 * [Use RL Agents in the ElectricGrid.jl Framework](https://github.com/upb-lea/ElectricGrid.jl/blob/main/examples/notebooks/RL_Single_Agent.ipynb)

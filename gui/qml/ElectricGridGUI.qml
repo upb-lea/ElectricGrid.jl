@@ -9,7 +9,7 @@ Window {
     visible: true
     width: 1200
     height: 800
-    title: "Node Demo"
+    title: "ElectricGrid GUI"
 
     property int sourceIndex: 1
     property int loadIndex: 1
