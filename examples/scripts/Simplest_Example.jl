@@ -1,6 +1,12 @@
 using ElectricGrid
 using PlotlyJS
 
+#= Description:
+
+    The simplest example to get a classically controlled network running.
+
+=#
+
 print("\n...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
@@ -17,9 +23,6 @@ t_end    = 0.08     # total run time, seconds
 CM = [ 0. 0. 1.
         0. 0. 2.
         -1. -2. 0.]
-
-#= CM = [ 0. 1.
-        -1. 0.] =#
 
 #-------------------------------------------------------------------------------
 # Parameters
@@ -86,21 +89,20 @@ hook = Simulate(Multi_Agent, env)
 p = RenderHookResults(hook = hook,
                     states_to_plot  = ["source1_v_C_filt_a", "source1_v_C_filt_b", "source1_v_C_filt_c"],
                     actions_to_plot = [],
-                    power_p_inv     = [],
-                    power_q_inv     = [],
+                    power_p_inv     = [1 2],
+                    power_q_inv     = [1 2],
                     power_p_poc     = [1 2],
-                    power_q_poc     = [],
-                    v_mag_inv       = [],
-                    v_mag_poc       = [1],
-                    i_mag_inv       = [],
-                    i_mag_poc       = [],
+                    power_q_poc     = [1 2],
+                    v_mag_inv       = [1 2],
+                    v_mag_poc       = [1 2],
+                    i_mag_inv       = [1 2],
+                    i_mag_poc       = [1 2],
                     i_sat           = [],
                     i_dq            = [],
                     v_dq            = [],
-                    freq            = [],
-                    angles          = [],
+                    freq            = [1 2],
+                    angles          = [1 2],
                     return_plot     = true)
 
-#PlotlyJS.savefig(p, "VSG_voltages.png")
-#DrawGraph(env.nc)
+
 print("\n...........o0o----ooo0§0ooo~~~   END   ~~~ooo0§0ooo----o0o...........\n")

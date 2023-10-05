@@ -1,5 +1,13 @@
 using ElectricGrid
 
+#= Description:
+
+    This script is for classical control of sources. It is a relatively simple script, with
+    most of the functionality commented out. By uncommenting certain sections it can be very
+    quick to build a new network.
+
+=#
+
 println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........\n\n")
 
 #_______________________________________________________________________________
@@ -8,24 +16,17 @@ println("...........o0o----ooo0§0ooo~~~  START  ~~~ooo0§0ooo----o0o...........
 #-------------------------------------------------------------------------------
 # Time simulation
 
-Timestep = 100e-6  # time step, seconds ~ 100μs => 10kHz, 50μs => 20kHz, 20μs => 50kHz
+Timestep = 100e-6  # time step, seconds ~ 100 μs => 10 kHz, 50 μs => 20 kHz, 20 μs => 50 kHz
 t_end    = 0.2     # total run time, seconds
 num_eps  = 1       # number of episodes to run
 
 #-------------------------------------------------------------------------------
 # Connectivity Matrix
 
-#= CM = [ 0. 0. 0. 1.
-        0. 0. 0. 2.
-        0. 0. 0. 3.
-        -1. -2. -3. 0.] =#
 
 CM = [ 0. 0. 1.
         0. 0. 2.
         -1. -2. 0.]
-
-#= CM = [0. 1.
-   -1. 0.] =#
 
 #-------------------------------------------------------------------------------
 # Cable Impedances
@@ -33,22 +34,19 @@ CM = [ 0. 0. 1.
 cable_list = []
 
 cable = Dict()
-cable["R"]       = 0.1    # Ω, line resistance #0.208
+cable["R"]       = 0.1    # Ω, line resistance 
 cable["L"]       = 0.25e-3 # H, line inductance
 cable["C"]       = 0.05e-4  # F, line capacitance
 cable["i_limit"] = 10e12   # A, line current limit
 
-#push!(cable_list, cable, cable, cable)
-
 push!(cable_list, cable, cable)
 
-#push!(cable_list, cable)
 
 #-------------------------------------------------------------------------------
 # Sources
 
 #= Modes:
-    1 -> "Swing" - voltage source without dynamics (i.e. an Infinite Bus)
+    1 -> "Swing" - voltage source without dynamics (i.e. an infinite Bus)
     2 -> "PQ" - grid following controllable source/load (active and reactive Power)
     3 -> "Droop" - simple grid forming with power balancing
     4 -> "Synchronverter" - enhanced droop control
@@ -89,8 +87,8 @@ source["mode"]     = 2
 source["fltr"]     = "L"   # Filter type
 
 source["pwr"]      = 100e3  # Rated Apparent Power, VA
-source["p_set"]    = 30e3   # Real Power Set Point, Watt
-source["q_set"]    = -10e3   # Imaginary Power Set Point, VAi
+source["p_set"]    = 30e3   # Real Power Set Point, W
+source["q_set"]    = -10e3   # Imaginary Power Set Point, VA
 
 source["v_pu_set"] = 1.00   # Voltage Set Point, p.u.
 source["v_δ_set"]  = 0      # Voltage Angle, degrees
@@ -98,7 +96,7 @@ source["v_δ_set"]  = 0      # Voltage Angle, degrees
 source["std_asy"]  = 2.5e3   # Asymptotic Standard Deviation
 source["σ"]        = 100e3   # Brownian motion scale i.e. ∝ diffusion, volatility parameter
 source["Δt"]       = 0.01   # Time Step, seconds
-source["X₀"]       = 0      # Initial Process Values, Watt
+source["X₀"]       = 0      # Initial Process Values, W
 source["k"]        = 2      # Interpolation degree
 
 source["τv"]       = 0.002  # Time constant of the voltage loop, seconds
@@ -119,41 +117,6 @@ source["V_ki"]     = 5.856 # A/Vs =#
 
 push!(source_list, source)
 
-#=
-source["Dp"]           = 202 # frequency droop coefficient
-source["Dq"]           = 6148 # voltage droop coefficient
-source["I_kp"]         = 0.0032 # V/A
-source["I_ki"]         = 0.3497 # V/As
-source["V_kp"]         = 0.2964# A/V
-source["V_ki"]         = 5.856 # A/Vs
-source["fltr"]         = "LCL"
-source["control_type"] = "classic"
-source["v_δ_set"]      = 0 # degrees
-source["v_rip"]        = 0.01537
-source["i_rip"]        = 0.15
-source["vdc"]          = 800 #V
-source["τv"]           = 0.002
-source["τf"]           = 0.002
-source["pf"]           = 0.8    # Power Factor
-source["κ"]            = 3 # mean reversion parameter
-source["γ"]            = 50e3   # Asymptotoic Mean
-source["X₀"]           = 25 # initial values
-source["L1"]           = 0.002
-source["R1"]           = 0.04
-source["L2"]           = 0.002
-source["R2"]           = 0.05
-source["R_C"]          = 0.09
-source["C"]            = 0.003 =#
-
-#= source = Dict()
-
-source["pwr"] = 200e3
-source["vdc"] = 800
-source["fltr"] = "LC"
-source["i_rip"] = 0.15
-source["v_rip"] = 0.01537
-
-push!(source_list, source) =#
 
 #-------------------------------------------------------------------------------
 # Loads
@@ -238,15 +201,15 @@ for eps in 1:num_eps
                       states_to_plot  = [],
                       actions_to_plot = [],
                       power_p_inv     = [1 2],
-                      power_p_poc     = [],
-                      power_q_inv     = [],
-                      power_q_poc     = [],
-                      v_mag_inv       = [],
-                      v_mag_poc       = [],
-                      i_mag_inv       = [],
-                      i_mag_poc       = [],
-                      freq            = [],
-                      angles          = [],
+                      power_p_poc     = [1 2],
+                      power_q_inv     = [1 2],
+                      power_q_poc     = [1 2],
+                      v_mag_inv       = [1 2],
+                      v_mag_poc       = [1 2],
+                      i_mag_inv       = [1 2],
+                      i_mag_poc       = [1 2],
+                      freq            = [1 2],
+                      angles          = [1 2],
                       i_sat           = [],
                       v_sat           = [],
                       i_err_t         = [],
