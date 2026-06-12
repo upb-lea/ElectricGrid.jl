@@ -28,7 +28,7 @@ env =  ElectricGridEnv(num_sources = 1, num_loads = 1)
 ```
 
 Here we create the environment. The environment will take care of simulating the whole grid one timestep at a time. There are a vast amount of combinations of parameters that you can specify (here we just say we want one source and one load, nothing more) - the `ElectricGridEnv` constructor will take care of setting up the whole system.
-The environment is in fact designed to work along the guidelines of [ReinforcementLearning.jl](https://github.com/JuliaReinforcementLearning/ReinforcementLearning.jl). A more detailled view on what is going on behind the scenes can be found in the `Environment` and `NodeConstructor` sections of this documentation.
+The environment is in fact designed to work along the guidelines of [ReinforcementLearning.jl](https://github.com/JuliaReinforcementLearning/ReinforcementLearning.jl) (the v0.10 interface, which ElectricGrid bundles internally). A more detailled view on what is going on behind the scenes can be found in the `Environment` and `NodeConstructor` sections of this documentation.
 
 _______________________________________________________________________________
 ```julia
@@ -47,7 +47,7 @@ hook =  Simulate(Multi_Agent, env)
 
 This starts the simulation of our setup.
 Since we did not specify anything else the experiment will run for one episode. The step length and amount of timesteps for an episode are both part of the environment. We did not specify them, so default values were chosen (`maxsteps = 500` and `ts = 1/10_000`).
-After running the experiment we receive a struct of type `DataHook`. `DataHook` is once again designed to work as a hook object in the `ReinforcementLearning.jl` framework but with a lot of extra functionality to support data collection for cases that are relevant in ElectricGrid.jl.
+After running the experiment we receive a struct of type `DataHook`. `DataHook` is once again designed to work as a hook object in the style of the `ReinforcementLearning.jl` framework but with a lot of extra functionality to support data collection for cases that are relevant in ElectricGrid.jl.
 
 _______________________________________________________________________________
 ```julia

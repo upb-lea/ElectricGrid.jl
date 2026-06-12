@@ -216,8 +216,8 @@ controller = SetupAgents(env, my_custom_agents);
 
 To use the predefined agent in the experiment, the `SetupAgents()` takes a dictonary as secound input. Like shown above, the dictonary `my_custom_agents` links the predefined `agent` to the chosen agent name (`"mode"`) in the parameter dict.
 
-Internally, the `SetupAgents()` function extends the `agent` by a name to a [named policy](https://juliareinforcementlearning.org/docs/rlcore/#ReinforcementLearningCore.NamedPolicy ).
-Using this named policy the [MultiController](https://juliareinforcementlearning.org/docs/rlzoo/#ReinforcementLearningZoo.MADDPGManager) enables to call the different agents/controllers via name during training and application.
+Internally, the `SetupAgents()` function extends the `agent` by a name to a named policy (`NamedPolicy`, bundled with ElectricGrid following the ReinforcementLearning.jl v0.10 design).
+Using this named policy the `MultiController` enables to call the different agents/controllers via name during training and application.
 This is used for example in the `reward()` function to return a specific reward to the `my_ddpg` agent (`if name == "my_ddpg" ...`)
 Later, that functionality helps to give different rewards to different agents seperated by name.
 

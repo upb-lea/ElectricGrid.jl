@@ -163,7 +163,7 @@ function (p::CustomDDPGPolicy)(env::ElectricGridEnv, name::Union{Nothing, String
     else
         D = device(p.behavior_actor)
         s = isnothing(name) ? state(env) : state(env, name)
-        s = Flux.unsqueeze(s, ndims(s) + 1)
+        s = Flux.unsqueeze(s, dims = ndims(s) + 1)
         actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
         if training
             c = clamp.(actions .+ randn(p.rng, p.na) .* repeat([p.act_noise], p.na), -p.act_limit, p.act_limit)
@@ -205,9 +205,9 @@ function RLBase.update!(p::CustomDDPGPolicy, batch::NamedTuple{SARTS})
     a′ = Aₜ(s′)
     qₜ = Cₜ(vcat(s′, a′)) |> vec
     y = r .+ γ .* (1 .- t) .* qₜ
-    a = Flux.unsqueeze(a, ndims(a)+1)
+    a = Flux.unsqueeze(a, dims = ndims(a)+1)
 
-    gs1 = gradient(Flux.params(C)) do
+    gs1 = Flux.gradient(Flux.params(C)) do
         q = C(vcat(s, a)) |> vec
         loss = mean((y .- q) .^ 2)
         ignore() do
@@ -218,7 +218,7 @@ function RLBase.update!(p::CustomDDPGPolicy, batch::NamedTuple{SARTS})
 
     RLBase.update!(C, gs1)
 
-    gs2 = gradient(Flux.params(A)) do
+    gs2 = Flux.gradient(Flux.params(A)) do
         loss = -mean(C(vcat(s, A(s))))
         ignore() do
             p.actor_loss = loss
@@ -256,19 +256,19 @@ function CreateAgentDdpg(;na, ns, batch_size = 32, use_gpu = true)
         policy = CustomDDPGPolicy(
             behavior_actor = CustomNeuralNetworkApproximator(
                 model = use_gpu ? CreateActor(na, ns) |> gpu : CreateActor(na, ns),
-                optimizer = Flux.ADAM(),
+                optimizer = Flux.Adam(),
             ),
             behavior_critic = CustomNeuralNetworkApproximator(
                 model = use_gpu ? CreateCritic(na, ns) |> gpu : CreateCritic(na, ns),
-                optimizer = Flux.ADAM(),
+                optimizer = Flux.Adam(),
             ),
             target_actor = CustomNeuralNetworkApproximator(
                 model = use_gpu ? CreateActor(na, ns) |> gpu : CreateActor(na, ns),
-                optimizer = Flux.ADAM(),
+                optimizer = Flux.Adam(),
             ),
             target_critic = CustomNeuralNetworkApproximator(
                 model = use_gpu ? CreateCritic(na, ns) |> gpu : CreateCritic(na, ns),
-                optimizer = Flux.ADAM(),
+                optimizer = Flux.Adam(),
             ),
             γ = 0.999f0,
             ρ = 0.895f0,

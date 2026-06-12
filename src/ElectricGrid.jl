@@ -23,7 +23,6 @@ using LinearAlgebra
 using Logging
 using PlotlyJS
 using Random
-using ReinforcementLearning
 using StableRNGs
 using SpecialFunctions
 using StatsBase
@@ -31,6 +30,15 @@ using UnicodePlots
 
 
 #export create_setup, ClassicalPolicy, CreateAgentDdpg, Source_Initialiser, MultiController, DataHook, RenderHookResults, plot_best_results, NodeConstructor, ElectricGrid_setup, ElectricGridEnv
+
+# Vendored replacement for the (uninstallable on Julia >= 1.10) RL.jl v0.10 API.
+# RLBase/RLCore/ReinforcementLearningCore are aliases so the original
+# `RLBase.update!`-style extensions below keep working unchanged.
+include("./rl_compat.jl")
+@reexport using .RLCompat
+const RLBase = RLCompat
+const RLCore = RLCompat
+const ReinforcementLearningCore = RLCompat
 
 include("./power_system_theory.jl")
 include("./node_constructor.jl")

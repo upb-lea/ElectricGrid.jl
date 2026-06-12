@@ -6,17 +6,8 @@
 ## Preliminary steps for using the GUI
 
 The current version of ElectricGrid features a graphical user interface (GUI) that helps with setting up a simulation.
-This is built on the library [QML.jl](https://github.com/JuliaGraphics/QML.jl), that, at the time of writing, stopped working in it's current release version.
-For that reason it is **required to clone this codebase** and install `QML.jl` in it's github main state manually if you want to use the gui.
-
-```
-import Pkg
-Pkg.add("QML#main")
-```
-or press `]` in the Julia Repl to enter Pkg mode and then run
-```
-add QML#main
-```
+This is built on the library [QML.jl](https://github.com/JuliaGraphics/QML.jl), which installs normally from the Julia package registry (it is a dependency of ElectricGrid) and works with the current Qt6-based QML.jl v0.13.
+To start it, run `julia --project=. gui/ElectricGridGUI.jl` from the repository root.
 
 
 ## Usage

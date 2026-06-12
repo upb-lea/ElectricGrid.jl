@@ -16,7 +16,8 @@ function CustomLsim(sys::AbstractStateSpace, u::AbstractVecOrMat, t::AbstractVec
         error("time vector t must be uniformly spaced")
     end
 
-    if iscontinuous(sys)
+    # qualified: both ControlSystemsBase and DifferentialEquations export iscontinuous
+    if ControlSystemsBase.iscontinuous(sys)
         if method === :zoh
             dsys = c2d(sys, dt, :zoh)
         elseif method === :foh

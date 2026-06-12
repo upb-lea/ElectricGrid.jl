@@ -19,12 +19,15 @@ ElectricGrid.jl is a library for setting up realistic electric grid simulations 
 - create a simulation environment for an electric grid by defining its sources, loads, and cable connections,
 - set detailed parameters of your electric components or let them be auto-generated,
 - choose different control modes for each power electronic converter in your system and
-- use the agent architecture of [ReinforcementLearning.jl](https://juliareinforcementlearning.org/) to either train RL agents as controllers or write your own ones.
+- train RL agents as controllers with the built-in DDPG/TD3 implementations (based on [Flux.jl](https://fluxml.ai/)) or write your own. The environment and agent interface follows the design of [ReinforcementLearning.jl](https://juliareinforcementlearning.org/) v0.10, which ElectricGrid now bundles internally instead of depending on it.
 
 
 ![ElectricGrid Framework](docs/src/assets/Overview_EG.png)
 
 ## Installation
+
+ElectricGrid.jl is tested with Julia 1.11 and 1.12.
+
 - Installation using the Julia package manager (recommended if you want to use ElectricGrid in your project):
   - In a Julia terminal run the following:
 ```
@@ -73,17 +76,8 @@ There should also appear a plot that looks like this:
 ## Using the GUI
 
 The current version of ElectricGrid features a graphical user interface (GUI) that helps with setting up a simulation.
-This is built on the library [QML.jl](https://github.com/JuliaGraphics/QML.jl), that, at the time of writing, stopped working in its current release version.
-For that reason it is **required to clone this codebase** and install `QML.jl` in its GitHub main state manually if you want to use the GUI.
-
-```
-import Pkg
-Pkg.add("QML#main")
-```
-or press `]` in the Julia RPEL to enter Pkg mode and then run
-```
-add QML#main
-```
+This is built on the library [QML.jl](https://github.com/JuliaGraphics/QML.jl), which installs normally from the Julia package registry (it is a dependency of ElectricGrid) and works with the current Qt6-based QML.jl v0.13.
+To start it, run `julia --project=. gui/ElectricGridGUI.jl` from the repository root.
 
 ![GUI example](docs/src/assets/gui_example.png)
 

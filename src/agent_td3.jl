@@ -1,7 +1,6 @@
 using Flux
 using IntervalSets
 using StableRNGs
-using ReinforcementLearning
 using Random
 using Statistics
 using Flux.Losses: mse
@@ -140,7 +139,7 @@ function (p::TD3Policy)(env::ElectricGridEnv, name::Union{Nothing, String} = not
     else
         D = device(p.behavior_actor)
         s = ElectricGrid.state(env, "my_agent")
-        s = Flux.unsqueeze(s, ndims(s) + 1)
+        s = Flux.unsqueeze(s, dims = ndims(s) + 1)
         actions = p.behavior_actor(send_to_device(D, s)) |> vec |> send_to_host
         # add training flag
         clamp.(actions .+ training * randn(p.rng) .* p.act_noise, -p.act_limit, p.act_limit)
@@ -188,7 +187,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
         a = Flux.unsqueeze(a, dims=1)
     end
 
-    gs1 = gradient(Flux.params(critic)) do
+    gs1 = Flux.gradient(Flux.params(critic)) do
         q1, q2 = critic(s, a)
         loss = mse(q1 |> vec, y) + mse(q2 |> vec, y)
         ignore() do
@@ -200,7 +199,7 @@ function RLCore.update!(p::TD3Policy, batch::NamedTuple{SARTS})
     RLBase.update!(critic, gs1)
 
     if p.replay_counter % p.policy_freq == 0
-        gs2 = gradient(Flux.params(actor)) do
+        gs2 = Flux.gradient(Flux.params(actor)) do
             actions = actor(s)
             loss = -mean(critic.model.critic_1(vcat(s, actions)))
             ignore() do

@@ -131,7 +131,7 @@ The `control_type` of the source is chosen as classic in `mode => Step`. That me
 ## The MultiController
 
 The `ElectricGrid` toolbox provides a more enhanced method to run an experiment with a specific number of steps and even more episodes.
-It is based in the `run` command provided by the [ReinforcementLeaning.jl/run](https://github.com/JuliaReinforcementLearning/ReinforcementLearning.jl/blob/master/src/ReinforcementLearningCore/src/core/run.jl) toolbox and, therefore, can be used to `learn` a control task or to `simulate` a fixed setup.
+It is based on the `run` loop of [ReinforcementLearning.jl v0.10](https://github.com/JuliaReinforcementLearning/ReinforcementLearning.jl/blob/v0.10.2/src/ReinforcementLearningCore/src/core/run.jl) (now bundled within ElectricGrid) and, therefore, can be used to `learn` a control task or to `simulate` a fixed setup.
 
 First we take a look onto simulating the behaviour of an env without learning. Therefore, the `Simulate()` function from the `MultiController` is used. 
 This acts as a configuration tool to define the corresponding classic controllers and RL agents.

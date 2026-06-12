@@ -18,6 +18,12 @@ end
 
 end
 
+@testset "SystemMatrices" begin
+
+    include("./system_matrix_test.jl")
+
+end
+
 @testset "Agent" begin
     #env = ElectricGridEnv()
     #agent = CreateAgentDdpg(na = length(env.action_space), ns = length(env.state_space), use_gpu = false)
